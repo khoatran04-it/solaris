@@ -1,0 +1,35 @@
+﻿using backend.Models;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+
+namespace backend.Configurations
+{
+    public class WarehouseConfiguration : IEntityTypeConfiguration<Warehouse>
+    {
+        public void Configure(EntityTypeBuilder<Warehouse> builder)
+        {
+            builder.ToTable("Warehouses");
+            builder.HasKey(x => x.Id);
+
+            builder.Property(x => x.Code).IsRequired().HasMaxLength(50).HasColumnType("varchar(50)");
+            builder.HasIndex(x => x.Code).IsUnique(); // Mã kho không được trùng
+
+            builder.Property(x => x.Name).IsRequired().HasMaxLength(200);
+            builder.Property(x => x.WarehouseType).HasMaxLength(50);
+
+            // --- QUAN HỆ KHÓA NGOẠI ---
+
+            // 1 Kho có 1 Địa chỉ (Không cho phép xóa địa chỉ nếu đang có kho dùng)
+            builder.HasOne(x => x.Address)
+                   .WithMany()
+                   .HasForeignKey(x => x.AddressId)
+                   .OnDelete(DeleteBehavior.Restrict);
+
+            // 1 Kho có 1 Trưởng kho (Nếu xóa tài khoản Trưởng kho -> Cột này thành NULL)
+            builder.HasOne(x => x.Manager)
+                   .WithMany()
+                   .HasForeignKey(x => x.ManagerId)
+                   .OnDelete(DeleteBehavior.SetNull);
+        }
+    }
+}

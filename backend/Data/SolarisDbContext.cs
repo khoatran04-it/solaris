@@ -1,0 +1,115 @@
+using backend.Models;
+using Microsoft.EntityFrameworkCore;
+
+namespace backend.Data
+{
+    public class SolarisDbContext : DbContext
+    {
+        public SolarisDbContext(DbContextOptions<SolarisDbContext> options) : base(options)
+        {
+        }
+
+        // --- Danh mục Supplier ---
+        public DbSet<SupplierType> SupplierTypes { get; set; }
+        public DbSet<Supplier> Suppliers { get; set; }
+        public DbSet<SupplierAddress> SupplierAddresses { get; set; }
+        public DbSet<SupplierProduct> SupplierProducts { get; set; }
+
+        // --- Danh mục Customer ---
+        public DbSet<CustomerType> CustomerTypes { get; set; }
+        public DbSet<CustomerTier> CustomerTiers { get; set; }
+        public DbSet<CustomerGroup> CustomerGroups { get; set; }
+        public DbSet<Customer> Customers { get; set; }
+        public DbSet<CustomerAddress> CustomerAddresses { get; set; }
+        public DbSet<CustomerGroupLink> CustomerGroupLinks { get; set; }
+
+        // --- Danh mục UoM ---
+        public DbSet<UoMCategory> UoMCategories { get; set; }
+        public DbSet<UoM> UoMs { get; set; }
+        public DbSet<UoMConversion> UoMConversions { get; set; }
+
+        // --- Danh mục Product ---
+        public DbSet<ProductCategoryGroup> ProductCategoryGroups { get; set; }
+        public DbSet<ProductCategory> ProductCategories {  get; set; }
+        public DbSet<Product> Products { get; set; }
+        public DbSet<ProductVariant> ProductVariants { get; set; }
+        public DbSet<ProductVariantPrice> ProductVariantPrices { get; set; }
+        public DbSet<ProductAttribute> ProductAttributes { get; set; }
+
+
+        public DbSet<AttributeDefinition> AttributeDefinitions { get; set; }
+        public DbSet<CategoryAttribute> CategoryAttributes { get; set; }
+
+        // --- Danh mục Promotion ---
+        public DbSet<PromotionCampaign> PromotionCampaigns { get; set; }
+        public DbSet<PromotionVariant> PromotionVariants { get; set; }
+
+        // --- Danh mục RBAC ---
+        public DbSet<IARole> IARoles { get; set; }
+        public DbSet<IAUser> IAUsers { get; set; }
+        public DbSet<IAUserRole> IAUserRoles { get; set; }
+        public DbSet<IAPermission> IAPermissions { get; set; }
+        public DbSet<IARolePermission> IARolePermissions { get; set; }
+        public DbSet<IAUserPermission> IAUserPermissions { get; set; }
+        public DbSet<IAUserWarehouse> IAUserWarehouses { get; set; }
+
+        // --- Danh mục Inventory ---
+        public DbSet<WarehouseAddress> WarehouseAddresses { get; set; }
+        public DbSet<Warehouse> Warehouses { get; set; }
+
+        public DbSet<ProductBatch> ProductBatches { get; set; }
+        public DbSet<WarehouseInventory> WarehouseInventories { get; set; }
+        public DbSet<InventoryTransaction> InventoryTransactions { get; set; }
+
+        // --- Danh mục Procurement (Phase 3) ---
+        public DbSet<PurchaseOrder> PurchaseOrders { get; set; }
+        public DbSet<PurchaseOrderDetail> PurchaseOrderDetails { get; set; }
+        public DbSet<InventoryReceipt> InventoryReceipts { get; set; }
+        public DbSet<InventoryReceiptDetail> InventoryReceiptDetails { get; set; }
+
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            base.OnModelCreating(modelBuilder);
+
+            // 1. Chỉ giữ lại Index Unique cho các bảng CHƯA ĐƯỢC tách file Configuration
+            // (Sau này sếp tạo Configuration cho Supplier, UoM... thì quay lại đây xóa nốt cho sạch)
+            modelBuilder.Entity<Product>().HasIndex(s => s.Code).IsUnique();
+
+
+            // 2. Set mặc định CẤM XÓA DÂY CHUYỀN (Restrict) cho toàn bộ các bảng
+            foreach (var relationship in modelBuilder.Model.GetEntityTypes().SelectMany(e => e.GetForeignKeys()))
+            {
+                relationship.DeleteBehavior = DeleteBehavior.Restrict;
+            }
+
+            // 3. 🔥 QUAN TRỌNG NHẤT: Quét các file Configuration ở bước CUỐI CÙNG
+            // Những cấu hình đặc thù (như Cascade của CustomerAddress, CustomerGroupLink) 
+            // sẽ được apply sau cùng và tự động bẻ khóa cái Restrict mặc định ở bước 2.
+            modelBuilder.ApplyConfigurationsFromAssembly(typeof(SolarisDbContext).Assembly);
+        }
+
+        // SOFT DELETE HACK
+        public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+        {
+            // Quét các Entity đang được EF Core theo dõi xem có cái nào kế thừa ISoftDelete không
+            var entries = ChangeTracker.Entries<ISoftDelete>();
+
+            foreach (var entry in entries)
+            {
+                // Nếu phát hiện có thằng nào đang chuẩn bị bị đem ra pháp trường (Deleted)
+                if (entry.State == EntityState.Deleted)
+                {
+                    // Chuyển án tử hình (Deleted) thành án chung thân (Modified)
+                    entry.State = EntityState.Modified;
+
+                    // Đánh dấu cờ đã xóa mềm và lưu lại thời gian xóa
+                    entry.Entity.IsDeleted = true;
+                    entry.Entity.DeletedAt = DateTime.UtcNow;
+                }
+            }
+
+            return await base.SaveChangesAsync(cancellationToken);
+        }
+    }
+}

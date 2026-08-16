@@ -1,0 +1,227 @@
+import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Edit3, Trash2, Shield, Settings } from 'lucide-react';
+
+// API & Types
+import { roleApi } from '../../api/roleApi';
+import { Role } from '../../types/role';
+
+// Commons Components
+import { Toast } from '../../components/commons/Toast';
+import { ConfirmDeleteModal } from '../../components/modals/ConfirmDeleteModal';
+import { CustomFilter } from '../../components/commons/CustomFilter';
+
+// Atomic Components
+import { 
+    ListPageContainer, 
+    ListHeader, 
+    ListCard, 
+    TableLoading, 
+    TableEmpty, 
+    ListPagination, 
+    DateTimeCell 
+} from '../../components/commons/ListUI';
+
+const RoleList: React.FC = () => {
+    const navigate = useNavigate();
+
+    // --- STATE QUẢN LÝ DỮ LIỆU & PHÂN TRANG ---
+    const [data, setData] = useState<Role[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(0);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [debouncedSearch, setDebouncedSearch] = useState('');
+    const pageSize = 10;
+
+    // --- STATE QUẢN LÝ BỘ LỌC (FILTERS) ---
+    const [statusFilter, setStatusFilter] = useState<(string | number)[]>([]);
+    
+    const statusOptions = [
+        { label: 'Hoạt động', value: 1 },
+        { label: 'Tạm khóa', value: 0 }
+    ];
+
+    // --- STATE MODAL & TOAST ---
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [deletingRecord, setDeletingRecord] = useState<Role | null>(null);
+    const [toast, setToast] = useState<{ show: boolean, type: 'success' | 'error' | 'warning', message: string }>({ 
+        show: false, type: 'success', message: '' 
+    });
+
+    // --- EFFECTS ---
+    useEffect(() => {
+        const timer = setTimeout(() => setDebouncedSearch(searchTerm), 500);
+        return () => clearTimeout(timer);
+    }, [searchTerm]);
+
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [debouncedSearch, statusFilter]);
+
+    const fetchData = async () => {
+        setIsLoading(true);
+        try {
+            const response = await roleApi.getAll({
+                search: debouncedSearch,
+                pageIndex: currentPage,
+                pageSize: pageSize,
+                isActive: statusFilter.length === 1 ? statusFilter[0] === 1 : undefined,
+            });
+            
+            setData(response.items);
+            setTotalPages(response.totalPages);
+        } catch (error) {
+            showToast('error', 'CÓ LỖI XẢY RA KHI TẢI DỮ LIỆU VAI TRÒ');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    useEffect(() => { 
+        fetchData(); 
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [currentPage, debouncedSearch, statusFilter]);
+
+    // --- HANDLERS ---
+    const showToast = (type: 'success' | 'error' | 'warning', message: string) => {
+        setToast({ show: true, type, message });
+        setTimeout(() => setToast(prev => ({ ...prev, show: false })), 3000);
+    };
+
+    const confirmDelete = async () => {
+        if (!deletingRecord) return;
+        try {
+            await roleApi.delete(deletingRecord.id);
+            setIsModalOpen(false);
+            fetchData();
+            showToast('success', `Xóa thành công vai trò "${deletingRecord.name}"`);
+        } catch (error) {
+            showToast('error', 'Lỗi khi thực hiện xóa dữ liệu');
+        }
+    };
+
+    const handleToggleActive = async (id: number, currentStatus: boolean) => {
+        try {
+            await roleApi.toggleActive(id);
+            fetchData();
+            showToast('success', `Đã ${currentStatus ? 'khóa' : 'kích hoạt'} vai trò`);
+        } catch (error) {
+            showToast('error', 'Không thể thay đổi trạng thái');
+        }
+    };
+
+    return (    
+        <ListPageContainer>
+            <Toast {...toast} />
+            
+            <ListHeader 
+                title="Quản Lý Vai Trò & Phân Quyền"
+                subtitle="Thiết lập các nhóm quyền hạn mặc định cho nhân viên trong hệ thống"
+                searchTerm={searchTerm}
+                onSearchChange={setSearchTerm}
+                onAdd={() => navigate('/roles/create')}
+                icon={Shield}
+                searchPlaceholder="Tìm theo mã, tên vai trò..."
+            />
+
+            <ListCard>
+                <div className="overflow-x-auto flex-1 min-h-100 pb-24">
+                    <table className="w-full text-left border-collapse">
+                        <thead>
+                            <tr className="bg-slate-50/70 border-b border-slate-100">
+                                <th className="w-[15%] py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Mã Vai Trò</th>
+                                <th className="w-[30%] py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Tên Vai Trò</th>
+                                <th className="w-[20%] py-4 px-2 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">Số Lượng Quyền</th>
+                                <th className="w-[15%] py-4 px-2 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                                    <div className="flex justify-center">
+                                        <CustomFilter title="TRẠNG THÁI" options={statusOptions} selectedValues={statusFilter} onApply={setStatusFilter} />
+                                    </div>
+                                </th>
+                                <th className="w-[20%] py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">Thao Tác</th>
+                            </tr>
+                        </thead>
+                        
+                        <tbody className="divide-y divide-slate-100">
+                            {isLoading ? (
+                                <TableLoading colSpan={5} />
+                            ) : data.length > 0 ? (
+                                data.map((item) => (
+                                    <tr key={item.id} className="hover:bg-slate-50/80 transition-colors duration-200 group">
+                                        <td className="py-4 px-6">
+                                            <span className="text-[12px] font-bold bg-blue-50 text-blue-700 px-2 py-1 rounded border border-blue-200/50 uppercase tracking-widest">
+                                                {item.code}
+                                            </span>
+                                        </td>
+                                        <td className="py-4 px-6">
+                                            <div className="flex flex-col">
+                                                <span className="font-extrabold text-slate-800 text-[14px]">{item.name}</span>
+                                                {item.description && (
+                                                    <span className="text-[12px] text-slate-400 mt-1 line-clamp-1">{item.description}</span>
+                                                )}
+                                            </div>
+                                        </td>
+                                        <td className="py-4 px-2 text-center">
+                                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[13px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                                                <Settings size={14} /> {item.permissionIds?.length || 0} Quyền
+                                            </span>
+                                        </td>
+                                        <td className="py-4 px-2 text-center">
+                                            <button 
+                                                onClick={() => handleToggleActive(item.id, item.isActive)}
+                                                className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold border transition-colors ${
+                                                    item.isActive 
+                                                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200/40 hover:bg-red-50 hover:text-red-600 hover:border-red-200' 
+                                                        : 'bg-slate-100 text-slate-400 border-slate-200/50 hover:bg-emerald-50 hover:text-emerald-600 hover:border-emerald-200'
+                                                }`}>
+                                                <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${item.isActive ? 'bg-emerald-500' : 'bg-slate-300'}`}></span>
+                                                {item.isActive ? 'Hoạt động' : 'Tạm khóa'}
+                                            </button>
+                                        </td>
+                                        <td className="py-4 px-6">
+                                            <div className="flex justify-center gap-1.5 opacity-40 group-hover:opacity-100 transition-all duration-300">
+                                                <button 
+                                                    onClick={() => navigate(`/roles/edit/${item.id}`)}
+                                                    className="p-2 text-slate-400 hover:text-yellow-600 hover:bg-yellow-50 rounded-lg transition-colors"
+                                                    title="Chỉnh sửa & Phân quyền"
+                                                >
+                                                    <Edit3 size={18} strokeWidth={2.5} />
+                                                </button>
+                                                <button 
+                                                    onClick={() => { setDeletingRecord(item); setIsModalOpen(true); }}
+                                                    className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                                    title="Xóa"
+                                                >
+                                                    <Trash2 size={18} strokeWidth={2.5} />
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))
+                            ) : (
+                                <TableEmpty colSpan={5} message="Không tìm thấy vai trò nào." />
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+
+                <ListPagination 
+                    currentPage={currentPage} 
+                    totalPages={totalPages} 
+                    totalItems={data.length} 
+                    onPageChange={setCurrentPage}
+                    isLoading={isLoading}
+                />
+            </ListCard>
+
+            <ConfirmDeleteModal 
+                isOpen={isModalOpen} 
+                itemName={deletingRecord?.name || ''} 
+                onClose={() => setIsModalOpen(false)} 
+                onConfirm={confirmDelete} 
+            />
+        </ListPageContainer>
+    );
+};
+
+export default RoleList;

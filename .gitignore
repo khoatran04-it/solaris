@@ -1,0 +1,85 @@
+# ==========================================
+# ECO SOLARIS - MASTER GITIGNORE FILE
+# ==========================================
+
+# ------------------------------------------
+# 1. Các file và thư mục của .NET / Visual Studio
+# ------------------------------------------
+# Thư mục chứa kết quả biên dịch (Build outputs)
+**/bin/
+**/obj/
+**/App_Data/
+
+# Thư mục cấu hình ẩn của Visual Studio
+.vs/
+**/*.user
+**/*.suo
+**/*.userosscache
+**/*.sln.docstates
+
+# File log và kết quả test của .NET
+**/*.log
+**/TestResults/
+**/artifacts/
+
+# Phục vụ cho tính năng Hot Reload và sinh mã tự động của VS 2026
+.chromestatus
+.swp
+*~
+
+# ------------------------------------------
+# 2. Các file và thư mục của Node.js / React (Vite)
+# ------------------------------------------
+# Thư mục cài đặt thư viện của Frontend
+**/node_modules/
+
+# Thư mục build đầu ra của React/Vite (Production build)
+**/dist/
+**/build/
+**/out/
+
+# Log lỗi của npm/yarn
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Thư mục cache của Vite / TS
+**/.vite/
+**/.eslintcache
+**/*.tsbuildinfo
+
+# ------------------------------------------
+# 3. Quản lý Môi trường & Bảo mật (Secrets)
+# ------------------------------------------
+# CHẶN các file chứa chuỗi kết nối DB, API Key, Token
+**/.env
+**/.env.local
+**/.env.*.local
+**/appsettings.Development.json
+**/appsettings.Local.json
+
+# ------------------------------------------
+# 4. Các IDE khác (Nếu bạn hoặc thành viên khác dùng)
+# ------------------------------------------
+# VS Code
+.vscode/
+!.vscode/extensions.json
+
+# JetBrains (Rider, WebStorm)
+.idea/
+*.iws
+
+# ------------------------------------------
+# 5. Hệ điều hành (OS Junk Files)
+# ------------------------------------------
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
