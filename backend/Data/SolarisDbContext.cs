@@ -67,6 +67,24 @@ namespace backend.Data
         public DbSet<InventoryReceipt> InventoryReceipts { get; set; }
         public DbSet<InventoryReceiptDetail> InventoryReceiptDetails { get; set; }
 
+        // --- Danh mục Sales & Outbound (Phase 4) ---
+        public DbSet<Order> Orders { get; set; }
+        public DbSet<OrderDetail> OrderDetails { get; set; }
+        public DbSet<InventoryIssue> InventoryIssues { get; set; }
+        public DbSet<InventoryIssueDetail> InventoryIssueDetails { get; set; }
+        public DbSet<CustomerReturn> CustomerReturns { get; set; }
+        public DbSet<CustomerReturnDetail> CustomerReturnDetails { get; set; }
+
+        // --- Danh mục Logistics & Transfer (Phase 5) ---
+        public DbSet<InventoryTransfer> InventoryTransfers { get; set; }
+        public DbSet<InventoryTransferDetail> InventoryTransferDetails { get; set; }
+
+        // --- Danh mục Audit, Adjustment & Reconciliation (Phase 6) ---
+        public DbSet<InventoryAudit> InventoryAudits { get; set; }
+        public DbSet<InventoryAuditDetail> InventoryAuditDetails { get; set; }
+        public DbSet<InventoryAdjustment> InventoryAdjustments { get; set; }
+        public DbSet<InventoryAdjustmentDetail> InventoryAdjustmentDetails { get; set; }
+
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

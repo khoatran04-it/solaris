@@ -137,6 +137,21 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IPurchaseOrderService, PurchaseOrderService>();
 builder.Services.AddScoped<IInventoryReceiptService, InventoryReceiptService>();
 
+// --- Đăng ký DI cho nhóm Sales & Outbound (Phase 4) ---
+builder.Services.AddScoped<IDistanceService, DistanceService>();
+builder.Services.AddScoped<IOrderRoutingService, OrderRoutingService>();
+builder.Services.AddScoped<IOrderService, OrderService>();
+builder.Services.AddScoped<IInventoryIssueService, InventoryIssueService>();
+builder.Services.AddScoped<ICustomerReturnService, CustomerReturnService>();
+
+// --- Đăng ký DI cho nhóm Logistics & Transfer (Phase 5) ---
+builder.Services.AddScoped<IInventoryTransferService, InventoryTransferService>();
+
+// --- Đăng ký DI cho nhóm Audit, Adjustment & Reconciliation (Phase 6) ---
+builder.Services.AddScoped<IInventoryAuditService, InventoryAuditService>();
+builder.Services.AddScoped<IInventoryAdjustmentService, InventoryAdjustmentService>();
+builder.Services.AddScoped<IInventoryReconciliationService, InventoryReconciliationService>();
+
 var app = builder.Build();
 
 // 4. Middlewares

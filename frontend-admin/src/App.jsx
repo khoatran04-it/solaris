@@ -61,6 +61,32 @@ import InventoryReceiptList from './pages/inventoryReceipt/InventoryReceiptList'
 import InventoryReceiptForm from './pages/inventoryReceipt/InventoryReceiptForm';
 import InventoryReceiptDetail from './pages/inventoryReceipt/InventoryReceiptDetail';
 
+import OrderList from './pages/order/OrderList';
+import OrderForm from './pages/order/OrderForm';
+import OrderDetail from './pages/order/OrderDetail';
+
+import InventoryIssueList from './pages/inventoryIssue/InventoryIssueList';
+import InventoryIssueForm from './pages/inventoryIssue/InventoryIssueForm';
+import InventoryIssueDetail from './pages/inventoryIssue/InventoryIssueDetail';
+
+import InventoryTransferList from './pages/inventoryTransfer/InventoryTransferList';
+import InventoryTransferForm from './pages/inventoryTransfer/InventoryTransferForm';
+import InventoryTransferDetail from './pages/inventoryTransfer/InventoryTransferDetail';
+
+import CustomerReturnList from './pages/customerReturn/CustomerReturnList';
+import CustomerReturnForm from './pages/customerReturn/CustomerReturnForm';
+import CustomerReturnDetail from './pages/customerReturn/CustomerReturnDetail';
+
+import InventoryAuditList from './pages/inventoryAudit/InventoryAuditList';
+import InventoryAuditForm from './pages/inventoryAudit/InventoryAuditForm';
+import InventoryAuditDetail from './pages/inventoryAudit/InventoryAuditDetail';
+
+import InventoryAdjustmentList from './pages/inventoryAdjustment/InventoryAdjustmentList';
+import InventoryAdjustmentForm from './pages/inventoryAdjustment/InventoryAdjustmentForm';
+import InventoryAdjustmentDetail from './pages/inventoryAdjustment/InventoryAdjustmentDetail';
+
+import InventoryReconciliation from './pages/inventory/InventoryReconciliation';
+
 function App() {
   return (
     <BrowserRouter>
@@ -177,6 +203,39 @@ function App() {
             <Route path="inventory-receipts" element={<InventoryReceiptList />} />
             <Route path="inventory-receipts/create" element={<InventoryReceiptForm />} />
             <Route path="inventory-receipts/:id" element={<InventoryReceiptDetail />} />
+
+            {/* Đơn Hàng Bán & Định Tuyến Kho (Phase 4) */}
+            <Route path="orders" element={<OrderList />} />
+            <Route path="orders/create" element={<OrderForm />} />
+            <Route path="orders/:id" element={<OrderDetail />} />
+
+            {/* Phiếu Xuất Kho & Phân Lô FEFO (Phase 4) */}
+            <Route path="inventory-issues" element={<InventoryIssueList />} />
+            <Route path="inventory-issues/create" element={<InventoryIssueForm />} />
+            <Route path="inventory-issues/:id" element={<InventoryIssueDetail />} />
+
+            {/* Chuyển Kho Liên Chi Nhánh (Phase 5) */}
+            <Route path="inventory-transfers" element={<InventoryTransferList />} />
+            <Route path="inventory-transfers/create" element={<InventoryTransferForm />} />
+            <Route path="inventory-transfers/:id" element={<InventoryTransferDetail />} />
+
+            {/* Khách Trả Hàng & Nghiệm Thu QC (Phase 5) */}
+            <Route path="customer-returns" element={<CustomerReturnList />} />
+            <Route path="customer-returns/create" element={<CustomerReturnForm />} />
+            <Route path="customer-returns/:id" element={<CustomerReturnDetail />} />
+
+            {/* Kiểm Kê Kho (Phase 6) */}
+            <Route path="inventory-audits" element={<InventoryAuditList />} />
+            <Route path="inventory-audits/create" element={<InventoryAuditForm />} />
+            <Route path="inventory-audits/:id" element={<InventoryAuditDetail />} />
+
+            {/* Điều Chỉnh & Xuất Hủy Tồn Kho (Phase 6) */}
+            <Route path="inventory-adjustments" element={<InventoryAdjustmentList />} />
+            <Route path="inventory-adjustments/create" element={<InventoryAdjustmentForm />} />
+            <Route path="inventory-adjustments/:id" element={<InventoryAdjustmentDetail />} />
+
+            {/* Sổ Cái & Chốt Ca Tồn Kho (Phase 6) */}
+            <Route path="inventory-reconciliation" element={<InventoryReconciliation />} />
 
             {/* Vai Trò */}
             <Route path="roles" element={<RoleList />} />

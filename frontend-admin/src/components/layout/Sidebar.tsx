@@ -3,7 +3,8 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { 
     LayoutDashboard, Home, Package, Users, Settings, 
     Sun, ChevronLeft, ChevronRight, ChevronDown, LucideIcon,
-    Apple, Ruler, ShieldCheck, LogOut, ShoppingCart, ClipboardCheck // 🔥 Đã thêm icons Phase 3
+    Apple, Ruler, ShieldCheck, LogOut, ShoppingCart, ClipboardCheck,
+    ShoppingBag, ArrowLeftRight, ClipboardList, Scale
 } from 'lucide-react';
 
 // 🔥 Import store và constants quyền
@@ -101,6 +102,40 @@ const MENU_CONFIG: MenuItem[] = [
         children: [
             { label: 'Đơn mua hàng', path: '/purchase-orders', permission: PERMISSIONS.INVENTORY.VIEW },
             { label: 'Phiếu nhập kho', path: '/inventory-receipts', permission: PERMISSIONS.INVENTORY.VIEW },
+        ]
+    },
+    {
+        id: 'sales',
+        label: 'Bán hàng & Xuất kho',
+        icon: ShoppingBag,
+        basePath: '/orders',
+        permission: PERMISSIONS.INVENTORY.VIEW,
+        children: [
+            { label: 'Đơn bán hàng', path: '/orders', permission: PERMISSIONS.INVENTORY.VIEW },
+            { label: 'Phiếu xuất kho', path: '/inventory-issues', permission: PERMISSIONS.INVENTORY.VIEW },
+        ]
+    },
+    {
+        id: 'logistics',
+        label: 'Điều phối & Trả hàng',
+        icon: ArrowLeftRight,
+        basePath: '/logistics',
+        permission: PERMISSIONS.INVENTORY.VIEW,
+        children: [
+            { label: 'Chuyển kho nội bộ', path: '/inventory-transfers', permission: PERMISSIONS.INVENTORY.VIEW },
+            { label: 'Khách hàng trả hàng', path: '/customer-returns', permission: PERMISSIONS.INVENTORY.VIEW },
+        ]
+    },
+    {
+        id: 'audit',
+        label: 'Kiểm kê & Sổ cái',
+        icon: ClipboardList,
+        basePath: '/audit',
+        permission: PERMISSIONS.INVENTORY.VIEW,
+        children: [
+            { label: 'Kiểm kê kho', path: '/inventory-audits', permission: PERMISSIONS.INVENTORY.VIEW },
+            { label: 'Điều chỉnh tồn kho', path: '/inventory-adjustments', permission: PERMISSIONS.INVENTORY.VIEW },
+            { label: 'Sổ cái & Chốt ca', path: '/inventory-reconciliation', permission: PERMISSIONS.INVENTORY.VIEW },
         ]
     },
 

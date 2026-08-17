@@ -1,4 +1,4 @@
-﻿namespace backend.Models
+namespace backend.Models
 {
     public class CustomerAddress : ISoftDelete
     {
@@ -17,6 +17,9 @@
         public bool IsDefault { get; set; } = false;
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
+
+        public double Latitude { get; set; }
+        public double Longitude { get; set; }
 
         // --- FOREIGN KEY ---
         public int CustomerId { get; set; }
