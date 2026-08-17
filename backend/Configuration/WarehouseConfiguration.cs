@@ -1,4 +1,4 @@
-﻿using backend.Models;
+using backend.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -14,8 +14,15 @@ namespace backend.Configurations
             builder.Property(x => x.Code).IsRequired().HasMaxLength(50).HasColumnType("varchar(50)");
             builder.HasIndex(x => x.Code).IsUnique(); // Mã kho không được trùng
 
-            builder.Property(x => x.Name).IsRequired().HasMaxLength(200);
-            builder.Property(x => x.WarehouseType).HasMaxLength(50);
+            builder.Property(x => x.Name).IsRequired().HasMaxLength(200).HasColumnType("nvarchar(200)");
+            builder.Property(x => x.WarehouseType).HasMaxLength(50).HasColumnType("nvarchar(50)");
+
+            // Audit & Soft Delete
+            builder.Property(x => x.CreatedAt).HasColumnType("datetime2");
+            builder.Property(x => x.UpdatedAt).HasColumnType("datetime2");
+            builder.Property(x => x.IsActive);
+            builder.Property(x => x.IsDeleted).HasDefaultValue(false);
+            builder.HasQueryFilter(x => !x.IsDeleted);
 
             // --- QUAN HỆ KHÓA NGOẠI ---
 

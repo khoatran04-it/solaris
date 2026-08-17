@@ -6,6 +6,9 @@ using System.Security.Claims;
 
 namespace backend.Controllers
 {
+    /// <summary>
+    /// API Quản lý Phiếu Xuất Kho Giao Hàng (Inventory Issues).
+    /// </summary>
     [Route("api/[controller]")]
     [ApiController]
     [Authorize]
@@ -61,8 +64,15 @@ namespace backend.Controllers
         {
             try
             {
-                var newId = await _service.CreateAsync(dto);
-                return CreatedAtAction(nameof(GetById), new { id = newId }, new { id = newId });
+                var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                int? userId = null;
+                if (!string.IsNullOrEmpty(userIdStr) && int.TryParse(userIdStr, out int parsedId))
+                {
+                    userId = parsedId;
+                }
+
+                var newId = await _service.CreateAsync(dto, userId);
+                return CreatedAtAction(nameof(GetById), new { id = newId }, new { id = newId, message = "Tạo phiếu xuất kho thành công" });
             }
             catch (Exception ex)
             {
@@ -75,11 +85,15 @@ namespace backend.Controllers
         {
             try
             {
-                var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "1";
-                if (!int.TryParse(userIdStr, out int userId)) userId = 1;
+                var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                int userId = 1;
+                if (!string.IsNullOrEmpty(userIdStr) && int.TryParse(userIdStr, out int parsedId))
+                {
+                    userId = parsedId;
+                }
 
                 await _service.CompleteIssueAsync(id, userId, request.Note);
-                return NoContent();
+                return Ok(new { message = "Hoàn tất xuất kho thành công" });
             }
             catch (KeyNotFoundException ex)
             {
@@ -97,7 +111,25 @@ namespace backend.Controllers
             try
             {
                 await _service.CancelIssueAsync(id, request.Reason);
-                return NoContent();
+                return Ok(new { message = "Hủy phiếu xuất kho thành công" });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> Delete(int id)
+        {
+            try
+            {
+                await _service.DeleteAsync(id);
+                return Ok(new { message = "Xóa phiếu xuất kho thành công" });
             }
             catch (KeyNotFoundException ex)
             {

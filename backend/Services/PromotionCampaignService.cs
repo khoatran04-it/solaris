@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+using AutoMapper;
 using backend.Data;
 using backend.DTOs;
 using backend.DTOs.PromotionCampaignDTOs;
@@ -19,10 +19,18 @@ namespace backend.Services
             _mapper = mapper;
         }
 
-        public async Task<IEnumerable<PromotionCampaignReadDto>> GetAllListAsync()
+        public async Task<IEnumerable<PromotionCampaignReadDto>> GetAllListAsync(bool isActiveOnly = false)
         {
-            var items = await _context.PromotionCampaigns
+            var query = _context.PromotionCampaigns
                 .AsNoTracking()
+                .AsQueryable();
+
+            if (isActiveOnly)
+            {
+                query = query.Where(x => x.IsActive);
+            }
+
+            var items = await query
                 .OrderByDescending(x => x.CreatedAt)
                 .ToListAsync();
 
@@ -35,14 +43,26 @@ namespace backend.Services
             var query = _context.PromotionCampaigns.AsQueryable();
 
             if (!string.IsNullOrWhiteSpace(search))
-                query = query.Where(x => x.Name.ToLower().Contains(search.ToLower()));
+            {
+                var lowerSearch = search.Trim().ToLower();
+                query = query.Where(x => x.Name.ToLower().Contains(lowerSearch));
+            }
 
             if (isActive.HasValue)
                 query = query.Where(x => x.IsActive == isActive.Value);
 
             // Lọc chiến dịch trong khoảng thời gian nhất định
-            if (startDate.HasValue) query = query.Where(x => x.StartDate >= startDate.Value);
-            if (endDate.HasValue) query = query.Where(x => x.EndDate <= endDate.Value);
+            if (startDate.HasValue)
+            {
+                var start = startDate.Value.Date;
+                query = query.Where(x => x.StartDate >= start);
+            }
+
+            if (endDate.HasValue)
+            {
+                var end = endDate.Value.Date.AddDays(1);
+                query = query.Where(x => x.EndDate < end);
+            }
 
             var totalRecords = await query.CountAsync();
             var items = await query
@@ -69,7 +89,7 @@ namespace backend.Services
                 .Include(x => x.PromotionVariants)
                     .ThenInclude(pv => pv.Variant)
                         .ThenInclude(v => v!.Product)
-                // 🔥 Nhánh 2 (Bắt đầu lại từ rễ): Kéo Variant -> Prices -> UoM
+                // Nhánh 2: Kéo Variant -> Prices -> UoM
                 .Include(x => x.PromotionVariants)
                     .ThenInclude(pv => pv.Variant)
                         .ThenInclude(v => v!.Prices)
@@ -77,24 +97,53 @@ namespace backend.Services
                 .AsNoTracking()
                 .FirstOrDefaultAsync(x => x.Id == id);
 
-            if (entity == null) throw new KeyNotFoundException("Không tìm thấy chiến dịch.");
+            if (entity == null) throw new KeyNotFoundException("Không tìm thấy chiến dịch khuyến mãi.");
 
             return _mapper.Map<PromotionCampaignReadDto>(entity);
         }
 
         public async Task<int> CreateAsync(PromotionCampaignCreateDto dto)
         {
+            var trimmedName = dto.Name.Trim();
+
+            // 1. Validation Logic
+            if (dto.StartDate >= dto.EndDate)
+                throw new Exception("Ngày bắt đầu phải trước ngày kết thúc chiến dịch.");
+
+            if (dto.IsPercentage && (dto.DiscountValue <= 0 || dto.DiscountValue > 100))
+                throw new Exception("Mức giảm theo phần trăm phải nằm trong khoảng từ 0.01% đến 100%.");
+
+            if (!dto.IsPercentage && dto.DiscountValue <= 0)
+                throw new Exception("Mức giảm tiền mặt phải lớn hơn 0.");
+
+            var isDuplicate = await _context.PromotionCampaigns
+                .AnyAsync(x => x.Name.ToLower() == trimmedName.ToLower());
+            if (isDuplicate)
+                throw new Exception($"Chiến dịch khuyến mãi '{trimmedName}' đã tồn tại trong hệ thống.");
+
             using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
                 var entity = _mapper.Map<PromotionCampaign>(dto);
+                entity.Name = trimmedName;
+                entity.Description = dto.Description?.Trim();
+                entity.CreatedAt = DateTime.UtcNow;
+                entity.UpdatedAt = DateTime.UtcNow;
+                entity.IsActive = dto.IsActive;
+
                 _context.PromotionCampaigns.Add(entity);
                 await _context.SaveChangesAsync(); // Lưu để lấy ID chiến dịch
 
                 // Nếu có truyền danh sách biến thể ngay lúc tạo
-                if (dto.VariantIds.Any())
+                if (dto.VariantIds != null && dto.VariantIds.Any())
                 {
-                    var links = dto.VariantIds.Select(vId => new PromotionVariant
+                    // Lọc những VariantId hợp lệ và chưa bị xóa
+                    var validVariantIds = await _context.ProductVariants
+                        .Where(v => dto.VariantIds.Contains(v.Id) && !v.IsDeleted)
+                        .Select(v => v.Id)
+                        .ToListAsync();
+
+                    var links = validVariantIds.Distinct().Select(vId => new PromotionVariant
                     {
                         PromotionCampaignId = entity.Id,
                         VariantId = vId,
@@ -113,16 +162,41 @@ namespace backend.Services
         public async Task<bool> UpdateAsync(int id, PromotionCampaignUpdateDto dto)
         {
             var entity = await _context.PromotionCampaigns.FindAsync(id);
-            if (entity == null) throw new KeyNotFoundException("Không tìm thấy chiến dịch.");
+            if (entity == null) throw new KeyNotFoundException("Không tìm thấy chiến dịch khuyến mãi cần sửa.");
+
+            var trimmedName = dto.Name.Trim();
+
+            // 1. Validation Logic
+            if (dto.StartDate >= dto.EndDate)
+                throw new Exception("Ngày bắt đầu phải trước ngày kết thúc chiến dịch.");
+
+            if (dto.IsPercentage && (dto.DiscountValue <= 0 || dto.DiscountValue > 100))
+                throw new Exception("Mức giảm theo phần trăm phải nằm trong khoảng từ 0.01% đến 100%.");
+
+            if (!dto.IsPercentage && dto.DiscountValue <= 0)
+                throw new Exception("Mức giảm tiền mặt phải lớn hơn 0.");
+
+            var isDuplicate = await _context.PromotionCampaigns
+                .AnyAsync(x => x.Id != id && x.Name.ToLower() == trimmedName.ToLower());
+            if (isDuplicate)
+                throw new Exception($"Cập nhật thất bại: Tên chiến dịch '{trimmedName}' đã bị trùng.");
 
             _mapper.Map(dto, entity);
+            entity.Name = trimmedName;
+            entity.Description = dto.Description?.Trim();
+            entity.UpdatedAt = DateTime.UtcNow;
+            entity.IsActive = dto.IsActive;
+
             await _context.SaveChangesAsync();
             return true;
         }
 
-        // 🔥 THAY ĐỔI CỰC KỲ QUAN TRỌNG: Sửa lại logic thành Sync (Đồng bộ)
         public async Task<bool> AddVariantsToCampaignAsync(int campaignId, ApplyVariantsToCampaignDto dto)
         {
+            var campaignExists = await _context.PromotionCampaigns.AnyAsync(x => x.Id == campaignId);
+            if (!campaignExists)
+                throw new KeyNotFoundException("Không tìm thấy chiến dịch khuyến mãi.");
+
             // Lấy danh sách các sản phẩm đang được áp dụng KM hiện tại trong DB
             var currentLinks = await _context.PromotionVariants
                 .Where(x => x.PromotionCampaignId == campaignId)
@@ -130,12 +204,18 @@ namespace backend.Services
 
             var currentVariantIds = currentLinks.Select(x => x.VariantId).ToList();
 
-            // 1. Tìm những SP bị người dùng "Bỏ tích" (Có trong DB nhưng không có trong mảng Frontend gửi lên)
+            // 1. Tìm những SP bị người dùng "Bỏ tích"
             var toRemove = currentLinks.Where(x => !dto.VariantIds.Contains(x.VariantId)).ToList();
 
-            // 2. Tìm những SP được "Tích mới" (Gửi lên nhưng chưa có trong DB)
-            var toAddIds = dto.VariantIds.Where(vId => !currentVariantIds.Contains(vId)).ToList();
-            var toAdd = toAddIds.Select(vId => new PromotionVariant
+            // 2. Tìm những SP được "Tích mới" (đảm bảo tồn tại và chưa bị xóa)
+            var newVariantIds = dto.VariantIds.Where(vId => !currentVariantIds.Contains(vId)).Distinct().ToList();
+
+            var validVariantIds = await _context.ProductVariants
+                .Where(v => newVariantIds.Contains(v.Id) && !v.IsDeleted)
+                .Select(v => v.Id)
+                .ToListAsync();
+
+            var toAdd = validVariantIds.Select(vId => new PromotionVariant
             {
                 PromotionCampaignId = campaignId,
                 VariantId = vId,
@@ -177,9 +257,23 @@ namespace backend.Services
 
         public async Task<bool> DeleteAsync(int id)
         {
-            var entity = await _context.PromotionCampaigns.FindAsync(id);
-            if (entity == null) throw new KeyNotFoundException("Không tìm thấy chiến dịch.");
-            _context.PromotionCampaigns.Remove(entity);
+            var entity = await _context.PromotionCampaigns
+                .Include(x => x.PromotionVariants)
+                .FirstOrDefaultAsync(x => x.Id == id);
+
+            if (entity == null) throw new KeyNotFoundException("Không tìm thấy chiến dịch để xóa.");
+
+            // Soft delete chiến dịch
+            entity.IsDeleted = true;
+            entity.DeletedAt = DateTime.UtcNow;
+            entity.UpdatedAt = DateTime.UtcNow;
+
+            // Xóa sạch liên kết PromotionVariants khi chiến dịch bị xóa
+            if (entity.PromotionVariants.Any())
+            {
+                _context.PromotionVariants.RemoveRange(entity.PromotionVariants);
+            }
+
             await _context.SaveChangesAsync();
             return true;
         }
@@ -187,8 +281,10 @@ namespace backend.Services
         public async Task<bool> ToggleActiveAsync(int id)
         {
             var entity = await _context.PromotionCampaigns.FindAsync(id);
-            if (entity == null) throw new KeyNotFoundException("Không tìm thấy chiến dịch.");
+            if (entity == null) throw new KeyNotFoundException("Không tìm thấy chiến dịch khuyến mãi.");
+
             entity.IsActive = !entity.IsActive;
+            entity.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
             return true;
         }

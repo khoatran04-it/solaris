@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+using AutoMapper;
 using backend.Data;
 using backend.DTOs;
 using backend.DTOs.CategoryAttributeDTOs;
@@ -44,7 +44,7 @@ namespace backend.Services
 
             if (!string.IsNullOrWhiteSpace(search))
             {
-                var lowerSearch = search.ToLower();
+                var lowerSearch = search.Trim().ToLower();
                 query = query.Where(x =>
                     (x.Category != null && x.Category.Name.ToLower().Contains(lowerSearch)) ||
                     (x.AttributeDefinition != null && x.AttributeDefinition.Name.ToLower().Contains(lowerSearch))
@@ -76,6 +76,7 @@ namespace backend.Services
                     query = query.Where(x => x.AttributeDefinitionId.HasValue && attributeList.Contains(x.AttributeDefinitionId.Value));
                 }
             }
+
             var totalRecords = await query.CountAsync();
 
             var items = await query
@@ -113,7 +114,15 @@ namespace backend.Services
 
         public async Task<int> CreateAsync(CategoryAttributeCreateDto dto)
         {
-            // 🔥 Business Rule: Đảm bảo 1 Danh mục không bị gán trùng 1 thuộc tính 2 lần
+            // 1. Kiểm tra Category tồn tại
+            if (!await _context.ProductCategories.AnyAsync(c => c.Id == dto.CategoryId && !c.IsDeleted))
+                throw new Exception("Danh mục sản phẩm không tồn tại.");
+
+            // 2. Kiểm tra Attribute tồn tại
+            if (dto.AttributeDefinitionId.HasValue && !await _context.AttributeDefinitions.AnyAsync(a => a.Id == dto.AttributeDefinitionId.Value && !a.IsDeleted))
+                throw new Exception("Từ điển thuộc tính không tồn tại.");
+
+            // 3. Business Rule: Đảm bảo 1 Danh mục không bị gán trùng 1 thuộc tính 2 lần
             var isDuplicate = await _context.CategoryAttributes
                 .AnyAsync(x => x.CategoryId == dto.CategoryId && x.AttributeDefinitionId == dto.AttributeDefinitionId);
 
@@ -134,7 +143,15 @@ namespace backend.Services
             if (entity == null)
                 throw new KeyNotFoundException("Không tìm thấy cấu hình thuộc tính cần sửa.");
 
-            // 🔥 Bắt lỗi trùng lặp khi Update (ngoại trừ chính nó)
+            // 1. Kiểm tra Category tồn tại
+            if (!await _context.ProductCategories.AnyAsync(c => c.Id == dto.CategoryId && !c.IsDeleted))
+                throw new Exception("Danh mục sản phẩm không tồn tại.");
+
+            // 2. Kiểm tra Attribute tồn tại
+            if (dto.AttributeDefinitionId.HasValue && !await _context.AttributeDefinitions.AnyAsync(a => a.Id == dto.AttributeDefinitionId.Value && !a.IsDeleted))
+                throw new Exception("Từ điển thuộc tính không tồn tại.");
+
+            // 3. Bắt lỗi trùng lặp khi Update (ngoại trừ chính nó)
             var isDuplicate = await _context.CategoryAttributes
                 .AnyAsync(x => x.Id != id && x.CategoryId == dto.CategoryId && x.AttributeDefinitionId == dto.AttributeDefinitionId);
 
@@ -153,7 +170,6 @@ namespace backend.Services
             if (entity == null)
                 throw new KeyNotFoundException("Không tìm thấy cấu hình thuộc tính để xóa.");
 
-            // Bảng này không có IsDeleted, nên lệnh Remove này sẽ xóa XÓA CỨNG (Hard Delete) khỏi Database luôn
             _context.CategoryAttributes.Remove(entity);
             await _context.SaveChangesAsync();
 

@@ -1,12 +1,16 @@
-﻿using backend.Data;
+using backend.Data;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 namespace backend.Controllers
 {
+    /// <summary>
+    /// API Truy xuất danh mục Quyền hạn (Permissions) trong hệ thống.
+    /// </summary>
     [Route("api/ia-permissions")]
     [ApiController]
-    // [Authorize] // Bật lên sau khi test xong
+    [Authorize]
     public class IAPermissionController : ControllerBase
     {
         private readonly SolarisDbContext _context;
@@ -16,12 +20,16 @@ namespace backend.Controllers
             _context = context;
         }
 
+        /// <summary>
+        /// Lấy toàn bộ danh sách quyền hạn được nhóm theo Module.
+        /// </summary>
         [HttpGet]
         public async Task<IActionResult> GetAll()
         {
-            // Lấy toàn bộ danh sách 18 quyền sếp vừa Seed trong Database
             var permissions = await _context.IAPermissions
                 .AsNoTracking()
+                .OrderBy(x => x.Module)
+                .ThenBy(x => x.Id)
                 .Select(x => new
                 {
                     x.Id,

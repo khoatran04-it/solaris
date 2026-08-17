@@ -1,15 +1,22 @@
 namespace backend.Models
 {
+    /// <summary>
+    /// Dòng chi tiết mặt hàng đặt mua trong Đơn Mua Hàng (PO Detail).
+    /// </summary>
     public class PurchaseOrderDetail
     {
         public int Id { get; set; }
 
-        public decimal OrderQuantity { get; set; } // Số lượng đặt (theo UoM bên dưới)
-        public decimal UnitPrice { get; set; } // Đơn giá lúc đặt (Auto-fill từ SupplierProduct, cho phép Override)
-        public decimal TotalPrice { get; set; } // = OrderQuantity * UnitPrice
+        /// <summary>Số lượng đặt mua (theo Đơn vị tính UoM)</summary>
+        public decimal OrderQuantity { get; set; }
 
-        // Bài toán "Giao hàng từng đợt" (Partial Receipt):
-        // Cột này được Service cộng dồn mỗi khi 1 InventoryReceiptDetail được Completed
+        /// <summary>Đơn giá đặt mua (VND)</summary>
+        public decimal UnitPrice { get; set; }
+
+        /// <summary>Thành tiền = OrderQuantity * UnitPrice</summary>
+        public decimal TotalPrice { get; set; }
+
+        /// <summary>Số lượng thực tế đã nhập kho lũy kế (hỗ trợ nhập hàng nhiều đợt - Partial Receipt)</summary>
         public decimal ReceivedQuantity { get; set; } = 0;
 
         // --- NAVIGATION PROPERTIES ---
@@ -19,11 +26,11 @@ namespace backend.Models
         public int VariantId { get; set; }
         public virtual ProductVariant? Variant { get; set; }
 
-        // Đơn vị tính khi đặt hàng (Auto-fill từ SupplierProduct.PurchaseUoMId)
+        /// <summary>Đơn vị tính khi đặt mua từ NCC (Thùng, Bao, Két...)</summary>
         public int UoMId { get; set; }
         public virtual UoM? UoM { get; set; }
 
-        // Navigation ngược: Biết dòng PO này đã được nhập bởi những dòng Receipt Detail nào
+        /// <summary>Danh sách các đợt nhập kho kiểm đếm tương ứng với dòng PO này</summary>
         public virtual ICollection<InventoryReceiptDetail> ReceiptDetails { get; set; } = new List<InventoryReceiptDetail>();
     }
 }

@@ -1,4 +1,4 @@
-﻿using backend.Models;
+using backend.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -27,11 +27,15 @@ namespace backend.Configurations
             builder.Property(x => x.Description)
                    .HasColumnType("nvarchar(max)");
 
+            builder.Property(x => x.IsActive);
+
             builder.Property(x => x.CreatedAt)
                    .HasColumnType("datetime2");
 
             builder.Property(x => x.UpdatedAt)
                    .HasColumnType("datetime2");
+
+            builder.HasIndex(x => x.Code).IsUnique();
 
             builder.HasMany(x => x.Customers)
                    .WithOne(c => c.CustomerType)

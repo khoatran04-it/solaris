@@ -30,8 +30,10 @@ namespace backend.Services
 
             if (!string.IsNullOrWhiteSpace(search))
             {
-                var lowerSearch = search.ToLower();
-                query = query.Where(x => x.OrderCode.ToLower().Contains(lowerSearch));
+                var lowerSearch = search.ToLower().Trim();
+                query = query.Where(x => x.OrderCode.ToLower().Contains(lowerSearch) ||
+                                         (x.Supplier != null && x.Supplier.Name.ToLower().Contains(lowerSearch)) ||
+                                         (x.Note != null && x.Note.ToLower().Contains(lowerSearch)));
             }
 
             if (supplierId.HasValue)
@@ -88,11 +90,32 @@ namespace backend.Services
 
         public async Task<int> CreateAsync(PurchaseOrderCreateDto dto)
         {
+            if (dto.Details == null || !dto.Details.Any())
+                throw new ArgumentException("Đơn mua hàng phải có ít nhất 1 mặt hàng.");
+
+            // Kiểm tra NCC tồn tại
+            var supplierExists = await _context.Suppliers.AnyAsync(s => s.Id == dto.SupplierId);
+            if (!supplierExists)
+                throw new ArgumentException($"Nhà cung cấp với ID {dto.SupplierId} không tồn tại.");
+
+            // Kiểm tra Creator an toàn
+            int creatorId = dto.CreatedById;
+            var userExists = await _context.IAUsers.AnyAsync(u => u.Id == creatorId);
+            if (!userExists)
+            {
+                var firstUser = await _context.IAUsers.FirstOrDefaultAsync();
+                if (firstUser != null) creatorId = firstUser.Id;
+            }
+
             var entity = _mapper.Map<PurchaseOrder>(dto);
 
-            // Generate OrderCode: PO-YYYYMMDD-HHMMSS
-            entity.OrderCode = $"PO-{DateTime.UtcNow:yyyyMMdd}-{DateTime.UtcNow:HHmmss}";
+            // Sinh mã duy nhất chống xung đột
+            entity.OrderCode = $"PO-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString()[..6].ToUpper()}";
             entity.Status = PurchaseOrderStatus.Draft;
+            entity.CreatedById = creatorId;
+            entity.CreatedAt = DateTime.UtcNow;
+            entity.UpdatedAt = DateTime.UtcNow;
+            entity.IsDeleted = false;
 
             decimal totalAmount = 0;
             foreach (var detail in entity.Details)
@@ -120,12 +143,13 @@ namespace backend.Services
                 throw new KeyNotFoundException("Không tìm thấy Đơn mua hàng.");
 
             if (entity.Status != PurchaseOrderStatus.Draft)
-                throw new Exception("Chỉ được phép chỉnh sửa đơn hàng đang ở trạng thái Nháp.");
+                throw new InvalidOperationException("Chỉ được phép chỉnh sửa đơn hàng đang ở trạng thái Nháp.");
 
             entity.SupplierId = dto.SupplierId;
             entity.OrderDate = dto.OrderDate;
             entity.ExpectedDeliveryDate = dto.ExpectedDeliveryDate;
-            entity.Note = dto.Note;
+            entity.Note = dto.Note?.Trim();
+            entity.UpdatedAt = DateTime.UtcNow;
 
             // Xóa chi tiết cũ và gán chi tiết mới
             _context.PurchaseOrderDetails.RemoveRange(entity.Details);
@@ -160,14 +184,14 @@ namespace backend.Services
             if (entity == null)
                 throw new KeyNotFoundException("Không tìm thấy Đơn mua hàng.");
 
-            // Chỉ cho phép update status, note, dates
             entity.Status = dto.Status;
-            entity.ExpectedDeliveryDate = dto.ExpectedDeliveryDate;
-            entity.Note = dto.Note;
+            entity.ExpectedDeliveryDate = dto.ExpectedDeliveryDate ?? entity.ExpectedDeliveryDate;
+            entity.Note = dto.Note ?? entity.Note;
+            entity.UpdatedAt = DateTime.UtcNow;
             
             if (dto.Status == PurchaseOrderStatus.Cancelled)
             {
-                entity.CancellationReason = dto.CancellationReason;
+                entity.CancellationReason = dto.CancellationReason?.Trim();
             }
 
             await _context.SaveChangesAsync();
@@ -181,9 +205,13 @@ namespace backend.Services
                 throw new KeyNotFoundException("Không tìm thấy Đơn mua hàng.");
 
             if (entity.Status != PurchaseOrderStatus.Draft)
-                throw new Exception("Chỉ được phép xóa đơn hàng đang ở trạng thái Nháp.");
+                throw new InvalidOperationException("Chỉ được phép xóa đơn mua hàng đang ở trạng thái Nháp.");
 
-            _context.PurchaseOrders.Remove(entity);
+            // Soft delete chuẩn mực
+            entity.IsDeleted = true;
+            entity.DeletedAt = DateTime.UtcNow;
+            entity.UpdatedAt = DateTime.UtcNow;
+
             await _context.SaveChangesAsync();
             return true;
         }

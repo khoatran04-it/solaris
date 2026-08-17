@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+using AutoMapper;
 using backend.Data;
 using backend.DTOs;
 using backend.DTOs.SupplierProductDTOs;
@@ -19,13 +19,44 @@ namespace backend.Services
             _mapper = mapper;
         }
 
-        public async Task<IEnumerable<SupplierProductReadDto>> GetAllListAsync()
+        public async Task<IEnumerable<SupplierProductReadDto>> GetAllListAsync(bool isActiveOnly = false)
         {
-            var items = await _context.SupplierProducts
+            var query = _context.SupplierProducts
                 .Include(x => x.Variant)
                 .Include(x => x.Supplier)
+                .Include(x => x.PurchaseUoM)
                 .AsNoTracking()
+                .AsQueryable();
+
+            if (isActiveOnly)
+            {
+                query = query.Where(x => x.IsActive);
+            }
+
+            var items = await query
                 .OrderByDescending(x => x.CreatedAt)
+                .ToListAsync();
+
+            return _mapper.Map<IEnumerable<SupplierProductReadDto>>(items);
+        }
+
+        public async Task<IEnumerable<SupplierProductReadDto>> GetBySupplierIdAsync(int supplierId, bool isActiveOnly = true)
+        {
+            var query = _context.SupplierProducts
+                .Include(x => x.Variant)
+                .Include(x => x.Supplier)
+                .Include(x => x.PurchaseUoM)
+                .Where(x => x.SupplierId == supplierId)
+                .AsNoTracking()
+                .AsQueryable();
+
+            if (isActiveOnly)
+            {
+                query = query.Where(x => x.IsActive);
+            }
+
+            var items = await query
+                .OrderBy(x => x.Variant != null ? x.Variant.Name : "")
                 .ToListAsync();
 
             return _mapper.Map<IEnumerable<SupplierProductReadDto>>(items);
@@ -44,21 +75,26 @@ namespace backend.Services
             var query = _context.SupplierProducts
                 .Include(x => x.Variant)
                 .Include(x => x.Supplier)
+                .Include(x => x.PurchaseUoM)
                 .AsQueryable();
 
-            // 1. Filter: Tìm theo mã SupplierSKU
+            // 1. Filter: Tìm theo mã SKU của NCC, Tên biến thể hoặc Mã biến thể
             if (!string.IsNullOrWhiteSpace(search))
             {
-                var lowerSearch = search.ToLower();
-                query = query.Where(x => x.SupplierSKU != null && x.SupplierSKU.ToLower().Contains(lowerSearch));
+                var lowerSearch = search.Trim().ToLower();
+                query = query.Where(x => 
+                    (x.SupplierSKU != null && x.SupplierSKU.ToLower().Contains(lowerSearch)) ||
+                    (x.Variant != null && (x.Variant.Name.ToLower().Contains(lowerSearch) || x.Variant.Code.ToLower().Contains(lowerSearch))) ||
+                    (x.Supplier != null && x.Supplier.Name.ToLower().Contains(lowerSearch))
+                );
             }
 
-            // 2. Filter: Theo Biến thể (Dùng để hiển thị: Sản phẩm này có thể nhập từ ai?)
-            if (variantId.HasValue)
+            // 2. Filter: Theo Biến thể
+            if (variantId.HasValue && variantId.Value > 0)
                 query = query.Where(x => x.VariantId == variantId.Value);
 
-            // 3. Filter: Theo Nhà cung cấp (Dùng để hiển thị: Nhà cung cấp này đang bán những gì?)
-            if (supplierId.HasValue)
+            // 3. Filter: Theo Nhà cung cấp
+            if (supplierId.HasValue && supplierId.Value > 0)
                 query = query.Where(x => x.SupplierId == supplierId.Value);
 
             // 4. Filter: Trạng thái
@@ -83,7 +119,7 @@ namespace backend.Services
             var totalRecords = await query.CountAsync();
 
             var items = await query
-                .OrderByDescending(x => x.Id)
+                .OrderByDescending(x => x.CreatedAt)
                 .Skip((pageIndex - 1) * pageSize)
                 .Take(pageSize)
                 .AsNoTracking()
@@ -106,25 +142,45 @@ namespace backend.Services
             var entity = await _context.SupplierProducts
                 .Include(x => x.Variant)
                 .Include(x => x.Supplier)
+                .Include(x => x.PurchaseUoM)
                 .AsNoTracking()
                 .FirstOrDefaultAsync(x => x.Id == id);
 
             if (entity == null)
-                throw new KeyNotFoundException("Không tìm thấy thông tin giá nhập.");
+                throw new KeyNotFoundException("Không tìm thấy thông tin giá nhập của nhà cung cấp.");
 
             return _mapper.Map<SupplierProductReadDto>(entity);
         }
 
         public async Task<int> CreateAsync(SupplierProductCreateDto dto)
         {
-            // 🔥 Business Rule: 1 Sản phẩm - 1 NCC chỉ được phép có 1 dòng cấu hình giá
+            // Kiểm tra tồn tại Biến thể sản phẩm
+            var variantExists = await _context.ProductVariants.AnyAsync(v => v.Id == dto.VariantId);
+            if (!variantExists)
+                throw new Exception("Biến thể sản phẩm được chọn không tồn tại.");
+
+            // Kiểm tra tồn tại Nhà cung cấp
+            var supplierExists = await _context.Suppliers.AnyAsync(s => s.Id == dto.SupplierId);
+            if (!supplierExists)
+                throw new Exception("Nhà cung cấp được chọn không tồn tại.");
+
+            // Kiểm tra tồn tại ĐVT mua hàng
+            var uomExists = await _context.UoMs.AnyAsync(u => u.Id == dto.PurchaseUoMId);
+            if (!uomExists)
+                throw new Exception("Đơn vị tính mua hàng được chọn không tồn tại.");
+
+            // Business Rule: 1 Sản phẩm - 1 NCC chỉ được phép có 1 dòng cấu hình giá
             var isDuplicate = await _context.SupplierProducts
                 .AnyAsync(x => x.VariantId == dto.VariantId && x.SupplierId == dto.SupplierId);
 
             if (isDuplicate)
-                throw new Exception("Nhà cung cấp này đã có cấu hình giá nhập cho sản phẩm này. Hãy cập nhật dòng dữ liệu hiện tại thay vì tạo mới.");
+                throw new Exception("Nhà cung cấp này đã có cấu hình giá cho sản phẩm được chọn. Vui lòng cập nhật bản ghi hiện tại thay vì tạo mới.");
 
             var entity = _mapper.Map<SupplierProduct>(dto);
+            entity.SupplierSKU = dto.SupplierSKU?.Trim();
+            entity.CreatedAt = DateTime.UtcNow;
+            entity.UpdatedAt = DateTime.UtcNow;
+            entity.IsActive = dto.IsActive;
 
             _context.SupplierProducts.Add(entity);
             await _context.SaveChangesAsync();
@@ -138,6 +194,21 @@ namespace backend.Services
             if (entity == null)
                 throw new KeyNotFoundException("Không tìm thấy cấu hình giá nhập cần sửa.");
 
+            // Kiểm tra tồn tại Biến thể sản phẩm
+            var variantExists = await _context.ProductVariants.AnyAsync(v => v.Id == dto.VariantId);
+            if (!variantExists)
+                throw new Exception("Biến thể sản phẩm được chọn không tồn tại.");
+
+            // Kiểm tra tồn tại Nhà cung cấp
+            var supplierExists = await _context.Suppliers.AnyAsync(s => s.Id == dto.SupplierId);
+            if (!supplierExists)
+                throw new Exception("Nhà cung cấp được chọn không tồn tại.");
+
+            // Kiểm tra tồn tại ĐVT mua hàng
+            var uomExists = await _context.UoMs.AnyAsync(u => u.Id == dto.PurchaseUoMId);
+            if (!uomExists)
+                throw new Exception("Đơn vị tính mua hàng được chọn không tồn tại.");
+
             // Bắt lỗi trùng lặp khi người dùng sửa Variant hoặc Supplier (ngoại trừ dòng hiện tại)
             var isDuplicate = await _context.SupplierProducts
                 .AnyAsync(x => x.Id != id && x.VariantId == dto.VariantId && x.SupplierId == dto.SupplierId);
@@ -146,8 +217,11 @@ namespace backend.Services
                 throw new Exception("Cập nhật thất bại: Cấu hình liên kết giữa Sản phẩm và Nhà cung cấp này đã tồn tại.");
 
             _mapper.Map(dto, entity);
-            await _context.SaveChangesAsync();
+            entity.SupplierSKU = dto.SupplierSKU?.Trim();
+            entity.UpdatedAt = DateTime.UtcNow;
+            entity.IsActive = dto.IsActive;
 
+            await _context.SaveChangesAsync();
             return true;
         }
 
@@ -157,9 +231,12 @@ namespace backend.Services
             if (entity == null)
                 throw new KeyNotFoundException("Không tìm thấy cấu hình giá nhập để xóa.");
 
-            _context.SupplierProducts.Remove(entity);
-            await _context.SaveChangesAsync();
+            // Soft Delete
+            entity.IsDeleted = true;
+            entity.DeletedAt = DateTime.UtcNow;
+            entity.UpdatedAt = DateTime.UtcNow;
 
+            await _context.SaveChangesAsync();
             return true;
         }
 
@@ -170,8 +247,9 @@ namespace backend.Services
                 throw new KeyNotFoundException("Không tìm thấy cấu hình giá nhập.");
 
             entity.IsActive = !entity.IsActive;
-            await _context.SaveChangesAsync();
+            entity.UpdatedAt = DateTime.UtcNow;
 
+            await _context.SaveChangesAsync();
             return true;
         }
     }

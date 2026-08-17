@@ -67,19 +67,16 @@ const WarehouseForm: React.FC = () => {
 
     // --- EFFECTS ---
     useEffect(() => {
-        // Tải danh sách Nhân viên (làm Trưởng kho) & Danh sách Kho (để check trùng mã)
+        // Tải danh sách Nhân viên & Danh sách Kho
         Promise.all([
-            userApi.getAllList().catch(() => []), // Giả định hàm này trả về danh sách user
+            userApi.getAllList().catch(() => []),
             warehouseApi.getAllList()
         ]).then(([users, warehouses]) => {
-            
-            // Map danh sách nhân sự
             setManagerOptions([
                 { label: '-- Chưa bổ nhiệm --', value: 0 },
                 ...users.map((u: any) => ({ label: `${u.fullName} (${u.username})`, value: u.id }))
             ]);
             
-            // Lưu mã kho hiện tại để check trùng
             setExistingCodes(warehouses.map(w => w.code.toLowerCase()));
         }).catch(() => showToast('warning', 'Không tải được danh sách tùy chọn'));
 
@@ -166,14 +163,15 @@ const WarehouseForm: React.FC = () => {
                 ...formData,
                 code: formData.code?.trim().toUpperCase(),
                 name: formData.name.trim(),
+                warehouseType: formData.warehouseType?.trim() || undefined,
                 managerId: formData.managerId === 0 ? null : formData.managerId,
                 address: {
                     province: formData.address.province.trim(),
                     district: formData.address.district.trim(),
                     ward: formData.address.ward.trim(),
                     streetAddress: formData.address.streetAddress.trim(),
-                    latitude: formData.address.latitude || 0,
-                    longitude: formData.address.longitude || 0
+                    latitude: Number(formData.address.latitude) || 0,
+                    longitude: Number(formData.address.longitude) || 0
                 }
             };
 
@@ -190,10 +188,9 @@ const WarehouseForm: React.FC = () => {
                 showToast('success', 'THÊM MỚI KHO HÀNG THÀNH CÔNG');
             }
             
-            // Quay về trang danh sách sau 1 giây
             setTimeout(() => navigate('/warehouses'), 1000);
         } catch (error: any) {
-            showToast('error', error.response?.status === 400 ? 'DỮ LIỆU KHÔNG HỢP LỆ' : 'CÓ LỖI XẢY RA KHI LƯU');
+            showToast('error', error?.response?.data?.message || 'CÓ LỖI XẢY RA KHI LƯU');
         } finally {
             setLoading(false);
         }
@@ -219,7 +216,7 @@ const WarehouseForm: React.FC = () => {
                             <FormInput 
                                 label="Mã Kho (Warehouse Code)" required placeholder="VD: HUB-HCM-01"
                                 value={formData.code || ''} error={errors.code} 
-                                disabled={isEditMode || loading} // Mã kho tạo xong không được sửa
+                                disabled={isEditMode || loading}
                                 onChange={e => handleFieldChange('code', e.target.value)} 
                             />
                             <FormInput 
@@ -238,69 +235,67 @@ const WarehouseForm: React.FC = () => {
                                 value={formData.managerId || 0} options={managerOptions}
                                 onSelect={val => handleFieldChange('managerId', val)}
                             />
-                            <div className="lg:col-span-2">
-                                <FormSelect 
-                                    label="Trạng thái hoạt động" required 
-                                    value={formData.isActive ? 1 : 0} options={STATUS_OPTIONS}
-                                    onSelect={val => handleFieldChange('isActive', val === 1)}
-                                />
-                            </div>
+                            <FormSelect 
+                                label="Trạng Thái Hoạt Động" 
+                                value={formData.isActive ? 1 : 0} options={STATUS_OPTIONS}
+                                onSelect={val => handleFieldChange('isActive', val === 1)}
+                            />
                         </div>
                     </FormSection>
 
-                    {/* ================= SECTION 2: ĐỊA CHỈ CHI TIẾT ================= */}
-                    <FormSection title="Thông Tin Địa Chỉ & Tọa Độ">
-                        <div className="p-4 mb-2 bg-blue-50 border border-blue-100 rounded-xl">
-                            <p className="text-[13px] text-blue-800 font-medium">
-                                <strong>Mẹo:</strong> Việc nhập chính xác Vĩ độ (Latitude) và Kinh độ (Longitude) sẽ giúp hệ thống tự động hóa quá trình điều phối đơn hàng đến kho gần nhất cực kỳ hiệu quả.
-                            </p>
-                        </div>
-                        
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {/* ================= SECTION 2: ĐỊA CHỈ & TỌA ĐỘ VẬT LÝ ================= */}
+                    <FormSection title="Địa Chỉ Vật Lý & Tọa Độ GPS">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                             <FormInput 
-                                label="Tỉnh / Thành phố" required placeholder="VD: Hồ Chí Minh"
+                                label="Tỉnh / Thành Phố" required placeholder="VD: TP. Hồ Chí Minh"
                                 value={formData.address.province} error={errors.address_province} disabled={loading}
                                 onChange={e => handleAddressChange('province', e.target.value)} 
                             />
                             <FormInput 
-                                label="Quận / Huyện" required placeholder="VD: Quận 1"
+                                label="Quận / Huyện" required placeholder="VD: Quận Bình Tân"
                                 value={formData.address.district} error={errors.address_district} disabled={loading}
                                 onChange={e => handleAddressChange('district', e.target.value)} 
                             />
                             <FormInput 
-                                label="Phường / Xã" required placeholder="VD: Phường Bến Nghé"
+                                label="Phường / Xã" required placeholder="VD: Phường An Lạc"
                                 value={formData.address.ward} error={errors.address_ward} disabled={loading}
                                 onChange={e => handleAddressChange('ward', e.target.value)} 
                             />
-                            <div className="lg:col-span-3">
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
+                            <div className="md:col-span-2">
                                 <FormInput 
-                                    label="Số nhà, tên đường chi tiết" required placeholder="VD: 123 Đường Lê Lợi..."
+                                    label="Số Nhà, Tên Đường" required placeholder="VD: 123 Đường Số 7, KCN Tân Tạo"
                                     value={formData.address.streetAddress} error={errors.address_streetAddress} disabled={loading}
                                     onChange={e => handleAddressChange('streetAddress', e.target.value)} 
                                 />
                             </div>
-                            
-                            {/* Toạ độ GPS */}
-                            <FormInput 
-                                label="Vĩ độ (Latitude)" type="number" placeholder="VD: 10.7769"
-                                value={formData.address.latitude} disabled={loading}
-                                onChange={e => handleAddressChange('latitude', parseFloat(e.target.value) || 0)} 
-                            />
-                            <FormInput 
-                                label="Kinh độ (Longitude)" type="number" placeholder="VD: 106.7009"
-                                value={formData.address.longitude} disabled={loading}
-                                onChange={e => handleAddressChange('longitude', parseFloat(e.target.value) || 0)} 
-                            />
+                            <div className="grid grid-cols-2 gap-4">
+                                <FormInput 
+                                    label="Vĩ Độ (Lat)" type="number" placeholder="10.7769"
+                                    value={formData.address.latitude || ''} disabled={loading}
+                                    onChange={e => handleAddressChange('latitude', parseFloat(e.target.value) || 0)} 
+                                />
+                                <FormInput 
+                                    label="Kinh Độ (Lng)" type="number" placeholder="106.7009"
+                                    value={formData.address.longitude || ''} disabled={loading}
+                                    onChange={e => handleAddressChange('longitude', parseFloat(e.target.value) || 0)} 
+                                />
+                            </div>
                         </div>
                     </FormSection>
 
-                    {/* FOOTER & BUTTON */}
-                    <div className="flex justify-end pt-6 border-t border-slate-100 mt-2">
-                        <SubmitButton 
-                            loading={loading} 
-                            isEditMode={isEditMode} 
-                            icon={isEditMode ? Save : Plus} 
-                        />
+                    {/* ================= BUTTON SUBMIT ================= */}
+                    <div className="flex justify-end gap-3 pt-6 border-t border-slate-100">
+                        <button 
+                            type="button" 
+                            onClick={() => navigate('/warehouses')}
+                            className="px-6 py-2.5 rounded-xl font-bold text-sm text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors cursor-pointer"
+                        >
+                            Hủy Bỏ
+                        </button>
+                        <SubmitButton loading={loading} isEditMode={isEditMode} icon={isEditMode ? Save : Plus} />
                     </div>
                 </form>
             </FormCard>

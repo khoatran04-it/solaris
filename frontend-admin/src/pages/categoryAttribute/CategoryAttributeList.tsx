@@ -31,6 +31,7 @@ const CategoryAttributeList: React.FC = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [currentPage, setCurrentPage] = useState(1);
     const [totalPages, setTotalPages] = useState(0);
+    const [totalItems, setTotalItems] = useState(0);
     const pageSize = 10;
 
     // --- STATE QUẢN LÝ TÌM KIẾM & BỘ LỌC (FILTERS) ---
@@ -77,16 +78,16 @@ const CategoryAttributeList: React.FC = () => {
         setIsLoading(true);
         try {
             const response = await categoryAttributeApi.getAll({
-                search: debouncedSearch, // Thanh search hoạt động bình thường
+                search: debouncedSearch,
                 pageIndex: currentPage,
                 pageSize: pageSize,
-                // Chuyển mảng Multi-select thành chuỗi cách nhau bởi dấu phẩy cho Backend
                 categoryId: categoryFilter.length > 0 ? categoryFilter.join(',') : undefined,
                 attributeDefinitionId: attributeFilter.length > 0 ? attributeFilter.join(',') : undefined,
             });
             
-            setData(response.items);
-            setTotalPages(response.totalPages);
+            setData(response.items || []);
+            setTotalPages(response.totalPages || 0);
+            setTotalItems(response.totalRecords || 0);
         } catch (error) {
             showToast('error', 'CÓ LỖI XẢY RA KHI TẢI DỮ LIỆU');
         } finally {
@@ -227,7 +228,7 @@ const CategoryAttributeList: React.FC = () => {
                 <ListPagination 
                     currentPage={currentPage} 
                     totalPages={totalPages} 
-                    totalItems={data.length} 
+                    totalItems={totalItems} 
                     onPageChange={setCurrentPage}
                     isLoading={isLoading}
                 />

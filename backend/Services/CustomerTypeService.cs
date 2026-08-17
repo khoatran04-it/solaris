@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+using AutoMapper;
 using backend.Data;
 using backend.DTOs;
 using backend.DTOs.CustomerTypeDTOs;
@@ -10,7 +10,7 @@ namespace backend.Services
 {
     /// <summary>
     /// Service quản lý Phân loại khách hàng (Customer Types).
-    /// Đảm bảo tính duy nhất của mã phân loại và hỗ trợ cơ chế Soft Delete.
+    /// Đảm bảo tính duy nhất của mã phân loại, tính toàn vẹn dữ liệu và hỗ trợ cơ chế Soft Delete.
     /// </summary>
     public class CustomerTypeService : ICustomerTypeService
     {
@@ -44,10 +44,10 @@ namespace backend.Services
         /// <summary>
         /// Tìm kiếm nâng cao và phân trang danh sách phân loại khách hàng.
         /// </summary>
-        /// <remarks>Hỗ trợ lọc theo Mã/Tên, danh sách tên cụ thể và khoảng thời gian.</remarks>
         public async Task<PagedResult<CustomerTypeReadDto>> GetPagedAsync(
             string? search,
             string? names,
+            bool? isActive,
             DateTime? createdAt,
             DateTime? updatedAt,
             int pageIndex,
@@ -58,7 +58,7 @@ namespace backend.Services
             // 1. Tìm kiếm theo từ khóa (Mã hoặc Tên)
             if (!string.IsNullOrWhiteSpace(search))
             {
-                var lowerSearch = search.ToLower();
+                var lowerSearch = search.Trim().ToLower();
                 query = query.Where(x => x.Code.ToLower().Contains(lowerSearch) || x.Name.ToLower().Contains(lowerSearch));
             }
 
@@ -69,16 +69,26 @@ namespace backend.Services
                 query = query.Where(x => nameList.Contains(x.Name.ToLower()));
             }
 
-            // 3. Lọc theo ngày tạo (Quét trọn ngày từ 00:00:00 đến 23:59:59)
-            if (createdAt.HasValue)
+            // 3. Lọc theo trạng thái hoạt động
+            if (isActive.HasValue)
             {
-                query = query.Where(x => x.CreatedAt >= createdAt.Value.Date && x.CreatedAt < createdAt.Value.Date.AddDays(1));
+                query = query.Where(x => x.IsActive == isActive.Value);
             }
 
-            // 4. Lọc theo ngày cập nhật
+            // 4. Lọc theo ngày tạo
+            if (createdAt.HasValue)
+            {
+                var startDate = createdAt.Value.Date;
+                var endDate = startDate.AddDays(1);
+                query = query.Where(x => x.CreatedAt >= startDate && x.CreatedAt < endDate);
+            }
+
+            // 5. Lọc theo ngày cập nhật
             if (updatedAt.HasValue)
             {
-                query = query.Where(x => x.UpdatedAt >= updatedAt.Value.Date && x.UpdatedAt < updatedAt.Value.Date.AddDays(1));
+                var startDate = updatedAt.Value.Date;
+                var endDate = startDate.AddDays(1);
+                query = query.Where(x => x.UpdatedAt >= startDate && x.UpdatedAt < endDate);
             }
 
             var totalRecords = await query.CountAsync();
@@ -126,11 +136,13 @@ namespace backend.Services
         /// </summary>
         public async Task<int> CreateAsync(CustomerTypeCreateDto dto)
         {
-            // Business Rule: Mỗi phân loại phải có một mã Code duy nhất
-            if (await _context.CustomerTypes.AnyAsync(x => x.Code == dto.Code))
-                throw new Exception("Mã phân loại đã tồn tại trên hệ thống.");
+            if (await _context.CustomerTypes.AnyAsync(x => x.Code == dto.Code.Trim()))
+                throw new Exception($"Mã phân loại '{dto.Code}' đã tồn tại trên hệ thống.");
 
             var entity = _mapper.Map<CustomerType>(dto);
+            entity.CreatedAt = DateTime.UtcNow;
+            entity.UpdatedAt = DateTime.UtcNow;
+            entity.IsActive = dto.IsActive;
 
             _context.CustomerTypes.Add(entity);
             await _context.SaveChangesAsync();
@@ -147,28 +159,50 @@ namespace backend.Services
             if (entity == null)
                 throw new KeyNotFoundException("Không tìm thấy phân loại cần sửa.");
 
-            // Kiểm tra trùng mã (trừ bản chính nó đang được sửa)
-            if (await _context.CustomerTypes.AnyAsync(x => x.Id != id && x.Code == dto.Code))
-                throw new Exception("Cập nhật thất bại: Mã phân loại này đã bị trùng lặp.");
+            if (await _context.CustomerTypes.AnyAsync(x => x.Id != id && x.Code == dto.Code.Trim()))
+                throw new Exception($"Cập nhật thất bại: Mã phân loại '{dto.Code}' đã được sử dụng bởi phân loại khác.");
 
             _mapper.Map(dto, entity);
+            entity.UpdatedAt = DateTime.UtcNow;
+            entity.IsActive = dto.IsActive;
+
             await _context.SaveChangesAsync();
 
             return true;
         }
 
         /// <summary>
-        /// Xóa phân loại khách hàng. 
-        /// Lưu ý: Thao tác này kích hoạt cơ chế Soft Delete thông qua Global Interceptor.
+        /// Xóa phân loại khách hàng. Kiểm tra ràng buộc không có khách hàng liên kết.
         /// </summary>
         public async Task<bool> DeleteAsync(int id)
         {
-            var entity = await _context.CustomerTypes.FindAsync(id);
+            var entity = await _context.CustomerTypes
+                .Include(x => x.Customers)
+                .FirstOrDefaultAsync(x => x.Id == id);
+
             if (entity == null)
                 throw new KeyNotFoundException("Không tìm thấy phân loại cần xóa.");
 
-            // Thao tác Remove thực chất sẽ được Interceptor chuyển thành cập nhật cờ IsDeleted
+            if (entity.Customers.Any(c => !c.IsDeleted))
+                throw new Exception("Không thể xóa phân loại này vì đang có Khách hàng liên kết.");
+
             _context.CustomerTypes.Remove(entity);
+            await _context.SaveChangesAsync();
+
+            return true;
+        }
+
+        /// <summary>
+        /// Chuyển đổi trạng thái Hoạt động / Tạm khóa của phân loại khách hàng.
+        /// </summary>
+        public async Task<bool> ToggleActiveAsync(int id)
+        {
+            var entity = await _context.CustomerTypes.FindAsync(id);
+            if (entity == null)
+                throw new KeyNotFoundException("Không tìm thấy phân loại khách hàng.");
+
+            entity.IsActive = !entity.IsActive;
+            entity.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
 
             return true;

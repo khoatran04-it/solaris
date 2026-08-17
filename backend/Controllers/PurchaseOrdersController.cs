@@ -5,9 +5,12 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace backend.Controllers
 {
+    /// <summary>
+    /// API Quản lý Đơn Đặt Mua Hàng Từ Nhà Cung Cấp (Purchase Orders - PO).
+    /// </summary>
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize] // Bảo mật: Phải đăng nhập
+    [Authorize]
     public class PurchaseOrdersController : ControllerBase
     {
         private readonly IPurchaseOrderService _service;

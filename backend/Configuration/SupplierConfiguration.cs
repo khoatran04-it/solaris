@@ -1,4 +1,4 @@
-﻿using backend.Models;
+using backend.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -27,14 +27,13 @@ namespace backend.Configurations
 
             builder.Property(x => x.CreatedAt).HasColumnType("datetime2");
             builder.Property(x => x.UpdatedAt).HasColumnType("datetime2");
-            builder.Property(x => x.IsActive).HasDefaultValue(true);
 
             builder.HasIndex(x => x.Code).IsUnique();
 
             builder.Property(x => x.IsDeleted).HasDefaultValue(false);
             builder.HasQueryFilter(x => !x.IsDeleted);
 
-            ///Cấm xóa Loại NCC nếu vẫn có bản ghi NCC thuộc loại NCC đó
+            // Cấm xóa Loại NCC nếu vẫn có bản ghi NCC thuộc loại NCC đó
             builder.HasOne(x => x.SupplierType)
                    .WithMany(t => t.Suppliers)
                    .HasForeignKey(x => x.SupplierTypeId)

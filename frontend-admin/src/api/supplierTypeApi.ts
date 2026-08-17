@@ -1,10 +1,10 @@
 import axiosClient from './axiosClient'; 
-import { PagedResult, PaginationParams } from '../types/common'; // Xóa SupplierTypeQueryParams
-import { SupplierType, SupplierTypePayload } from "../types/supplierType";
+import { PagedResult } from '../types/common'; // Xóa SupplierTypeQueryParams
+import { SupplierType, SupplierTypePayload, SupplierTypeQueryParams } from "../types/supplierType";
 
 export const supplierTypeApi = {
     // 1. GET 
-    getAll:( params?: PaginationParams ): Promise<PagedResult<SupplierType>> => {
+    getAll:( params?: SupplierTypeQueryParams ): Promise<PagedResult<SupplierType>> => {
         return axiosClient.get('/SupplierTypes', { params });
     },
 
@@ -30,5 +30,10 @@ export const supplierTypeApi = {
     // 5. DELETE
     delete: (id: number): Promise<void> => {
         return axiosClient.delete(`/SupplierTypes/${id}`);
+    },
+
+    // 6. PATCH (Thay đổi trạng thái Tạm khóa / Hoạt động)
+    toggleActive: (id: number): Promise<void> => {
+        return axiosClient.patch(`/SupplierTypes/${id}/toggle-active`);
     }
 }

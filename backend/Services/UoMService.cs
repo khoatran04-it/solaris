@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+using AutoMapper;
 using backend.Data;
 using backend.DTOs;
 using backend.DTOs.UoMDTOs;
@@ -31,12 +31,20 @@ namespace backend.Services
         /// <summary>
         /// Lấy danh sách toàn bộ đơn vị tính kèm theo thông tin nhóm chủ quản.
         /// </summary>
-        public async Task<IEnumerable<UoMReadDto>> GetAllListAsync()
+        public async Task<IEnumerable<UoMReadDto>> GetAllListAsync(bool isActiveOnly = false)
         {
-            var uoms = await _context.UoMs
-                .Include(x => x.Category) // Nạp thông tin Nhóm để hiển thị CategoryName
+            var query = _context.UoMs
+                .Include(x => x.Category)
                 .AsNoTracking()
-                .OrderByDescending(x => x.CreatedAt)
+                .AsQueryable();
+
+            if (isActiveOnly)
+            {
+                query = query.Where(x => x.IsActive);
+            }
+
+            var uoms = await query
+                .OrderBy(x => x.Name)
                 .ToListAsync();
 
             return _mapper.Map<IEnumerable<UoMReadDto>>(uoms);
@@ -45,10 +53,6 @@ namespace backend.Services
         /// <summary>
         /// Tìm kiếm và phân trang đơn vị tính với các bộ lọc linh hoạt.
         /// </summary>
-        /// <remarks>
-        /// Tối ưu SQL: Đã loại bỏ AsSplitQuery() vì chỉ Include quan hệ 1-1, 
-        /// giúp thực hiện JOIN tối ưu trên một câu lệnh duy nhất.
-        /// </remarks>
         public async Task<PagedResult<UoMReadDto>> GetPagedAsync(
             string? search,
             int? categoryId,
@@ -65,7 +69,7 @@ namespace backend.Services
             // 1. Filter: Tìm kiếm theo Mã, Tên hoặc Từ đồng nghĩa (Hỗ trợ AI Search/Keywords)
             if (!string.IsNullOrWhiteSpace(search))
             {
-                var lowerSearch = search.ToLower();
+                var lowerSearch = search.Trim().ToLower();
                 query = query.Where(x =>
                     x.Code.ToLower().Contains(lowerSearch) ||
                     x.Name.ToLower().Contains(lowerSearch) ||
@@ -148,17 +152,26 @@ namespace backend.Services
         /// </summary>
         public async Task<int> CreateAsync(UoMCreateDto dto)
         {
+            var trimmedCode = dto.Code.Trim();
+            var trimmedName = dto.Name.Trim();
+
             // Kiểm tra trùng Mã đơn vị (Unique Code)
-            if (await _context.UoMs.AnyAsync(c => c.Code == dto.Code))
-                throw new Exception("Mã đơn vị tính đã tồn tại trên hệ thống.");
+            if (await _context.UoMs.AnyAsync(c => c.Code == trimmedCode))
+                throw new Exception($"Mã đơn vị tính '{trimmedCode}' đã tồn tại.");
 
             // Kiểm tra tính hợp lệ của Nhóm chủ quản
             if (!await _context.UoMCategories.AnyAsync(c => c.Id == dto.CategoryId))
                 throw new Exception("Nhóm đơn vị tính không tồn tại.");
 
             var newUoM = _mapper.Map<UoM>(dto);
-            _context.UoMs.Add(newUoM);
+            newUoM.Code = trimmedCode;
+            newUoM.Name = trimmedName;
+            newUoM.Synonyms = dto.Synonyms?.Trim();
+            newUoM.IsActive = dto.IsActive;
+            newUoM.CreatedAt = DateTime.UtcNow;
+            newUoM.UpdatedAt = DateTime.UtcNow;
 
+            _context.UoMs.Add(newUoM);
             await _context.SaveChangesAsync();
             return newUoM.Id;
         }
@@ -170,35 +183,57 @@ namespace backend.Services
         {
             var uom = await _context.UoMs.FirstOrDefaultAsync(c => c.Id == id);
             if (uom == null)
-                throw new KeyNotFoundException("Không tìm thấy dữ liệu yêu cầu.");
+                throw new KeyNotFoundException("Không tìm thấy đơn vị tính cần cập nhật.");
+
+            var trimmedCode = dto.Code.Trim();
+            var trimmedName = dto.Name.Trim();
 
             // Kiểm tra trùng mã Code (loại trừ bản ghi hiện tại)
-            if (await _context.UoMs.AnyAsync(c => c.Id != id && c.Code == dto.Code))
-                throw new Exception("Cập nhật thất bại: Mã đơn vị tính này đã bị trùng lặp.");
+            if (await _context.UoMs.AnyAsync(c => c.Id != id && c.Code == trimmedCode))
+                throw new Exception($"Cập nhật thất bại: Mã đơn vị tính '{trimmedCode}' đã bị trùng lặp.");
 
             // Đảm bảo Nhóm mới cập nhật là hợp lệ
             if (!await _context.UoMCategories.AnyAsync(c => c.Id == dto.CategoryId))
                 throw new Exception("Nhóm đơn vị tính mới không tồn tại.");
 
             _mapper.Map(dto, uom);
-            await _context.SaveChangesAsync();
+            uom.Code = trimmedCode;
+            uom.Name = trimmedName;
+            uom.Synonyms = dto.Synonyms?.Trim();
+            uom.IsActive = dto.IsActive;
+            uom.UpdatedAt = DateTime.UtcNow;
 
+            await _context.SaveChangesAsync();
             return true;
         }
 
         /// <summary>
-        /// Xóa đơn vị tính khỏi hệ thống.
+        /// Xóa đơn vị tính khỏi hệ thống (với các lớp bảo vệ toàn vẹn dữ liệu).
         /// </summary>
-        /// <exception cref="Exception">Ném ra khi đơn vị này đang là Đơn vị cơ sở của một Nhóm.</exception>
         public async Task<bool> DeleteAsync(int id)
         {
             var uom = await _context.UoMs.FindAsync(id);
-            if (uom == null) throw new KeyNotFoundException("Không tìm thấy dữ liệu để xóa.");
+            if (uom == null) throw new KeyNotFoundException("Không tìm thấy đơn vị tính để xóa.");
 
-            // SAFETY SHIELD: Ngăn chặn xóa đơn vị đang đóng vai trò là "Gốc/Cơ sở" (Base UoM) của một Category
-            var isUsedAsBase = await _context.UoMCategories.AnyAsync(c => c.BaseUoMId == id);
+            // 1. SAFETY SHIELD: Ngăn chặn xóa đơn vị đang đóng vai trò là "Gốc/Cơ sở" (Base UoM) của một Category
+            var isUsedAsBase = await _context.UoMCategories.AnyAsync(c => c.BaseUoMId == id && !c.IsDeleted);
             if (isUsedAsBase)
                 throw new Exception("Không thể xóa: Đơn vị này đang được thiết lập làm Đơn vị gốc cho một nhóm đơn vị.");
+
+            // 2. SAFETY SHIELD: Ngăn chặn xóa nếu Sản phẩm đang dùng đơn vị này làm BaseUoM
+            var isUsedInProduct = await _context.Products.AnyAsync(p => p.BaseUoMId == id && !p.IsDeleted);
+            if (isUsedInProduct)
+                throw new Exception("Không thể xóa: Đơn vị này đang được dùng làm đơn vị cơ sở cho sản phẩm.");
+
+            // 3. SAFETY SHIELD: Ngăn chặn xóa nếu có quy tắc quy đổi nào liên quan
+            var isUsedInConversion = await _context.UoMConversions.AnyAsync(c => (c.FromUoMId == id || c.ToUoMId == id) && !c.IsDeleted);
+            if (isUsedInConversion)
+                throw new Exception("Không thể xóa: Đang có quy tắc quy đổi liên kết với đơn vị tính này.");
+
+            // 4. SAFETY SHIELD: Ngăn chặn xóa nếu Nhà cung cấp đang dùng đơn vị này
+            var isUsedInSupplierProduct = await _context.SupplierProducts.AnyAsync(sp => sp.PurchaseUoMId == id && !sp.IsDeleted);
+            if (isUsedInSupplierProduct)
+                throw new Exception("Không thể xóa: Đang có nhà cung cấp sử dụng đơn vị tính mua hàng này.");
 
             _context.UoMs.Remove(uom);
             await _context.SaveChangesAsync();
@@ -214,6 +249,7 @@ namespace backend.Services
             if (uom == null) throw new KeyNotFoundException("Không tìm thấy đơn vị tính.");
 
             uom.IsActive = !uom.IsActive;
+            uom.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
 
             return true;

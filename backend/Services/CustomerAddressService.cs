@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+using AutoMapper;
 using backend.Data;
 using backend.DTOs.CustomerAddressDTOs;
 using backend.Models;
@@ -30,7 +30,6 @@ namespace backend.Services
         /// <summary>
         /// Lấy danh sách địa chỉ của một khách hàng.
         /// </summary>
-        /// <remarks>Địa chỉ mặc định luôn được ưu tiên xếp lên đầu danh sách để thuận tiện cho UI/UX.</remarks>
         public async Task<IEnumerable<CustomerAddressReadDto>> GetByCustomerIdAsync(int customerId)
         {
             var addresses = await _context.CustomerAddresses
@@ -65,7 +64,6 @@ namespace backend.Services
         /// <summary>
         /// Thêm địa chỉ mới cho khách hàng.
         /// </summary>
-        /// <remarks>Tự động thiết lập địa chỉ đầu tiên làm mặc định nếu khách hàng chưa có địa chỉ nào.</remarks>
         public async Task<int> CreateAsync(int customerId, CustomerAddressCreateDto dto)
         {
             var customerExists = await _context.Customers.AnyAsync(c => c.Id == customerId);
@@ -73,6 +71,14 @@ namespace backend.Services
 
             var entity = _mapper.Map<CustomerAddress>(dto);
             entity.CustomerId = customerId;
+            entity.ReceiverName = dto.ReceiverName.Trim();
+            entity.Phone = dto.Phone.Trim();
+            entity.Province = dto.Province.Trim();
+            entity.District = dto.District.Trim();
+            entity.Ward = dto.Ward.Trim();
+            entity.StreetAddress = dto.StreetAddress.Trim();
+            entity.CreatedAt = DateTime.UtcNow;
+            entity.UpdatedAt = DateTime.UtcNow;
 
             // Logic: Kiểm tra danh sách hiện tại để xử lý cờ IsDefault
             var existingAddresses = await _context.CustomerAddresses
@@ -108,7 +114,6 @@ namespace backend.Services
             // Xử lý Business Case: Thay đổi trạng thái mặc định
             if (dto.IsDefault && !entity.IsDefault)
             {
-                // Case: Địa chỉ này muốn lên làm Default -> Tìm và hạ bệ Default cũ
                 var currentDefault = await _context.CustomerAddresses
                     .Where(a => a.CustomerId == entity.CustomerId && a.IsDefault && a.Id != id)
                     .FirstOrDefaultAsync();
@@ -117,7 +122,6 @@ namespace backend.Services
             }
             else if (!dto.IsDefault && entity.IsDefault)
             {
-                // Case: Cố tình tắt Default của địa chỉ đang là mặc định (Fix lỗi bốc hơi Default)
                 var otherAddresses = await _context.CustomerAddresses
                    .Where(a => a.CustomerId == entity.CustomerId && a.Id != id)
                    .OrderBy(a => a.CreatedAt)
@@ -125,17 +129,23 @@ namespace backend.Services
 
                 if (!otherAddresses.Any())
                 {
-                    // Nếu chỉ còn duy nhất 1 địa chỉ, không được phép tắt IsDefault
                     dto.IsDefault = true;
                 }
                 else
                 {
-                    // Chuyển quyền mặc định cho địa chỉ được tạo sớm nhất còn lại
                     otherAddresses.First().IsDefault = true;
                 }
             }
 
             _mapper.Map(dto, entity);
+            entity.ReceiverName = dto.ReceiverName.Trim();
+            entity.Phone = dto.Phone.Trim();
+            entity.Province = dto.Province.Trim();
+            entity.District = dto.District.Trim();
+            entity.Ward = dto.Ward.Trim();
+            entity.StreetAddress = dto.StreetAddress.Trim();
+            entity.UpdatedAt = DateTime.UtcNow;
+
             await _context.SaveChangesAsync();
 
             return true;
@@ -162,7 +172,6 @@ namespace backend.Services
                     nextAddress.IsDefault = true;
                 }
 
-                // Note: Tước quyền IsDefault trước khi xóa để Interceptor Soft Delete lưu trạng thái sạch
                 entity.IsDefault = false;
             }
 
@@ -181,9 +190,8 @@ namespace backend.Services
             if (entity == null || entity.CustomerId != customerId)
                 throw new KeyNotFoundException("Địa chỉ không tồn tại hoặc không thuộc quyền sở hữu của khách hàng.");
 
-            if (entity.IsDefault) return true; // Đã là mặc định, không cần xử lý thêm
+            if (entity.IsDefault) return true;
 
-            // Tìm và vô hiệu hóa Default hiện hành
             var currentDefault = await _context.CustomerAddresses
                 .Where(a => a.CustomerId == customerId && a.IsDefault)
                 .FirstOrDefaultAsync();
@@ -191,6 +199,7 @@ namespace backend.Services
             if (currentDefault != null) currentDefault.IsDefault = false;
 
             entity.IsDefault = true;
+            entity.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
 
             return true;

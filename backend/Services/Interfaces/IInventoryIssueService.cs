@@ -27,9 +27,10 @@ namespace backend.Services.Interfaces
         );
 
         Task<InventoryIssueReadDto> GetByIdAsync(int id, List<int>? allowedWarehouseIds = null);
-        Task<int> CreateAsync(InventoryIssueCreateDto dto);
+        Task<int> CreateAsync(InventoryIssueCreateDto dto, int? currentUserId = null);
         Task<bool> CompleteIssueAsync(int id, int issuedById, string? note);
         Task<bool> CancelIssueAsync(int id, string reason);
+        Task<bool> DeleteAsync(int id);
         Task<List<SuggestedBatchDto>> GetSuggestedBatchesAsync(int warehouseId, int variantId, decimal neededQuantity);
     }
 }

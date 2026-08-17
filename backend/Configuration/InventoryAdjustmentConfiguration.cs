@@ -11,10 +11,24 @@ namespace backend.Configuration
             builder.ToTable("InventoryAdjustments");
             builder.HasKey(a => a.Id);
 
-            builder.Property(a => a.AdjustmentCode).IsRequired().HasMaxLength(50);
+            builder.Property(a => a.AdjustmentCode)
+                .IsRequired()
+                .HasMaxLength(50);
             builder.HasIndex(a => a.AdjustmentCode).IsUnique();
 
-            builder.Property(a => a.TotalVarianceAmount).HasColumnType("decimal(18,4)");
+            builder.Property(a => a.TotalVarianceAmount)
+                .HasColumnType("decimal(18,2)");
+
+            builder.Property(a => a.AdjustmentDate).HasColumnType("datetime2");
+            builder.Property(a => a.ApprovedDate).HasColumnType("datetime2");
+            builder.Property(a => a.CreatedAt).HasColumnType("datetime2");
+            builder.Property(a => a.UpdatedAt).HasColumnType("datetime2");
+            builder.Property(a => a.DeletedAt).HasColumnType("datetime2");
+
+            builder.Property(a => a.IsDeleted);
+
+            // GLOBAL QUERY FILTER: Tự động loại trừ các bản ghi đã xóa mềm
+            builder.HasQueryFilter(a => !a.IsDeleted);
 
             builder.HasOne(a => a.Warehouse)
                 .WithMany()
@@ -50,9 +64,9 @@ namespace backend.Configuration
             builder.ToTable("InventoryAdjustmentDetails");
             builder.HasKey(d => d.Id);
 
-            builder.Property(d => d.Quantity).HasColumnType("decimal(18,4)");
-            builder.Property(d => d.UnitPrice).HasColumnType("decimal(18,4)");
-            builder.Property(d => d.TotalAmount).HasColumnType("decimal(18,4)");
+            builder.Property(d => d.Quantity).HasColumnType("decimal(18,2)");
+            builder.Property(d => d.UnitPrice).HasColumnType("decimal(18,2)");
+            builder.Property(d => d.TotalAmount).HasColumnType("decimal(18,2)");
 
             builder.HasOne(d => d.Variant)
                 .WithMany()

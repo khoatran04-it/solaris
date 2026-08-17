@@ -1,12 +1,18 @@
-﻿using backend.DTOs;
+using backend.DTOs;
 using backend.DTOs.CategoryAttributeDTOs;
 using backend.Services.Interfaces;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace backend.Controllers
 {
+    /// <summary>
+    /// API Quản lý Gán mẫu thuộc tính vào Danh mục sản phẩm (Category Attribute Templates).
+    /// </summary>
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class CategoryAttributesController : ControllerBase
     {
         private readonly ICategoryAttributeService _service;
@@ -54,14 +60,15 @@ namespace backend.Controllers
         }
 
         [HttpPost]
-        [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(CategoryAttributeReadDto), StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Create([FromBody] CategoryAttributeCreateDto dto)
         {
             try
             {
                 int newId = await _service.CreateAsync(dto);
-                return Ok(new { Message = "Gán thuộc tính cho danh mục thành công", Id = newId });
+                var created = await _service.GetByIdAsync(newId);
+                return CreatedAtAction(nameof(GetById), new { id = newId }, created);
             }
             catch (Exception ex)
             {
@@ -70,7 +77,7 @@ namespace backend.Controllers
         }
 
         [HttpPut("{id}")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Update(int id, [FromBody] CategoryAttributeUpdateDto dto)
@@ -78,7 +85,7 @@ namespace backend.Controllers
             try
             {
                 await _service.UpdateAsync(id, dto);
-                return Ok(new { Message = "Cập nhật cấu hình thuộc tính thành công" });
+                return NoContent();
             }
             catch (KeyNotFoundException ex)
             {
@@ -91,7 +98,7 @@ namespace backend.Controllers
         }
 
         [HttpDelete("{id}")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Delete(int id)
@@ -99,7 +106,7 @@ namespace backend.Controllers
             try
             {
                 await _service.DeleteAsync(id);
-                return Ok(new { Message = "Đã gỡ thuộc tính khỏi danh mục" });
+                return NoContent();
             }
             catch (KeyNotFoundException ex)
             {

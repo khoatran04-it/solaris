@@ -1,6 +1,7 @@
-﻿using backend.DTOs;
+using backend.DTOs;
 using backend.DTOs.SupplierDTOs;
 using backend.Services.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -8,18 +9,14 @@ namespace backend.Controllers
 {
     /// <summary>
     /// API Controller quản lý thực thể Nhà cung cấp (Suppliers).
-    /// Đã chuyển đổi hoàn toàn sang kiến trúc Service Pattern.
     /// </summary>
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class SuppliersController : ControllerBase
     {
         private readonly ISupplierService _supplierService;
 
-        /// <summary>
-        /// Khởi tạo Controller với ISupplierService.
-        /// Không gọi trực tiếp DbContext ở tầng này.
-        /// </summary>
         public SuppliersController(ISupplierService supplierService)
         {
             _supplierService = supplierService;
@@ -72,7 +69,7 @@ namespace backend.Controllers
             var result = await _supplierService.GetByIdAsync(id);
 
             if (result == null)
-                return NotFound(new { Message = "Không tìm thấy nhà cung cấp." });
+                return NotFound(new { Message = "Không tìm thấy thông tin nhà cung cấp." });
 
             return Ok(result);
         }
@@ -96,8 +93,6 @@ namespace backend.Controllers
             try
             {
                 var newId = await _supplierService.CreateAsync(createDto);
-
-                // Trả về DTO hoàn chỉnh để Front-end cập nhật UI ngay lập tức
                 var newSupplier = await _supplierService.GetByIdAsync(newId);
 
                 return CreatedAtAction(nameof(GetSupplier), new { id = newId }, newSupplier);
@@ -138,6 +133,7 @@ namespace backend.Controllers
         [HttpDelete("{id}")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> DeleteSupplier(int id)
         {
             try
@@ -166,7 +162,7 @@ namespace backend.Controllers
             try
             {
                 await _supplierService.ToggleActiveAsync(id);
-                return Ok(new { Message = "Đã thay đổi trạng thái nhà cung cấp." });
+                return Ok(new { Message = "Đã thay đổi trạng thái nhà cung cấp thành công." });
             }
             catch (KeyNotFoundException ex)
             {

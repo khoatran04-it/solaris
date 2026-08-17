@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+using AutoMapper;
 using backend.DTOs.AttributeDefinitionDTOs;
 using backend.Models;
 
@@ -8,15 +8,16 @@ namespace backend.Profiles
     {
         public AttributeDefinitionProfile()
         {
-            //GET
+            // GET
             CreateMap<AttributeDefinition, AttributeDefinitionReadDto>();
 
-            //POST
-            CreateMap<AttributeDefinitionCreateDto, AttributeDefinition>();
+            // POST
+            CreateMap<AttributeDefinitionCreateDto, AttributeDefinition>()
+                .ForMember(dest => dest.IsActive, opt => opt.MapFrom(src => src.IsActive));
 
-            //PUT
-            CreateMap<AttributeDefinitionUpdateDto, AttributeDefinition>();
-
+            // PUT
+            CreateMap<AttributeDefinitionUpdateDto, AttributeDefinition>()
+                .ForMember(dest => dest.IsActive, opt => opt.MapFrom(src => src.IsActive));
         }
     }
 }

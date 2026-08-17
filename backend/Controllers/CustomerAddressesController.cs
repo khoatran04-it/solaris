@@ -1,5 +1,7 @@
-﻿using backend.DTOs.CustomerAddressDTOs;
+using backend.DTOs.CustomerAddressDTOs;
 using backend.Services.Interfaces;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace backend.Controllers
@@ -10,6 +12,7 @@ namespace backend.Controllers
     /// </summary>
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize]
     public class CustomerAddressesController : ControllerBase
     {
         private readonly ICustomerAddressService _service;
@@ -27,7 +30,6 @@ namespace backend.Controllers
         /// <summary>
         /// Lấy danh sách toàn bộ địa chỉ của một khách hàng cụ thể.
         /// </summary>
-        /// <param name="customerId">ID của khách hàng chủ quản.</param>
         [HttpGet("customer/{customerId}")]
         [ProducesResponseType(typeof(IEnumerable<CustomerAddressReadDto>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetByCustomerId(int customerId)
@@ -60,10 +62,8 @@ namespace backend.Controllers
         /// <summary>
         /// Tạo mới địa chỉ cho một khách hàng.
         /// </summary>
-        /// <param name="customerId">ID khách hàng sở hữu địa chỉ.</param>
-        /// <param name="dto">Dữ liệu địa chỉ chi tiết.</param>
         [HttpPost("customer/{customerId}")]
-        [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(CustomerAddressReadDto), StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Create(int customerId, [FromBody] CustomerAddressCreateDto dto)
@@ -71,7 +71,8 @@ namespace backend.Controllers
             try
             {
                 int newId = await _service.CreateAsync(customerId, dto);
-                return Ok(new { Message = "Thêm mới địa chỉ thành công", Id = newId });
+                var created = await _service.GetByIdAsync(newId);
+                return CreatedAtAction(nameof(GetById), new { id = newId }, created);
             }
             catch (KeyNotFoundException ex)
             {
@@ -87,7 +88,7 @@ namespace backend.Controllers
         /// Cập nhật nội dung địa chỉ hiện có.
         /// </summary>
         [HttpPut("{id}")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Update(int id, [FromBody] CustomerAddressUpdateDto dto)
@@ -95,7 +96,7 @@ namespace backend.Controllers
             try
             {
                 await _service.UpdateAsync(id, dto);
-                return Ok(new { Message = "Cập nhật thông tin địa chỉ thành công" });
+                return NoContent();
             }
             catch (KeyNotFoundException ex)
             {
@@ -111,7 +112,7 @@ namespace backend.Controllers
         /// Xóa bỏ một địa chỉ (Hỗ trợ Soft Delete).
         /// </summary>
         [HttpDelete("{id}")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Delete(int id)
@@ -119,7 +120,7 @@ namespace backend.Controllers
             try
             {
                 await _service.DeleteAsync(id);
-                return Ok(new { Message = "Xóa địa chỉ thành công" });
+                return NoContent();
             }
             catch (KeyNotFoundException ex)
             {
@@ -142,8 +143,6 @@ namespace backend.Controllers
         /// <summary>
         /// Cập nhật nhanh một địa chỉ cụ thể làm địa chỉ mặc định của khách hàng.
         /// </summary>
-        /// <param name="id">ID của địa chỉ muốn đặt làm mặc định.</param>
-        /// <param name="request">Body chứa CustomerId để xác thực quyền sở hữu.</param>
         [HttpPatch("{id}/set-default")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -152,7 +151,6 @@ namespace backend.Controllers
         {
             try
             {
-                // Logic: Đảm bảo địa chỉ thuộc về đúng khách hàng được yêu cầu
                 await _service.SetDefaultAsync(id, request.CustomerId);
                 return Ok(new { Message = "Đã cập nhật địa chỉ mặc định" });
             }
@@ -169,18 +167,8 @@ namespace backend.Controllers
         #endregion
     }
 
-    // ==========================================
-    // SECTION: HELPER MODELS
-    // ==========================================
-    #region Helper Models
-
-    /// <summary>
-    /// DTO rút gọn dùng cho request PATCH đặt địa chỉ mặc định.
-    /// </summary>
     public class SetDefaultRequest
     {
         public int CustomerId { get; set; }
     }
-
-    #endregion
 }

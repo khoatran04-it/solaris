@@ -30,5 +30,11 @@ export const supplierApi = {
     //5. DELETE
     delete: (id: number): Promise<void> => {
         return axiosClient.delete(`/Suppliers/${id}`);
+    },
+    
+    // 6. PATCH (Thay đổi trạng thái Tạm khóa / Hoạt động)
+    toggleActive: (id: number): Promise<void> => {
+        return axiosClient.patch(`/Suppliers/${id}/toggle-active`);
     }
+    
 }

@@ -31,6 +31,7 @@ const ProductCategoryGroupList: React.FC = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [currentPage, setCurrentPage] = useState(1);
     const [totalPages, setTotalPages] = useState(0);
+    const [totalItems, setTotalItems] = useState(0);
     const [searchTerm, setSearchTerm] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
     const pageSize = 10;
@@ -77,8 +78,9 @@ const ProductCategoryGroupList: React.FC = () => {
                 updatedAt: updatedAtFilter ? updatedAtFilter.toLocaleDateString('en-CA') : undefined
             });
             
-            setData(response.items);
-            setTotalPages(response.totalPages);
+            setData(response.items || []);
+            setTotalPages(response.totalPages || 0);
+            setTotalItems(response.totalRecords || 0);
         } catch (error) {
             showToast('error', 'CÓ LỖI XẢY RA KHI TẢI DỮ LIỆU');
         } finally {
@@ -103,10 +105,19 @@ const ProductCategoryGroupList: React.FC = () => {
             await productCategoryGroupApi.delete(deletingRecord.id);
             setIsModalOpen(false);
             fetchData();
-            showToast('success', `Xóa thành công nhóm danh mục "${deletingRecord.name}"`);
+            showToast('success', `Xóa thành công nhóm ngành hàng "${deletingRecord.name}"`);
         } catch (error: any) {
-            // Hiển thị lỗi từ backend nếu có (ví dụ: đang chứa danh mục con không cho xóa)
             showToast('error', error?.response?.data?.message || 'Lỗi khi thực hiện xóa dữ liệu');
+        }
+    };
+
+    const handleToggleActive = async (id: number, currentStatus: boolean) => {
+        try {
+            await productCategoryGroupApi.toggleActive(id);
+            fetchData();
+            showToast('success', `Đã ${currentStatus ? 'tạm khóa' : 'kích hoạt'} nhóm ngành hàng`);
+        } catch (error) {
+            showToast('error', 'Không thể thay đổi trạng thái hoạt động');
         }
     };
 
@@ -115,12 +126,12 @@ const ProductCategoryGroupList: React.FC = () => {
             <Toast {...toast} />
             
             <ListHeader 
-                title="Nhóm Danh Mục Sản Phẩm"
+                title="Nhóm Ngành Hàng Sản Phẩm"
                 subtitle="Quản lý cấu trúc cấp cao nhất của hệ thống phân loại hàng hóa"
                 searchTerm={searchTerm}
                 onSearchChange={setSearchTerm}
                 onAdd={() => navigate('/product-category-groups/create')}
-                icon={Layers} // Đổi icon cho hợp lý
+                icon={Layers}
                 searchPlaceholder="Tìm theo tên, mã nhóm..."
             />
 
@@ -129,8 +140,7 @@ const ProductCategoryGroupList: React.FC = () => {
                     <table className="w-full text-left border-collapse">
                         <thead>
                             <tr className="bg-slate-50/70 border-b border-slate-100">
-                                {/* Cột Profile cho Danh Mục */}
-                                <th className="w-[40%] py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider text-left">Thông Tin Nhóm Danh Mục</th>
+                                <th className="w-[40%] py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider text-left">Thông Tin Nhóm Ngành Hàng</th>
                                 
                                 <th className="w-[15%] py-4 px-2 text-xs font-bold text-slate-500 uppercase tracking-wider">
                                     <div className="flex justify-center">
@@ -156,7 +166,7 @@ const ProductCategoryGroupList: React.FC = () => {
                         
                         <tbody className="divide-y divide-slate-100">
                             {isLoading ? (
-                                <TableLoading colSpan={5} /> // Điều chỉnh colSpan = 5
+                                <TableLoading colSpan={5} />
                             ) : data.length > 0 ? (
                                 data.map((item) => (
                                     <tr key={item.id} className="hover:bg-slate-50/80 transition-colors duration-200 group">
@@ -164,7 +174,6 @@ const ProductCategoryGroupList: React.FC = () => {
                                         {/* CELL 1: THÔNG TIN DANH MỤC */}
                                         <td className="py-3 px-6">
                                             <div className="flex items-center gap-3.5">
-                                                {/* Ảnh vuông bo góc thay vì tròn */}
                                                 <div className="w-12 h-12 rounded-lg bg-white border border-slate-200 shadow-sm flex items-center justify-center shrink-0 overflow-hidden">
                                                     {item.imagePath ? (
                                                         <img src={item.imagePath} alt={item.name} className="w-full h-full object-cover" />
@@ -186,25 +195,27 @@ const ProductCategoryGroupList: React.FC = () => {
                                             </div>
                                         </td>
 
-                                        {/* CELL 2: STATUS */}
+                                        {/* CELL 2: STATUS VỚI TOGGLE */}
                                         <td className="py-3 px-2 text-center">
-                                            <div className="flex justify-center">
-                                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold border ${
-                                                    item.isActive 
-                                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200/40' 
-                                                    : 'bg-slate-100 text-slate-400 border-slate-200/50'
-                                                }`}>
-                                                    <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${item.isActive ? 'bg-emerald-500' : 'bg-slate-300'}`}></span>
-                                                    {item.isActive ? 'Hoạt động' : 'Tạm khóa'}
-                                                </span>
-                                            </div>
+                                            <button
+                                                onClick={() => handleToggleActive(item.id, item.isActive)}
+                                                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                                                    item.isActive
+                                                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100'
+                                                        : 'bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-200'
+                                                }`}
+                                                title="Nhấn để đổi trạng thái"
+                                            >
+                                                <span className={`w-1.5 h-1.5 rounded-full ${item.isActive ? 'bg-emerald-500' : 'bg-slate-400'}`}></span>
+                                                {item.isActive ? 'Hoạt động' : 'Tạm khóa'}
+                                            </button>
                                         </td>
 
                                         {/* CELL 3 & 4: DATES */}
-                                        <td className="py-3 px-2">
+                                        <td className="py-3 px-2 text-center">
                                             <DateTimeCell isoString={item.createdAt} />
                                         </td>
-                                        <td className="py-3 px-2">
+                                        <td className="py-3 px-2 text-center">
                                             <DateTimeCell isoString={item.updatedAt} />
                                         </td>
 
@@ -237,7 +248,7 @@ const ProductCategoryGroupList: React.FC = () => {
                                     </tr>
                                 ))
                             ) : (
-                                <TableEmpty colSpan={5} message="Thử thay đổi từ khóa tìm kiếm hoặc điều kiện lọc." /> // Điều chỉnh colSpan
+                                <TableEmpty colSpan={5} message="Thử thay đổi từ khóa tìm kiếm hoặc điều kiện lọc." />
                             )}
                         </tbody>
                     </table>
@@ -246,7 +257,7 @@ const ProductCategoryGroupList: React.FC = () => {
                 <ListPagination 
                     currentPage={currentPage} 
                     totalPages={totalPages} 
-                    totalItems={data.length} 
+                    totalItems={totalItems} 
                     onPageChange={setCurrentPage}
                     isLoading={isLoading}
                 />

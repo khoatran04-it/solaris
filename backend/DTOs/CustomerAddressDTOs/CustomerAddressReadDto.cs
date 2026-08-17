@@ -1,5 +1,8 @@
-﻿namespace backend.DTOs.CustomerAddressDTOs
+namespace backend.DTOs.CustomerAddressDTOs
 {
+    /// <summary>
+    /// DTO hiển thị thông tin Địa chỉ khách hàng.
+    /// </summary>
     public class CustomerAddressReadDto
     {
         public int Id { get; set; }
@@ -12,6 +15,9 @@
         public string Ward { get; set; } = string.Empty;
         public string StreetAddress { get; set; } = string.Empty;
         public string FullAddress { get; set; } = string.Empty;
+
+        public double Latitude { get; set; }
+        public double Longitude { get; set; }
 
         public bool IsDefault { get; set; }
         public DateTime CreatedAt { get; set; }

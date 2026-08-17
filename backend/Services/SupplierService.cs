@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+using AutoMapper;
 using backend.Data;
 using backend.DTOs;
 using backend.DTOs.SupplierDTOs;
@@ -11,7 +11,7 @@ namespace backend.Services
     /// <summary>
     /// Service quản lý thông tin Nhà cung cấp.
     /// Xử lý các nghiệp vụ phức tạp về lọc dữ liệu, quản lý giao dịch (Transaction) 
-    /// và đảm bảo tính duy nhất của định danh nhà cung cấp.
+    /// và đảm bảo tính toàn vẹn dữ liệu chuỗi cung ứng.
     /// </summary>
     public class SupplierService : ISupplierService
     {
@@ -35,6 +35,7 @@ namespace backend.Services
         public async Task<IEnumerable<SupplierReadDto>> GetAllListAsync()
         {
             var suppliers = await _context.Suppliers
+                .Include(s => s.SupplierType)
                 .AsNoTracking()
                 .OrderByDescending(x => x.CreatedAt)
                 .ToListAsync();
@@ -45,9 +46,6 @@ namespace backend.Services
         /// <summary>
         /// Tìm kiếm nâng cao và phân trang danh sách nhà cung cấp.
         /// </summary>
-        /// <remarks>
-        /// Sử dụng AsSplitQuery() để tối ưu hiệu năng khi Include nhiều bảng liên quan.
-        /// </remarks>
         public async Task<PagedResult<SupplierReadDto>> GetPagedAsync(
             string? search,
             string? supplierTypesId,
@@ -59,12 +57,13 @@ namespace backend.Services
         {
             var query = _context.Suppliers
                 .Include(s => s.SupplierType)
+                .Include(s => s.Addresses)
                 .AsQueryable();
 
             // 1. Filter: Tìm kiếm đa cột (Mã, Tên, Số điện thoại)
             if (!string.IsNullOrWhiteSpace(search))
             {
-                var lowerSearch = search.ToLower();
+                var lowerSearch = search.Trim().ToLower();
                 query = query.Where(x =>
                     x.Code.ToLower().Contains(lowerSearch) ||
                     x.Name.ToLower().Contains(lowerSearch) ||
@@ -75,14 +74,12 @@ namespace backend.Services
             // 2. Filter: Lọc theo danh sách phân loại
             if (!string.IsNullOrWhiteSpace(supplierTypesId))
             {
-                // Cắt chuỗi bằng dấu phẩy, an toàn check TryParse để tránh sập server nếu có lỗi chuỗi
                 var typeIdList = supplierTypesId
                     .Split(',')
                     .Where(idStr => int.TryParse(idStr.Trim(), out _))
                     .Select(idStr => int.Parse(idStr.Trim()))
                     .ToList();
 
-                // So sánh trực tiếp bằng khóa ngoại
                 if (typeIdList.Any())
                 {
                     query = query.Where(x => x.SupplierTypeId.HasValue && typeIdList.Contains(x.SupplierTypeId.Value));
@@ -119,7 +116,7 @@ namespace backend.Services
                 .Skip((pageIndex - 1) * pageSize)
                 .Take(pageSize)
                 .AsNoTracking()
-                .AsSplitQuery() // Tránh Cartesian Explosion khi kết hợp nhiều tập dữ liệu
+                .AsSplitQuery()
                 .ToListAsync();
 
             var dtos = _mapper.Map<IEnumerable<SupplierReadDto>>(items);
@@ -160,19 +157,41 @@ namespace backend.Services
         #region Write Operations
 
         /// <summary>
-        /// Tạo mới nhà cung cấp. Sử dụng Transaction để đảm bảo tính toàn vẹn dữ liệu.
+        /// Tạo mới nhà cung cấp kèm địa chỉ (nếu có). Sử dụng Transaction để đảm bảo tính toàn vẹn dữ liệu.
         /// </summary>
         public async Task<int> CreateAsync(SupplierCreateDto dto)
         {
             // Business Rule: Mã định danh và Số điện thoại không được trùng lặp
-            if (await _context.Suppliers.AnyAsync(s => s.Code == dto.Code || s.Phone == dto.Phone))
-                throw new Exception("Mã nhà cung cấp hoặc Số điện thoại đã tồn tại trên hệ thống.");
+            if (await _context.Suppliers.AnyAsync(s => s.Code == dto.Code.Trim()))
+                throw new Exception($"Mã nhà cung cấp '{dto.Code}' đã tồn tại trên hệ thống.");
+
+            if (await _context.Suppliers.AnyAsync(s => s.Phone == dto.Phone.Trim()))
+                throw new Exception($"Số điện thoại '{dto.Phone}' đã được đăng ký bởi nhà cung cấp khác.");
 
             using var transaction = await _context.Database.BeginTransactionAsync();
 
             try
             {
                 var newSupplier = _mapper.Map<Supplier>(dto);
+                newSupplier.CreatedAt = DateTime.UtcNow;
+                newSupplier.UpdatedAt = DateTime.UtcNow;
+                newSupplier.IsActive = dto.IsActive;
+
+                // Xử lý địa chỉ ban đầu nếu có
+                if (newSupplier.Addresses != null && newSupplier.Addresses.Any())
+                {
+                    bool hasDefault = newSupplier.Addresses.Any(a => a.IsDefault);
+                    if (!hasDefault)
+                    {
+                        newSupplier.Addresses.First().IsDefault = true;
+                    }
+
+                    foreach (var addr in newSupplier.Addresses)
+                    {
+                        addr.CreatedAt = DateTime.UtcNow;
+                        addr.UpdatedAt = DateTime.UtcNow;
+                    }
+                }
 
                 _context.Suppliers.Add(newSupplier);
                 await _context.SaveChangesAsync();
@@ -183,7 +202,7 @@ namespace backend.Services
             catch
             {
                 await transaction.RollbackAsync();
-                throw new Exception("Quá trình lưu dữ liệu thất bại. Hệ thống đã hoàn tác các thay đổi.");
+                throw;
             }
         }
 
@@ -196,17 +215,22 @@ namespace backend.Services
             if (supplier == null) throw new KeyNotFoundException("Không tìm thấy thông tin nhà cung cấp.");
 
             // Kiểm tra trùng lặp thông tin với các nhà cung cấp khác
-            bool isDuplicate = await _context.Suppliers.AnyAsync(s =>
-                s.Id != id && (s.Code == dto.Code || s.Phone == dto.Phone));
+            bool isCodeDuplicate = await _context.Suppliers.AnyAsync(s => s.Id != id && s.Code == dto.Code.Trim());
+            if (isCodeDuplicate)
+                throw new Exception($"Mã nhà cung cấp '{dto.Code}' đã được sử dụng bởi đơn vị khác.");
 
-            if (isDuplicate)
-                throw new Exception("Cập nhật thất bại: Mã hoặc Số điện thoại đã được sử dụng bởi nhà cung cấp khác.");
+            bool isPhoneDuplicate = await _context.Suppliers.AnyAsync(s => s.Id != id && s.Phone == dto.Phone.Trim());
+            if (isPhoneDuplicate)
+                throw new Exception($"Số điện thoại '{dto.Phone}' đã được sử dụng bởi nhà cung cấp khác.");
 
             using var transaction = await _context.Database.BeginTransactionAsync();
 
             try
             {
                 _mapper.Map(dto, supplier);
+                supplier.UpdatedAt = DateTime.UtcNow;
+                supplier.IsActive = dto.IsActive;
+
                 await _context.SaveChangesAsync();
 
                 await transaction.CommitAsync();
@@ -215,21 +239,30 @@ namespace backend.Services
             catch
             {
                 await transaction.RollbackAsync();
-                throw new Exception("Cập nhật thất bại. Hệ thống đã hoàn tác để bảo vệ dữ liệu.");
+                throw;
             }
         }
 
         /// <summary>
-        /// Xóa nhà cung cấp. 
-        /// Lưu ý: Thao tác này có thể được xử lý bởi Interceptor để thực hiện Soft Delete.
+        /// Xóa nhà cung cấp. Kiểm tra ràng buộc toàn vẹn chuỗi cung ứng trước khi xóa.
         /// </summary>
         public async Task<bool> DeleteAsync(int id)
         {
-            var supplier = await _context.Suppliers.FindAsync(id);
+            var supplier = await _context.Suppliers
+                .Include(s => s.Batches)
+                .Include(s => s.PurchaseOrders)
+                .FirstOrDefaultAsync(s => s.Id == id);
+
             if (supplier == null) 
                 throw new KeyNotFoundException("Không tìm thấy nhà cung cấp để xóa.");
 
-            // Thao tác Remove sẽ được Global Interceptor chuyển thành Update DeletedAt nếu dùng Soft Delete
+            // Kiểm tra ràng buộc bảo vệ toàn vẹn dữ liệu
+            if (supplier.PurchaseOrders.Any(p => !p.IsDeleted))
+                throw new Exception("Không thể xóa nhà cung cấp này vì đã có Đơn mua hàng (PO) liên kết.");
+
+            if (supplier.Batches.Any(b => !b.IsDeleted))
+                throw new Exception("Không thể xóa nhà cung cấp này vì đã có Lô hàng (Batch) liên kết trong kho.");
+
             _context.Suppliers.Remove(supplier);
             await _context.SaveChangesAsync();
 
@@ -245,6 +278,7 @@ namespace backend.Services
             if (supplier == null) throw new KeyNotFoundException("Không tìm thấy nhà cung cấp.");
 
             supplier.IsActive = !supplier.IsActive;
+            supplier.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
 
             return true;

@@ -39,6 +39,7 @@ const MENU_CONFIG: MenuItem[] = [
         children: [
             { label: 'Phân loại NCC', path: '/supplier-types', permission: PERMISSIONS.SUPPLIER.CONFIG },
             { label: 'Danh sách NCC', path: '/suppliers', permission: PERMISSIONS.SUPPLIER.VIEW },
+            { label: 'Bảng giá & SP NCC', path: '/supplier-products', permission: PERMISSIONS.SUPPLIER.VIEW },
         ]
     },
     { 

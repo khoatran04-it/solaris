@@ -1,13 +1,20 @@
-﻿namespace backend.Models
+namespace backend.Models
 {
+    /// <summary>
+    /// Thực thể Lô Hàng Nông Sản (Product Batch / Lot).
+    /// Kỷ luật thép của ngành thực phẩm & nông sản: Bắt buộc truy xuất nguồn gốc, Ngày sản xuất (NSX) và Hạn sử dụng (HSD).
+    /// </summary>
     public class ProductBatch : ISoftDelete
     {
         public int Id { get; set; }
 
-        public required string BatchCode { get; set; } // VD: BATCH-040826-CACHUA
+        /// <summary>Mã lô duy nhất (Ví dụ: BATCH-20260817-CACHUA-01)</summary>
+        public required string BatchCode { get; set; }
 
-        // 🔥 KỶ LUẬT THÉP: Nông sản bắt buộc phải có Ngày SX và HSD (Bỏ dấu ?)
+        /// <summary>Ngày sản xuất / Ngày thu hoạch</summary>
         public DateTime ManufactureDate { get; set; }
+
+        /// <summary>Hạn sử dụng (Dùng cho thuật toán FEFO - Hết hạn trước xuất trước)</summary>
         public DateTime ExpiryDate { get; set; }
 
         public bool IsActive { get; set; } = true;
@@ -16,11 +23,11 @@
         public bool IsDeleted { get; set; } = false;
         public DateTime? DeletedAt { get; set; }
 
-        // Mỗi lô chỉ đại diện cho 1 Mã hàng cụ thể (Để tính Date chính xác)
+        /// <summary>Thuộc về Biến thể sản phẩm cụ thể nào</summary>
         public int VariantId { get; set; }
         public virtual ProductVariant? Variant { get; set; }
 
-        // 🔥 KỶ LUẬT THÉP: Ép buộc phải biết nhập từ ai để truy vết ngộ độc/chất lượng (Bỏ dấu ?)
+        /// <summary>Nhà cung cấp / Nông hộ cung ứng lô hàng này (phục vụ truy vết an toàn thực phẩm)</summary>
         public int SupplierId { get; set; }
         public virtual Supplier? Supplier { get; set; }
     }

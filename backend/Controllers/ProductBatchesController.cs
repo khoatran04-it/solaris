@@ -1,12 +1,17 @@
-﻿using backend.DTOs;
+using backend.DTOs;
 using backend.DTOs.ProductBatchDTOs;
 using backend.Services.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace backend.Controllers
 {
+    /// <summary>
+    /// API Quản lý Lô Hàng Nông Sản (Product Batches / Lots).
+    /// </summary>
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class ProductBatchesController : ControllerBase
     {
         private readonly IProductBatchService _service;

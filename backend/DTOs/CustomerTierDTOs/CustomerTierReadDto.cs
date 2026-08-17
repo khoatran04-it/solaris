@@ -1,5 +1,8 @@
-﻿namespace backend.DTOs.CustomerTierDTOs
+namespace backend.DTOs.CustomerTierDTOs
 {
+    /// <summary>
+    /// DTO hiển thị thông tin Bậc hạng khách hàng.
+    /// </summary>
     public class CustomerTierReadDto
     {
         public int Id { get; set; }
@@ -7,6 +10,7 @@
         public string Name { get; set; } = string.Empty;
         public decimal DiscountPercent { get; set; }
         public decimal MinSpending { get; set; }
+        public bool IsActive { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
     }

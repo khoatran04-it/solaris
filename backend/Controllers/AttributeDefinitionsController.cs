@@ -1,12 +1,18 @@
-﻿using backend.DTOs;
+using backend.DTOs;
 using backend.DTOs.AttributeDefinitionDTOs;
 using backend.Services.Interfaces;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace backend.Controllers
 {
+    /// <summary>
+    /// API Quản lý Định nghĩa Thuộc tính động (EAV Attribute Definitions).
+    /// </summary>
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class AttributeDefinitionsController : ControllerBase
     {
         private readonly IAttributeDefinitionService _service;
@@ -18,9 +24,9 @@ namespace backend.Controllers
 
         [HttpGet("all")]
         [ProducesResponseType(typeof(IEnumerable<AttributeDefinitionReadDto>), StatusCodes.Status200OK)]
-        public async Task<IActionResult> GetAllList()
+        public async Task<IActionResult> GetAllList([FromQuery] bool? isActive = null)
         {
-            var data = await _service.GetAllListAsync();
+            var data = await _service.GetAllListAsync(isActive ?? false);
             return Ok(data);
         }
 
@@ -56,14 +62,15 @@ namespace backend.Controllers
         }
 
         [HttpPost]
-        [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(AttributeDefinitionReadDto), StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Create([FromBody] AttributeDefinitionCreateDto dto)
         {
             try
             {
                 int newId = await _service.CreateAsync(dto);
-                return Ok(new { Message = "Thêm mới từ điển thuộc tính thành công", Id = newId });
+                var created = await _service.GetByIdAsync(newId);
+                return CreatedAtAction(nameof(GetById), new { id = newId }, created);
             }
             catch (Exception ex)
             {
@@ -72,7 +79,7 @@ namespace backend.Controllers
         }
 
         [HttpPut("{id}")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Update(int id, [FromBody] AttributeDefinitionUpdateDto dto)
@@ -80,7 +87,7 @@ namespace backend.Controllers
             try
             {
                 await _service.UpdateAsync(id, dto);
-                return Ok(new { Message = "Cập nhật từ điển thuộc tính thành công" });
+                return NoContent();
             }
             catch (KeyNotFoundException ex)
             {
@@ -93,7 +100,7 @@ namespace backend.Controllers
         }
 
         [HttpDelete("{id}")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Delete(int id)
@@ -101,7 +108,7 @@ namespace backend.Controllers
             try
             {
                 await _service.DeleteAsync(id);
-                return Ok(new { Message = "Xóa từ điển thuộc tính thành công" });
+                return NoContent();
             }
             catch (KeyNotFoundException ex)
             {
@@ -109,15 +116,15 @@ namespace backend.Controllers
             }
             catch (Exception ex)
             {
-                // Khi Front-end gọi Xóa mà bị vướng khóa ngoại với bảng CategoryAttribute, 
-                // EF Core sẽ quăng lỗi DbUpdateException, và khối catch này sẽ tóm nó lại báo cho người dùng!
-                return BadRequest(new { Message = "Không thể xóa thuộc tính này vì đang được sử dụng trong Khung danh mục. Lỗi chi tiết: " + ex.Message });
+                return BadRequest(new { Message = ex.Message });
             }
         }
 
         [HttpPatch("{id}/toggle-active")]
+        [HttpPut("{id}/toggle-active")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> ToggleActive(int id)
         {
             try

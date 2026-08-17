@@ -31,6 +31,7 @@ namespace backend.DTOs.InventoryReceiptDTOs
         public int Id { get; set; }
         
         public int VariantId { get; set; }
+        public string VariantCode { get; set; } = string.Empty;
         public string VariantName { get; set; } = string.Empty;
         
         public int BatchId { get; set; }

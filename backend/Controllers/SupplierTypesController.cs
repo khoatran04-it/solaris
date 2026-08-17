@@ -1,15 +1,17 @@
-﻿using backend.DTOs;
+using backend.DTOs;
 using backend.DTOs.SupplierTypeDTOs;
 using backend.Services.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace backend.Controllers
 {
     /// <summary>
-    /// API Endpoints quản lý Danh mục Phân loại Nhà cung cấp.
+    /// API Endpoints quản lý Danh mục Phân loại Nhà cung cấp (Supplier Types).
     /// </summary>
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class SupplierTypesController : ControllerBase
     {
         private readonly ISupplierTypeService _service;
@@ -25,7 +27,7 @@ namespace backend.Controllers
         #region Read Operations
 
         /// <summary>
-        /// Lấy danh sách rút gọn toàn bộ phân loại (Thường dùng cho Dropdown/Select).
+        /// Lấy danh sách rút gọn toàn bộ phân loại (phục vụ Dropdown / Select).
         /// </summary>
         [HttpGet("all")]
         [ProducesResponseType(typeof(IEnumerable<SupplierTypeReadDto>), StatusCodes.Status200OK)]
@@ -43,12 +45,13 @@ namespace backend.Controllers
         public async Task<IActionResult> GetPaged(
             [FromQuery] string? search,
             [FromQuery] string? names,
+            [FromQuery] bool? isActive,
             [FromQuery] DateTime? createdAt,
             [FromQuery] DateTime? updatedAt,
             [FromQuery] int pageIndex = 1,
             [FromQuery] int pageSize = 10)
         {
-            var result = await _service.GetPagedAsync(search, names, createdAt, updatedAt, pageIndex, pageSize);
+            var result = await _service.GetPagedAsync(search, names, isActive, createdAt, updatedAt, pageIndex, pageSize);
             return Ok(result);
         }
 
@@ -70,7 +73,6 @@ namespace backend.Controllers
 
         #endregion
 
-
         // ==========================================
         // SECTION: WRITE ENDPOINTS (POST, PUT, DELETE)
         // ==========================================
@@ -79,21 +81,18 @@ namespace backend.Controllers
         /// <summary>
         /// Tạo mới một phân loại nhà cung cấp.
         /// </summary>
-        /// <response code="200">Trả về ID của bản ghi vừa tạo</response>
-        /// <response code="400">Lỗi validation hoặc trùng mã Code</response>
         [HttpPost]
-        [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(object), StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Create([FromBody] SupplierTypeCreateDto dto)
         {
             try
             {
                 int newId = await _service.CreateAsync(dto);
-                return Ok(new { Message = "Thêm mới thành công", Id = newId });
+                return CreatedAtAction(nameof(GetById), new { id = newId }, new { Message = "Thêm mới thành công", Id = newId });
             }
             catch (Exception ex)
             {
-                // Note: Thực tế nên log error ở đây (Logger.LogError)
                 return BadRequest(new { Message = ex.Message });
             }
         }
@@ -123,7 +122,7 @@ namespace backend.Controllers
         }
 
         /// <summary>
-        /// Xóa vĩnh viễn một phân loại nhà cung cấp.
+        /// Xóa phân loại nhà cung cấp (chống xóa nếu có liên kết).
         /// </summary>
         [HttpDelete("{id}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
@@ -142,7 +141,29 @@ namespace backend.Controllers
             }
             catch (Exception ex)
             {
-                // Chặn lỗi xóa nếu có ràng buộc khóa ngoại (Foreign Key)
+                return BadRequest(new { Message = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Đổi trạng thái hoạt động của loại nhà cung cấp (Hoạt động / Tạm khóa).
+        /// </summary>
+        [HttpPatch("{id}/toggle-active")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> ToggleActive(int id)
+        {
+            try
+            {
+                await _service.ToggleActiveAsync(id);
+                return Ok(new { Message = "Đã thay đổi trạng thái loại nhà cung cấp." });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { Message = ex.Message });
+            }
+            catch (Exception ex)
+            {
                 return BadRequest(new { Message = ex.Message });
             }
         }

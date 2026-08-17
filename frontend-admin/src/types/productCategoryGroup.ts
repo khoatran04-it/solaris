@@ -1,4 +1,10 @@
 import { PaginationParams } from './common';
+
+export interface ProductCategoryGroupQueryParams extends PaginationParams {
+    names?: string;
+    isActive?: boolean;
+}
+
 export interface ProductCategoryGroup {
     id: number;
     code: string;
@@ -15,9 +21,5 @@ export interface ProductCategoryGroupPayload {
     code: string;
     description?: string;
     imagePath?: string;
-    isActive?: boolean;
-}
-
-export interface ProductCategoryGroupQueryParams extends PaginationParams {
     isActive?: boolean;
 }

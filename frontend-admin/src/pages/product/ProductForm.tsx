@@ -5,7 +5,7 @@ import { Package, Save, Plus } from 'lucide-react';
 // API & Types
 import { productApi } from '../../api/productApi';
 import { productCategoryApi } from '../../api/productCategoryApi';
-import { uomApi } from '../../api/uomApi'; // Đã cập nhật đúng tên API sếp yêu cầu
+import { uomApi } from '../../api/uomApi';
 import { ProductPayload } from '../../types/product';
 
 // Shared UI Components
@@ -21,8 +21,8 @@ const INITIAL_STATE: ProductPayload = {
     name: '',
     description: '',
     imagePath: '',
-    categoryId: 0, // 0 = Chưa chọn danh mục (Optional)
-    baseUoMId: 0,  // 0 = Chưa chọn (Nhưng bắt buộc phải chọn lúc submit)
+    categoryId: 0,
+    baseUoMId: 0,
     isActive: true
 };
 
@@ -61,16 +61,14 @@ const ProductForm: React.FC = () => {
             uomApi.getAllList(),
             productApi.getAllList()
         ]).then(([categories, uoms, products]) => {
-            // Danh mục là không bắt buộc -> Thêm option 0
             setCategoryOptions([
                 { label: '-- Chưa phân loại --', value: 0 },
                 ...categories.map(c => ({ label: c.name, value: c.id }))
             ]);
             
-            // ĐVT là bắt buộc -> Thêm option 0 để validate
             setUomOptions([
                 { label: '-- Chọn đơn vị tính --', value: 0 },
-                ...uoms.map(u => ({ label: u.name, value: u.id }))
+                ...uoms.map(u => ({ label: `${u.name} (${u.code})`, value: u.id }))
             ]);
             
             setExistingCodes(products.map(p => p.code.toLowerCase()));
@@ -84,7 +82,7 @@ const ProductForm: React.FC = () => {
                     name: res.name || '',
                     description: res.description || '',
                     imagePath: res.imagePath || '',
-                    categoryId: res.categoryId || 0, // Map null/undefined về 0 cho Dropdown
+                    categoryId: res.categoryId || 0,
                     baseUoMId: res.baseUoMId || 0,
                     isActive: res.isActive
                 });
@@ -141,13 +139,13 @@ const ProductForm: React.FC = () => {
         setLoading(true);
         try {
             const cleanPayload: ProductPayload = {
-                ...formData,
                 code: formData.code.trim().toUpperCase(),
                 name: formData.name.trim(),
                 description: formData.description?.trim() || undefined,
                 imagePath: formData.imagePath?.trim() || undefined,
                 categoryId: formData.categoryId === 0 ? undefined : formData.categoryId,
-                baseUoMId: formData.baseUoMId
+                baseUoMId: formData.baseUoMId,
+                isActive: Boolean(formData.isActive)
             };
 
             if (isEditMode && id) {
@@ -158,10 +156,9 @@ const ProductForm: React.FC = () => {
                 showToast('success', 'THÊM MỚI THÀNH CÔNG');
             }
             
-            // Quay về trang danh sách sau 1 giây
             setTimeout(() => navigate('/products'), 1000);
         } catch (error: any) {
-            showToast('error', error.response?.status === 400 ? 'DỮ LIỆU KHÔNG HỢP LỆ' : 'CÓ LỖI XẢY RA KHI LƯU');
+            showToast('error', error.response?.data?.message || 'CÓ LỖI XẢY RA KHI LƯU');
         } finally {
             setLoading(false);
         }
@@ -215,7 +212,7 @@ const ProductForm: React.FC = () => {
                     </FormSection>
 
                     {/* SECTION 2: HÌNH ẢNH & MÔ TẢ */}
-                    <FormSection title="Hình Ảnh & Mô Tả">
+                    <FormSection title="Hình Ảnh & Mô TẢ">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="flex flex-col gap-6">
                                 <FormInput 
@@ -223,7 +220,6 @@ const ProductForm: React.FC = () => {
                                     value={formData.imagePath || ''} disabled={loading}
                                     onChange={e => handleFieldChange('imagePath', e.target.value)} 
                                 />
-                                {/* Preview Ảnh trực quan */}
                                 {formData.imagePath && (
                                     <div className="p-3 border border-slate-200 rounded-xl bg-slate-50 w-max">
                                         <img 

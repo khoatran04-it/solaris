@@ -4,7 +4,7 @@ import { Edit3, Trash2, Eye, FolderTree, Image as ImageIcon } from 'lucide-react
 
 // API & Types
 import { productCategoryApi } from '../../api/productCategoryApi';
-import { productCategoryGroupApi } from '../../api/productCategoryGroupApi'; // Import thêm API này để lấy List Filter
+import { productCategoryGroupApi } from '../../api/productCategoryGroupApi';
 import { ProductCategory } from '../../types/productCategory';
 
 // Commons Components
@@ -32,6 +32,7 @@ const ProductCategoryList: React.FC = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [currentPage, setCurrentPage] = useState(1);
     const [totalPages, setTotalPages] = useState(0);
+    const [totalItems, setTotalItems] = useState(0);
     const [searchTerm, setSearchTerm] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
     const pageSize = 10;
@@ -90,8 +91,9 @@ const ProductCategoryList: React.FC = () => {
                 updatedAt: updatedAtFilter ? updatedAtFilter.toLocaleDateString('en-CA') : undefined
             });
             
-            setData(response.items);
-            setTotalPages(response.totalPages);
+            setData(response.items || []);
+            setTotalPages(response.totalPages || 0);
+            setTotalItems(response.totalRecords || 0);
         } catch (error) {
             showToast('error', 'CÓ LỖI XẢY RA KHI TẢI DỮ LIỆU');
         } finally {
@@ -122,6 +124,16 @@ const ProductCategoryList: React.FC = () => {
         }
     };
 
+    const handleToggleActive = async (id: number, currentStatus: boolean) => {
+        try {
+            await productCategoryApi.toggleActive(id);
+            fetchData();
+            showToast('success', `Đã ${currentStatus ? 'tạm khóa' : 'kích hoạt'} danh mục sản phẩm`);
+        } catch (error) {
+            showToast('error', 'Không thể thay đổi trạng thái hoạt động');
+        }
+    };
+
     return (    
         <ListPageContainer>
             <Toast {...toast} />
@@ -132,7 +144,7 @@ const ProductCategoryList: React.FC = () => {
                 searchTerm={searchTerm}
                 onSearchChange={setSearchTerm}
                 onAdd={() => navigate('/product-categories/create')}
-                icon={FolderTree} // Icon cây thư mục đặc trưng
+                icon={FolderTree}
                 searchPlaceholder="Tìm theo tên, mã danh mục..."
             />
 
@@ -141,10 +153,8 @@ const ProductCategoryList: React.FC = () => {
                     <table className="w-full text-left border-collapse">
                         <thead>
                             <tr className="bg-slate-50/70 border-b border-slate-100">
-                                {/* Cột Profile */}
                                 <th className="w-[30%] py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider text-left">Thông Tin Danh Mục</th>
                                 
-                                {/* Cột Filter Nhóm Danh Mục */}
                                 <th className="w-[18%] py-4 px-2 text-xs font-bold text-slate-500 uppercase tracking-wider">
                                     <CustomFilter title="NHÓM DANH MỤC" options={groupOptions} selectedValues={groupFilter} onApply={setGroupFilter} />
                                 </th>
@@ -173,7 +183,7 @@ const ProductCategoryList: React.FC = () => {
                         
                         <tbody className="divide-y divide-slate-100">
                             {isLoading ? (
-                                <TableLoading colSpan={6} /> // Chỉnh colSpan = 6
+                                <TableLoading colSpan={6} />
                             ) : data.length > 0 ? (
                                 data.map((item) => (
                                     <tr key={item.id} className="hover:bg-slate-50/80 transition-colors duration-200 group">
@@ -213,25 +223,27 @@ const ProductCategoryList: React.FC = () => {
                                             )}
                                         </td>
 
-                                        {/* CELL 3: STATUS */}
+                                        {/* CELL 3: STATUS VỚI TOGGLE */}
                                         <td className="py-3 px-2 text-center">
-                                            <div className="flex justify-center">
-                                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold border ${
-                                                    item.isActive 
-                                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200/40' 
-                                                    : 'bg-slate-100 text-slate-400 border-slate-200/50'
-                                                }`}>
-                                                    <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${item.isActive ? 'bg-emerald-500' : 'bg-slate-300'}`}></span>
-                                                    {item.isActive ? 'Hoạt động' : 'Tạm khóa'}
-                                                </span>
-                                            </div>
+                                            <button
+                                                onClick={() => handleToggleActive(item.id, item.isActive)}
+                                                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                                                    item.isActive
+                                                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100'
+                                                        : 'bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-200'
+                                                }`}
+                                                title="Nhấn để đổi trạng thái"
+                                            >
+                                                <span className={`w-1.5 h-1.5 rounded-full ${item.isActive ? 'bg-emerald-500' : 'bg-slate-400'}`}></span>
+                                                {item.isActive ? 'Hoạt động' : 'Tạm khóa'}
+                                            </button>
                                         </td>
 
                                         {/* CELL 4 & 5: DATES */}
-                                        <td className="py-3 px-2">
+                                        <td className="py-3 px-2 text-center">
                                             <DateTimeCell isoString={item.createdAt} />
                                         </td>
-                                        <td className="py-3 px-2">
+                                        <td className="py-3 px-2 text-center">
                                             <DateTimeCell isoString={item.updatedAt} />
                                         </td>
 
@@ -273,7 +285,7 @@ const ProductCategoryList: React.FC = () => {
                 <ListPagination 
                     currentPage={currentPage} 
                     totalPages={totalPages} 
-                    totalItems={data.length} 
+                    totalItems={totalItems} 
                     onPageChange={setCurrentPage}
                     isLoading={isLoading}
                 />

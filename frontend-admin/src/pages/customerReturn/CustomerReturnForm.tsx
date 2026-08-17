@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { RotateCcw, Plus, Trash2, Save } from 'lucide-react';
+import { RotateCcw, Plus, Trash2, ShoppingBag, Info, AlertCircle, CheckCircle } from 'lucide-react';
 
 import {
   PageContainer,
@@ -23,12 +23,12 @@ import { productBatchApi } from '../../api/productBatchApi';
 import { uomApi } from '../../api/uomApi';
 import { useAuthStore } from '../../stores/useAuthStore';
 
-// 🔥 IMPORT TYPE CHUẨN TỪ API
+// Types
 import { CustomerReturnCreatePayload } from '../../types/customerReturn';
+import { Order, OrderStatusLabels } from '../../types/order';
 
-// --- FORM STATE TYPES ---
 interface DetailRow {
-  id: string; // Khóa tạm thời cho React list mapping
+  id: string;
   variantId: number | '';
   batchId: number | '';
   uoMId: number | '';
@@ -79,10 +79,12 @@ const CustomerReturnForm: React.FC = () => {
       ...INITIAL_FORM_STATE,
       orderId: orderIdParam ? Number(orderIdParam) : ''
   });
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [details, setDetails] = useState<DetailRow[]>([createEmptyDetailRow()]);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   // --- DROPDOWN OPTIONS ---
+  const [orderOptions, setOrderOptions] = useState<{ value: number; label: string; order: Order }[]>([]);
   const [customers, setCustomers] = useState<{ value: number; label: string }[]>([]);
   const [warehouses, setWarehouses] = useState<{ value: number; label: string }[]>([]);
   const [variants, setVariants] = useState<{ value: number; label: string; prices: any[] }[]>([]);
@@ -94,11 +96,16 @@ const CustomerReturnForm: React.FC = () => {
     setTimeout(() => setToast(prev => ({ ...prev, show: false })), 3000);
   };
 
-  // --- EFFECTS ---
+  const formatCurrency = (val: number) => {
+    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val || 0);
+  };
+
+  // --- 1. TẢI TOÀN BỘ DANH MỤC BỔ TRỢ & DANH SÁCH ĐƠN BÁN HÀNG ---
   useEffect(() => {
     const loadInit = async () => {
       try {
-        const [custList, whList, varList, batchList, uomList] = await Promise.all([
+        const [orderRes, custList, whList, varList, batchList, uomList] = await Promise.all([
+          orderApi.getAll({ pageSize: 100 }).catch(() => ({ items: [] })),
           customerApi.getAllList().catch(() => []),
           warehouseApi.getAllList().catch(() => []),
           productVariantApi.getAllList().catch(() => []),
@@ -106,6 +113,13 @@ const CustomerReturnForm: React.FC = () => {
           uomApi.getAllList().catch(() => []),
         ]);
 
+        const orderOpts = (orderRes.items || []).map((o: Order) => ({
+          value: o.id,
+          label: `${o.orderCode} - ${o.customerName} (${formatCurrency(o.totalAmount)} - ${OrderStatusLabels[o.status]})`,
+          order: o
+        }));
+
+        setOrderOptions(orderOpts);
         setCustomers(custList.map((c: any) => ({ value: c.id, label: `${c.code} - ${c.name}` })));
         setWarehouses(whList.map((w: any) => ({ value: w.id, label: w.name })));
         setVariants(varList.map((v: any) => ({ value: v.id, label: `${v.code} - ${v.name}`, prices: v.prices || [] })));
@@ -118,10 +132,13 @@ const CustomerReturnForm: React.FC = () => {
     loadInit();
   }, []);
 
-  const loadOrder = useCallback(async (id: number) => {
+  // --- 2. HÀM TỰ ĐỘNG SỔ THÔNG TIN TỪ ĐƠN HÀNG GỐC ---
+  const loadOrderAndPopulate = useCallback(async (id: number) => {
     try {
+      setLoading(true);
       const ord = await orderApi.getById(id);
       if (ord) {
+        setSelectedOrder(ord);
         setFormData(prev => ({
             ...prev,
             orderId: ord.id,
@@ -129,28 +146,49 @@ const CustomerReturnForm: React.FC = () => {
             warehouseId: ord.warehouseId || ''
         }));
 
-        if (ord.details && ord.details.length > 0) {
-          const rows: DetailRow[] = ord.details.map(d => ({
+        // 1. Ưu tiên cao nhất: Tự động trích xuất các Lô hàng (Batch) thực tế đã xuất kho theo thuật toán FEFO
+        if (ord.issuedItems && ord.issuedItems.length > 0) {
+          const rows: DetailRow[] = ord.issuedItems.map(item => ({
             id: crypto.randomUUID(),
-            variantId: d.variantId,
-            batchId: '',
-            uoMId: d.uoMId,
-            returnedQuantity: d.quantity, // Default to full quantity
-            unitPrice: d.unitPrice
+            variantId: item.variantId,
+            batchId: item.batchId, // Tự động điền chính xác Lô hàng đã xuất cho khách!
+            uoMId: item.uoMId,
+            returnedQuantity: item.quantityIssued,
+            unitPrice: item.unitPrice
           }));
           setDetails(rows);
+          showToast('success', `Đã liên kết đơn hàng ${ord.orderCode} & tự động điền ${rows.length} mặt hàng theo đúng Lô hàng đã xuất kho!`);
+        } else if (ord.details && ord.details.length > 0) {
+          // 2. Fallback nếu đơn chưa hoàn tất phiếu xuất: Lấy theo danh sách mặt hàng đặt
+          const rows: DetailRow[] = ord.details.map(d => {
+            const vBatches = batches.filter(b => b.variantId === d.variantId);
+            return {
+              id: crypto.randomUUID(),
+              variantId: d.variantId,
+              batchId: vBatches.length > 0 ? vBatches[0].id : '',
+              uoMId: d.uoMId,
+              returnedQuantity: d.issuedQuantity > 0 ? d.issuedQuantity : d.quantity,
+              unitPrice: d.unitPrice
+            };
+          });
+          setDetails(rows);
+          showToast('success', `Đã liên kết đơn hàng ${ord.orderCode} & tự động điền ${rows.length} mặt hàng!`);
+        } else {
+          setDetails([createEmptyDetailRow()]);
         }
       }
     } catch (err) {
       showToast('error', 'Không thể tải thông tin đơn hàng gốc!');
+    } finally {
+      setLoading(false);
     }
   }, []);
 
   useEffect(() => {
     if (orderIdParam) {
-      loadOrder(Number(orderIdParam));
+      loadOrderAndPopulate(Number(orderIdParam));
     }
-  }, [orderIdParam, loadOrder]);
+  }, [orderIdParam, loadOrderAndPopulate]);
 
   // --- FORM HANDLERS ---
   const handleFieldChange = (field: keyof ReturnFormState, value: any) => {
@@ -162,6 +200,16 @@ const CustomerReturnForm: React.FC = () => {
               return newErr;
           });
       }
+  };
+
+  const handleSelectOrder = (val: string | number) => {
+    const numId = Number(val);
+    handleFieldChange('orderId', numId || '');
+    if (numId) {
+      loadOrderAndPopulate(numId);
+    } else {
+      setSelectedOrder(null);
+    }
   };
 
   const handleAddRow = () => {
@@ -202,10 +250,17 @@ const CustomerReturnForm: React.FC = () => {
       }
   };
 
+  // --- TÍNH TOÁN TỔNG TIỀN DỰ KIẾN HOÀN ---
+  const totalEstimatedRefund = details.reduce((sum, d) => {
+    const qty = Number(d.returnedQuantity) || 0;
+    const price = Number(d.unitPrice) || 0;
+    return sum + (qty * price);
+  }, 0);
+
   // --- VALIDATION & SUBMIT ---
   const validateForm = (): boolean => {
     const errs: Record<string, string> = {};
-    if (!formData.orderId) errs.orderId = 'Vui lòng nhập/chọn mã đơn hàng gốc';
+    if (!formData.orderId) errs.orderId = 'Vui lòng chọn đơn bán hàng gốc';
     if (!formData.customerId) errs.customerId = 'Vui lòng chọn khách hàng';
     if (!formData.warehouseId) errs.warehouseId = 'Vui lòng chọn kho tiếp nhận';
     if (!formData.reason.trim()) errs.reason = 'Vui lòng nhập lý do trả hàng';
@@ -236,8 +291,7 @@ const CustomerReturnForm: React.FC = () => {
         customerId: Number(formData.customerId),
         warehouseId: Number(formData.warehouseId),
         receivedById: userInfo?.id || 1,
-        // Ép múi giờ UTC an toàn
-        returnDate: new Date(`${formData.returnDate}T12:00:00Z`).toISOString(),
+        returnDate: `${formData.returnDate}T00:00:00Z`,
         reason: formData.reason.trim(),
         details: details.map(d => ({
           variantId: Number(d.variantId),
@@ -264,29 +318,66 @@ const CustomerReturnForm: React.FC = () => {
 
       <FormHeader
         title="Tạo Phiếu Trả Hàng (RMA)"
-        subtitle="Tiếp nhận hàng hoàn trả từ khách hàng & Chờ kiểm định QC"
+        subtitle="Liên kết đơn bán hàng & Tự động trích xuất thông tin khách hàng, kho và mặt hàng hoàn trả"
         icon={RotateCcw}
         onBack={() => navigate('/customer-returns')}
       />
 
       <FormCard>
         <form onSubmit={handleSubmit} className="flex flex-col gap-8">
-          {/* ================= SECTION 1: THÔNG TIN PHIẾU ================= */}
-          <FormSection title="1. Thông Tin Phiếu Trả Hàng">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormInput
-                label="Mã ID đơn hàng gốc (OrderId)"
-                type="number"
+          
+          {/* ================= SECTION 1: LIÊN KẾT ĐƠN HÀNG GỐC ================= */}
+          <FormSection title="1. Đơn Bán Hàng Gốc (Sales Order Reference)">
+            <div className="flex flex-col gap-4">
+              <FormSelect
+                label="Chọn Đơn Bán Hàng gốc cần hoàn trả"
                 value={formData.orderId}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  handleFieldChange('orderId', val ? Number(val) : '');
-                  if (val) loadOrder(Number(val));
-                }}
+                onSelect={handleSelectOrder}
+                options={orderOptions}
                 error={errors.orderId}
                 required
+                showSearch
+                placeholder="Tìm kiếm theo mã đơn (Ví dụ: ORD-20260817...), tên khách hàng..."
               />
 
+              {/* THẺ TỔNG QUAN ĐƠN HÀNG GỐC KHI ĐƯỢC CHỌN */}
+              {selectedOrder && (
+                <div className="p-4 bg-indigo-50/60 border border-indigo-200 rounded-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 animate-in fade-in duration-300">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 bg-indigo-600 text-white rounded-lg shadow-sm">
+                      <ShoppingBag size={22} />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-black text-indigo-900 text-[15px]">{selectedOrder.orderCode}</span>
+                        <span className="px-2 py-0.5 bg-indigo-100 text-indigo-700 text-xs font-bold rounded-md">
+                          {OrderStatusLabels[selectedOrder.status]}
+                        </span>
+                      </div>
+                      <div className="text-xs text-indigo-700/80 mt-0.5">
+                        Khách: <strong className="text-indigo-950">{selectedOrder.customerName}</strong> ({selectedOrder.customerPhone || 'Không có SĐT'})
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-6 text-right">
+                    <div>
+                      <div className="text-[11px] font-bold text-slate-500 uppercase">Kho xuất</div>
+                      <div className="text-xs font-bold text-slate-800">{selectedOrder.warehouseName || 'Chưa gán kho'}</div>
+                    </div>
+                    <div>
+                      <div className="text-[11px] font-bold text-slate-500 uppercase">Tổng tiền đơn gốc</div>
+                      <div className="text-sm font-black text-emerald-600">{formatCurrency(selectedOrder.totalAmount)}</div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </FormSection>
+
+          {/* ================= SECTION 2: THÔNG TIN PHIẾU TIẾP NHẬN ================= */}
+          <FormSection title="2. Thông Tin Phiếu Tiếp Nhận">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormSelect
                 label="Khách hàng hoàn trả"
                 value={formData.customerId}
@@ -295,6 +386,7 @@ const CustomerReturnForm: React.FC = () => {
                 error={errors.customerId}
                 required
                 showSearch
+                placeholder="-- Chọn khách hàng --"
               />
 
               <FormSelect
@@ -304,6 +396,7 @@ const CustomerReturnForm: React.FC = () => {
                 options={warehouses}
                 error={errors.warehouseId}
                 required
+                placeholder="-- Chọn kho tiếp nhận --"
               />
 
               <FormInput
@@ -321,17 +414,19 @@ const CustomerReturnForm: React.FC = () => {
                   onChange={(e: any) => handleFieldChange('reason', e.target.value)}
                   error={errors.reason}
                   rows={2}
-                  placeholder="Sản phẩm dập nát khi giao, giao sai quy cách..."
+                  placeholder="Sản phẩm dập nát khi giao, giao sai quy cách, lỗi chất lượng..."
                   required
                 />
               </div>
             </div>
           </FormSection>
 
-          {/* ================= SECTION 2: CHI TIẾT MẶT HÀNG ================= */}
-          <FormSection title="2. Chi Tiết Mặt Hàng Hoàn Trả">
+          {/* ================= SECTION 3: CHI TIẾT MẶT HÀNG HOÀN TRẢ ================= */}
+          <FormSection title="3. Chi Tiết Mặt Hàng Hoàn Trả">
             {errors.details && (
-              <div className="mb-4 text-rose-500 text-sm font-bold">{errors.details}</div>
+              <div className="mb-4 text-rose-500 text-sm font-bold flex items-center gap-1.5">
+                <AlertCircle size={16} /> {errors.details}
+              </div>
             )}
 
             <div className="overflow-x-auto border border-slate-200 rounded-xl bg-white shadow-sm mb-2">
@@ -351,6 +446,8 @@ const CustomerReturnForm: React.FC = () => {
                 <tbody className="divide-y divide-slate-100">
                   {details.map((row, idx) => {
                     const rowBatches = batches.filter(b => b.variantId === Number(row.variantId));
+                    const rowTotal = (Number(row.returnedQuantity) || 0) * (Number(row.unitPrice) || 0);
+
                     return (
                       <tr key={row.id} className="hover:bg-slate-50/50 transition-colors">
                         <td className="px-4 py-2 text-center text-slate-400 font-medium">{idx + 1}</td>
@@ -400,62 +497,79 @@ const CustomerReturnForm: React.FC = () => {
                               className="text-center font-bold text-indigo-700"
                               value={row.returnedQuantity}
                               error={errors[`quantity_${row.id}`]}
-                              onChange={(e) => handleDetailChange(row.id, 'returnedQuantity', parseFloat(e.target.value) || 0)}
+                              onChange={(e) => handleDetailChange(row.id, 'returnedQuantity', Number(e.target.value))}
                           />
                         </td>
-
-                        <td className="p-2">
+                        
+                        <td className="p-2 text-right">
                           <FormInput
                               label=""
                               type="number"
                               className="text-right font-medium text-slate-700"
                               value={row.unitPrice}
-                              onChange={(e) => handleDetailChange(row.id, 'unitPrice', parseFloat(e.target.value) || 0)}
+                              onChange={(e) => handleDetailChange(row.id, 'unitPrice', Number(e.target.value))}
                           />
                         </td>
-
-                        <td className="px-4 py-2 text-right font-black text-slate-800">
-                            {((Number(row.returnedQuantity || 0) * Number(row.unitPrice || 0))).toLocaleString('vi-VN')} đ
+                        
+                        <td className="px-4 py-2 text-right font-bold text-slate-800">
+                          {formatCurrency(rowTotal)}
                         </td>
                         
-                        <td className="p-2 text-center border-l border-slate-100">
+                        <td className="px-4 py-2 text-center">
                           <button
-                              type="button"
-                              onClick={() => handleRemoveRow(row.id)}
-                              className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors disabled:opacity-20 mx-auto"
-                              disabled={details.length === 1}
-                              title="Xóa dòng"
+                            type="button"
+                            onClick={() => handleRemoveRow(row.id)}
+                            disabled={details.length === 1}
+                            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors disabled:opacity-30 cursor-pointer"
+                            title="Xóa dòng"
                           >
-                              <Trash2 size={16} />
+                            <Trash2 size={16} />
                           </button>
                         </td>
                       </tr>
                     );
                   })}
                 </tbody>
+                <tfoot className="bg-slate-50 border-t border-slate-200">
+                  <tr>
+                    <td colSpan={6} className="px-4 py-3 text-right font-bold text-slate-600">
+                      TỔNG TIỀN DỰ KIẾN HOÀN:
+                    </td>
+                    <td className="px-4 py-3 text-right font-black text-rose-600 text-base">
+                      {formatCurrency(totalEstimatedRefund)}
+                    </td>
+                    <td></td>
+                  </tr>
+                </tfoot>
               </table>
-              <div className="p-3 bg-slate-50/80 border-t border-slate-200 flex justify-center">
-                  <button
-                      type="button"
-                      onClick={handleAddRow}
-                      className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-indigo-600 hover:bg-indigo-100 rounded-lg transition-colors"
-                  >
-                      <Plus size={16} /> THÊM MẶT HÀNG
-                  </button>
-              </div>
+            </div>
+
+            <div className="flex justify-start">
+              <button
+                type="button"
+                onClick={handleAddRow}
+                className="flex items-center gap-1.5 px-4 py-2 bg-indigo-50 text-indigo-600 rounded-lg text-sm font-bold hover:bg-indigo-100 transition-colors cursor-pointer"
+              >
+                <Plus size={16} strokeWidth={2.5} /> Thêm Mặt Hàng Khác
+              </button>
             </div>
           </FormSection>
 
-          {/* ================= FOOTER & ACTION BUTTONS ================= */}
-          <div className="flex justify-end gap-3 pt-6 border-t border-slate-100 mt-2">
-              <button
-                  type="button"
-                  onClick={() => navigate('/customer-returns')}
-                  className="px-6 py-2.5 text-sm font-bold text-slate-600 bg-white border border-slate-300 rounded-xl hover:bg-slate-50 transition-colors shadow-sm"
-              >
-                  Hủy Bỏ
-              </button>
-              <SubmitButton loading={loading} isEditMode={false} icon={Save} />
+          {/* ================= SUBMIT BUTTON ================= */}
+          <div className="flex items-center justify-end gap-3 pt-6 border-t border-slate-100">
+            <button
+              type="button"
+              onClick={() => navigate('/customer-returns')}
+              className="px-5 py-2.5 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200 transition-colors text-sm cursor-pointer"
+            >
+              Hủy Bỏ
+            </button>
+
+            <SubmitButton
+              loading={loading}
+              label="Tạo Phiếu Trả Hàng"
+              loadingLabel="Đang xử lý..."
+            />
           </div>
         </form>
       </FormCard>

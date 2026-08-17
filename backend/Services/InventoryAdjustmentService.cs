@@ -45,10 +45,11 @@ namespace backend.Services
 
             if (!string.IsNullOrWhiteSpace(search))
             {
-                var s = search.ToLower();
+                var s = search.ToLower().Trim();
                 query = query.Where(a => a.AdjustmentCode.ToLower().Contains(s) ||
                                          (a.Audit != null && a.Audit.AuditCode.ToLower().Contains(s)) ||
-                                         a.CreatedBy!.FullName.ToLower().Contains(s));
+                                         (a.CreatedBy != null && a.CreatedBy.FullName.ToLower().Contains(s)) ||
+                                         (a.Note != null && a.Note.ToLower().Contains(s)));
             }
 
             if (warehouseId.HasValue) query = query.Where(a => a.WarehouseId == warehouseId.Value);
@@ -108,22 +109,45 @@ namespace backend.Services
             if (dto.Details == null || !dto.Details.Any())
                 throw new ArgumentException("Phiếu điều chỉnh phải có ít nhất 1 dòng chi tiết.");
 
+            // 1. Kiểm tra kho hàng tồn tại
+            var warehouseExists = await _context.Warehouses.AnyAsync(w => w.Id == dto.WarehouseId);
+            if (!warehouseExists)
+                throw new ArgumentException($"Kho hàng với ID {dto.WarehouseId} không tồn tại.");
+
+            // 2. Xác thực người lập phiếu an toàn
+            int creatorId = dto.CreatedById ?? 1;
+            var userExists = await _context.IAUsers.AnyAsync(u => u.Id == creatorId);
+            if (!userExists)
+            {
+                var firstUser = await _context.IAUsers.FirstOrDefaultAsync();
+                if (firstUser != null) creatorId = firstUser.Id;
+            }
+
+            // 3. Sinh mã điều chỉnh duy nhất chống trùng
+            var adjustmentCode = $"ADJ-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString()[..6].ToUpper()}";
+
             var adjustment = new InventoryAdjustment
             {
-                AdjustmentCode = $"ADJ-{DateTime.UtcNow:yyyyMMdd}-{DateTime.UtcNow:HHmmss}",
+                AdjustmentCode = adjustmentCode,
                 WarehouseId = dto.WarehouseId,
                 AuditId = dto.AuditId,
                 Status = InventoryAdjustmentStatus.Draft,
                 Reason = dto.Reason,
-                CreatedById = dto.CreatedById ?? 1,
+                CreatedById = creatorId,
                 AdjustmentDate = DateTime.UtcNow,
-                Note = dto.Note
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+                IsDeleted = false,
+                Note = dto.Note?.Trim()
             };
 
             decimal totalAmount = 0;
 
             foreach (var item in dto.Details)
             {
+                if (item.Quantity <= 0)
+                    throw new ArgumentException("Số lượng điều chỉnh của từng mặt hàng phải lớn hơn 0.");
+
                 var lineAmount = item.Quantity * item.UnitPrice;
                 totalAmount += lineAmount;
 
@@ -136,7 +160,7 @@ namespace backend.Services
                     Quantity = item.Quantity,
                     UnitPrice = item.UnitPrice,
                     TotalAmount = lineAmount,
-                    ReasonDetail = item.ReasonDetail
+                    ReasonDetail = item.ReasonDetail?.Trim()
                 });
             }
 
@@ -161,9 +185,18 @@ namespace backend.Services
                 if (adj.Status != InventoryAdjustmentStatus.Draft)
                     throw new InvalidOperationException("Chỉ có thể duyệt phiếu điều chỉnh ở trạng thái Nháp.");
 
+                // Kiểm tra người duyệt an toàn
+                var approverExists = await _context.IAUsers.AnyAsync(u => u.Id == approvedById);
+                if (!approverExists)
+                {
+                    var firstUser = await _context.IAUsers.FirstOrDefaultAsync();
+                    if (firstUser != null) approvedById = firstUser.Id;
+                }
+
                 adj.Status = InventoryAdjustmentStatus.Approved;
                 adj.ApprovedById = approvedById;
                 adj.ApprovedDate = DateTime.UtcNow;
+                adj.UpdatedAt = DateTime.UtcNow;
 
                 foreach (var detail in adj.Details)
                 {
@@ -228,7 +261,8 @@ namespace backend.Services
                         Quantity = qtySign,
                         ReferenceCode = adj.AdjustmentCode,
                         Note = $"Điều chỉnh kho ({adj.Reason}): {detail.ReasonDetail}",
-                        CreatedById = approvedById
+                        CreatedById = approvedById,
+                        CreatedAt = DateTime.UtcNow
                     });
                 }
 
@@ -251,7 +285,23 @@ namespace backend.Services
                 throw new InvalidOperationException("Không thể hủy Phiếu điều chỉnh đã được duyệt.");
 
             adj.Status = InventoryAdjustmentStatus.Cancelled;
-            adj.Note = $"Hủy phiếu: {reason}";
+            adj.Note = string.IsNullOrWhiteSpace(adj.Note) ? $"Hủy phiếu: {reason}" : $"{adj.Note} | Hủy phiếu: {reason}";
+            adj.UpdatedAt = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
+        public async Task<bool> DeleteAsync(int id)
+        {
+            var adj = await _context.InventoryAdjustments.FindAsync(id);
+            if (adj == null) throw new KeyNotFoundException("Không tìm thấy Phiếu điều chỉnh tồn kho.");
+            if (adj.Status == InventoryAdjustmentStatus.Approved)
+                throw new InvalidOperationException("Không thể xóa Phiếu điều chỉnh đã được duyệt và cập nhật vào sổ cái tồn kho.");
+
+            adj.IsDeleted = true;
+            adj.DeletedAt = DateTime.UtcNow;
+            adj.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
             return true;

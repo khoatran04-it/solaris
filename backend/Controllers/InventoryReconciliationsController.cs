@@ -4,6 +4,9 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace backend.Controllers
 {
+    /// <summary>
+    /// API Báo Cáo Chốt Ca, Sổ Cái Tồn Kho & Đối Soát Số Liệu (Shift Closing & Stock Reconciliation).
+    /// </summary>
     [Route("api/[controller]")]
     [ApiController]
     [Authorize]

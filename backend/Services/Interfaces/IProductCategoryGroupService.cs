@@ -1,14 +1,17 @@
-﻿using backend.DTOs;
+using backend.DTOs;
 using backend.DTOs.ProductCategoryGroupDTOs;
 
 namespace backend.Services.Interfaces
 {
+    /// <summary>
+    /// Giao diện Service quản lý Nhóm Ngành Hàng (Product Category Group).
+    /// </summary>
     public interface IProductCategoryGroupService
     {
-        // 1. GET ALL (Load Dropdown)
-        Task<IEnumerable<ProductCategoryGroupReadDto>> GetAllListAsync();
+        /// <summary>Lấy toàn bộ danh sách nhóm ngành hàng (hỗ trợ lọc chỉ nhóm đang hoạt động)</summary>
+        Task<IEnumerable<ProductCategoryGroupReadDto>> GetAllListAsync(bool isActiveOnly = false);
 
-        // 2. GET PAGED (Load Table UI, search & filter)
+        /// <summary>Lấy danh sách nhóm ngành hàng có phân trang và bộ lọc</summary>
         Task<PagedResult<ProductCategoryGroupReadDto>> GetPagedAsync(
             string? search,
             string? names,
@@ -18,16 +21,19 @@ namespace backend.Services.Interfaces
             int pageIndex,
             int pageSize);
 
-        // 3. GET BY ID
+        /// <summary>Lấy chi tiết nhóm ngành hàng theo ID</summary>
         Task<ProductCategoryGroupReadDto?> GetByIdAsync(int id);
 
-        // 4. CREATE
+        /// <summary>Tạo mới nhóm ngành hàng</summary>
         Task<int> CreateAsync(ProductCategoryGroupCreateDto dto);
 
-        // 5. UPDATE
+        /// <summary>Cập nhật thông tin nhóm ngành hàng</summary>
         Task<bool> UpdateAsync(int id, ProductCategoryGroupUpdateDto dto);
 
-        // 6. DELETE
+        /// <summary>Xóa nhóm ngành hàng (có kiểm tra ràng buộc danh mục con)</summary>
         Task<bool> DeleteAsync(int id);
+
+        /// <summary>Chuyển đổi trạng thái Hoạt động / Khóa của nhóm ngành hàng</summary>
+        Task<bool> ToggleActiveAsync(int id);
     }
 }

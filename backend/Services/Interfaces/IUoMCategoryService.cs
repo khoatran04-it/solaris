@@ -1,14 +1,17 @@
-﻿using backend.DTOs;
+using backend.DTOs;
 using backend.DTOs.UoMCategoryDTOs;
 
 namespace backend.Services.Interfaces
 {
+    /// <summary>
+    /// Giao diện Service quản lý Nhóm Đơn vị tính (UoM Category).
+    /// </summary>
     public interface IUoMCategoryService
     {
-        //1. GET ALL
-        Task<IEnumerable<UoMCategoryReadDto>> GetAllListAsync();
+        /// <summary>Lấy toàn bộ danh sách nhóm ĐVT không phân trang (hỗ trợ lọc chỉ nhóm đang hoạt động)</summary>
+        Task<IEnumerable<UoMCategoryReadDto>> GetAllListAsync(bool isActiveOnly = false);
 
-        //2. GET PAGED 
+        /// <summary>Lấy danh sách nhóm ĐVT có phân trang và tìm kiếm</summary>
         Task<PagedResult<UoMCategoryReadDto>> GetPagedAsync(
             string? search,
             bool? isActive,
@@ -18,19 +21,19 @@ namespace backend.Services.Interfaces
             int pageSize
         );
 
-        //3. GET BY ID
+        /// <summary>Lấy thông tin chi tiết nhóm ĐVT theo ID</summary>
         Task<UoMCategoryReadDto?> GetByIdAsync(int id);
 
-        //4. CREATE
+        /// <summary>Tạo mới nhóm ĐVT</summary>
         Task<int> CreateAsync(UoMCategoryCreateDto dto);
 
-        //5. UPDATE
+        /// <summary>Cập nhật thông tin nhóm ĐVT</summary>
         Task<bool> UpdateAsync(int id, UoMCategoryUpdateDto dto);
 
-        //6. DELETE
-        Task<bool> DeleteAsync (int id);
+        /// <summary>Xóa mềm nhóm ĐVT (có kiểm tra ràng buộc đơn vị tính con)</summary>
+        Task<bool> DeleteAsync(int id);
 
-        //7. TOGGLE
+        /// <summary>Kích hoạt hoặc tạm khóa nhóm ĐVT</summary>
         Task<bool> ToggleActiveAsync(int id);
     }
 }

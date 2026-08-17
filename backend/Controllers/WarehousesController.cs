@@ -1,12 +1,18 @@
-﻿using backend.DTOs.InventoryDTOs;
+using backend.DTOs;
+using backend.DTOs.InventoryDTOs;
 using backend.Services.Interfaces;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace backend.Controllers
 {
+    /// <summary>
+    /// API Quản lý Kho Hàng & Địa chỉ kho (Warehouses & Addresses).
+    /// </summary>
     [Route("api/warehouses")]
     [ApiController]
-    // [Authorize] // Bật lên sau khi ghép bảo mật
+    [Authorize]
     public class WarehousesController : ControllerBase
     {
         private readonly IWarehouseService _warehouseService;
@@ -16,18 +22,18 @@ namespace backend.Controllers
             _warehouseService = warehouseService;
         }
 
-        // Dùng cho Dropdown khi tạo phiếu, hoặc gán User (Chỉ lấy kho đang Active)
+        // Dùng cho Dropdown khi tạo phiếu, hoặc gán User (hỗ trợ lọc isActive)
         [HttpGet("all")]
-        // [RequirePermission("INVENTORY_VIEW")]
-        public async Task<IActionResult> GetAllList()
+        [ProducesResponseType(typeof(IEnumerable<WarehouseReadDto>), StatusCodes.Status200OK)]
+        public async Task<IActionResult> GetAllList([FromQuery] bool? isActive = null)
         {
-            var result = await _warehouseService.GetAllListAsync();
+            var result = await _warehouseService.GetAllListAsync(isActive ?? false);
             return Ok(result);
         }
 
         // Dùng cho bảng danh sách có phân trang và lọc
         [HttpGet]
-        // [RequirePermission("INVENTORY_VIEW")]
+        [ProducesResponseType(typeof(PagedResult<WarehouseReadDto>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetPaged(
             [FromQuery] string? search,
             [FromQuery] bool? isActive,
@@ -40,7 +46,8 @@ namespace backend.Controllers
         }
 
         [HttpGet("{id}")]
-        // [RequirePermission("INVENTORY_VIEW")]
+        [ProducesResponseType(typeof(WarehouseReadDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetById(int id)
         {
             try
@@ -55,7 +62,8 @@ namespace backend.Controllers
         }
 
         [HttpPost]
-        // [RequirePermission("INVENTORY_MANAGE")]
+        [ProducesResponseType(typeof(WarehouseReadDto), StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Create([FromBody] WarehouseCreateDto dto)
         {
             if (!ModelState.IsValid) return BadRequest(ModelState);
@@ -63,7 +71,8 @@ namespace backend.Controllers
             try
             {
                 var id = await _warehouseService.CreateAsync(dto);
-                return CreatedAtAction(nameof(GetById), new { id }, new { id, message = "Thêm mới kho hàng thành công." });
+                var created = await _warehouseService.GetByIdAsync(id);
+                return CreatedAtAction(nameof(GetById), new { id }, created);
             }
             catch (Exception ex)
             {
@@ -72,7 +81,9 @@ namespace backend.Controllers
         }
 
         [HttpPut("{id}")]
-        // [RequirePermission("INVENTORY_MANAGE")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Update(int id, [FromBody] WarehouseUpdateDto dto)
         {
             if (!ModelState.IsValid) return BadRequest(ModelState);
@@ -80,7 +91,7 @@ namespace backend.Controllers
             try
             {
                 await _warehouseService.UpdateAsync(id, dto);
-                return Ok(new { message = "Cập nhật kho hàng thành công." });
+                return NoContent();
             }
             catch (KeyNotFoundException ex)
             {
@@ -93,22 +104,31 @@ namespace backend.Controllers
         }
 
         [HttpDelete("{id}")]
-        // [RequirePermission("INVENTORY_MANAGE")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Delete(int id)
         {
             try
             {
                 await _warehouseService.DeleteAsync(id);
-                return Ok(new { message = "Xóa kho hàng thành công." });
+                return NoContent();
             }
             catch (KeyNotFoundException ex)
             {
                 return NotFound(new { message = ex.Message });
             }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
         }
 
         [HttpPatch("{id}/toggle-active")]
-        // [RequirePermission("INVENTORY_MANAGE")]
+        [HttpPut("{id}/toggle-active")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> ToggleActive(int id)
         {
             try
@@ -119,6 +139,10 @@ namespace backend.Controllers
             catch (KeyNotFoundException ex)
             {
                 return NotFound(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
             }
         }
     }

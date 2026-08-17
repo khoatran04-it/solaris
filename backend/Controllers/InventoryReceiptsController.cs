@@ -6,6 +6,9 @@ using System.Security.Claims;
 
 namespace backend.Controllers
 {
+    /// <summary>
+    /// API Quản lý Phiếu Nhập Kho & Kiểm Đếm Chất Lượng Nông Sản (Inventory Receipts - IR).
+    /// </summary>
     [Route("api/[controller]")]
     [ApiController]
     [Authorize]
@@ -19,6 +22,7 @@ namespace backend.Controllers
         }
 
         [HttpGet]
+        [ProducesResponseType(StatusCodes.Status200OK)]
         public async Task<IActionResult> GetPaged(
             [FromQuery] string? search,
             [FromQuery] int? warehouseId,
@@ -34,6 +38,8 @@ namespace backend.Controllers
         }
 
         [HttpGet("{id}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetById(int id)
         {
             try
@@ -48,12 +54,14 @@ namespace backend.Controllers
         }
 
         [HttpPost]
+        [ProducesResponseType(StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Create([FromBody] InventoryReceiptCreateDto dto)
         {
             try
             {
                 var newId = await _service.CreateAsync(dto);
-                return CreatedAtAction(nameof(GetById), new { id = newId }, new { id = newId });
+                return CreatedAtAction(nameof(GetById), new { id = newId }, new { id = newId, message = "Tạo phiếu nhập kho thành công" });
             }
             catch (Exception ex)
             {
@@ -62,16 +70,22 @@ namespace backend.Controllers
         }
 
         [HttpPost("{id}/complete")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> Complete(int id, [FromBody] CompleteReceiptRequest request)
         {
             try
             {
-                // Giả lập lấy ID người dùng từ Token (Bỏ qua nếu chưa auth đầy đủ)
-                var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "1";
-                if (!int.TryParse(userIdStr, out int userId)) userId = 1;
+                var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                int userId = 1;
+                if (!string.IsNullOrEmpty(userIdStr) && int.TryParse(userIdStr, out int parsedId))
+                {
+                    userId = parsedId;
+                }
 
                 await _service.CompleteReceiptAsync(id, userId, request.Note);
-                return NoContent();
+                return Ok(new { message = "Hoàn tất nhập kho thành công, đã cộng tồn khả dụng và ghi sổ cái" });
             }
             catch (KeyNotFoundException ex)
             {
@@ -84,12 +98,36 @@ namespace backend.Controllers
         }
 
         [HttpPost("{id}/cancel")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> Cancel(int id, [FromBody] CancelReceiptRequest request)
         {
             try
             {
                 await _service.CancelReceiptAsync(id, request.Reason);
-                return NoContent();
+                return Ok(new { message = "Hủy phiếu nhập kho thành công" });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        [HttpDelete("{id}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> Delete(int id)
+        {
+            try
+            {
+                await _service.DeleteAsync(id);
+                return Ok(new { message = "Xóa phiếu nhập kho thành công" });
             }
             catch (KeyNotFoundException ex)
             {

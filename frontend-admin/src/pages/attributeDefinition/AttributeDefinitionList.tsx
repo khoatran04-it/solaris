@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Edit3, Trash2, Eye, BookType } from 'lucide-react';
+import { Edit3, Trash2, BookType } from 'lucide-react';
 
-// API & Types (Giả định sếp đã tạo file api tương tự các module trước)
+// API & Types
 import { attributeDefinitionApi } from '../../api/attributeDefinitionApi';
 import { AttributeDefinition } from '../../types/attributeDefinition';
 
@@ -10,6 +10,7 @@ import { AttributeDefinition } from '../../types/attributeDefinition';
 import { Toast } from '../../components/commons/Toast';
 import { ConfirmDeleteModal } from '../../components/modals/ConfirmDeleteModal';
 import { CustomFilter } from '../../components/commons/CustomFilter';
+import { CustomDateFilter } from '../../components/commons/CustomDateFilter';
 
 // Atomic Components
 import { 
@@ -30,6 +31,7 @@ const AttributeDefinitionList: React.FC = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [currentPage, setCurrentPage] = useState(1);
     const [totalPages, setTotalPages] = useState(0);
+    const [totalItems, setTotalItems] = useState(0);
     const [searchTerm, setSearchTerm] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
     const pageSize = 10;
@@ -37,6 +39,8 @@ const AttributeDefinitionList: React.FC = () => {
     // --- STATE QUẢN LÝ BỘ LỌC (FILTERS) ---
     const [dataTypeFilter, setDataTypeFilter] = useState<(string | number)[]>([]);
     const [statusFilter, setStatusFilter] = useState<(string | number)[]>([]);
+    const [createdAtFilter, setCreatedAtFilter] = useState<Date | null>(null);
+    const [updatedAtFilter, setUpdatedAtFilter] = useState<Date | null>(null);
 
     // --- OPTIONS CHO BỘ LỌC ---
     const dataTypeOptions = [
@@ -65,7 +69,7 @@ const AttributeDefinitionList: React.FC = () => {
     // --- EFFECT 2: Reset trang khi bộ lọc thay đổi ---
     useEffect(() => {
         setCurrentPage(1);
-    }, [debouncedSearch, dataTypeFilter, statusFilter]);
+    }, [debouncedSearch, dataTypeFilter, statusFilter, createdAtFilter, updatedAtFilter]);
 
     // --- EFFECT 3: Fetch Data ---
     const fetchData = async () => {
@@ -75,13 +79,15 @@ const AttributeDefinitionList: React.FC = () => {
                 search: debouncedSearch,
                 pageIndex: currentPage,
                 pageSize: pageSize,
-                // Do datatype filter lưu mảng, ta lấy phần tử đầu tiên nếu có chọn
                 dataType: dataTypeFilter.length === 1 ? String(dataTypeFilter[0]) : undefined,
                 isActive: statusFilter.length === 1 ? statusFilter[0] === 1 : undefined,
+                createdAt: createdAtFilter ? createdAtFilter.toLocaleDateString('en-CA') : undefined,
+                updatedAt: updatedAtFilter ? updatedAtFilter.toLocaleDateString('en-CA') : undefined
             });
             
-            setData(response.items);
-            setTotalPages(response.totalPages);
+            setData(response.items || []);
+            setTotalPages(response.totalPages || 0);
+            setTotalItems(response.totalRecords || 0);
         } catch (error) {
             showToast('error', 'CÓ LỖI XẢY RA KHI TẢI DỮ LIỆU');
         } finally {
@@ -92,7 +98,7 @@ const AttributeDefinitionList: React.FC = () => {
     useEffect(() => { 
         fetchData(); 
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [currentPage, debouncedSearch, dataTypeFilter, statusFilter]);
+    }, [currentPage, debouncedSearch, dataTypeFilter, statusFilter, createdAtFilter, updatedAtFilter]);
 
     // --- HANDLERS ---
     const showToast = (type: 'success' | 'error' | 'warning', message: string) => {
@@ -112,7 +118,16 @@ const AttributeDefinitionList: React.FC = () => {
         }
     };
 
-    // Hàm phụ: Lấy màu Badge dựa theo kiểu dữ liệu
+    const handleToggleActive = async (id: number, currentStatus: boolean) => {
+        try {
+            await attributeDefinitionApi.toggleActive(id);
+            fetchData();
+            showToast('success', `Đã ${currentStatus ? 'tạm khóa' : 'kích hoạt'} thuộc tính`);
+        } catch (error) {
+            showToast('error', 'Không thể thay đổi trạng thái thuộc tính');
+        }
+    };
+
     const getDataTypeBadge = (type: string) => {
         switch (type.toUpperCase()) {
             case 'NUMBER': return <span className="inline-flex px-2 py-1 rounded bg-blue-50 text-blue-600 border border-blue-100 font-semibold text-[11px]">Số (Number)</span>;
@@ -153,8 +168,16 @@ const AttributeDefinitionList: React.FC = () => {
                                     </div>
                                 </th>
                                 
-                                <th className="w-[15%] py-4 px-2 text-xs font-bold text-slate-500 uppercase tracking-wider">NGÀY TẠO</th>
-                                <th className="w-[15%] py-4 px-2 text-xs font-bold text-slate-500 uppercase tracking-wider">CẬP NHẬT</th>
+                                <th className="w-[15%] py-4 px-2 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                                    <div className="flex justify-center">
+                                        <CustomDateFilter title="NGÀY TẠO" selectedDate={createdAtFilter} onApply={setCreatedAtFilter} />
+                                    </div>
+                                </th>
+                                <th className="w-[15%] py-4 px-2 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                                    <div className="flex justify-center">
+                                        <CustomDateFilter title="CẬP NHẬT" selectedDate={updatedAtFilter} onApply={setUpdatedAtFilter} />
+                                    </div>
+                                </th>
                                 <th className="w-[10%] py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">THAO TÁC</th>
                             </tr>
                         </thead>
@@ -181,38 +204,33 @@ const AttributeDefinitionList: React.FC = () => {
                                             {getDataTypeBadge(item.dataType)}
                                         </td>
 
-                                        {/* STATUS */}
+                                        {/* STATUS VỚI TOGGLE */}
                                         <td className="py-3 px-2 text-center">
-                                            <div className="flex justify-center">
-                                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold border ${
+                                            <button
+                                                onClick={() => handleToggleActive(item.id, item.isActive)}
+                                                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
                                                     item.isActive 
-                                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200/40' 
-                                                    : 'bg-slate-100 text-slate-400 border-slate-200/50'
-                                                }`}>
-                                                    <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${item.isActive ? 'bg-emerald-500' : 'bg-slate-300'}`}></span>
-                                                    {item.isActive ? 'Hoạt động' : 'Tạm khóa'}
-                                                </span>
-                                            </div>
+                                                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100' 
+                                                        : 'bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-200'
+                                                }`}
+                                                title="Nhấn để đổi trạng thái"
+                                            >
+                                                <span className={`w-1.5 h-1.5 rounded-full ${item.isActive ? 'bg-emerald-500' : 'bg-slate-400'}`}></span>
+                                                {item.isActive ? 'Hoạt động' : 'Tạm khóa'}
+                                            </button>
                                         </td>
 
                                         {/* DATES */}
-                                        <td className="py-3 px-2">
+                                        <td className="py-3 px-2 text-center">
                                             <DateTimeCell isoString={item.createdAt} />
                                         </td>
-                                        <td className="py-3 px-2">
+                                        <td className="py-3 px-2 text-center">
                                             <DateTimeCell isoString={item.updatedAt} />
                                         </td>
 
                                         {/* ACTIONS */}
                                         <td className="py-3 px-6">
                                             <div className="flex justify-center gap-1.5 opacity-40 group-hover:opacity-100 transition-all duration-300">
-                                                <button 
-                                                    onClick={() => navigate(`/attributes/${item.id}`)}
-                                                    className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
-                                                    title="Xem chi tiết"
-                                                >
-                                                    <Eye size={17} strokeWidth={2.5} />
-                                                </button>
                                                 <button 
                                                     onClick={() => navigate(`/attributes/edit/${item.id}`)}
                                                     className="p-1.5 text-slate-400 hover:text-yellow-600 hover:bg-yellow-50 rounded-lg transition-colors"
@@ -241,7 +259,7 @@ const AttributeDefinitionList: React.FC = () => {
                 <ListPagination 
                     currentPage={currentPage} 
                     totalPages={totalPages} 
-                    totalItems={data.length} 
+                    totalItems={totalItems} 
                     onPageChange={setCurrentPage}
                     isLoading={isLoading}
                 />

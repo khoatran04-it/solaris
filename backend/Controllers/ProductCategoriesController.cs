@@ -1,15 +1,18 @@
-﻿using backend.DTOs;
+using backend.DTOs;
 using backend.DTOs.ProductCategoryDTOs;
 using backend.Services.Interfaces;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace backend.Controllers
 {
     /// <summary>
-    /// API Endpoint quản lý Phân loại sản phẩm
+    /// API Endpoints quản lý Danh mục sản phẩm (Product Categories).
     /// </summary>
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class ProductCategoriesController : ControllerBase
     {
         private readonly IProductCategoryService _service;
@@ -22,27 +25,25 @@ namespace backend.Controllers
         // ==========================================
         // SECTION: READ ENDPOINTS (GET)
         // ==========================================
-
-        #region Read Poerations
+        #region Read Operations
 
         /// <summary>
-        /// Lấy danh sách rút gọn toàn bộ loại sản phẩm
+        /// Lấy danh sách rút gọn toàn bộ loại sản phẩm (dùng cho Dropdown/Lookup).
         /// </summary>
         [HttpGet("all")]
-        [ProducesResponseType(typeof(IEnumerable<ProductCategoryReadDto>), //API trả về một danh sách DTO.
-            StatusCodes.Status200OK)] //status code mặc định là 200 OK.
-        public async Task<IActionResult> GetAllList() //IActionResult là kiểu chung cho tất cả kết quả trả về từ controller (Ok, NotFound, BadRequest…).
+        [ProducesResponseType(typeof(IEnumerable<ProductCategoryReadDto>), StatusCodes.Status200OK)]
+        public async Task<IActionResult> GetAllList([FromQuery] bool? isActive = null)
         {
-            var data = await _service.GetAllListAsync(); //IEnumerable<ProductCategoryReadDto>
-            return Ok(data);//tạo ra một HTTP 200 OK response kèm dữ liệu. => client nhận được JSON chứa danh sách DTO.
+            var data = await _service.GetAllListAsync(isActive ?? false);
+            return Ok(data);
         }
 
         /// <summary>
-        /// Lấy danh sách loại sản phẩm có phân trang, lọc và tìm kiếm
+        /// Lấy danh sách loại sản phẩm có phân trang, lọc và tìm kiếm.
         /// </summary>
         [HttpGet]
         [ProducesResponseType(typeof(PagedResult<ProductCategoryReadDto>), StatusCodes.Status200OK)]
-        public async Task<IActionResult> GetPaged(//Nói ASP.NET Core lấy giá trị từ query string của URL (phần sau ?)
+        public async Task<IActionResult> GetPaged(
             [FromQuery] string? search,
             [FromQuery] string? names,
             [FromQuery] string? categoryGroupId,
@@ -52,8 +53,8 @@ namespace backend.Controllers
             [FromQuery] int pageIndex = 1,
             [FromQuery] int pageSize = 10)
         {
-            var result = await _service.GetPagedAsync(search, names, categoryGroupId, isActive, createdAt, updatedAt, pageIndex, pageSize); //Code trong Service bắt đầu chạy để trả về PagedResult<T>
-            return Ok(result); //Sau khi service xử lý xong kết quả trả về -> Chuỗi JSON kèm mã 200
+            var result = await _service.GetPagedAsync(search, names, categoryGroupId, isActive, createdAt, updatedAt, pageIndex, pageSize);
+            return Ok(result);
         }
 
         /// <summary>
@@ -67,29 +68,32 @@ namespace backend.Controllers
             var data = await _service.GetByIdAsync(id);
             if (data == null)
             {
-                return NotFound(new { Message = "Không tìm thấy danh mục sản phẩm" });
+                return NotFound(new { Message = "Không tìm thấy danh mục sản phẩm." });
             }
             return Ok(data);
         }
 
         #endregion
 
+
         // ==========================================
         // SECTION: WRITE ENDPOINTS (POST, PUT, DELETE)
         // ==========================================
-        #region
+        #region Write Operations
+
         /// <summary>
-        /// Tạo mới một loại danh mục
+        /// Tạo mới một danh mục sản phẩm.
         /// </summary>
         [HttpPost]
-        [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ProductCategoryReadDto), StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Create([FromBody] ProductCategoryCreateDto dto)
         {
             try
             {
                 int newId = await _service.CreateAsync(dto);
-                return Ok(new { Message = "Thêm mới thành công", Id = newId });
+                var created = await _service.GetByIdAsync(newId);
+                return CreatedAtAction(nameof(GetById), new { id = newId }, created);
             }
             catch (Exception ex)
             {
@@ -98,10 +102,10 @@ namespace backend.Controllers
         }
 
         /// <summary>
-        /// Cập nhật thông tin loại sanh mục
+        /// Cập nhật thông tin danh mục sản phẩm.
         /// </summary>
         [HttpPut("{id}")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Update(int id, [FromBody] ProductCategoryUpdateDto dto)
@@ -109,7 +113,7 @@ namespace backend.Controllers
             try
             {
                 await _service.UpdateAsync(id, dto);
-                return Ok(new { Message = "Cập nhật thành công" });
+                return NoContent();
             }
             catch (KeyNotFoundException ex)
             {
@@ -122,10 +126,10 @@ namespace backend.Controllers
         }
 
         /// <summary>
-        /// Xóa vĩnh viễn một loại doanh mục
+        /// Xóa bỏ một danh mục sản phẩm (Hỗ trợ Soft Delete).
         /// </summary>
         [HttpDelete("{id}")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Delete(int id)
@@ -133,7 +137,7 @@ namespace backend.Controllers
             try
             {
                 await _service.DeleteAsync(id);
-                return Ok(new { Message = "Xóa loại danh mục thành công" });
+                return NoContent();
             }
             catch (KeyNotFoundException ex)
             {
@@ -141,7 +145,39 @@ namespace backend.Controllers
             }
             catch (Exception ex)
             {
-                // Chặn lỗi xóa nếu có ràng buộc khóa ngoại (Foreign Key)
+                return BadRequest(new { Message = ex.Message });
+            }
+        }
+
+        #endregion
+
+
+        // ==========================================
+        // SECTION: BUSINESS LOGIC ACTIONS (PATCH / PUT)
+        // ==========================================
+        #region Business Actions
+
+        /// <summary>
+        /// Thay đổi trạng thái Hoạt động / Khóa của danh mục sản phẩm.
+        /// </summary>
+        [HttpPatch("{id}/toggle-active")]
+        [HttpPut("{id}/toggle-active")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> ToggleActive(int id)
+        {
+            try
+            {
+                await _service.ToggleActiveAsync(id);
+                return Ok(new { Message = "Đã cập nhật trạng thái hoạt động" });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { Message = ex.Message });
+            }
+            catch (Exception ex)
+            {
                 return BadRequest(new { Message = ex.Message });
             }
         }

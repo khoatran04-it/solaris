@@ -88,14 +88,14 @@ const ProductCategoryGroupForm: React.FC = () => {
 
         // 1. Kiểm tra Mã nhóm
         if (!trimmedCode) {
-            newErrors.code = 'Vui lòng nhập mã nhóm danh mục.';
+            newErrors.code = 'Vui lòng nhập mã nhóm ngành hàng.';
         } else if (existingCodes.includes(trimmedCode) && (!isEditMode || trimmedCode !== originalCode)) {
             newErrors.code = 'Mã nhóm này đã tồn tại!';
         }
 
         // 2. Kiểm tra Tên nhóm
         if (!formData.name.trim()) {
-            newErrors.name = 'Vui lòng nhập tên nhóm danh mục.';
+            newErrors.name = 'Vui lòng nhập tên nhóm ngành hàng.';
         }
 
         setErrors(newErrors);
@@ -110,11 +110,11 @@ const ProductCategoryGroupForm: React.FC = () => {
         setLoading(true);
         try {
             const cleanPayload: ProductCategoryGroupPayload = {
-                ...formData,
-                code: formData.code.trim().toUpperCase(), // Tự động viết hoa Mã
+                code: formData.code.trim().toUpperCase(),
                 name: formData.name.trim(),
                 description: formData.description?.trim() || undefined,
                 imagePath: formData.imagePath?.trim() || undefined,
+                isActive: Boolean(formData.isActive)
             };
 
             if (isEditMode && id) {
@@ -126,7 +126,7 @@ const ProductCategoryGroupForm: React.FC = () => {
             }
             setTimeout(() => navigate('/product-category-groups'), 1000);
         } catch (error: any) {
-            showToast('error', error.response?.status === 400 ? 'DỮ LIỆU KHÔNG HỢP LỆ' : 'CÓ LỖI XẢY RA KHI LƯU');
+            showToast('error', error.response?.data?.message || 'CÓ LỖI XẢY RA KHI LƯU');
         } finally {
             setLoading(false);
         }
@@ -137,10 +137,10 @@ const ProductCategoryGroupForm: React.FC = () => {
             <Toast {...toast} />
 
             <FormHeader 
-                title={isEditMode ? 'Chỉnh Sửa Nhóm Danh Mục' : 'Thêm Mới Nhóm Danh Mục'}
-                subtitle={isEditMode ? 'Cập nhật thông tin phân loại hàng hóa cấp cao nhất' : 'Tạo mới một cấu trúc nhóm danh mục vào hệ thống'}
+                title={isEditMode ? 'Chỉnh Sửa Nhóm Ngành Hàng' : 'Thêm Mới Nhóm Ngành Hàng'}
+                subtitle={isEditMode ? 'Cập nhật thông tin phân loại hàng hóa cấp cao nhất' : 'Tạo mới một cấu trúc nhóm ngành hàng vào hệ thống'}
                 onBack={() => navigate('/product-category-groups')}
-                icon={Layers} // Dùng icon Layers cho chuẩn Danh mục
+                icon={Layers}
             />
 
             <FormCard>
@@ -150,12 +150,12 @@ const ProductCategoryGroupForm: React.FC = () => {
                     <FormSection title="Thông Tin Cơ Bản">
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             <FormInput 
-                                label="Mã Nhóm" required placeholder="VD: DIENTU"
+                                label="Mã Nhóm" required placeholder="VD: FRESH_PRODUCE"
                                 value={formData.code} error={errors.code} disabled={loading}
                                 onChange={e => handleFieldChange('code', e.target.value)} 
                             />
                             <FormInput 
-                                label="Tên Nhóm" required placeholder="VD: Hàng Điện Tử"
+                                label="Tên Nhóm" required placeholder="VD: Nông Sản Tươi Sống"
                                 value={formData.name} error={errors.name} disabled={loading}
                                 onChange={e => handleFieldChange('name', e.target.value)} 
                             />
@@ -176,7 +176,6 @@ const ProductCategoryGroupForm: React.FC = () => {
                                     value={formData.imagePath || ''} disabled={loading}
                                     onChange={e => handleFieldChange('imagePath', e.target.value)} 
                                 />
-                                {/* Preview Ảnh (Optional - UX Plus) */}
                                 {formData.imagePath && (
                                     <div className="p-3 border border-slate-200 rounded-xl bg-slate-50 w-max">
                                         <img 
@@ -190,7 +189,7 @@ const ProductCategoryGroupForm: React.FC = () => {
                             </div>
                             
                             <FormTextarea 
-                                label="Mô tả nhóm danh mục" placeholder="Nhập chi tiết mô tả..." 
+                                label="Mô tả nhóm ngành hàng" placeholder="Nhập chi tiết mô tả..." 
                                 value={formData.description || ''} rows={4} 
                                 onChange={(e: any) => handleFieldChange('description', e.target.value)} 
                             />

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { RotateCcw, Eye, Plus } from 'lucide-react';
+import { RotateCcw, Eye, Trash2 } from 'lucide-react';
 import {
     ListPageContainer,
     ListHeader,
@@ -8,11 +8,13 @@ import {
     TableLoading,
     TableEmpty,
     ListPagination,
+    DateCell,
     DateTimeCell
 } from '../../components/commons/ListUI';
 import { CustomFilter } from '../../components/commons/CustomFilter';
 import { CustomDateFilter } from '../../components/commons/CustomDateFilter';
 import { Toast } from '../../components/commons/Toast';
+import { ConfirmDeleteModal } from '../../components/modals/ConfirmDeleteModal';
 
 import { customerReturnApi } from '../../api/customerReturnApi';
 import { warehouseApi } from '../../api/warehouseApi';
@@ -42,6 +44,11 @@ const CustomerReturnList: React.FC = () => {
     const [fromDateFilter, setFromDateFilter] = useState<Date | null>(null);
     const [toDateFilter, setToDateFilter] = useState<Date | null>(null);
 
+    // --- DELETE MODAL ---
+    const [deleteId, setDeleteId] = useState<number | null>(null);
+    const [deleteCode, setDeleteCode] = useState('');
+    const [isDeleting, setIsDeleting] = useState(false);
+
     // --- OPTIONS CHO DROPDOWN ---
     const [warehouseOptions, setWarehouseOptions] = useState<{ label: string; value: number }[]>([]);
 
@@ -66,7 +73,6 @@ const CustomerReturnList: React.FC = () => {
     useEffect(() => {
         const loadOptions = async () => {
             try {
-                // Fail-safe chống sập chùm API
                 const whRes = await warehouseApi.getAllList().catch(() => []);
                 setWarehouseOptions(whRes.map((w: any) => ({ label: w.name, value: w.id })));
             } catch (err) {
@@ -76,7 +82,6 @@ const CustomerReturnList: React.FC = () => {
         loadOptions();
     }, []);
 
-    // Debounce search
     useEffect(() => {
         const timer = setTimeout(() => {
             setDebouncedSearch(searchTerm);
@@ -84,7 +89,6 @@ const CustomerReturnList: React.FC = () => {
         return () => clearTimeout(timer);
     }, [searchTerm]);
 
-    // Đưa trang về 1 mỗi khi đổi filter
     useEffect(() => {
         setCurrentPage(1);
     }, [debouncedSearch, warehouseFilter, statusFilter, fromDateFilter, toDateFilter]);
@@ -119,6 +123,21 @@ const CustomerReturnList: React.FC = () => {
         fetchData();
     }, [fetchData]);
 
+    const handleDelete = async () => {
+        if (!deleteId) return;
+        try {
+            setIsDeleting(true);
+            await customerReturnApi.delete(deleteId);
+            showToast('success', 'XÓA PHIẾU TRẢ HÀNG THÀNH CÔNG');
+            setDeleteId(null);
+            fetchData();
+        } catch (error: any) {
+            showToast('error', error.response?.data?.message || 'Không thể xóa phiếu trả hàng!');
+        } finally {
+            setIsDeleting(false);
+        }
+    };
+
     const formatCurrency = (amount: number) => {
         return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount || 0);
     };
@@ -128,33 +147,29 @@ const CustomerReturnList: React.FC = () => {
             <Toast {...toast} />
 
             <ListHeader
-                title="Khách Hàng Trả Hàng (RMA & QC)"
-                subtitle="Tiếp nhận hàng hoàn trả & Phân loại chất lượng (Tồn kho Khả Dụng / Hàng Lỗi)"
-                icon={RotateCcw}
-                searchPlaceholder="Tìm mã trả hàng, mã đơn..."
+                title="Khách Hàng Trả Hàng (RMA)"
+                subtitle="Tiếp nhận hàng hoàn trả từ khách, kiểm định phân loại chất lượng & Nhập lại tồn kho"
                 searchTerm={searchTerm}
                 onSearchChange={setSearchTerm}
                 onAdd={() => navigate('/customer-returns/create')}
+                icon={RotateCcw}
+                searchPlaceholder="Tìm kiếm theo mã phiếu, mã đơn hàng..."
             />
 
             <ListCard>
-                {/* --- BẢNG DỮ LIỆU CHUẨN CONVENTION --- */}
-                <div className="overflow-x-auto flex-1 min-h-100 pb-24">
-                    <table className="w-full text-left border-collapse min-w-275">
+                <div className="overflow-x-auto flex-1 min-h-[400px] pb-24">
+                    <table className="w-full text-left border-collapse min-w-[1050px]">
                         <thead>
                             <tr className="bg-slate-50/70 border-b border-slate-100">
-                                <th className="w-[4%] py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">#</th>
-                                
-                                <th className="w-[12%] py-4 px-2 text-xs font-bold text-slate-500 uppercase tracking-wider text-left">Mã Phiếu</th>
-                                
-                                <th className="w-[12%] py-4 px-2 text-xs font-bold text-slate-500 uppercase tracking-wider">Đơn Hàng Gốc</th>
-                                
-                                <th className="w-[16%] py-4 px-2 text-xs font-bold text-slate-500 uppercase tracking-wider">Khách Hàng</th>
+                                <th className="w-[4%] py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">#</th>
+                                <th className="w-[12%] py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Mã Phiếu</th>
+                                <th className="w-[12%] py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Đơn Hàng Gốc</th>
+                                <th className="w-[14%] py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Khách Hàng</th>
                                 
                                 <th className="w-[14%] py-4 px-2 text-xs font-bold text-slate-500 uppercase tracking-wider">
                                     <CustomFilter title="KHO TIẾP NHẬN" options={warehouseOptions} selectedValues={warehouseFilter} onApply={setWarehouseFilter} />
                                 </th>
-                                
+
                                 <th className="w-[10%] py-4 px-2 text-xs font-bold text-slate-500 uppercase tracking-wider">
                                     <div className="flex justify-center">
                                         <CustomDateFilter title="TỪ NGÀY" selectedDate={fromDateFilter} onApply={setFromDateFilter} />
@@ -192,7 +207,7 @@ const CustomerReturnList: React.FC = () => {
                                             {(currentPage - 1) * pageSize + idx + 1}
                                         </td>
                                         
-                                        {/* CELL 2: M mã PHIẾU */}
+                                        {/* CELL 2: MÃ PHIẾU */}
                                         <td className="px-4 py-3.5 font-bold text-indigo-600">
                                             {ret.returnCode}
                                         </td>
@@ -219,7 +234,7 @@ const CustomerReturnList: React.FC = () => {
                                         
                                         {/* CELL 6 & 7: NGÀY TIẾP NHẬN (Gộp Từ ngày - Đến ngày) */}
                                         <td className="py-3 px-2 text-center" colSpan={2}>
-                                            <DateTimeCell isoString={ret.returnDate} />
+                                            <DateCell isoString={ret.returnDate} />
                                         </td>
                                         
                                         {/* CELL 8: TRẠNG THÁI */}
@@ -238,14 +253,26 @@ const CustomerReturnList: React.FC = () => {
                                         
                                         {/* CELL 10: THAO TÁC */}
                                         <td className="px-4 py-3.5 text-center">
-                                            <div className="flex justify-center gap-1.5 opacity-40 group-hover:opacity-100 transition-all duration-300">
+                                            <div className="flex justify-center gap-1.5 opacity-60 group-hover:opacity-100 transition-all duration-300">
                                                 <button
                                                     onClick={() => navigate(`/customer-returns/${ret.id}`)}
-                                                    className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                                                    className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors cursor-pointer"
                                                     title="Xem chi tiết"
                                                 >
                                                     <Eye size={18} strokeWidth={2.5} />
                                                 </button>
+                                                {(ret.status === CustomerReturnStatus.Pending || ret.status === CustomerReturnStatus.Rejected) && (
+                                                    <button
+                                                        onClick={() => {
+                                                            setDeleteId(ret.id);
+                                                            setDeleteCode(ret.returnCode);
+                                                        }}
+                                                        className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                                                        title="Xóa phiếu trả hàng"
+                                                    >
+                                                        <Trash2 size={17} strokeWidth={2.5} />
+                                                    </button>
+                                                )}
                                             </div>
                                         </td>
                                     </tr>
@@ -263,6 +290,15 @@ const CustomerReturnList: React.FC = () => {
                     isLoading={loading}
                 />
             </ListCard>
+
+            <ConfirmDeleteModal
+                isOpen={Boolean(deleteId)}
+                onClose={() => setDeleteId(null)}
+                onConfirm={handleDelete}
+                loading={isDeleting}
+                title="Xóa Phiếu Khách Trả Hàng"
+                message={`Bạn có chắc chắn muốn xóa phiếu trả hàng "${deleteCode}" không? Thao tác này không thể hoàn tác.`}
+            />
         </ListPageContainer>
     );
 };

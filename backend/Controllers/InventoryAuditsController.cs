@@ -6,6 +6,9 @@ using System.Security.Claims;
 
 namespace backend.Controllers
 {
+    /// <summary>
+    /// API Quản lý Các Đợt Kiểm Kê Kho Hàng (Stocktake / Inventory Audits & Blind Count).
+    /// </summary>
     [Route("api/[controller]")]
     [ApiController]
     [Authorize]

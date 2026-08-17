@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+using AutoMapper;
 using backend.Data;
 using backend.DTOs.SupplierAddressDTOs;
 using backend.Models;
@@ -43,9 +43,15 @@ namespace backend.Services
             return _mapper.Map<IEnumerable<SupplierAddressReadDto>>(addresses);
         }
 
+        /// <summary>
+        /// Lấy chi tiết một địa chỉ theo ID.
+        /// </summary>
         public async Task<SupplierAddressReadDto?> GetByIdAsync(int id)
         {
-            var address = await _context.SupplierAddresses.FindAsync(id);
+            var address = await _context.SupplierAddresses
+                .AsNoTracking()
+                .FirstOrDefaultAsync(a => a.Id == id);
+
             if (address == null) return null;
 
             return _mapper.Map<SupplierAddressReadDto>(address);
@@ -65,10 +71,12 @@ namespace backend.Services
         public async Task<int> CreateAsync(int supplierId, SupplierAddressCreateDto dto)
         {
             var supplierExists = await _context.Suppliers.AnyAsync(s => s.Id == supplierId);
-            if (!supplierExists) throw new KeyNotFoundException("Không tìm thấy nhà cung cấp.");
+            if (!supplierExists) throw new KeyNotFoundException("Không tìm thấy thông tin nhà cung cấp.");
 
             var entity = _mapper.Map<SupplierAddress>(dto);
             entity.SupplierId = supplierId;
+            entity.CreatedAt = DateTime.UtcNow;
+            entity.UpdatedAt = DateTime.UtcNow;
 
             // BUSINESS RULE: Xử lý Logic IsDefault
             var existingAddresses = await _context.SupplierAddresses
@@ -77,7 +85,7 @@ namespace backend.Services
 
             if (!existingAddresses.Any())
             {
-                // Nếu là địa chỉ đầu tiên, ép buộc phải là mặc định
+                // Nếu là địa chỉ đầu tiên, bắt buộc phải là mặc định
                 entity.IsDefault = true;
             }
             else if (dto.IsDefault)
@@ -104,7 +112,7 @@ namespace backend.Services
             // BUSINESS RULE: Luân chuyển quyền mặc định
             if (dto.IsDefault && !entity.IsDefault)
             {
-                // Trường hợp 1: Chuyển địa chỉ này thành mặc định -> Tìm và tắt Default cũ
+                // Chuyển địa chỉ này thành mặc định -> Tìm và tắt Default cũ
                 var currentDefault = await _context.SupplierAddresses
                     .Where(a => a.SupplierId == entity.SupplierId && a.IsDefault && a.Id != id)
                     .FirstOrDefaultAsync();
@@ -113,7 +121,7 @@ namespace backend.Services
             }
             else if (!dto.IsDefault && entity.IsDefault)
             {
-                // Trường hợp 2: Cố tình tắt Default của địa chỉ đang là mặc định
+                // Cố tình tắt Default của địa chỉ đang là mặc định
                 var otherAddresses = await _context.SupplierAddresses
                    .Where(a => a.SupplierId == entity.SupplierId && a.Id != id)
                    .OrderBy(a => a.CreatedAt)
@@ -132,6 +140,7 @@ namespace backend.Services
             }
 
             _mapper.Map(dto, entity);
+            entity.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
 
             return true;
@@ -158,7 +167,6 @@ namespace backend.Services
                     nextAddress.IsDefault = true;
                 }
 
-                // Reset trước khi xóa (phòng trường hợp dùng Soft Delete sau này)
                 entity.IsDefault = false;
             }
 
@@ -175,9 +183,9 @@ namespace backend.Services
         {
             var entity = await _context.SupplierAddresses.FindAsync(id);
             if (entity == null || entity.SupplierId != supplierId)
-                throw new KeyNotFoundException("Không tìm thấy địa chỉ hoặc không thuộc về nhà cung cấp này.");
+                throw new KeyNotFoundException("Không tìm thấy địa chỉ hoặc địa chỉ không thuộc về nhà cung cấp này.");
 
-            if (entity.IsDefault) return true; // Đã là mặc định rồi thì không làm gì cả
+            if (entity.IsDefault) return true;
 
             // Tắt Default hiện tại của nhà cung cấp này
             var currentDefault = await _context.SupplierAddresses
@@ -190,6 +198,7 @@ namespace backend.Services
             }
 
             entity.IsDefault = true;
+            entity.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
             return true;
         }

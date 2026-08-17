@@ -20,7 +20,7 @@ import {
     InfoField
 } from '../../components/commons/TabUI';
 import { Toast } from '../../components/commons/Toast';
-import { DateTimeCell } from '../../components/commons/ListUI';
+import { DateCell, DateTimeCell } from '../../components/commons/ListUI';
 
 import { inventoryIssueApi } from '../../api/inventoryIssueApi';
 import {
@@ -223,7 +223,7 @@ const InventoryIssueDetail: React.FC = () => {
                                 
                                 <div className="flex flex-col items-start">
                                     <span className="text-[11px] font-bold text-slate-400 uppercase mb-1">Ngày xuất hàng</span>
-                                    <DateTimeCell isoString={issue.issueDate} />
+                                    <DateCell isoString={issue.issueDate} />
                                 </div>
                             </div>
                         </DetailSection>

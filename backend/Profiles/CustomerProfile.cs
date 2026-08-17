@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+using AutoMapper;
 using backend.DTOs.CustomerDTOs;
 using backend.Models;
 using System.Collections.Generic;
@@ -23,7 +23,6 @@ namespace backend.Profiles
                 // 3. Ánh xạ mảng TÊN NHÓM (Dùng cho UI danh sách: string[])
                 .ForMember(dest => dest.Groups, opt =>
                     opt.MapFrom(src => src.GroupLinks != null
-                        // Lọc bỏ những liên kết bị lỗi (Group bị null) rồi mới lấy Name
                         ? src.GroupLinks
                             .Where(gl => gl.CustomerGroup != null)
                             .Select(gl => gl.CustomerGroup!.Name)
@@ -34,16 +33,22 @@ namespace backend.Profiles
                 .ForMember(dest => dest.GroupIds, opt =>
                     opt.MapFrom(src => src.GroupLinks != null
                         ? src.GroupLinks.Select(gl => gl.CustomerGroupId).ToList()
-                        : new List<int>()));
+                        : new List<int>()))
+
+                // 5. Ánh xạ Sổ địa chỉ
+                .ForMember(dest => dest.Addresses, opt =>
+                    opt.MapFrom(src => src.Addresses));
 
             // --- POST: Từ DTO Create sang Model ---
             CreateMap<CustomerCreateDto, Customer>()
-                // Bỏ qua GroupLinks vì chúng ta đã tự xử lý Insert thủ công trong CustomerService
+                .ForMember(dest => dest.IsActive, opt => opt.MapFrom(src => src.IsActive))
+                .ForMember(dest => dest.Addresses, opt => opt.Ignore())
                 .ForMember(dest => dest.GroupLinks, opt => opt.Ignore());
 
             // --- PUT: Từ DTO Update sang Model ---
             CreateMap<CustomerUpdateDto, Customer>()
-                // Bỏ qua GroupLinks vì chúng ta đã tự xử lý Xóa/Thêm thủ công trong CustomerService
+                .ForMember(dest => dest.IsActive, opt => opt.MapFrom(src => src.IsActive))
+                .ForMember(dest => dest.Addresses, opt => opt.Ignore())
                 .ForMember(dest => dest.GroupLinks, opt => opt.Ignore());
         }
     }

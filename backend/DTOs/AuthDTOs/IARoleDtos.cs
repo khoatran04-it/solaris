@@ -1,6 +1,10 @@
-﻿namespace backend.DTOs.AuthDTOs
+using System.ComponentModel.DataAnnotations;
+
+namespace backend.DTOs.AuthDTOs
 {
-    // DTO Đọc dữ liệu Vai trò (kèm danh sách mã quyền mặc định)
+    /// <summary>
+    /// DTO hiển thị thông tin Vai trò (kèm danh sách mã quyền hạn).
+    /// </summary>
     public class IARoleReadDto
     {
         public int Id { get; set; }
@@ -10,28 +14,41 @@
         public bool IsActive { get; set; }
         public DateTime CreatedAt { get; set; }
 
-        // Danh sách ID các quyền mặc định của Vai trò này
+        /// <summary>Danh sách ID các quyền thuộc vai trò này</summary>
         public List<int> PermissionIds { get; set; } = new();
     }
 
+    /// <summary>
+    /// DTO tạo mới Vai trò.
+    /// </summary>
     public class IARoleCreateDto
     {
+        [Required(ErrorMessage = "Mã vai trò không được để trống.")]
+        [StringLength(50, ErrorMessage = "Mã vai trò tối đa 50 ký tự.")]
         public string Code { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Tên vai trò không được để trống.")]
+        [StringLength(100, ErrorMessage = "Tên vai trò tối đa 100 ký tự.")]
         public string Name { get; set; } = string.Empty;
+
         public string? Description { get; set; }
         public bool IsActive { get; set; } = true;
 
-        // Chọn sẵn các quyền khi tạo mới Role
         public List<int> PermissionIds { get; set; } = new();
     }
 
+    /// <summary>
+    /// DTO cập nhật thông tin Vai trò và cấu hình lại danh sách quyền hạn.
+    /// </summary>
     public class IARoleUpdateDto
     {
+        [Required(ErrorMessage = "Tên vai trò không được để trống.")]
+        [StringLength(100, ErrorMessage = "Tên vai trò tối đa 100 ký tự.")]
         public string Name { get; set; } = string.Empty;
+
         public string? Description { get; set; }
         public bool IsActive { get; set; }
 
-        // Để Frontend ghi đè lại danh sách quyền của Role
         public List<int> PermissionIds { get; set; } = new();
     }
 }

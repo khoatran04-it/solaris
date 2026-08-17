@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+using AutoMapper;
 using backend.Data;
 using backend.DTOs;
 using backend.DTOs.AttributeDefinitionDTOs;
@@ -19,11 +19,19 @@ namespace backend.Services
             _mapper = mapper;
         }
 
-        public async Task<IEnumerable<AttributeDefinitionReadDto>> GetAllListAsync()
+        public async Task<IEnumerable<AttributeDefinitionReadDto>> GetAllListAsync(bool isActiveOnly = false)
         {
-            var items = await _context.AttributeDefinitions
+            var query = _context.AttributeDefinitions
                 .AsNoTracking()
-                .OrderBy(x => x.Name) // Sắp xếp theo vần A-Z cho dễ tìm
+                .AsQueryable();
+
+            if (isActiveOnly)
+            {
+                query = query.Where(x => x.IsActive);
+            }
+
+            var items = await query
+                .OrderBy(x => x.Name)
                 .ToListAsync();
 
             return _mapper.Map<IEnumerable<AttributeDefinitionReadDto>>(items);
@@ -43,14 +51,14 @@ namespace backend.Services
             // 1. Filter: Tìm theo tên thuộc tính
             if (!string.IsNullOrWhiteSpace(search))
             {
-                var lowerSearch = search.ToLower();
+                var lowerSearch = search.Trim().ToLower();
                 query = query.Where(x => x.Name.ToLower().Contains(lowerSearch));
             }
 
             // 2. Filter: Theo kiểu dữ liệu (Text, Number, Date...)
             if (!string.IsNullOrWhiteSpace(dataType))
             {
-                var lowerDataType = dataType.ToLower();
+                var lowerDataType = dataType.Trim().ToLower();
                 query = query.Where(x => x.DataType.ToLower() == lowerDataType);
             }
 
@@ -109,14 +117,21 @@ namespace backend.Services
 
         public async Task<int> CreateAsync(AttributeDefinitionCreateDto dto)
         {
-            // 🔥 Bắt lỗi trùng Tên thuộc tính
+            var trimmedName = dto.Name.Trim();
+
+            // Bắt lỗi trùng Tên thuộc tính
             var isDuplicate = await _context.AttributeDefinitions
-                .AnyAsync(x => x.Name.ToLower() == dto.Name.ToLower());
+                .AnyAsync(x => x.Name.ToLower() == trimmedName.ToLower());
 
             if (isDuplicate)
-                throw new Exception($"Thuộc tính có tên '{dto.Name}' đã tồn tại trong hệ thống.");
+                throw new Exception($"Thuộc tính có tên '{trimmedName}' đã tồn tại trong hệ thống.");
 
             var entity = _mapper.Map<AttributeDefinition>(dto);
+            entity.Name = trimmedName;
+            entity.DataType = dto.DataType.Trim().ToUpper();
+            entity.IsActive = dto.IsActive;
+            entity.CreatedAt = DateTime.UtcNow;
+            entity.UpdatedAt = DateTime.UtcNow;
 
             _context.AttributeDefinitions.Add(entity);
             await _context.SaveChangesAsync();
@@ -130,14 +145,21 @@ namespace backend.Services
             if (entity == null)
                 throw new KeyNotFoundException("Không tìm thấy từ điển thuộc tính cần sửa.");
 
-            // 🔥 Bắt lỗi trùng Tên (nhưng bỏ qua chính nó)
+            var trimmedName = dto.Name.Trim();
+
+            // Bắt lỗi trùng Tên (nhưng bỏ qua chính nó)
             var isDuplicate = await _context.AttributeDefinitions
-                .AnyAsync(x => x.Id != id && x.Name.ToLower() == dto.Name.ToLower());
+                .AnyAsync(x => x.Id != id && x.Name.ToLower() == trimmedName.ToLower());
 
             if (isDuplicate)
-                throw new Exception($"Cập nhật thất bại: Thuộc tính '{dto.Name}' đã bị trùng với một thuộc tính khác.");
+                throw new Exception($"Cập nhật thất bại: Thuộc tính '{trimmedName}' đã bị trùng với một thuộc tính khác.");
 
             _mapper.Map(dto, entity);
+            entity.Name = trimmedName;
+            entity.DataType = dto.DataType.Trim().ToUpper();
+            entity.IsActive = dto.IsActive;
+            entity.UpdatedAt = DateTime.UtcNow;
+
             await _context.SaveChangesAsync();
 
             return true;
@@ -149,8 +171,18 @@ namespace backend.Services
             if (entity == null)
                 throw new KeyNotFoundException("Không tìm thấy từ điển thuộc tính để xóa.");
 
-            // Ở DB context sếp đã gài Restrict với CategoryAttribute
-            // Nên nếu thuộc tính này đang được dùng ở Khung danh mục, lúc SaveChanges sẽ tự văng lỗi
+            // 1. SAFETY SHIELD: Chặn xóa nếu đang được gắn vào Danh mục
+            var isUsedInCategories = await _context.CategoryAttributes
+                .AnyAsync(ca => ca.AttributeDefinitionId == id);
+            if (isUsedInCategories)
+                throw new Exception("Không thể xóa thuộc tính này vì đang được gán vào mẫu danh mục sản phẩm.");
+
+            // 2. SAFETY SHIELD: Chặn xóa nếu đang có Biến thể sản phẩm sử dụng
+            var isUsedInVariants = await _context.ProductAttributes
+                .AnyAsync(pa => pa.AttributeDefinitionId == id && !pa.IsDeleted);
+            if (isUsedInVariants)
+                throw new Exception("Không thể xóa thuộc tính này vì đang được sử dụng trong các biến thể sản phẩm.");
+
             _context.AttributeDefinitions.Remove(entity);
             await _context.SaveChangesAsync();
 
@@ -164,6 +196,7 @@ namespace backend.Services
                 throw new KeyNotFoundException("Không tìm thấy từ điển thuộc tính.");
 
             entity.IsActive = !entity.IsActive;
+            entity.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
 
             return true;

@@ -1,4 +1,4 @@
-﻿using backend.Models;
+using backend.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -21,6 +21,13 @@ namespace backend.Configurations
 
             builder.HasIndex(x => x.Code).IsUnique();
 
+            // Chống xóa loại nhà cung cấp nếu có nhà cung cấp liên kết
+            builder.HasMany(x => x.Suppliers)
+                   .WithOne(s => s.SupplierType)
+                   .HasForeignKey(s => s.SupplierTypeId)
+                   .OnDelete(DeleteBehavior.Restrict);
+
+            // Soft delete
             builder.Property(x => x.IsDeleted).HasDefaultValue(false);
             builder.HasQueryFilter(x => !x.IsDeleted);
         }

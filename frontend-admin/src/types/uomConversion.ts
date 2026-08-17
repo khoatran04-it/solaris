@@ -26,10 +26,9 @@ export interface UoMConversionPayload {
     toUoMId: number;
     conversionFactor: number;
     productId: number | null;
-    isActive?: boolean;
+    isActive: boolean;
 }
 
-// 3. Tham số truy vấn (Mở rộng từ PaginationParams)
 export interface UoMConversionQueryParams extends PaginationParams {
     productId?: number;
     isStandard?: boolean;

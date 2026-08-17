@@ -16,15 +16,19 @@ export const customerReturnApi = {
         return axiosClient.get(`/CustomerReturns/${id}`);
     },
 
-    create: (data: CustomerReturnCreatePayload): Promise<{ id: number }> => {
+    create: (data: CustomerReturnCreatePayload): Promise<{ id: number; message?: string }> => {
         return axiosClient.post('/CustomerReturns', data);
     },
 
-    inspectAndComplete: (id: number, data: CustomerReturnInspectionPayload): Promise<void> => {
+    inspectAndComplete: (id: number, data: CustomerReturnInspectionPayload): Promise<{ message?: string }> => {
         return axiosClient.post(`/CustomerReturns/${id}/inspect-and-complete`, data);
     },
 
-    reject: (id: number, reason: string): Promise<void> => {
+    reject: (id: number, reason: string): Promise<{ message?: string }> => {
         return axiosClient.post(`/CustomerReturns/${id}/reject`, { reason });
+    },
+
+    delete: (id: number): Promise<{ message?: string }> => {
+        return axiosClient.delete(`/CustomerReturns/${id}`);
     },
 };

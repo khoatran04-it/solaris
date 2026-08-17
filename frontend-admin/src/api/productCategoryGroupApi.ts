@@ -13,8 +13,8 @@ export const productCategoryGroupApi = {
     },
 
     // 2. GET ALL (Không phân trang, dùng cho dropdown)
-    getAllList: (): Promise<ProductCategoryGroup[]> => {
-        return axiosClient.get('/ProductCategoryGroups/all');
+    getAllList: (isActiveOnly: boolean = false): Promise<ProductCategoryGroup[]> => {
+        return axiosClient.get('/ProductCategoryGroups/all', { params: { isActive: isActiveOnly ? true : undefined } });
     },
 
     // 3. GET by ID
@@ -22,8 +22,8 @@ export const productCategoryGroupApi = {
         return axiosClient.get(`/ProductCategoryGroups/${id}`);
     },
 
-    // 4. POST (Trả về message và id theo đúng chuẩn Backend C#)
-    create: (data: ProductCategoryGroupPayload): Promise<{ message: string; id: number }> => {
+    // 4. POST
+    create: (data: ProductCategoryGroupPayload): Promise<ProductCategoryGroup> => {
         return axiosClient.post('/ProductCategoryGroups', data);
     },
 
@@ -36,4 +36,9 @@ export const productCategoryGroupApi = {
     delete: (id: number): Promise<void> => {
         return axiosClient.delete(`/ProductCategoryGroups/${id}`);
     },
+
+    // 7. PATCH (Thay đổi trạng thái Hoạt động / Tạm khóa)
+    toggleActive: (id: number): Promise<void> => {
+        return axiosClient.patch(`/ProductCategoryGroups/${id}/toggle-active`);
+    }
 };

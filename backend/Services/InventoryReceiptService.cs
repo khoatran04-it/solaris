@@ -31,8 +31,10 @@ namespace backend.Services
 
             if (!string.IsNullOrWhiteSpace(search))
             {
-                var lowerSearch = search.ToLower();
-                query = query.Where(x => x.ReceiptCode.ToLower().Contains(lowerSearch));
+                var lowerSearch = search.ToLower().Trim();
+                query = query.Where(x => x.ReceiptCode.ToLower().Contains(lowerSearch) ||
+                                         (x.Supplier != null && x.Supplier.Name.ToLower().Contains(lowerSearch)) ||
+                                         (x.Note != null && x.Note.ToLower().Contains(lowerSearch)));
             }
 
             if (warehouseId.HasValue)
@@ -94,11 +96,21 @@ namespace backend.Services
 
         public async Task<int> CreateAsync(InventoryReceiptCreateDto dto)
         {
+            if (dto.Details == null || !dto.Details.Any())
+                throw new ArgumentException("Phiếu nhập kho phải có ít nhất 1 dòng kiểm đếm hàng hóa.");
+
+            var warehouseExists = await _context.Warehouses.AnyAsync(w => w.Id == dto.WarehouseId);
+            if (!warehouseExists)
+                throw new ArgumentException($"Kho nhận hàng với ID {dto.WarehouseId} không tồn tại.");
+
             var entity = _mapper.Map<InventoryReceipt>(dto);
 
-            // Generate ReceiptCode: IR-YYYYMMDD-HHMMSS
-            entity.ReceiptCode = $"IR-{DateTime.UtcNow:yyyyMMdd}-{DateTime.UtcNow:HHmmss}";
+            // Sinh mã phiếu nhập duy nhất chống va chạm
+            entity.ReceiptCode = $"IR-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString()[..6].ToUpper()}";
             entity.Status = InventoryReceiptStatus.Pending;
+            entity.CreatedAt = DateTime.UtcNow;
+            entity.UpdatedAt = DateTime.UtcNow;
+            entity.IsDeleted = false;
 
             _context.InventoryReceipts.Add(entity);
             await _context.SaveChangesAsync();
@@ -119,14 +131,24 @@ namespace backend.Services
                     throw new KeyNotFoundException("Không tìm thấy Phiếu Nhập Kho.");
 
                 if (receipt.Status != InventoryReceiptStatus.Pending && receipt.Status != InventoryReceiptStatus.Inspecting)
-                    throw new Exception("Phiếu nhập kho phải ở trạng thái Pending hoặc Inspecting mới có thể hoàn tất.");
+                    throw new InvalidOperationException("Phiếu nhập kho phải ở trạng thái Chờ nhập kho (Pending) hoặc Đang kiểm tra (Inspecting) mới có thể hoàn tất.");
+
+                // Xác thực an toàn người kiểm đếm
+                var userExists = await _context.IAUsers.AnyAsync(u => u.Id == receivedById);
+                if (!userExists)
+                {
+                    var firstUser = await _context.IAUsers.FirstOrDefaultAsync();
+                    if (firstUser != null) receivedById = firstUser.Id;
+                }
 
                 receipt.Status = InventoryReceiptStatus.Completed;
                 receipt.ReceivedById = receivedById;
                 receipt.ReceiptDate = DateTime.UtcNow;
+                receipt.UpdatedAt = DateTime.UtcNow;
+
                 if (!string.IsNullOrWhiteSpace(note))
                 {
-                    receipt.Note = note;
+                    receipt.Note = note.Trim();
                 }
 
                 var poIdsToUpdate = new HashSet<int>();
@@ -135,7 +157,7 @@ namespace backend.Services
                 {
                     if (detail.AcceptedQuantity <= 0) continue;
 
-                    // 1. Cập nhật tồn kho (WarehouseInventory)
+                    // 1. Cập nhật két sắt tồn kho 4 ngăn (WarehouseInventory -> QuantityAvailable)
                     var inventory = await _context.WarehouseInventories
                         .FirstOrDefaultAsync(x => x.WarehouseId == receipt.WarehouseId && 
                                                   x.VariantId == detail.VariantId && 
@@ -151,31 +173,35 @@ namespace backend.Services
                             QuantityAvailable = detail.AcceptedQuantity,
                             QuantityReserved = 0,
                             QuantityQC = 0,
-                            QuantityDamaged = 0
+                            QuantityDamaged = 0,
+                            CreatedAt = DateTime.UtcNow,
+                            UpdatedAt = DateTime.UtcNow
                         };
                         _context.WarehouseInventories.Add(inventory);
                     }
                     else
                     {
                         inventory.QuantityAvailable += detail.AcceptedQuantity;
+                        inventory.UpdatedAt = DateTime.UtcNow;
                     }
 
-                    // 2. Ghi sổ cái (InventoryTransaction)
+                    // 2. Ghi sổ cái bất biến (InventoryTransaction)
                     var invTransaction = new InventoryTransaction
                     {
-                        TransactionCode = $"TXN-{DateTime.UtcNow:yyyyMMddHHmmss}-{Guid.NewGuid().ToString().Substring(0,4).ToUpper()}",
+                        TransactionCode = $"TXN-{DateTime.UtcNow:yyyyMMddHHmmss}-{Guid.NewGuid().ToString()[..4].ToUpper()}",
                         WarehouseId = receipt.WarehouseId,
                         VariantId = detail.VariantId,
                         BatchId = detail.BatchId,
                         Type = TransactionType.Receipt,
                         Quantity = detail.AcceptedQuantity,
                         ReferenceCode = receipt.ReceiptCode,
-                        Note = "Nhập kho hoàn tất",
-                        CreatedById = receivedById
+                        Note = $"Nhập kho hoàn tất theo phiếu {receipt.ReceiptCode}",
+                        CreatedById = receivedById,
+                        CreatedAt = DateTime.UtcNow
                     };
                     _context.InventoryTransactions.Add(invTransaction);
 
-                    // 3. Cập nhật PO Detail
+                    // 3. Cập nhật tiến độ dòng PO Detail
                     if (detail.PurchaseOrderDetailId.HasValue)
                     {
                         var poDetail = await _context.PurchaseOrderDetails
@@ -192,7 +218,7 @@ namespace backend.Services
 
                 await _context.SaveChangesAsync();
 
-                // 4. Cập nhật trạng thái PO gốc
+                // 4. Cập nhật trạng thái Đơn mua hàng gốc (PO)
                 foreach (var poId in poIdsToUpdate)
                 {
                     var po = await _context.PurchaseOrders
@@ -212,6 +238,7 @@ namespace backend.Services
                         }
 
                         po.Status = isFullyReceived ? PurchaseOrderStatus.Completed : PurchaseOrderStatus.PartiallyReceived;
+                        po.UpdatedAt = DateTime.UtcNow;
                     }
                 }
 
@@ -233,10 +260,28 @@ namespace backend.Services
                 throw new KeyNotFoundException("Không tìm thấy Phiếu Nhập Kho.");
 
             if (receipt.Status == InventoryReceiptStatus.Completed)
-                throw new Exception("Không thể hủy Phiếu Nhập Kho đã hoàn tất.");
+                throw new InvalidOperationException("Không thể hủy Phiếu Nhập Kho đã hoàn tất vào sổ cái.");
 
             receipt.Status = InventoryReceiptStatus.Cancelled;
-            receipt.CancellationReason = reason;
+            receipt.CancellationReason = reason?.Trim();
+            receipt.UpdatedAt = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
+        public async Task<bool> DeleteAsync(int id)
+        {
+            var receipt = await _context.InventoryReceipts.FindAsync(id);
+            if (receipt == null)
+                throw new KeyNotFoundException("Không tìm thấy Phiếu Nhập Kho.");
+
+            if (receipt.Status == InventoryReceiptStatus.Completed)
+                throw new InvalidOperationException("Không thể xóa Phiếu Nhập Kho đã hoàn tất vào sổ cái.");
+
+            receipt.IsDeleted = true;
+            receipt.DeletedAt = DateTime.UtcNow;
+            receipt.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
             return true;

@@ -1,10 +1,17 @@
+import { PaginationParams } from './common';
+
+export interface UoMQueryParams extends PaginationParams {
+    categoryId?: number;
+    isActive?: boolean;
+}
+
 export interface UoM {
     id: number;
     code: string;
     name: string;
     categoryId: number;
-    categoryName?: string; // Dữ liệu flatten (Join từ bảng Category) để UI dễ hiển thị
-    synonyms?: string | null; // Từ đồng nghĩa (VD: kg, kí, kilogram)
+    categoryName?: string;
+    synonyms?: string | null;
     isActive: boolean;
     createdAt: string;
     updatedAt: string;
@@ -13,7 +20,7 @@ export interface UoM {
 export interface UoMPayload {
     code: string;
     name: string;
-    categoryId: number; // Bắt buộc phải chọn nhóm khi tạo
+    categoryId: number;
     synonyms?: string | null;
-    isActive?: boolean;
+    isActive: boolean;
 }

@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+using AutoMapper;
 using backend.Data;
 using backend.DTOs;
 using backend.DTOs.CustomerTierDTOs;
@@ -14,10 +14,6 @@ namespace backend.Services
     /// </summary>
     public class CustomerTierService : ICustomerTierService
     {
-        // ==========================================
-        // SECTION: FIELDS & CONSTRUCTOR
-        // ==========================================
-        #region Fields & Constructor
         private readonly SolarisDbContext _context;
         private readonly IMapper _mapper;
 
@@ -26,8 +22,6 @@ namespace backend.Services
             _context = context;
             _mapper = mapper;
         }
-
-        #endregion
 
         // ==========================================
         // SECTION: READ OPERATIONS (QUERIES)
@@ -49,11 +43,12 @@ namespace backend.Services
         }
 
         /// <summary>
-        /// Lấy danh sách bậc hạng có phân trang và tìm kiếm.
+        /// Lấy danh sách bậc hạng có phân trang, tìm kiếm và lọc trạng thái.
         /// </summary>
         public async Task<PagedResult<CustomerTierReadDto>> GetPagedAsync(
             string? search,
             string? names,
+            bool? isActive,
             DateTime? createdAt,
             DateTime? updatedAt,
             int pageIndex,
@@ -64,19 +59,37 @@ namespace backend.Services
             // Filter: Tìm kiếm theo mã hoặc tên hạng
             if (!string.IsNullOrWhiteSpace(search))
             {
-                var lowerSearch = search.ToLower();
+                var lowerSearch = search.Trim().ToLower();
                 query = query.Where(x => x.Code.ToLower().Contains(lowerSearch) || x.Name.ToLower().Contains(lowerSearch));
+            }
+
+            // Filter: Lọc theo danh sách tên
+            if (!string.IsNullOrWhiteSpace(names))
+            {
+                var nameList = names.Split(',').Select(n => n.Trim().ToLower()).ToList();
+                query = query.Where(x => nameList.Contains(x.Name.ToLower()));
+            }
+
+            // Filter: Trạng thái hoạt động
+            if (isActive.HasValue)
+            {
+                query = query.Where(x => x.IsActive == isActive.Value);
             }
 
             // Filter: Lọc theo thời gian tạo (Quét trọn ngày)
             if (createdAt.HasValue)
             {
-                query = query.Where(x => x.CreatedAt >= createdAt.Value.Date && x.CreatedAt < createdAt.Value.Date.AddDays(1));
+                var startDate = createdAt.Value.Date;
+                var endDate = startDate.AddDays(1);
+                query = query.Where(x => x.CreatedAt >= startDate && x.CreatedAt < endDate);
             }
 
+            // Filter: Lọc theo thời gian cập nhật
             if (updatedAt.HasValue)
             {
-                query = query.Where(x => x.UpdatedAt >= updatedAt.Value.Date && x.UpdatedAt < updatedAt.Value.Date.AddDays(1));
+                var startDate = updatedAt.Value.Date;
+                var endDate = startDate.AddDays(1);
+                query = query.Where(x => x.UpdatedAt >= startDate && x.UpdatedAt < endDate);
             }
 
             var totalRecords = await query.CountAsync();
@@ -124,11 +137,13 @@ namespace backend.Services
         /// </summary>
         public async Task<int> CreateAsync(CustomerTierCreateDto dto)
         {
-            // Business Rule: Mỗi bậc hạng phải có một mã duy nhất để định danh
-            if (await _context.CustomerTiers.AnyAsync(x => x.Code == dto.Code))
-                throw new Exception("Mã bậc hạng đã tồn tại trên hệ thống.");
+            if (await _context.CustomerTiers.AnyAsync(x => x.Code == dto.Code.Trim()))
+                throw new Exception($"Mã bậc hạng '{dto.Code}' đã tồn tại trên hệ thống.");
 
             var entity = _mapper.Map<CustomerTier>(dto);
+            entity.CreatedAt = DateTime.UtcNow;
+            entity.UpdatedAt = DateTime.UtcNow;
+            entity.IsActive = dto.IsActive;
 
             _context.CustomerTiers.Add(entity);
             await _context.SaveChangesAsync();
@@ -145,29 +160,50 @@ namespace backend.Services
             if (entity == null)
                 throw new KeyNotFoundException("Không tìm thấy bậc hạng cần sửa.");
 
-            // Business Rule: Đảm bảo mã Code mới không bị trùng với các bậc hạng khác
-            if (await _context.CustomerTiers.AnyAsync(x => x.Id != id && x.Code == dto.Code))
-                throw new Exception("Cập nhật thất bại: Mã bậc hạng này đã bị trùng lặp với dữ liệu khác.");
+            if (await _context.CustomerTiers.AnyAsync(x => x.Id != id && x.Code == dto.Code.Trim()))
+                throw new Exception($"Cập nhật thất bại: Mã bậc hạng '{dto.Code}' đã được sử dụng bởi bậc hạng khác.");
 
             _mapper.Map(dto, entity);
+            entity.UpdatedAt = DateTime.UtcNow;
+            entity.IsActive = dto.IsActive;
+
             await _context.SaveChangesAsync();
 
             return true;
         }
 
         /// <summary>
-        /// Xóa bậc hạng khách hàng.
+        /// Xóa bậc hạng khách hàng. Kiểm tra ràng buộc an toàn.
         /// </summary>
-        /// <remarks>Thao tác xóa vật lý sẽ được Interceptor chuyển thành Soft Delete (Xóa mềm).</remarks>
         public async Task<bool> DeleteAsync(int id)
         {
-            var entity = await _context.CustomerTiers.FindAsync(id);
+            var entity = await _context.CustomerTiers
+                .Include(x => x.Customers)
+                .FirstOrDefaultAsync(x => x.Id == id);
+
             if (entity == null)
                 throw new KeyNotFoundException("Không tìm thấy bậc hạng cần xóa.");
 
-            // Note: Việc kiểm tra ràng buộc sử dụng (isUsed) đã được thay thế bằng cơ chế 
-            // Soft Delete để giữ lại lịch sử cho các khách hàng đã thuộc hạng này.
+            if (entity.Customers.Any(c => !c.IsDeleted))
+                throw new Exception("Không thể xóa bậc hạng này vì đang có Khách hàng thuộc hạng này.");
+
             _context.CustomerTiers.Remove(entity);
+            await _context.SaveChangesAsync();
+
+            return true;
+        }
+
+        /// <summary>
+        /// Chuyển đổi trạng thái Hoạt động / Tạm khóa của bậc hạng.
+        /// </summary>
+        public async Task<bool> ToggleActiveAsync(int id)
+        {
+            var entity = await _context.CustomerTiers.FindAsync(id);
+            if (entity == null)
+                throw new KeyNotFoundException("Không tìm thấy bậc hạng khách hàng.");
+
+            entity.IsActive = !entity.IsActive;
+            entity.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
 
             return true;

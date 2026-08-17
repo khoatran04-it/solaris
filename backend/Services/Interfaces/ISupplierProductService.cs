@@ -1,16 +1,18 @@
-﻿using backend.DTOs;
+using backend.DTOs;
 using backend.DTOs.SupplierProductDTOs;
 
 namespace backend.Services.Interfaces
 {
     public interface ISupplierProductService
     {
-        Task<IEnumerable<SupplierProductReadDto>> GetAllListAsync();
+        Task<IEnumerable<SupplierProductReadDto>> GetAllListAsync(bool isActiveOnly = false);
+
+        Task<IEnumerable<SupplierProductReadDto>> GetBySupplierIdAsync(int supplierId, bool isActiveOnly = true);
 
         Task<PagedResult<SupplierProductReadDto>> GetPagedAsync(
-            string? search, // Tìm theo mã SupplierSKU
-            int? variantId, // Lọc theo Biến thể
-            int? supplierId, // Lọc theo Nhà cung cấp
+            string? search,
+            int? variantId,
+            int? supplierId,
             bool? isActive,
             DateTime? createdAt,
             DateTime? updatedAt,

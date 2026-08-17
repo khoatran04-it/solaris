@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+using AutoMapper;
 using backend.Data;
 using backend.DTOs;
 using backend.DTOs.ProductCategoryGroupDTOs;
@@ -8,13 +8,11 @@ using Microsoft.EntityFrameworkCore;
 
 namespace backend.Services
 {
+    /// <summary>
+    /// Service quản lý Nhóm Ngành Hàng (Product Category Groups).
+    /// </summary>
     public class ProductCategoryGroupService : IProductCategoryGroupService
     {
-        // ==========================================
-        // SECTION: FIELDS & CONSTRUCTOR
-        // ==========================================
-        #region Fields & Constructor
-
         private readonly SolarisDbContext _context;
         private readonly IMapper _mapper;
 
@@ -24,9 +22,6 @@ namespace backend.Services
             _mapper = mapper;
         }
 
-        #endregion
-
-
         // ==========================================
         // SECTION: READ OPERATIONS (QUERIES)
         // ==========================================
@@ -35,11 +30,17 @@ namespace backend.Services
         /// <summary>
         /// Lấy toàn bộ danh sách nhóm loại sản phẩm (không phân trang)
         /// </summary>
-        public async Task<IEnumerable<ProductCategoryGroupReadDto>> GetAllListAsync()
+        public async Task<IEnumerable<ProductCategoryGroupReadDto>> GetAllListAsync(bool isActiveOnly = false)
         {
-            var types = await _context.ProductCategoryGroups
-                .AsNoTracking()
-                .OrderBy(x => x.CreatedAt)
+            var query = _context.ProductCategoryGroups.AsNoTracking().AsQueryable();
+
+            if (isActiveOnly)
+            {
+                query = query.Where(x => x.IsActive);
+            }
+
+            var types = await query
+                .OrderBy(x => x.Name)
                 .ToListAsync();
 
             return _mapper.Map<IEnumerable<ProductCategoryGroupReadDto>>(types);
@@ -62,7 +63,7 @@ namespace backend.Services
             // 1. Filter: Tìm kiếm theo mã hoặc tên
             if (!string.IsNullOrWhiteSpace(search))
             {
-                var lowerSearch = search.ToLower();
+                var lowerSearch = search.Trim().ToLower();
                 query = query.Where(x =>
                     x.Code.ToLower().Contains(lowerSearch) ||
                     x.Name.ToLower().Contains(lowerSearch)
@@ -99,9 +100,8 @@ namespace backend.Services
 
             var totalRecords = await query.CountAsync();
 
-            // Thực hiện phân trang và tối ưu hóa truy vấn
             var items = await query
-                .OrderByDescending(x => x.Id)
+                .OrderByDescending(x => x.CreatedAt)
                 .Skip((pageIndex - 1) * pageSize)
                 .Take(pageSize)
                 .AsNoTracking()
@@ -124,9 +124,7 @@ namespace backend.Services
         /// </summary>
         public async Task<ProductCategoryGroupReadDto?> GetByIdAsync(int id)
         {
-            var type = await _context.ProductCategoryGroups
-                .FindAsync(id);
-
+            var type = await _context.ProductCategoryGroups.FindAsync(id);
             if (type == null) return null;
 
             return _mapper.Map<ProductCategoryGroupReadDto>(type);
@@ -145,11 +143,19 @@ namespace backend.Services
         /// </summary>
         public async Task<int> CreateAsync(ProductCategoryGroupCreateDto dto)
         {
-            // Kiểm tra trùng mã code
-            if (await _context.ProductCategoryGroups.AnyAsync(x => x.Code == dto.Code))
-                throw new Exception("Mã phân loại đã tồn tại.");
+            var trimmedCode = dto.Code.Trim();
+
+            if (await _context.ProductCategoryGroups.AnyAsync(x => x.Code == trimmedCode))
+                throw new Exception($"Mã nhóm ngành hàng '{trimmedCode}' đã tồn tại.");
 
             var entity = _mapper.Map<ProductCategoryGroup>(dto);
+            entity.Code = trimmedCode;
+            entity.Name = dto.Name.Trim();
+            entity.Description = dto.Description?.Trim();
+            entity.ImagePath = dto.ImagePath?.Trim();
+            entity.IsActive = dto.IsActive;
+            entity.CreatedAt = DateTime.UtcNow;
+            entity.UpdatedAt = DateTime.UtcNow;
 
             _context.ProductCategoryGroups.Add(entity);
             await _context.SaveChangesAsync();
@@ -164,29 +170,58 @@ namespace backend.Services
         {
             var entity = await _context.ProductCategoryGroups.FindAsync(id);
             if (entity == null)
-                throw new KeyNotFoundException("Không tìm thấy nhóm loại cần sửa.");
+                throw new KeyNotFoundException("Không tìm thấy nhóm ngành hàng cần sửa.");
 
-            // Kiểm tra trùng mã code với các bản ghi khác
-            if (await _context.ProductCategoryGroups.AnyAsync(x => x.Id != id && x.Code == dto.Code))
-                throw new Exception("Cập nhật thất bại: Mã phân loại này đã bị trùng lặp với một dòng dữ liệu khác.");
+            var trimmedCode = dto.Code.Trim();
+
+            if (await _context.ProductCategoryGroups.AnyAsync(x => x.Id != id && x.Code == trimmedCode))
+                throw new Exception($"Cập nhật thất bại: Mã nhóm ngành hàng '{trimmedCode}' đã bị trùng lặp.");
 
             _mapper.Map(dto, entity);
+            entity.Code = trimmedCode;
+            entity.Name = dto.Name.Trim();
+            entity.Description = dto.Description?.Trim();
+            entity.ImagePath = dto.ImagePath?.Trim();
+            entity.IsActive = dto.IsActive;
+            entity.UpdatedAt = DateTime.UtcNow;
+
             await _context.SaveChangesAsync();
 
             return true;
         }
 
         /// <summary>
-        /// Xóa phân nhóm loại sản phẩm
+        /// Xóa phân nhóm loại sản phẩm (Có kiểm tra danh mục con)
         /// </summary>
         public async Task<bool> DeleteAsync(int id)
         {
             var entity = await _context.ProductCategoryGroups.FindAsync(id);
             if (entity == null)
-                throw new KeyNotFoundException("Không tìm thấy nhóm loại cần xóa.");
+                throw new KeyNotFoundException("Không tìm thấy nhóm ngành hàng cần xóa.");
 
-            // Thao tác Remove sẽ được Global Interceptor chuyển thành Update DeletedAt nếu dùng Soft Delete
+            // Kiểm tra ràng buộc toàn vẹn dữ liệu
+            bool hasCategories = await _context.ProductCategories.AnyAsync(c => c.CategoryGroupId == id && !c.IsDeleted);
+            if (hasCategories)
+                throw new Exception("Không thể xóa nhóm ngành hàng này vì đang chứa các danh mục hàng hóa con.");
+
             _context.ProductCategoryGroups.Remove(entity);
+            await _context.SaveChangesAsync();
+
+            return true;
+        }
+
+        /// <summary>
+        /// Đổi trạng thái Hoạt động / Khóa của nhóm ngành hàng
+        /// </summary>
+        public async Task<bool> ToggleActiveAsync(int id)
+        {
+            var entity = await _context.ProductCategoryGroups.FindAsync(id);
+            if (entity == null)
+                throw new KeyNotFoundException("Không tìm thấy nhóm ngành hàng.");
+
+            entity.IsActive = !entity.IsActive;
+            entity.UpdatedAt = DateTime.UtcNow;
+
             await _context.SaveChangesAsync();
 
             return true;

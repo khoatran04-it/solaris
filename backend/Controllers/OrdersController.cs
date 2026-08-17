@@ -2,9 +2,13 @@ using backend.DTOs.OrderDTOs;
 using backend.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace backend.Controllers
 {
+    /// <summary>
+    /// API Quản lý Đơn Bán Hàng Của Khách Hàng (Customer Orders & Smart Routing).
+    /// </summary>
     [Route("api/[controller]")]
     [ApiController]
     [Authorize]
@@ -54,8 +58,15 @@ namespace backend.Controllers
         {
             try
             {
-                var newId = await _service.CreateAsync(dto);
-                return CreatedAtAction(nameof(GetById), new { id = newId }, new { id = newId });
+                var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                int? userId = null;
+                if (!string.IsNullOrEmpty(userIdStr) && int.TryParse(userIdStr, out int parsedId))
+                {
+                    userId = parsedId;
+                }
+
+                var newId = await _service.CreateAsync(dto, userId);
+                return CreatedAtAction(nameof(GetById), new { id = newId }, new { id = newId, message = "Tạo đơn hàng thành công" });
             }
             catch (Exception ex)
             {
@@ -83,7 +94,7 @@ namespace backend.Controllers
             try
             {
                 await _service.UpdateStatusAsync(id, dto);
-                return NoContent();
+                return Ok(new { message = "Cập nhật trạng thái đơn hàng thành công" });
             }
             catch (KeyNotFoundException ex)
             {
@@ -100,8 +111,33 @@ namespace backend.Controllers
         {
             try
             {
-                await _service.CancelAsync(id, request.Reason);
-                return NoContent();
+                var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                int? userId = null;
+                if (!string.IsNullOrEmpty(userIdStr) && int.TryParse(userIdStr, out int parsedId))
+                {
+                    userId = parsedId;
+                }
+
+                await _service.CancelAsync(id, request.Reason, userId);
+                return Ok(new { message = "Hủy đơn hàng thành công" });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> Delete(int id)
+        {
+            try
+            {
+                await _service.DeleteAsync(id);
+                return Ok(new { message = "Xóa đơn hàng thành công" });
             }
             catch (KeyNotFoundException ex)
             {

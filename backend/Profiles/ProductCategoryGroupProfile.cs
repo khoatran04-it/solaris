@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+using AutoMapper;
 using backend.DTOs.ProductCategoryGroupDTOs;
 using backend.Models;
 
@@ -8,15 +8,16 @@ namespace backend.Profiles
     {
         public ProductCategoryGroupProfile() 
         {
-            //GET
+            // GET
             CreateMap<ProductCategoryGroup, ProductCategoryGroupReadDto>();
 
-            //POST
-            CreateMap<ProductCategoryGroupCreateDto, ProductCategoryGroup>();
+            // POST
+            CreateMap<ProductCategoryGroupCreateDto, ProductCategoryGroup>()
+                .ForMember(dest => dest.IsActive, opt => opt.MapFrom(src => src.IsActive));
 
-            //PUT
-            CreateMap<ProductCategoryGroupUpdateDto, ProductCategoryGroup>();
-
+            // PUT
+            CreateMap<ProductCategoryGroupUpdateDto, ProductCategoryGroup>()
+                .ForMember(dest => dest.IsActive, opt => opt.MapFrom(src => src.IsActive));
         }
     }
 }

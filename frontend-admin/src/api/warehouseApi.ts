@@ -13,8 +13,8 @@ export const warehouseApi = {
     },
 
     // 2. GET ALL (Lấy tất cả)
-    getAllList: (): Promise<Warehouse[]> => {
-        return axiosClient.get('/warehouses/all');
+    getAllList: (isActiveOnly: boolean = false): Promise<Warehouse[]> => {
+        return axiosClient.get('/warehouses/all', { params: { isActive: isActiveOnly ? true : undefined } });
     },
 
     // 3. GET by ID (Lấy chi tiết kho hàng bao gồm Địa chỉ & Trưởng kho)
@@ -23,7 +23,7 @@ export const warehouseApi = {
     },
 
     // 4. POST (Thêm mới kho hàng & Địa chỉ bằng Transaction)
-    create: (data: WarehousePayload): Promise<{ message: string; id: number }> => {
+    create: (data: WarehousePayload): Promise<Warehouse> => {
         return axiosClient.post('/warehouses', data);
     },
 

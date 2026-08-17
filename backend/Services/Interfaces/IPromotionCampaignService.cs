@@ -1,4 +1,4 @@
-﻿using backend.DTOs;
+using backend.DTOs;
 using backend.DTOs.PromotionCampaignDTOs;
 
 namespace backend.Services.Interfaces
@@ -7,7 +7,7 @@ namespace backend.Services.Interfaces
     {
         // --- CÁC HÀM CRUD CƠ BẢN CHO VỎ CHIẾN DỊCH ---
 
-        Task<IEnumerable<PromotionCampaignReadDto>> GetAllListAsync();
+        Task<IEnumerable<PromotionCampaignReadDto>> GetAllListAsync(bool isActiveOnly = false);
 
         Task<PagedResult<PromotionCampaignReadDto>> GetPagedAsync(
             string? search,
@@ -31,7 +31,7 @@ namespace backend.Services.Interfaces
         // --- CÁC HÀM ACTION XỬ LÝ BẢNG TRUNG GIAN (N-N) ---
 
         /// <summary>
-        /// Gắn thêm một danh sách biến thể vào chiến dịch (Multi-select)
+        /// Gắn / Đồng bộ danh sách biến thể vào chiến dịch (Multi-select)
         /// </summary>
         Task<bool> AddVariantsToCampaignAsync(int campaignId, ApplyVariantsToCampaignDto dto);
 

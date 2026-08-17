@@ -1,12 +1,16 @@
-﻿using backend.DTOs.InventoryDTOs;
+using backend.DTOs.InventoryDTOs;
 using backend.Services.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace backend.Controllers
 {
+    /// <summary>
+    /// API Tra cứu & Quản lý Sổ cái Tồn kho 4 ngăn (Warehouse Inventory Ledger).
+    /// </summary>
     [Route("api/inventories")]
     [ApiController]
-    // [Authorize] // Bật lên sau khi ghép bảo mật
+    [Authorize]
     public class InventoriesController : ControllerBase
     {
         private readonly IInventoryService _inventoryService;

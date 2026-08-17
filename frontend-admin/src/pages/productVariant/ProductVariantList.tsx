@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Package, Edit3, Trash2, Eye, Box, Tag } from 'lucide-react';
+import { Edit3, Trash2, Box, Tag } from 'lucide-react';
 
 // API & Types
 import { productVariantApi } from '../../api/productVariantApi';
@@ -32,6 +32,7 @@ const ProductVariantList: React.FC = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [currentPage, setCurrentPage] = useState(1);
     const [totalPages, setTotalPages] = useState(0);
+    const [totalItems, setTotalItems] = useState(0);
     const [searchTerm, setSearchTerm] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
     const pageSize = 10;
@@ -60,8 +61,8 @@ const ProductVariantList: React.FC = () => {
     // --- EFFECTS ---
     useEffect(() => {
         productApi.getAllList()
-            .then(res => setProductOptions(res.map(p => ({ label: p.name, value: p.id }))))
-            .catch(() => showToast('warning', 'Không tải được danh sách bộ lọc Sản phẩm gốc'));
+            .then(res => setProductOptions(res.map((p: any) => ({ label: p.name, value: p.id }))))
+            .catch(() => showToast('warning', 'Không tải được bộ lọc Sản phẩm'));
     }, []);
 
     useEffect(() => {
@@ -71,7 +72,7 @@ const ProductVariantList: React.FC = () => {
 
     useEffect(() => {
         setCurrentPage(1);
-    }, [debouncedSearch, statusFilter, productFilter, createdAtFilter, updatedAtFilter]);
+    }, [debouncedSearch, productFilter, statusFilter, createdAtFilter, updatedAtFilter]);
 
     const fetchData = async () => {
         setIsLoading(true);
@@ -80,16 +81,17 @@ const ProductVariantList: React.FC = () => {
                 search: debouncedSearch,
                 pageIndex: currentPage,
                 pageSize: pageSize,
-                isActive: statusFilter.length === 1 ? statusFilter[0] === 1 : undefined,
                 productId: productFilter.length > 0 ? productFilter.join(',') : undefined,
+                isActive: statusFilter.length === 1 ? statusFilter[0] === 1 : undefined,
                 createdAt: createdAtFilter ? createdAtFilter.toLocaleDateString('en-CA') : undefined,
                 updatedAt: updatedAtFilter ? updatedAtFilter.toLocaleDateString('en-CA') : undefined
             });
             
-            setData(response.items);
-            setTotalPages(response.totalPages);
+            setData(response.items || []);
+            setTotalPages(response.totalPages || 0);
+            setTotalItems(response.totalRecords || 0);
         } catch (error) {
-            showToast('error', 'CÓ LỖI XẢY RA KHI TẢI DỮ LIỆU BIẾN THỂ');
+            showToast('error', 'CÓ LỖI XẢY RA KHI TẢI DỮ LIỆU');
         } finally {
             setIsLoading(false);
         }
@@ -98,7 +100,7 @@ const ProductVariantList: React.FC = () => {
     useEffect(() => { 
         fetchData(); 
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [currentPage, debouncedSearch, statusFilter, productFilter, createdAtFilter, updatedAtFilter]);
+    }, [currentPage, debouncedSearch, productFilter, statusFilter, createdAtFilter, updatedAtFilter]);
 
     // --- HANDLERS ---
     const showToast = (type: 'success' | 'error' | 'warning', message: string) => {
@@ -113,8 +115,8 @@ const ProductVariantList: React.FC = () => {
             setIsModalOpen(false);
             fetchData();
             showToast('success', `Xóa thành công biến thể "${deletingRecord.name}"`);
-        } catch (error) {
-            showToast('error', 'Lỗi khi thực hiện xóa dữ liệu');
+        } catch (error: any) {
+            showToast('error', error?.response?.data?.message || 'Lỗi khi thực hiện xóa dữ liệu');
         }
     };
 
@@ -122,9 +124,9 @@ const ProductVariantList: React.FC = () => {
         try {
             await productVariantApi.toggleActive(id);
             fetchData();
-            showToast('success', `Đã ${currentStatus ? 'khóa' : 'kích hoạt'} biến thể`);
+            showToast('success', `Đã ${currentStatus ? 'tạm khóa' : 'kích hoạt'} biến thể`);
         } catch (error) {
-            showToast('error', 'Không thể thay đổi trạng thái');
+            showToast('error', 'Không thể thay đổi trạng thái biến thể');
         }
     };
 
@@ -133,13 +135,13 @@ const ProductVariantList: React.FC = () => {
             <Toast {...toast} />
             
             <ListHeader 
-                title="Danh Sách Biến Thể Sản Phẩm"
-                subtitle="Quản lý chi tiết mặt hàng, giá bán đa quy cách và theo dõi tồn kho"
+                title="Danh Sách Biến Thể (SKU)"
+                subtitle="Quản lý chi tiết từng quy cách, bao bì, đóng gói và đơn giá bán của sản phẩm"
                 searchTerm={searchTerm}
                 onSearchChange={setSearchTerm}
                 onAdd={() => navigate('/product-variants/create')}
-                icon={Package}
-                searchPlaceholder="Tìm theo tên, mã SKU biến thể..."
+                icon={Box} 
+                searchPlaceholder="Tìm theo tên biến thể, mã SKU..."
             />
 
             <ListCard>
@@ -153,7 +155,6 @@ const ProductVariantList: React.FC = () => {
                                     <CustomFilter title="SẢN PHẨM GỐC" options={productOptions} selectedValues={productFilter} onApply={setProductFilter} />
                                 </th>
 
-                                {/* CỘT GIÁ BÁN HIỂN THỊ GIÁ MẶC ĐỊNH */}
                                 <th className="w-[13%] py-4 px-2 text-xs font-bold text-slate-500 uppercase tracking-wider">
                                     Giá Mặc Định
                                 </th>
@@ -183,12 +184,7 @@ const ProductVariantList: React.FC = () => {
                                 <TableLoading colSpan={7} />
                             ) : data.length > 0 ? (
                                 data.map((item) => {
-                                    
-                                    // 🔥 TÌM GIÁ MẶC ĐỊNH TỪ MẢNG PRICES
-                                    // Nếu không có cái nào set isDefault = true, thì lấy đại cái đầu tiên.
                                     const defaultPriceInfo = item.prices?.find(p => p.isDefault) || item.prices?.[0];
-                                    
-                                    // Kiểm tra xem dòng giá này có đang được khuyến mãi không
                                     const isDiscounted = defaultPriceInfo && defaultPriceInfo.promotionalPrice != null && defaultPriceInfo.promotionalPrice < defaultPriceInfo.price;
 
                                     return (
@@ -223,7 +219,7 @@ const ProductVariantList: React.FC = () => {
                                                 </span>
                                             </td>
 
-                                            {/* 🔥 CELL 3: GIÁ BÁN MẶC ĐỊNH */}
+                                            {/* CELL 3: GIÁ BÁN MẶC ĐỊNH */}
                                             <td className="py-3 px-2">
                                                 {defaultPriceInfo ? (
                                                     <div className="flex flex-col justify-center">
@@ -266,12 +262,14 @@ const ProductVariantList: React.FC = () => {
                                                 <div className="flex justify-center">
                                                     <button 
                                                         onClick={() => handleToggleActive(item.id, item.isActive)}
-                                                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold border transition-colors ${
+                                                        className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
                                                         item.isActive 
-                                                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200/40 hover:bg-red-50 hover:text-red-600 hover:border-red-200' 
-                                                            : 'bg-slate-100 text-slate-400 border-slate-200/50 hover:bg-emerald-50 hover:text-emerald-600 hover:border-emerald-200'
-                                                    }`}>
-                                                        <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${item.isActive ? 'bg-emerald-500' : 'bg-slate-300'}`}></span>
+                                                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100' 
+                                                            : 'bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-200'
+                                                    }`}
+                                                        title="Nhấn để đổi trạng thái"
+                                                    >
+                                                        <span className={`w-1.5 h-1.5 rounded-full ${item.isActive ? 'bg-emerald-500' : 'bg-slate-400'}`}></span>
                                                         {item.isActive ? 'Hoạt động' : 'Tạm khóa'}
                                                     </button>
                                                 </div>
@@ -285,13 +283,6 @@ const ProductVariantList: React.FC = () => {
                                             {/* CELL 7: THAO TÁC */}
                                             <td className="py-3 px-6">
                                                 <div className="flex justify-center gap-1.5 opacity-40 group-hover:opacity-100 transition-all duration-300">
-                                                    <button 
-                                                        onClick={() => navigate(`/product-variants/${item.id}`)}
-                                                        className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
-                                                        title="Xem chi tiết"
-                                                    >
-                                                        <Eye size={17} strokeWidth={2.5} />
-                                                    </button>
                                                     <button 
                                                         onClick={() => navigate(`/product-variants/edit/${item.id}`)}
                                                         className="p-1.5 text-slate-400 hover:text-yellow-600 hover:bg-yellow-50 rounded-lg transition-colors"
@@ -321,7 +312,7 @@ const ProductVariantList: React.FC = () => {
                 <ListPagination 
                     currentPage={currentPage} 
                     totalPages={totalPages} 
-                    totalItems={data.length} 
+                    totalItems={totalItems} 
                     onPageChange={setCurrentPage}
                     isLoading={isLoading}
                 />

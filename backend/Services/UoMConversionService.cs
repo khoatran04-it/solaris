@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+using AutoMapper;
 using backend.Data;
 using backend.DTOs;
 using backend.DTOs.UoMConversionDTOs;
@@ -31,13 +31,21 @@ namespace backend.Services
         /// <summary>
         /// Lấy toàn bộ danh sách quy tắc quy đổi kèm thông tin liên kết.
         /// </summary>
-        public async Task<IEnumerable<UoMConversionReadDto>> GetAllListAsync()
+        public async Task<IEnumerable<UoMConversionReadDto>> GetAllListAsync(bool isActiveOnly = false)
         {
-            var conversions = await _context.UoMConversions
+            var query = _context.UoMConversions
                 .Include(x => x.FromUoM)
                 .Include(x => x.ToUoM)
-                .Include(x => x.Product) // Phục vụ việc hiển thị tên sản phẩm trên UI
+                .Include(x => x.Product)
                 .AsNoTracking()
+                .AsQueryable();
+
+            if (isActiveOnly)
+            {
+                query = query.Where(x => x.IsActive);
+            }
+
+            var conversions = await query
                 .OrderByDescending(x => x.CreatedAt)
                 .ToListAsync();
 
@@ -47,7 +55,6 @@ namespace backend.Services
         /// <summary>
         /// Tìm kiếm nâng cao và phân trang quy tắc quy đổi.
         /// </summary>
-        /// <param name="isStandard">True: Lấy quy đổi chung | False: Lấy quy đổi theo sản phẩm.</param>
         public async Task<PagedResult<UoMConversionReadDto>> GetPagedAsync(
             string? search,
             int? productId,
@@ -67,10 +74,10 @@ namespace backend.Services
             // 1. Filter: Tìm kiếm tổng hợp (Tên đơn vị hoặc thông tin Sản phẩm)
             if (!string.IsNullOrWhiteSpace(search))
             {
-                var lowerSearch = search.ToLower();
+                var lowerSearch = search.Trim().ToLower();
                 query = query.Where(x =>
-                    x.FromUoM.Name.ToLower().Contains(lowerSearch) ||
-                    x.ToUoM.Name.ToLower().Contains(lowerSearch) ||
+                    (x.FromUoM != null && x.FromUoM.Name.ToLower().Contains(lowerSearch)) ||
+                    (x.ToUoM != null && x.ToUoM.Name.ToLower().Contains(lowerSearch)) ||
                     (x.Product != null && x.Product.Name.ToLower().Contains(lowerSearch)) ||
                     (x.Product != null && x.Product.Code.ToLower().Contains(lowerSearch))
                 );
@@ -84,7 +91,6 @@ namespace backend.Services
 
             if (isStandard.HasValue)
             {
-                // Quy tắc: ProductId null là quy đổi tiêu chuẩn toàn hệ thống
                 query = isStandard.Value ? query.Where(x => x.ProductId == null) : query.Where(x => x.ProductId != null);
             }
 
@@ -95,6 +101,12 @@ namespace backend.Services
             {
                 var startDate = createdAt.Value.Date;
                 query = query.Where(x => x.CreatedAt >= startDate && x.CreatedAt < startDate.AddDays(1));
+            }
+
+            if (updatedAt.HasValue)
+            {
+                var startDate = updatedAt.Value.Date;
+                query = query.Where(x => x.UpdatedAt >= startDate && x.UpdatedAt < startDate.AddDays(1));
             }
 
             var totalRecords = await query.CountAsync();
@@ -157,8 +169,11 @@ namespace backend.Services
                 throw new Exception("Quy tắc chuyển đổi này đã tồn tại trên hệ thống.");
 
             var newConversion = _mapper.Map<UoMConversion>(dto);
-            _context.UoMConversions.Add(newConversion);
+            newConversion.IsActive = dto.IsActive;
+            newConversion.CreatedAt = DateTime.UtcNow;
+            newConversion.UpdatedAt = DateTime.UtcNow;
 
+            _context.UoMConversions.Add(newConversion);
             await _context.SaveChangesAsync();
             return newConversion.Id;
         }
@@ -169,7 +184,7 @@ namespace backend.Services
         public async Task<bool> UpdateAsync(int id, UoMConversionUpdateDto dto)
         {
             var conversion = await _context.UoMConversions.FirstOrDefaultAsync(c => c.Id == id);
-            if (conversion == null) throw new KeyNotFoundException("Không tìm thấy dữ liệu quy đổi.");
+            if (conversion == null) throw new KeyNotFoundException("Không tìm thấy dữ liệu quy đổi cần sửa.");
 
             await ValidateConversionLogic(dto.FromUoMId, dto.ToUoMId, dto.ProductId, dto.ConversionFactor);
 
@@ -184,6 +199,9 @@ namespace backend.Services
                 throw new Exception("Cập nhật thất bại: Quy tắc này bị trùng với một thiết lập khác.");
 
             _mapper.Map(dto, conversion);
+            conversion.IsActive = dto.IsActive;
+            conversion.UpdatedAt = DateTime.UtcNow;
+
             await _context.SaveChangesAsync();
             return true;
         }
@@ -191,7 +209,7 @@ namespace backend.Services
         public async Task<bool> DeleteAsync(int id)
         {
             var conversion = await _context.UoMConversions.FindAsync(id);
-            if (conversion == null) throw new KeyNotFoundException("Không tìm thấy dữ liệu.");
+            if (conversion == null) throw new KeyNotFoundException("Không tìm thấy dữ liệu quy đổi để xóa.");
 
             _context.UoMConversions.Remove(conversion);
             await _context.SaveChangesAsync();
@@ -201,9 +219,10 @@ namespace backend.Services
         public async Task<bool> ToggleActiveAsync(int id)
         {
             var conversion = await _context.UoMConversions.FindAsync(id);
-            if (conversion == null) throw new KeyNotFoundException("Không tìm thấy dữ liệu.");
+            if (conversion == null) throw new KeyNotFoundException("Không tìm thấy dữ liệu quy đổi.");
 
             conversion.IsActive = !conversion.IsActive;
+            conversion.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
             return true;
         }
@@ -230,8 +249,8 @@ namespace backend.Services
                 throw new Exception("Lỗi Vòng Lặp: Đơn vị đích không được trùng với đơn vị gốc.");
 
             // Rule 3: Kiểm tra tính tồn tại của các thực thể liên kết
-            if (productId.HasValue && !await _context.Products.AnyAsync(p => p.Id == productId.Value))
-                throw new Exception("Sản phẩm được chỉ định không tồn tại.");
+            if (productId.HasValue && !await _context.Products.AnyAsync(p => p.Id == productId.Value && !p.IsDeleted))
+                throw new Exception("Sản phẩm được chỉ định không tồn tại hoặc đã bị xóa.");
 
             var fromUoM = await _context.UoMs.FindAsync(fromUoMId);
             var toUoM = await _context.UoMs.FindAsync(toUoMId);
@@ -239,9 +258,10 @@ namespace backend.Services
             if (fromUoM == null || toUoM == null)
                 throw new Exception("Hệ thống đơn vị tính không hợp lệ hoặc đã bị xóa.");
 
-            // Rule 4: Chặn quy đổi sai hệ quy chiếu (Ví dụ: Không thể đổi Lít sang Mét)
-            if (fromUoM.CategoryId != toUoM.CategoryId)
-                throw new Exception("Lỗi Logic: Không thể quy đổi chéo giữa 2 nhóm đơn vị tính khác nhau.");
+            // Rule 4: Chặn quy đổi sai hệ quy chiếu (Ví dụ: Không thể đổi Lít sang Mét trừ phi đặc thù sản phẩm)
+            // Nếu không có ProductId (Quy đổi chung hệ thống) thì bắt buộc phải cùng CategoryId
+            if (!productId.HasValue && fromUoM.CategoryId != toUoM.CategoryId)
+                throw new Exception("Lỗi Logic: Không thể quy đổi tiêu chuẩn chéo giữa 2 nhóm đơn vị tính khác nhau.");
         }
 
         #endregion

@@ -1,4 +1,4 @@
-﻿using backend.Models;
+using backend.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -28,8 +28,12 @@ namespace backend.Configurations
             builder.Property(x => x.MinSpending)
                    .HasPrecision(18, 2);
 
+            builder.Property(x => x.IsActive);
+
             builder.Property(x => x.CreatedAt).HasColumnType("datetime2");
             builder.Property(x => x.UpdatedAt).HasColumnType("datetime2");
+
+            builder.HasIndex(x => x.Code).IsUnique();
 
             builder.Property(x => x.IsDeleted).HasDefaultValue(false);
             builder.HasQueryFilter(x => !x.IsDeleted);

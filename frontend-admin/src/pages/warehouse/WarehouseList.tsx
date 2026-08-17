@@ -10,7 +10,6 @@ import { Warehouse } from '../../types/warehouse';
 import { Toast } from '../../components/commons/Toast';
 import { ConfirmDeleteModal } from '../../components/modals/ConfirmDeleteModal';
 import { CustomFilter } from '../../components/commons/CustomFilter';
-import { CustomDateFilter } from '../../components/commons/CustomDateFilter';
 
 // Atomic Components
 import { 
@@ -19,8 +18,7 @@ import {
     ListCard, 
     TableLoading, 
     TableEmpty, 
-    ListPagination, 
-    DateTimeCell 
+    ListPagination 
 } from '../../components/commons/ListUI';
 
 const WarehouseList: React.FC = () => {
@@ -31,6 +29,7 @@ const WarehouseList: React.FC = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [currentPage, setCurrentPage] = useState(1);
     const [totalPages, setTotalPages] = useState(0);
+    const [totalItems, setTotalItems] = useState(0);
     const [searchTerm, setSearchTerm] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
     const pageSize = 10;
@@ -38,8 +37,6 @@ const WarehouseList: React.FC = () => {
     // --- STATE QUẢN LÝ BỘ LỌC (FILTERS) ---
     const [statusFilter, setStatusFilter] = useState<(string | number)[]>([]);
     const [provinceFilter, setProvinceFilter] = useState<(string | number)[]>([]);
-    // Bỏ filter createdAt/updatedAt nếu API Backend chưa hỗ trợ, hoặc giữ lại làm UI mock
-    const [createdAtFilter, setCreatedAtFilter] = useState<Date | null>(null); 
 
     // --- OPTIONS CHO BỘ LỌC ---
     const [provinceOptions, setProvinceOptions] = useState<{ label: string, value: string }[]>([]);
@@ -58,7 +55,6 @@ const WarehouseList: React.FC = () => {
 
     // --- EFFECTS ---
     useEffect(() => {
-        // Tải danh sách tất cả kho hàng để trích xuất danh sách Tỉnh/Thành phố làm bộ lọc
         warehouseApi.getAllList()
             .then(res => {
                 const uniqueProvinces = Array.from(new Set(res.map(w => w.province).filter(Boolean)));
@@ -74,7 +70,7 @@ const WarehouseList: React.FC = () => {
 
     useEffect(() => {
         setCurrentPage(1);
-    }, [debouncedSearch, statusFilter, provinceFilter, createdAtFilter]);
+    }, [debouncedSearch, statusFilter, provinceFilter]);
 
     const fetchData = async () => {
         setIsLoading(true);
@@ -85,11 +81,11 @@ const WarehouseList: React.FC = () => {
                 pageSize: pageSize,
                 isActive: statusFilter.length === 1 ? statusFilter[0] === 1 : undefined,
                 province: provinceFilter.length > 0 ? provinceFilter[0].toString() : undefined,
-                // createdAt: createdAtFilter ? createdAtFilter.toLocaleDateString('en-CA') : undefined, // Truyền nếu BE có hỗ trợ
             });
             
-            setData(response.items);
-            setTotalPages(response.totalPages);
+            setData(response.items || []);
+            setTotalPages(response.totalPages || 0);
+            setTotalItems(response.totalRecords || 0);
         } catch (error) {
             showToast('error', 'CÓ LỖI XẢY RA KHI TẢI DỮ LIỆU KHO HÀNG');
         } finally {
@@ -100,7 +96,7 @@ const WarehouseList: React.FC = () => {
     useEffect(() => { 
         fetchData(); 
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [currentPage, debouncedSearch, statusFilter, provinceFilter, createdAtFilter]);
+    }, [currentPage, debouncedSearch, statusFilter, provinceFilter]);
 
     // --- HANDLERS ---
     const showToast = (type: 'success' | 'error' | 'warning', message: string) => {
@@ -115,8 +111,8 @@ const WarehouseList: React.FC = () => {
             setIsModalOpen(false);
             fetchData();
             showToast('success', `Xóa thành công kho hàng "${deletingRecord.name}"`);
-        } catch (error) {
-            showToast('error', 'Lỗi khi thực hiện xóa dữ liệu');
+        } catch (error: any) {
+            showToast('error', error?.response?.data?.message || 'Lỗi khi thực hiện xóa dữ liệu');
         }
     };
 
@@ -124,7 +120,7 @@ const WarehouseList: React.FC = () => {
         try {
             await warehouseApi.toggleActive(id);
             fetchData();
-            showToast('success', `Đã ${currentStatus ? 'khóa' : 'kích hoạt'} kho hàng`);
+            showToast('success', `Đã ${currentStatus ? 'tạm khóa' : 'kích hoạt'} kho hàng`);
         } catch (error) {
             showToast('error', 'Không thể thay đổi trạng thái');
         }
@@ -236,12 +232,14 @@ const WarehouseList: React.FC = () => {
                                                 <div className="flex justify-center">
                                                     <button 
                                                         onClick={() => handleToggleActive(item.id, item.isActive)}
-                                                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold border transition-colors ${
+                                                        className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
                                                             item.isActive 
-                                                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200/40 hover:bg-red-50 hover:text-red-600 hover:border-red-200' 
-                                                                : 'bg-slate-100 text-slate-400 border-slate-200/50 hover:bg-emerald-50 hover:text-emerald-600 hover:border-emerald-200'
-                                                        }`}>
-                                                        <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${item.isActive ? 'bg-emerald-500' : 'bg-slate-300'}`}></span>
+                                                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100' 
+                                                                : 'bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-200'
+                                                        }`}
+                                                        title="Nhấn để đổi trạng thái"
+                                                    >
+                                                        <span className={`w-1.5 h-1.5 rounded-full ${item.isActive ? 'bg-emerald-500' : 'bg-slate-400'}`}></span>
                                                         {item.isActive ? 'Hoạt động' : 'Tạm khóa'}
                                                     </button>
                                                 </div>
@@ -279,7 +277,7 @@ const WarehouseList: React.FC = () => {
                 <ListPagination 
                     currentPage={currentPage} 
                     totalPages={totalPages} 
-                    totalItems={data.length} 
+                    totalItems={totalItems} 
                     onPageChange={setCurrentPage}
                     isLoading={isLoading}
                 />

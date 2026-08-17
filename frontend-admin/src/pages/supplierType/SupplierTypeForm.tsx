@@ -9,16 +9,29 @@ import { SupplierTypePayload } from '../../types/supplierType';
 // Shared UI Components
 import { Toast } from '../../components/commons/Toast';
 import { 
-    PageContainer, FormCard, FormInput, FormTextarea,
-    SubmitButton, FormHeader 
+    PageContainer, 
+    FormCard, 
+    FormInput, 
+    FormTextarea,
+    FormSelect,
+    FormSection,
+    SubmitButton, 
+    FormHeader 
 } from '../../components/commons/FormUI';
 
 // 1. Cấu hình giá trị khởi tạo
 const INITIAL_STATE: SupplierTypePayload = {
     code: '',
     name: '',
-    description: ''
+    description: '',
+    isActive: true
 };
+
+// Options cho trạng thái
+const STATUS_OPTIONS = [
+    { label: 'Hoạt động', value: 1 },
+    { label: 'Tạm khóa', value: 0 }
+];
 
 const SupplierTypeForm: React.FC = () => {
     const navigate = useNavigate();
@@ -55,7 +68,8 @@ const SupplierTypeForm: React.FC = () => {
                     setFormData({
                         code: res.code || '',
                         name: res.name || '',
-                        description: res.description || ''
+                        description: res.description || '',
+                        isActive: res.isActive !== false
                     });
                     setOriginalCode((res.code || '').toLowerCase());
                     setOriginalName((res.name || '').toLowerCase());
@@ -70,7 +84,7 @@ const SupplierTypeForm: React.FC = () => {
         setTimeout(() => setToast(prev => ({ ...prev, show: false })), 3000);
     };
 
-    const handleFieldChange = (field: keyof SupplierTypePayload, value: string) => {
+    const handleFieldChange = (field: keyof SupplierTypePayload, value: any) => {
         setFormData(prev => ({ ...prev, [field]: value }));
         if (errors[field]) {
             setErrors(prev => {
@@ -125,7 +139,8 @@ const SupplierTypeForm: React.FC = () => {
                 ...formData,
                 code: formData.code.trim().toUpperCase(),
                 name: formData.name.trim(),
-                description: formData.description?.trim() || ''
+                description: formData.description?.trim() || '',
+                isActive: Boolean(formData.isActive)
             };
 
             if (isEditMode && id) {
@@ -157,25 +172,37 @@ const SupplierTypeForm: React.FC = () => {
             <FormCard>
                 <form onSubmit={handleSubmit} className="flex flex-col gap-8">
                     
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
-                        <FormInput 
-                            label="Mã định danh" required placeholder="VD: DOANHNGHIEP"
-                            value={formData.code} error={errors.code} disabled={loading}
-                            onChange={e => handleFieldChange('code', e.target.value)}
-                        />
-                        <FormInput 
-                            label="Tên phân loại" required placeholder="VD: Doanh nghiệp chế biến..."
-                            value={formData.name} error={errors.name} disabled={loading}
-                            onChange={e => handleFieldChange('name', e.target.value)}
-                        />
-                        <div className="md:col-span-2">
-                            <FormTextarea 
-                                label="Mô tả chi tiết" placeholder="Nhập ghi chú hoặc mô tả chi tiết về loại nhà cung cấp này..."
-                                value={formData.description} rows={4} disabled={loading}
-                                onChange={e => handleFieldChange('description', e.target.value)}
+                    <FormSection title="Thông Tin Phân Loại">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+                            <FormInput 
+                                label="Mã định danh" required placeholder="VD: DOANHNGHIEP"
+                                value={formData.code} error={errors.code} disabled={loading}
+                                onChange={e => handleFieldChange('code', e.target.value)}
                             />
+                            
+                            <FormInput 
+                                label="Tên phân loại" required placeholder="VD: Doanh nghiệp chế biến..."
+                                value={formData.name} error={errors.name} disabled={loading}
+                                onChange={e => handleFieldChange('name', e.target.value)}
+                            />
+
+                            {/* Ô Select chọn Trạng Thái */}
+                            <FormSelect 
+                                label="Trạng thái phân loại" required 
+                                value={formData.isActive ? 1 : 0} 
+                                options={STATUS_OPTIONS}
+                                onSelect={val => handleFieldChange('isActive', val === 1)}
+                            />
+                            
+                            <div className="md:col-span-2">
+                                <FormTextarea 
+                                    label="Mô tả chi tiết" placeholder="Nhập ghi chú hoặc mô tả chi tiết về loại nhà cung cấp này..."
+                                    value={formData.description} rows={4} disabled={loading}
+                                    onChange={e => handleFieldChange('description', e.target.value)}
+                                />
+                            </div>
                         </div>
-                    </div>
+                    </FormSection>
 
                     <div className="flex justify-end pt-6 border-t border-slate-100">
                         <SubmitButton 

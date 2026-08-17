@@ -10,6 +10,7 @@ import {
     TableLoading,
     TableEmpty,
     ListPagination,
+    DateCell,
     DateTimeCell
 } from '../../components/commons/ListUI';
 import { CustomFilter } from '../../components/commons/CustomFilter';
@@ -202,12 +203,12 @@ const PurchaseOrderList: React.FC = () => {
 
                                         {/* CELL 3: NGÀY ĐẶT */}
                                         <td className="py-3 px-2 text-center">
-                                            <DateTimeCell isoString={item.orderDate} />
+                                            <DateCell isoString={item.orderDate} />
                                         </td>
 
                                         {/* CELL 4: NGÀY GIAO DỰ KIẾN */}
                                         <td className="py-3 px-2 text-center">
-                                            {item.expectedDeliveryDate ? <DateTimeCell isoString={item.expectedDeliveryDate} /> : <span className="text-slate-400">-</span>}
+                                            <DateCell isoString={item.expectedDeliveryDate} />
                                         </td>
 
                                         {/* CELL 5: TRẠNG THÁI */}

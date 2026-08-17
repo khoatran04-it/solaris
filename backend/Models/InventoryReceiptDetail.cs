@@ -1,14 +1,24 @@
 namespace backend.Models
 {
+    /// <summary>
+    /// Dòng chi tiết kiểm đếm mặt hàng trong Phiếu Nhập Kho.
+    /// </summary>
     public class InventoryReceiptDetail
     {
         public int Id { get; set; }
 
         // --- SỐ LIỆU KIỂM ĐẾM THỰC TẾ ---
-        public decimal ExpectedQuantity { get; set; } // Số lượng dự kiến (từ PO hoặc tự nhập nếu không có PO)
-        public decimal AcceptedQuantity { get; set; } // SL đạt chuẩn -> Cộng vào QuantityAvailable khi Completed
-        public decimal RejectedQuantity { get; set; } // SL bị từ chối (dập nát, sai quy cách, hư hỏng)
-        public string? RejectReason { get; set; } // Lý do từ chối (VD: Thối rữa, sai khối lượng)
+        /// <summary>Số lượng dự kiến giao (từ đơn PO hoặc hóa đơn giao hàng của NCC)</summary>
+        public decimal ExpectedQuantity { get; set; }
+
+        /// <summary>Số lượng đạt chuẩn kiểm định -> Được cộng trực tiếp vào QuantityAvailable khi Hoàn tất</summary>
+        public decimal AcceptedQuantity { get; set; }
+
+        /// <summary>Số lượng bị từ chối / trả về ngay tại cửa kho (dập nát, thối rữa, sai quy cách)</summary>
+        public decimal RejectedQuantity { get; set; }
+
+        /// <summary>Lý do từ chối nhận hàng</summary>
+        public string? RejectReason { get; set; }
 
         // --- NAVIGATION PROPERTIES ---
         public int InventoryReceiptId { get; set; }
@@ -17,16 +27,15 @@ namespace backend.Models
         public int VariantId { get; set; }
         public virtual ProductVariant? Variant { get; set; }
 
-        // Trỏ về Lô hàng (ProductBatch) -> Biết nhập lô gì, truy vết NSX/HSD/NCC
+        /// <summary>Lô hàng nông sản được tạo hoặc chọn để nhập</summary>
         public int BatchId { get; set; }
         public virtual ProductBatch? Batch { get; set; }
 
-        // Đơn vị tính khi nhập kho (VD: Kg, Thùng, Khay)
+        /// <summary>Đơn vị tính khi nhập kho (Kg, Thùng, Hộp...)</summary>
         public int UoMId { get; set; }
         public virtual UoM? UoM { get; set; }
 
-        // Liên kết ngược về dòng PO gốc (Nullable: nhập kho không qua PO thì để null)
-        // Đặt ở Detail level để 1 Phiếu Nhập (IR) có thể chứa hàng từ nhiều PO khác nhau
+        /// <summary>ID dòng PO tham chiếu (nếu nhập hàng theo PO)</summary>
         public int? PurchaseOrderDetailId { get; set; }
         public virtual PurchaseOrderDetail? PurchaseOrderDetail { get; set; }
     }

@@ -119,6 +119,24 @@ export interface Order {
     updatedAt: string;
 
     details: OrderDetail[];
+    issuedItems?: OrderIssuedItem[];
+}
+
+export interface OrderIssuedItem {
+    orderDetailId?: number;
+    variantId: number;
+    variantName: string;
+    variantCode: string;
+    batchId: number;
+    batchCode: string;
+    expiryDate?: string;
+    uoMId: number;
+    uoMName: string;
+    quantityIssued: number;
+    unitPrice: number;
+    totalPrice: number;
+    issueCode: string;
+    issueDate: string;
 }
 
 // =========================================================

@@ -17,7 +17,7 @@ export const orderApi = {
         return axiosClient.get(`/Orders/${id}`);
     },
 
-    create: (data: OrderCreatePayload): Promise<{ id: number }> => {
+    create: (data: OrderCreatePayload): Promise<{ id: number; message?: string }> => {
         return axiosClient.post('/Orders', data);
     },
 
@@ -25,11 +25,15 @@ export const orderApi = {
         return axiosClient.post('/Orders/routing-preview', data);
     },
 
-    updateStatus: (id: number, data: OrderUpdatePayload): Promise<void> => {
+    updateStatus: (id: number, data: OrderUpdatePayload): Promise<{ message?: string }> => {
         return axiosClient.put(`/Orders/${id}/status`, data);
     },
 
-    cancel: (id: number, reason: string): Promise<void> => {
+    cancel: (id: number, reason: string): Promise<{ message?: string }> => {
         return axiosClient.post(`/Orders/${id}/cancel`, { reason });
+    },
+
+    delete: (id: number): Promise<{ message?: string }> => {
+        return axiosClient.delete(`/Orders/${id}`);
     },
 };

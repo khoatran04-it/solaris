@@ -68,7 +68,7 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-builder.Services.AddAutoMapper(cfg => cfg.AddMaps(AppDomain.CurrentDomain.GetAssemblies()));
+builder.Services.AddAutoMapper(cfg => cfg.AddMaps(typeof(Program).Assembly));
 
 // ==========================================
 // 🔥 CẤU HÌNH JWT AUTHENTICATION
@@ -163,8 +163,6 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
-
 app.UseCors("AllowViteApp");
 
 // 🔥 BẮT BUỘC: Authentication (Xác thực ai là ai) phải nằm trước Authorization (Xác thực có quyền gì)
@@ -172,5 +170,34 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+// Tự động chuẩn hóa dữ liệu trạng thái khi khởi động
+using (var scope = app.Services.CreateScope())
+{
+    try
+    {
+        var db = scope.ServiceProvider.GetRequiredService<SolarisDbContext>();
+        db.Database.ExecuteSqlRaw("UPDATE SupplierTypes SET IsActive = 1 WHERE IsActive = 0 AND IsDeleted = 0;");
+        db.Database.ExecuteSqlRaw("UPDATE CustomerTypes SET IsActive = 1 WHERE IsActive = 0 AND IsDeleted = 0;");
+        db.Database.ExecuteSqlRaw("UPDATE CustomerTiers SET IsActive = 1 WHERE IsActive = 0 AND IsDeleted = 0;");
+        db.Database.ExecuteSqlRaw("UPDATE CustomerGroups SET IsActive = 1 WHERE IsActive = 0 AND IsDeleted = 0;");
+        db.Database.ExecuteSqlRaw("UPDATE ProductCategoryGroups SET IsActive = 1 WHERE IsActive = 0 AND IsDeleted = 0;");
+        db.Database.ExecuteSqlRaw("UPDATE ProductCategories SET IsActive = 1 WHERE IsActive = 0 AND IsDeleted = 0;");
+        db.Database.ExecuteSqlRaw("UPDATE UoMCategories SET IsActive = 1 WHERE IsActive = 0 AND IsDeleted = 0;");
+        db.Database.ExecuteSqlRaw("UPDATE UoMs SET IsActive = 1 WHERE IsActive = 0 AND IsDeleted = 0;");
+        db.Database.ExecuteSqlRaw("UPDATE UoMConversions SET IsActive = 1 WHERE IsActive = 0 AND IsDeleted = 0;");
+        db.Database.ExecuteSqlRaw("UPDATE Products SET IsActive = 1 WHERE IsActive = 0 AND IsDeleted = 0;");
+        db.Database.ExecuteSqlRaw("UPDATE AttributeDefinitions SET IsActive = 1 WHERE IsActive = 0 AND IsDeleted = 0;");
+        db.Database.ExecuteSqlRaw("UPDATE ProductAttributes SET IsActive = 1 WHERE IsActive = 0 AND IsDeleted = 0;");
+        db.Database.ExecuteSqlRaw("UPDATE ProductVariants SET IsActive = 1 WHERE IsActive = 0 AND IsDeleted = 0;");
+        db.Database.ExecuteSqlRaw("UPDATE PromotionCampaigns SET IsActive = 1 WHERE IsActive = 0 AND IsDeleted = 0;");
+        db.Database.ExecuteSqlRaw("UPDATE Warehouses SET IsActive = 1 WHERE IsActive = 0 AND IsDeleted = 0;");
+        db.Database.ExecuteSqlRaw("UPDATE SupplierProducts SET IsActive = 1 WHERE IsActive = 0 AND IsDeleted = 0;");
+    }
+    catch
+    {
+        // Bỏ qua nếu database chưa sẵn sàng hoặc trong quá trình khởi tạo migration
+    }
+}
 
 app.Run();

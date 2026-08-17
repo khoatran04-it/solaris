@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+using AutoMapper;
 using backend.Data;
 using backend.DTOs;
 using backend.DTOs.SupplierTypeDTOs;
@@ -8,13 +8,11 @@ using Microsoft.EntityFrameworkCore;
 
 namespace backend.Services
 {
+    /// <summary>
+    /// Service xử lý logic nghiệp vụ Phân loại Nhà cung cấp (Supplier Type).
+    /// </summary>
     public class SupplierTypeService : ISupplierTypeService
     {
-        // ==========================================
-        // SECTION: FIELDS & CONSTRUCTOR
-        // ==========================================
-        #region Fields & Constructor
-
         private readonly SolarisDbContext _context;
         private readonly IMapper _mapper;
 
@@ -24,16 +22,13 @@ namespace backend.Services
             _mapper = mapper;
         }
 
-        #endregion
-
-
         // ==========================================
         // SECTION: READ OPERATIONS (QUERIES)
         // ==========================================
         #region Read Operations
 
         /// <summary>
-        /// Lấy toàn bộ danh sách phân loại nhà cung cấp (không phân trang)
+        /// Lấy toàn bộ danh sách phân loại nhà cung cấp (không phân trang, phục vụ dropdown)
         /// </summary>
         public async Task<IEnumerable<SupplierTypeReadDto>> GetAllListAsync()
         {
@@ -46,11 +41,12 @@ namespace backend.Services
         }
 
         /// <summary>
-        /// Lấy danh sách phân loại nhà cung cấp có phân trang và tìm kiếm
+        /// Lấy danh sách phân loại nhà cung cấp có phân trang, tìm kiếm và lọc trạng thái
         /// </summary>
         public async Task<PagedResult<SupplierTypeReadDto>> GetPagedAsync(
             string? search,
             string? names,
+            bool? isActive,
             DateTime? createdAt,
             DateTime? updatedAt,
             int pageIndex,
@@ -68,14 +64,20 @@ namespace backend.Services
                 );
             }
 
-            // 2. Filter: Tìm kiếm theo danh sách tên cụ thể
+            // 2. Filter: Trạng thái hoạt động
+            if (isActive.HasValue)
+            {
+                query = query.Where(x => x.IsActive == isActive.Value);
+            }
+
+            // 3. Filter: Theo danh sách tên
             if (!string.IsNullOrWhiteSpace(names))
             {
                 var nameList = names.Split(',').Select(n => n.Trim().ToLower()).ToList();
                 query = query.Where(x => nameList.Contains(x.Name.ToLower()));
             }
 
-            // 3. Filter: Theo ngày tạo
+            // 4. Filter: Theo ngày tạo
             if (createdAt.HasValue)
             {
                 var startDate = createdAt.Value.Date;
@@ -83,7 +85,7 @@ namespace backend.Services
                 query = query.Where(x => x.CreatedAt >= startDate && x.CreatedAt < endDate);
             }
 
-            // 4. Filter: Theo ngày cập nhật
+            // 5. Filter: Theo ngày cập nhật
             if (updatedAt.HasValue)
             {
                 var startDate = updatedAt.Value.Date;
@@ -93,7 +95,6 @@ namespace backend.Services
 
             var totalRecords = await query.CountAsync();
 
-            // Thực hiện phân trang và tối ưu hóa truy vấn
             var items = await query
                 .OrderByDescending(x => x.Id)
                 .Skip((pageIndex - 1) * pageSize)
@@ -119,7 +120,8 @@ namespace backend.Services
         public async Task<SupplierTypeReadDto?> GetByIdAsync(int id)
         {
             var type = await _context.SupplierTypes
-                .FindAsync(id);
+                .AsNoTracking()
+                .FirstOrDefaultAsync(x => x.Id == id);
 
             if (type == null) return null;
 
@@ -127,7 +129,6 @@ namespace backend.Services
         }
 
         #endregion
-
 
         // ==========================================
         // SECTION: WRITE OPERATIONS (COMMANDS)
@@ -144,6 +145,9 @@ namespace backend.Services
                 throw new Exception("Mã phân loại đã tồn tại.");
 
             var entity = _mapper.Map<SupplierType>(dto);
+            entity.CreatedAt = DateTime.UtcNow;
+            entity.UpdatedAt = DateTime.UtcNow;
+            entity.IsActive = dto.IsActive;
 
             _context.SupplierTypes.Add(entity);
             await _context.SaveChangesAsync();
@@ -165,22 +169,44 @@ namespace backend.Services
                 throw new Exception("Cập nhật thất bại: Mã phân loại này đã bị trùng lặp với một dòng dữ liệu khác.");
 
             _mapper.Map(dto, entity);
+            entity.UpdatedAt = DateTime.UtcNow;
+            entity.IsActive = dto.IsActive; // Đảm bảo trạng thái hoạt động chính xác từ DTO
             await _context.SaveChangesAsync();
 
             return true;
         }
 
         /// <summary>
-        /// Xóa phân loại nhà cung cấp
+        /// Xóa phân loại nhà cung cấp (chống xóa nếu đang có NCC liên kết)
         /// </summary>
         public async Task<bool> DeleteAsync(int id)
         {
-            var entity = await _context.SupplierTypes.FindAsync(id);
+            var entity = await _context.SupplierTypes
+                .Include(x => x.Suppliers)
+                .FirstOrDefaultAsync(x => x.Id == id);
+
             if (entity == null)
                 throw new KeyNotFoundException("Không tìm thấy phân loại cần xóa.");
 
-            // Thao tác Remove sẽ được Global Interceptor chuyển thành Update DeletedAt nếu dùng Soft Delete
+            if (entity.Suppliers.Any(s => !s.IsDeleted))
+                throw new Exception("Không thể xóa phân loại này vì đang có nhà cung cấp trực thuộc.");
+
             _context.SupplierTypes.Remove(entity);
+            await _context.SaveChangesAsync();
+
+            return true;
+        }
+
+        /// <summary>
+        /// Chuyển đổi trạng thái hoạt động (Kích hoạt/Tạm khóa) của loại nhà cung cấp.
+        /// </summary>
+        public async Task<bool> ToggleActiveAsync(int id)
+        {
+            var entity = await _context.SupplierTypes.FindAsync(id);
+            if (entity == null) throw new KeyNotFoundException("Không tìm thấy loại nhà cung cấp.");
+
+            entity.IsActive = !entity.IsActive;
+            entity.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
 
             return true;

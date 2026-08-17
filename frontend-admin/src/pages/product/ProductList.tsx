@@ -33,6 +33,7 @@ const ProductList: React.FC = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [currentPage, setCurrentPage] = useState(1);
     const [totalPages, setTotalPages] = useState(0);
+    const [totalItems, setTotalItems] = useState(0);
     const [searchTerm, setSearchTerm] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
     const pageSize = 10;
@@ -63,7 +64,7 @@ const ProductList: React.FC = () => {
     useEffect(() => {
         Promise.all([
             productCategoryApi.getAllList(),
-            uomApi.getAllList() // Giả định sếp có API này để lấy danh sách ĐVT (Hộp, Kg, Cái...)
+            uomApi.getAllList()
         ]).then(([categories, uoms]) => {
             setCategoryOptions(categories.map(c => ({ label: c.name, value: c.id })));
             setUomOptions(uoms.map(u => ({ label: u.name, value: u.id })));
@@ -96,8 +97,9 @@ const ProductList: React.FC = () => {
                 updatedAt: updatedAtFilter ? updatedAtFilter.toLocaleDateString('en-CA') : undefined
             });
             
-            setData(response.items);
-            setTotalPages(response.totalPages);
+            setData(response.items || []);
+            setTotalPages(response.totalPages || 0);
+            setTotalItems(response.totalRecords || 0);
         } catch (error) {
             showToast('error', 'CÓ LỖI XẢY RA KHI TẢI DỮ LIỆU');
         } finally {
@@ -128,6 +130,16 @@ const ProductList: React.FC = () => {
         }
     };
 
+    const handleToggleActive = async (id: number, currentStatus: boolean) => {
+        try {
+            await productApi.toggleActive(id);
+            fetchData();
+            showToast('success', `Đã chuyển sản phẩm sang trạng thái ${currentStatus ? 'Ngừng bán' : 'Đang bán'}`);
+        } catch (error) {
+            showToast('error', 'Không thể thay đổi trạng thái sản phẩm');
+        }
+    };
+
     return (    
         <ListPageContainer>
             <Toast {...toast} />
@@ -138,7 +150,7 @@ const ProductList: React.FC = () => {
                 searchTerm={searchTerm}
                 onSearchChange={setSearchTerm}
                 onAdd={() => navigate('/products/create')}
-                icon={Package} // Icon Hộp hàng (Package) phù hợp nhất cho Sản phẩm
+                icon={Package}
                 searchPlaceholder="Tìm theo tên, mã SKU sản phẩm..."
             />
 
@@ -147,7 +159,6 @@ const ProductList: React.FC = () => {
                     <table className="w-full text-left border-collapse">
                         <thead>
                             <tr className="bg-slate-50/70 border-b border-slate-100">
-                                {/* Cột Profile */}
                                 <th className="w-[30%] py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider text-left">Sản Phẩm</th>
                                 
                                 <th className="w-[14%] py-4 px-2 text-xs font-bold text-slate-500 uppercase tracking-wider">
@@ -182,7 +193,7 @@ const ProductList: React.FC = () => {
                         
                         <tbody className="divide-y divide-slate-100">
                             {isLoading ? (
-                                <TableLoading colSpan={7} /> // Bảng này có 7 cột
+                                <TableLoading colSpan={7} />
                             ) : data.length > 0 ? (
                                 data.map((item) => (
                                     <tr key={item.id} className="hover:bg-slate-50/80 transition-colors duration-200 group">
@@ -229,38 +240,33 @@ const ProductList: React.FC = () => {
                                             </span>
                                         </td>
 
-                                        {/* CELL 4: STATUS */}
+                                        {/* CELL 4: STATUS VỚI TOGGLE */}
                                         <td className="py-3 px-2 text-center">
-                                            <div className="flex justify-center">
-                                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold border ${
+                                            <button
+                                                onClick={() => handleToggleActive(item.id, item.isActive)}
+                                                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
                                                     item.isActive 
-                                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200/40' 
-                                                    : 'bg-rose-50 text-rose-600 border-rose-200/50'
-                                                }`}>
-                                                    <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${item.isActive ? 'bg-emerald-500' : 'bg-rose-500'}`}></span>
-                                                    {item.isActive ? 'Đang bán' : 'Ngừng bán'}
-                                                </span>
-                                            </div>
+                                                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100' 
+                                                        : 'bg-rose-50 text-rose-600 border border-rose-200 hover:bg-rose-100'
+                                                }`}
+                                                title="Nhấn để đổi trạng thái"
+                                            >
+                                                <span className={`w-1.5 h-1.5 rounded-full ${item.isActive ? 'bg-emerald-500' : 'bg-rose-500'}`}></span>
+                                                {item.isActive ? 'Đang bán' : 'Ngừng bán'}
+                                            </button>
                                         </td>
 
                                         {/* CELL 5 & 6: DATES */}
-                                        <td className="py-3 px-2">
+                                        <td className="py-3 px-2 text-center">
                                             <DateTimeCell isoString={item.createdAt} />
                                         </td>
-                                        <td className="py-3 px-2">
+                                        <td className="py-3 px-2 text-center">
                                             <DateTimeCell isoString={item.updatedAt} />
                                         </td>
 
                                         {/* CELL 7: ACTIONS */}
                                         <td className="py-3 px-6">
                                             <div className="flex justify-center gap-1.5 opacity-40 group-hover:opacity-100 transition-all duration-300">
-                                                <button 
-                                                    onClick={() => navigate(`/products/${item.id}`)}
-                                                    className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
-                                                    title="Xem chi tiết"
-                                                >
-                                                    <Eye size={17} strokeWidth={2.5} />
-                                                </button>
                                                 <button 
                                                     onClick={() => navigate(`/products/edit/${item.id}`)}
                                                     className="p-1.5 text-slate-400 hover:text-yellow-600 hover:bg-yellow-50 rounded-lg transition-colors"
@@ -289,7 +295,7 @@ const ProductList: React.FC = () => {
                 <ListPagination 
                     currentPage={currentPage} 
                     totalPages={totalPages} 
-                    totalItems={data.length} 
+                    totalItems={totalItems} 
                     onPageChange={setCurrentPage}
                     isLoading={isLoading}
                 />

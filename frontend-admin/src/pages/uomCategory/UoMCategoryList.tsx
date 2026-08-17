@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Layers, Edit3, Trash2, Eye } from 'lucide-react';
+import { Layers, Edit3, Trash2 } from 'lucide-react';
 
 // API & Types
 import { uomCategoryApi } from '../../api/uomCategoryApi';
@@ -31,6 +31,7 @@ const UoMCategoryList: React.FC = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [currentPage, setCurrentPage] = useState(1);
     const [totalPages, setTotalPages] = useState(0);
+    const [totalItems, setTotalItems] = useState(0);
     const [searchTerm, setSearchTerm] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
     const pageSize = 10;
@@ -76,8 +77,9 @@ const UoMCategoryList: React.FC = () => {
                 updatedAt: updatedAtFilter ? updatedAtFilter.toLocaleDateString('en-CA') : undefined
             });
             
-            setData(response.items);
-            setTotalPages(response.totalPages);
+            setData(response.items || []);
+            setTotalPages(response.totalPages || 0);
+            setTotalItems(response.totalRecords || 0);
         } catch (error) {
             showToast('error', 'CÓ LỖI XẢY RA KHI TẢI DỮ LIỆU');
         } finally {
@@ -103,8 +105,18 @@ const UoMCategoryList: React.FC = () => {
             setIsModalOpen(false);
             fetchData();
             showToast('success', `Xóa thành công nhóm "${deletingRecord.name}"`);
+        } catch (error: any) {
+            showToast('error', error?.response?.data?.message || 'Lỗi khi thực hiện xóa dữ liệu. Đảm bảo nhóm này không chứa đơn vị nào.');
+        }
+    };
+
+    const handleToggleActive = async (id: number, currentStatus: boolean) => {
+        try {
+            await uomCategoryApi.toggleActive(id);
+            fetchData();
+            showToast('success', `Đã ${currentStatus ? 'tạm khóa' : 'kích hoạt'} nhóm đơn vị tính`);
         } catch (error) {
-            showToast('error', 'Lỗi khi thực hiện xóa dữ liệu. Đảm bảo nhóm này không chứa đơn vị nào.');
+            showToast('error', 'Không thể thay đổi trạng thái hoạt động');
         }
     };
 
@@ -169,16 +181,18 @@ const UoMCategoryList: React.FC = () => {
                                         </td>
 
                                         <td className="py-4 px-2 text-center">
-                                            <div className="flex justify-center">
-                                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold border ${
-                                                    item.isActive 
-                                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200/40' 
-                                                    : 'bg-slate-100 text-slate-400 border-slate-200/50'
-                                                }`}>
-                                                    <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${item.isActive ? 'bg-emerald-500' : 'bg-slate-300'}`}></span>
-                                                    {item.isActive ? 'Hoạt động' : 'Tạm khóa'}
-                                                </span>
-                                            </div>
+                                            <button
+                                                onClick={() => handleToggleActive(item.id, item.isActive)}
+                                                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                                                    item.isActive
+                                                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100'
+                                                        : 'bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-200'
+                                                }`}
+                                                title="Nhấn để đổi trạng thái"
+                                            >
+                                                <span className={`w-1.5 h-1.5 rounded-full ${item.isActive ? 'bg-emerald-500' : 'bg-slate-400'}`}></span>
+                                                {item.isActive ? 'Hoạt động' : 'Tạm khóa'}
+                                            </button>
                                         </td>
 
                                         <td className="py-4 px-2 text-center">
@@ -219,7 +233,7 @@ const UoMCategoryList: React.FC = () => {
                 <ListPagination 
                     currentPage={currentPage} 
                     totalPages={totalPages} 
-                    totalItems={data.length} 
+                    totalItems={totalItems} 
                     onPageChange={setCurrentPage}
                     isLoading={isLoading}
                 />

@@ -1,14 +1,19 @@
-﻿using backend.DTOs;
+using backend.DTOs;
 using backend.DTOs.InventoryDTOs;
 
 namespace backend.Services.Interfaces
 {
     public interface IWarehouseService
     {
-        Task<IEnumerable<WarehouseReadDto>> GetAllListAsync();
+        Task<IEnumerable<WarehouseReadDto>> GetAllListAsync(bool isActiveOnly = false);
 
-        // Bổ sung thêm string? province vào hàm Paged
-        Task<PagedResult<WarehouseReadDto>> GetPagedAsync(string? search, bool? isActive, string? province, int pageIndex, int pageSize);
+        Task<PagedResult<WarehouseReadDto>> GetPagedAsync(
+            string? search,
+            bool? isActive,
+            string? province,
+            int pageIndex,
+            int pageSize
+        );
 
         Task<WarehouseReadDto> GetByIdAsync(int id);
         Task<int> CreateAsync(WarehouseCreateDto dto);

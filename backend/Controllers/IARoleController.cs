@@ -1,15 +1,18 @@
-﻿using backend.DTOs.AuthDTOs;
+using backend.DTOs.AuthDTOs;
 using backend.Services.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace backend.Controllers
 {
+    /// <summary>
+    /// API Quản trị Vai trò (Roles) và Phân quyền trong hệ thống.
+    /// </summary>
     [Route("api/ia-roles")]
     [ApiController]
-    // [Authorize] // Tạm comment lại để sếp dễ test bằng Swagger, test xong nhớ mở ra nhé!
+    [Authorize]
     public class IARoleController : ControllerBase
     {
-        // 🔥 Đã sửa: Tiêm Interface IIARoleService
         private readonly IIARoleService _roleService;
 
         public IARoleController(IIARoleService roleService)
@@ -17,13 +20,23 @@ namespace backend.Controllers
             _roleService = roleService;
         }
 
+        /// <summary>
+        /// Lấy danh sách vai trò có phân trang và tìm kiếm.
+        /// </summary>
         [HttpGet]
-        public async Task<IActionResult> GetPaged([FromQuery] string? search, [FromQuery] bool? isActive, [FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10)
+        public async Task<IActionResult> GetPaged(
+            [FromQuery] string? search,
+            [FromQuery] bool? isActive,
+            [FromQuery] int pageIndex = 1,
+            [FromQuery] int pageSize = 10)
         {
             var result = await _roleService.GetPagedAsync(search, isActive, pageIndex, pageSize);
             return Ok(result);
         }
 
+        /// <summary>
+        /// Lấy toàn bộ danh sách vai trò phục vụ dropdown.
+        /// </summary>
         [HttpGet("all")]
         public async Task<IActionResult> GetAllList()
         {
@@ -31,6 +44,9 @@ namespace backend.Controllers
             return Ok(result);
         }
 
+        /// <summary>
+        /// Lấy thông tin chi tiết vai trò theo ID.
+        /// </summary>
         [HttpGet("{id}")]
         public async Task<IActionResult> GetById(int id)
         {
@@ -45,13 +61,16 @@ namespace backend.Controllers
             }
         }
 
+        /// <summary>
+        /// Tạo mới vai trò.
+        /// </summary>
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] IARoleCreateDto dto)
         {
             try
             {
                 var id = await _roleService.CreateAsync(dto);
-                return Ok(new { message = "Tạo vai trò thành công.", id });
+                return CreatedAtAction(nameof(GetById), new { id }, new { message = "Tạo vai trò thành công.", id });
             }
             catch (Exception ex)
             {
@@ -59,6 +78,9 @@ namespace backend.Controllers
             }
         }
 
+        /// <summary>
+        /// Cập nhật thông tin vai trò và danh sách quyền hạn.
+        /// </summary>
         [HttpPut("{id}")]
         public async Task<IActionResult> Update(int id, [FromBody] IARoleUpdateDto dto)
         {
@@ -77,6 +99,9 @@ namespace backend.Controllers
             }
         }
 
+        /// <summary>
+        /// Xóa mềm vai trò.
+        /// </summary>
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(int id)
         {
@@ -89,8 +114,15 @@ namespace backend.Controllers
             {
                 return NotFound(new { message = ex.Message });
             }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
         }
 
+        /// <summary>
+        /// Bật / tắt trạng thái hoạt động của vai trò.
+        /// </summary>
         [HttpPatch("{id}/toggle-active")]
         public async Task<IActionResult> ToggleActive(int id)
         {
@@ -102,6 +134,10 @@ namespace backend.Controllers
             catch (KeyNotFoundException ex)
             {
                 return NotFound(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
             }
         }
     }

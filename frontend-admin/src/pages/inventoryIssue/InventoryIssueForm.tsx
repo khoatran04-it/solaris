@@ -267,8 +267,7 @@ const InventoryIssueForm: React.FC = () => {
         orderId: formData.orderId ? Number(formData.orderId) : undefined,
         warehouseId: Number(formData.warehouseId),
         issuedById: userInfo?.id || 1,
-        // Ép múi giờ UTC an toàn
-        issueDate: new Date(`${formData.issueDate}T12:00:00Z`).toISOString(),
+        issueDate: `${formData.issueDate}T00:00:00Z`,
         receiverName: formData.receiverName.trim(),
         receiverPhone: formData.receiverPhone.trim(),
         deliveryAddress: formData.deliveryAddress.trim(),

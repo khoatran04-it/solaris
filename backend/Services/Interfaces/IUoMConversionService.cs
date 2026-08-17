@@ -1,37 +1,40 @@
-﻿using backend.DTOs;
+using backend.DTOs;
 using backend.DTOs.UoMConversionDTOs;
 
 namespace backend.Services.Interfaces
 {
+    /// <summary>
+    /// Giao diện Service quản lý và tính toán Quy tắc Quy đổi Đơn vị tính (UoM Conversion).
+    /// </summary>
     public interface IUoMConversionService
     {
-        // 1. GET ALL (Load Dropdown)
-        Task<IEnumerable<UoMConversionReadDto>> GetAllListAsync();
+        /// <summary>Lấy toàn bộ danh sách quy tắc quy đổi không phân trang (hỗ trợ lọc đang hoạt động)</summary>
+        Task<IEnumerable<UoMConversionReadDto>> GetAllListAsync(bool isActiveOnly = false);
 
-        // 2. GET PAGED (Load Table UI, search & filter)
+        /// <summary>Lấy danh sách quy tắc quy đổi có phân trang, tìm kiếm và lọc nâng cao</summary>
         Task<PagedResult<UoMConversionReadDto>> GetPagedAsync(
             string? search,
-            int? productId, // Lọc riêng quy đổi của 1 sản phẩm
-            bool? isStandard, // true: Chỉ lấy quy đổi chung, false: Lấy quy đổi riêng biệt
+            int? productId,
+            bool? isStandard,
             bool? isActive,
             DateTime? createdAt,
             DateTime? updatedAt,
             int pageIndex,
             int pageSize);
 
-        // 3. GET BY ID
+        /// <summary>Lấy thông tin chi tiết quy tắc quy đổi theo ID</summary>
         Task<UoMConversionReadDto?> GetByIdAsync(int id);
 
-        // 4. CREATE
+        /// <summary>Tạo mới quy tắc quy đổi (thẩm định kiểm tra vòng lặp và cùng nhóm ĐVT)</summary>
         Task<int> CreateAsync(UoMConversionCreateDto dto);
 
-        // 5. UPDATE
+        /// <summary>Cập nhật quy tắc quy đổi</summary>
         Task<bool> UpdateAsync(int id, UoMConversionUpdateDto dto);
 
-        // 6. DELETE
+        /// <summary>Xóa mềm quy tắc quy đổi</summary>
         Task<bool> DeleteAsync(int id);
 
-        // 7. TOGGLE
+        /// <summary>Kích hoạt hoặc tạm khóa quy tắc quy đổi</summary>
         Task<bool> ToggleActiveAsync(int id);
     }
 }

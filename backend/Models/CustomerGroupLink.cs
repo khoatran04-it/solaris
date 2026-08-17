@@ -1,5 +1,8 @@
-﻿namespace backend.Models
+namespace backend.Models
 {
+    /// <summary>
+    /// Thực thể liên kết Nhiều - Nhiều giữa Khách Hàng và Nhóm Khách Hàng.
+    /// </summary>
     public class CustomerGroupLink
     {
         // --- FOREIGN KEY ---
@@ -9,7 +12,7 @@
         public int CustomerGroupId { get; set; }
         public virtual CustomerGroup? CustomerGroup { get; set; }
 
-        public DateTime AssignedAt { get; set; }
+        public DateTime AssignedAt { get; set; } = DateTime.UtcNow;
 
         // --- SOFT DELETE ---
         public bool IsDeleted { get; set; } = false;

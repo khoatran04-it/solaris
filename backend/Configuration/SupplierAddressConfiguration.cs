@@ -1,4 +1,4 @@
-﻿using backend.Models;
+using backend.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -30,7 +30,7 @@ namespace backend.Configurations
             builder.Property(x => x.IsDeleted).HasDefaultValue(false);
             builder.HasQueryFilter(x => !x.IsDeleted);
 
-            /// Cho phép xóa Cascase: xóa nhà cung cấp thì xóa luôn danh sách địa chỉ của nó
+            // Cascade delete: xóa nhà cung cấp thì xóa luôn danh sách địa chỉ của nó
             builder.HasOne(x => x.Supplier)
                    .WithMany(c => c.Addresses)
                    .HasForeignKey(x => x.SupplierId)

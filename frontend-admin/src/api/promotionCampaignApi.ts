@@ -14,8 +14,8 @@ export const promotionCampaignApi = {
     },
 
     // GET ALL (Lấy tất cả không phân trang)
-    getAllList: (): Promise<PromotionCampaign[]> => {
-        return axiosClient.get('/PromotionCampaigns/all');
+    getAllList: (isActiveOnly: boolean = false): Promise<PromotionCampaign[]> => {
+        return axiosClient.get('/PromotionCampaigns/all', { params: { isActive: isActiveOnly ? true : undefined } });
     },
 
     // 2. GET by ID
@@ -23,12 +23,12 @@ export const promotionCampaignApi = {
         return axiosClient.get(`/PromotionCampaigns/${id}`);
     },
 
-    // 3. POST (Tạo vỏ chiến dịch - Backend trả về kèm Id mới tạo)
-    create: (data: PromotionCampaignPayload): Promise<{ message: string; id: number }> => {
+    // 3. POST
+    create: (data: PromotionCampaignPayload): Promise<PromotionCampaign> => {
         return axiosClient.post('/PromotionCampaigns', data);
     },
 
-    // 4. PUT (Cập nhật vỏ chiến dịch)
+    // 4. PUT
     update: (id: number, data: PromotionCampaignPayload): Promise<void> => {
         return axiosClient.put(`/PromotionCampaigns/${id}`, data);
     },
@@ -43,7 +43,7 @@ export const promotionCampaignApi = {
         return axiosClient.patch(`/PromotionCampaigns/${id}/toggle-active`);
     },
 
-    // 7. ACTION POST: Gắn hàng loạt sản phẩm vào chiến dịch
+    // 7. ACTION POST: Gắn / Đồng bộ hàng loạt sản phẩm vào chiến dịch
     addVariants: (id: number, data: ApplyVariantsToCampaignPayload): Promise<void> => {
         return axiosClient.post(`/PromotionCampaigns/${id}/add-variants`, data);
     },

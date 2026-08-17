@@ -1,12 +1,18 @@
-﻿using backend.DTOs;
+using backend.DTOs;
 using backend.DTOs.PromotionCampaignDTOs;
 using backend.Services.Interfaces;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace backend.Controllers
 {
+    /// <summary>
+    /// API Quản lý Chiến dịch Khuyến mãi & Giảm giá (Promotion Campaigns).
+    /// </summary>
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class PromotionCampaignsController : ControllerBase
     {
         private readonly IPromotionCampaignService _service;
@@ -22,9 +28,9 @@ namespace backend.Controllers
 
         [HttpGet("all")]
         [ProducesResponseType(typeof(IEnumerable<PromotionCampaignReadDto>), StatusCodes.Status200OK)]
-        public async Task<IActionResult> GetAllList()
+        public async Task<IActionResult> GetAllList([FromQuery] bool? isActive = null)
         {
-            var data = await _service.GetAllListAsync();
+            var data = await _service.GetAllListAsync(isActive ?? false);
             return Ok(data);
         }
 
@@ -63,14 +69,15 @@ namespace backend.Controllers
         // =======================================================
 
         [HttpPost]
-        [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(PromotionCampaignReadDto), StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Create([FromBody] PromotionCampaignCreateDto dto)
         {
             try
             {
                 int newId = await _service.CreateAsync(dto);
-                return Ok(new { Message = "Tạo chiến dịch khuyến mãi thành công", Id = newId });
+                var created = await _service.GetByIdAsync(newId);
+                return CreatedAtAction(nameof(GetById), new { id = newId }, created);
             }
             catch (Exception ex)
             {
@@ -79,7 +86,7 @@ namespace backend.Controllers
         }
 
         [HttpPut("{id}")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Update(int id, [FromBody] PromotionCampaignUpdateDto dto)
@@ -87,7 +94,7 @@ namespace backend.Controllers
             try
             {
                 await _service.UpdateAsync(id, dto);
-                return Ok(new { Message = "Cập nhật chiến dịch thành công" });
+                return NoContent();
             }
             catch (KeyNotFoundException ex)
             {
@@ -100,7 +107,7 @@ namespace backend.Controllers
         }
 
         [HttpDelete("{id}")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Delete(int id)
@@ -108,7 +115,7 @@ namespace backend.Controllers
             try
             {
                 await _service.DeleteAsync(id);
-                return Ok(new { Message = "Xóa chiến dịch thành công" });
+                return NoContent();
             }
             catch (KeyNotFoundException ex)
             {
@@ -121,8 +128,10 @@ namespace backend.Controllers
         }
 
         [HttpPatch("{id}/toggle-active")]
+        [HttpPut("{id}/toggle-active")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> ToggleActive(int id)
         {
             try
@@ -152,7 +161,11 @@ namespace backend.Controllers
             try
             {
                 await _service.AddVariantsToCampaignAsync(id, dto);
-                return Ok(new { Message = "Đã thêm sản phẩm vào chiến dịch khuyến mãi" });
+                return Ok(new { Message = "Đã đồng bộ sản phẩm vào chiến dịch khuyến mãi" });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { Message = ex.Message });
             }
             catch (Exception ex)
             {
@@ -169,6 +182,10 @@ namespace backend.Controllers
             {
                 await _service.RemoveVariantsFromCampaignAsync(id, dto);
                 return Ok(new { Message = "Đã gỡ sản phẩm khỏi chiến dịch khuyến mãi" });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { Message = ex.Message });
             }
             catch (Exception ex)
             {

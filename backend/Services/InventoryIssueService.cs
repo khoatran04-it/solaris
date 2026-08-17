@@ -43,10 +43,11 @@ namespace backend.Services
 
             if (!string.IsNullOrWhiteSpace(search))
             {
-                var s = search.ToLower();
+                var s = search.ToLower().Trim();
                 query = query.Where(i => i.IssueCode.ToLower().Contains(s) ||
                                          (i.ReceiverName != null && i.ReceiverName.ToLower().Contains(s)) ||
-                                         (i.Order != null && i.Order.OrderCode.ToLower().Contains(s)));
+                                         (i.Order != null && i.Order.OrderCode.ToLower().Contains(s)) ||
+                                         (i.Note != null && i.Note.ToLower().Contains(s)));
             }
 
             if (warehouseId.HasValue) query = query.Where(i => i.WarehouseId == warehouseId.Value);
@@ -98,23 +99,38 @@ namespace backend.Services
             return _mapper.Map<InventoryIssueReadDto>(entity);
         }
 
-        public async Task<int> CreateAsync(InventoryIssueCreateDto dto)
+        public async Task<int> CreateAsync(InventoryIssueCreateDto dto, int? currentUserId = null)
         {
             if (dto.Details == null || !dto.Details.Any())
                 throw new ArgumentException("Phiếu xuất phải có ít nhất 1 dòng chi tiết.");
 
+            var whExists = await _context.Warehouses.AnyAsync(w => w.Id == dto.WarehouseId);
+            if (!whExists)
+                throw new ArgumentException($"Kho hàng với ID {dto.WarehouseId} không tồn tại.");
+
+            int safeUserId = currentUserId ?? dto.IssuedById ?? 1;
+            var userExists = await _context.IAUsers.AnyAsync(u => u.Id == safeUserId);
+            if (!userExists)
+            {
+                var firstUser = await _context.IAUsers.FirstOrDefaultAsync();
+                safeUserId = firstUser?.Id ?? 1;
+            }
+
             var issue = new InventoryIssue
             {
-                IssueCode = $"ISS-{DateTime.UtcNow:yyyyMMdd}-{DateTime.UtcNow:HHmmss}",
+                IssueCode = $"ISS-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString()[..6].ToUpper()}",
                 OrderId = dto.OrderId,
                 WarehouseId = dto.WarehouseId,
-                IssuedById = dto.IssuedById ?? 1,
+                IssuedById = safeUserId,
                 IssueDate = dto.IssueDate ?? DateTime.UtcNow,
                 Status = InventoryIssueStatus.Pending,
-                ReceiverName = dto.ReceiverName,
-                ReceiverPhone = dto.ReceiverPhone,
-                DeliveryAddress = dto.DeliveryAddress,
-                Note = dto.Note
+                ReceiverName = dto.ReceiverName?.Trim(),
+                ReceiverPhone = dto.ReceiverPhone?.Trim(),
+                DeliveryAddress = dto.DeliveryAddress?.Trim(),
+                Note = dto.Note?.Trim(),
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+                IsDeleted = false
             };
 
             foreach (var item in dto.Details)
@@ -151,10 +167,19 @@ namespace backend.Services
                 if (issue.Status != InventoryIssueStatus.Pending && issue.Status != InventoryIssueStatus.Picking)
                     throw new InvalidOperationException("Phiếu xuất phải ở trạng thái Pending hoặc Picking mới có thể hoàn tất.");
 
+                int safeUserId = issuedById;
+                var userExists = await _context.IAUsers.AnyAsync(u => u.Id == safeUserId);
+                if (!userExists)
+                {
+                    var firstUser = await _context.IAUsers.FirstOrDefaultAsync();
+                    safeUserId = firstUser?.Id ?? 1;
+                }
+
                 issue.Status = InventoryIssueStatus.Completed;
-                issue.IssuedById = issuedById;
+                issue.IssuedById = safeUserId;
                 issue.IssueDate = DateTime.UtcNow;
-                if (!string.IsNullOrWhiteSpace(note)) issue.Note = note;
+                issue.UpdatedAt = DateTime.UtcNow;
+                if (!string.IsNullOrWhiteSpace(note)) issue.Note = note.Trim();
 
                 // 1. Cập nhật trừ kho (Trừ QuantityReserved) & Ghi sổ cái Issue
                 foreach (var detail in issue.Details)
@@ -177,6 +202,7 @@ namespace backend.Services
                             inventory.QuantityReserved = 0;
                             inventory.QuantityAvailable = Math.Max(0, inventory.QuantityAvailable - diff);
                         }
+                        inventory.UpdatedAt = DateTime.UtcNow;
                     }
 
                     _context.InventoryTransactions.Add(new InventoryTransaction
@@ -189,7 +215,8 @@ namespace backend.Services
                         Quantity = detail.Quantity,
                         ReferenceCode = issue.IssueCode,
                         Note = $"Xuất kho theo phiếu {issue.IssueCode}",
-                        CreatedById = issuedById
+                        CreatedById = safeUserId,
+                        CreatedAt = DateTime.UtcNow
                     });
 
                     // Cập nhật tiến độ trên OrderDetail
@@ -208,6 +235,7 @@ namespace backend.Services
                 {
                     bool isFullyIssued = issue.Order.Details.All(d => d.IssuedQuantity >= d.Quantity);
                     issue.Order.Status = isFullyIssued ? OrderStatus.Shipping : OrderStatus.Processing;
+                    issue.Order.UpdatedAt = DateTime.UtcNow;
                 }
 
                 await _context.SaveChangesAsync();
@@ -229,7 +257,24 @@ namespace backend.Services
                 throw new InvalidOperationException("Không thể hủy Phiếu xuất kho đã hoàn tất.");
 
             issue.Status = InventoryIssueStatus.Cancelled;
-            issue.CancellationReason = reason;
+            issue.CancellationReason = reason?.Trim();
+            issue.UpdatedAt = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
+        public async Task<bool> DeleteAsync(int id)
+        {
+            var issue = await _context.InventoryIssues.FindAsync(id);
+            if (issue == null) throw new KeyNotFoundException("Không tìm thấy Phiếu xuất kho.");
+
+            if (issue.Status == InventoryIssueStatus.Completed)
+                throw new InvalidOperationException("Không thể xóa Phiếu xuất kho đã hoàn tất.");
+
+            issue.IsDeleted = true;
+            issue.DeletedAt = DateTime.UtcNow;
+            issue.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
             return true;

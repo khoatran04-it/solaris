@@ -6,7 +6,7 @@ namespace backend.Services.Interfaces
     {
         Task<LoginResponseDto> LoginAsync(LoginRequestDto request);
 
-        // Hàm phụ trợ để sếp tự tạo Password Hash test thử trong Database
+        // Hàm phụ trợ để tự tạo Password Hash test thử trong Database
         Task<string> HashPasswordAsync(string rawPassword);
     }
 }

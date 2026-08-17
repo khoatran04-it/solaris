@@ -1,4 +1,4 @@
-﻿namespace backend.Models
+namespace backend.Models
 {
     public class PromotionVariant
     {
@@ -12,7 +12,7 @@
         public int VariantId { get; set; }
         public virtual ProductVariant? Variant { get; set; }
 
-        // Audit cơ bản cho bảng nối (Biết nhân viên nào/lúc nào add biến thể này vào campaign)
-        public DateTime CreatedAt { get; set; }
+        // Audit cơ bản cho bảng nối (Biết lúc nào add biến thể này vào campaign)
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     }
 }

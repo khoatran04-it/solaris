@@ -31,15 +31,20 @@ const SupplierTypeList: React.FC = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [currentPage, setCurrentPage] = useState(1);
     const [totalPages, setTotalPages] = useState(0);
+    const [totalItems, setTotalItems] = useState(0);
     const [searchTerm, setSearchTerm] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
     const pageSize = 10;
 
     // --- STATE QUẢN LÝ BỘ LỌC (FILTERS) ---
-    const [nameFilter, setNameFilter] = useState<(string | number)[]>([]);
+    const [statusFilter, setStatusFilter] = useState<(string | number)[]>([]);
     const [createdAtFilter, setCreatedAtFilter] = useState<Date | null>(null);
     const [updatedAtFilter, setUpdatedAtFilter] = useState<Date | null>(null);
-    const [nameOptions, setNameOptions] = useState<{ label: string, value: string }[]>([]);
+
+    const statusOptions = [
+        { label: 'Hoạt động', value: 1 },
+        { label: 'Tạm khóa', value: 0 }
+    ];
 
     // --- STATE MODAL & TOAST ---
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -48,18 +53,18 @@ const SupplierTypeList: React.FC = () => {
         show: false, type: 'success', message: '' 
     });
 
-    // --- EFFECT 2: Debounce Search (chờ 500ms) ---
+    // --- EFFECT: Debounce Search (chờ 500ms) ---
     useEffect(() => {
         const timer = setTimeout(() => setDebouncedSearch(searchTerm), 500);
         return () => clearTimeout(timer);
     }, [searchTerm]);
 
-    // --- EFFECT 3: Reset trang về 1 khi điều kiện lọc thay đổi ---
+    // --- EFFECT: Reset trang về 1 khi điều kiện lọc thay đổi ---
     useEffect(() => {
         setCurrentPage(1);
-    }, [debouncedSearch, nameFilter, createdAtFilter, updatedAtFilter]);
+    }, [debouncedSearch, statusFilter, createdAtFilter, updatedAtFilter]);
 
-    // --- EFFECT 4: Fetch Data từ API ---
+    // --- EFFECT: Fetch Data từ API ---
     const fetchData = async () => {
         setIsLoading(true);
         try {
@@ -67,13 +72,14 @@ const SupplierTypeList: React.FC = () => {
                 search: debouncedSearch,
                 pageIndex: currentPage,
                 pageSize: pageSize,
-                names: nameFilter.length > 0 ? nameFilter.join(',') : undefined,
+                isActive: statusFilter.length === 1 ? statusFilter[0] === 1 : undefined,
                 createdAt: createdAtFilter ? createdAtFilter.toLocaleDateString('en-CA') : undefined,
                 updatedAt: updatedAtFilter ? updatedAtFilter.toLocaleDateString('en-CA') : undefined
             });
             
-            setData(response.items);
-            setTotalPages(response.totalPages);
+            setData(response.items || []);
+            setTotalPages(response.totalPages || 0);
+            setTotalItems(response.totalRecords || 0);
         } catch (error) {
             showToast('error', 'CÓ LỖI XẢY RA KHI TẢI DỮ LIỆU');
         } finally {
@@ -83,7 +89,8 @@ const SupplierTypeList: React.FC = () => {
 
     useEffect(() => { 
         fetchData(); 
-    }, [currentPage, debouncedSearch, nameFilter, createdAtFilter, updatedAtFilter]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [currentPage, debouncedSearch, statusFilter, createdAtFilter, updatedAtFilter]);
 
     // --- HANDLERS ---
     const showToast = (type: 'success' | 'error' | 'warning', message: string) => {
@@ -103,6 +110,16 @@ const SupplierTypeList: React.FC = () => {
         }
     };
 
+    const handleToggleActive = async (id: number, currentStatus: boolean) => {
+        try {
+            await supplierTypeApi.toggleActive(id);
+            fetchData();
+            showToast('success', `Đã ${currentStatus ? 'khóa' : 'kích hoạt'} phân loại`);
+        } catch (error) {
+            showToast('error', 'Không thể thay đổi trạng thái');
+        }
+    };
+
     return (    
         <ListPageContainer>
             <Toast {...toast} />
@@ -119,33 +136,48 @@ const SupplierTypeList: React.FC = () => {
 
             <ListCard>
                 <div className="overflow-x-auto flex-1 min-h-100 pb-24">
-                    <table className="w-full text-left border-collapse">
+                    <table className="w-full text-left border-collapse min-w-250">
                         <thead>
                             <tr className="bg-slate-50/70 border-b border-slate-100">
-                                <th className="w-[15%] py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Mã ID</th>
+                                <th className="w-[12%] py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider text-left">
+                                    Mã ID
+                                </th>
                                 
-                                <th className="w-[25%] py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider text-left"> Phân Loại</th>
+                                <th className="w-[20%] py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider text-left">
+                                    Phân Loại
+                                </th>
                                 
-                                <th className="w-[20%] py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Mô Tả Chi Tiết</th>
+                                <th className="w-[24%] py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                                    Mô Tả Chi Tiết
+                                </th>
+
+                                <th className="w-[14%] py-4 px-2 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                                    <div className="flex justify-center">
+                                        <CustomFilter title="TRẠNG THÁI" options={statusOptions} selectedValues={statusFilter} onApply={setStatusFilter} />
+                                    </div>
+                                </th>
                                 
-                                <th className="w-[15%] py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                                <th className="w-[10%] py-4 px-2 text-xs font-bold text-slate-500 uppercase tracking-wider">
                                     <div className="flex justify-center">
                                         <CustomDateFilter title="NGÀY TẠO" selectedDate={createdAtFilter} onApply={setCreatedAtFilter} />
                                     </div>
                                 </th>
                                 
-                                <th className="w-[15%] py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                                <th className="w-[10%] py-4 px-2 text-xs font-bold text-slate-500 uppercase tracking-wider">
                                     <div className="flex justify-center">
                                         <CustomDateFilter title="CẬP NHẬT" selectedDate={updatedAtFilter} onApply={setUpdatedAtFilter} />
                                     </div>
                                 </th>
                                 
-                                <th className="w-[10%] py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">Thao Tác</th>
+                                <th className="w-[10%] py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">
+                                    Thao Tác
+                                </th>
                             </tr>
                         </thead>
+                        
                         <tbody className="divide-y divide-slate-100">
                             {isLoading ? (
-                                <TableLoading colSpan={6} />
+                                <TableLoading colSpan={7} />
                             ) : data.length > 0 ? (
                                 data.map((item) => (
                                     <tr key={item.id} className="hover:bg-slate-50/80 transition-colors duration-200 group">
@@ -154,14 +186,39 @@ const SupplierTypeList: React.FC = () => {
                                                 {item.code}
                                             </span>
                                         </td>
-                                        <td className="py-4 px-6 font-semibold text-slate-800">{item.name}</td>
-                                        <td className="py-4 px-6 text-slate-500 text-sm font-medium">{item.description || '-'}</td>
-                                        <td className="py-4 px-6">
+                                        
+                                        <td className="py-4 px-6 font-semibold text-slate-800">
+                                            {item.name}
+                                        </td>
+                                        
+                                        <td className="py-4 px-6 text-slate-500 text-sm font-medium">
+                                            {item.description || '-'}
+                                        </td>
+
+                                        {/* CELL: TRẠNG THÁI (TOGGLE) */}
+                                        <td className="py-3 px-2 text-center">
+                                            <div className="flex justify-center">
+                                                <button 
+                                                    onClick={() => handleToggleActive(item.id, item.isActive)}
+                                                    className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold border transition-colors ${
+                                                        item.isActive 
+                                                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200/40 hover:bg-red-50 hover:text-red-600 hover:border-red-200' 
+                                                            : 'bg-slate-100 text-slate-400 border-slate-200/50 hover:bg-emerald-50 hover:text-emerald-600 hover:border-emerald-200'
+                                                    }`}>
+                                                    <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${item.isActive ? 'bg-emerald-500' : 'bg-slate-300'}`}></span>
+                                                    {item.isActive ? 'Hoạt động' : 'Tạm khóa'}
+                                                </button>
+                                            </div>
+                                        </td>
+
+                                        <td className="py-4 px-6 text-center">
                                             <DateTimeCell isoString={item.createdAt} />
                                         </td>
-                                        <td className="py-4 px-6">
+                                        
+                                        <td className="py-4 px-6 text-center">
                                             <DateTimeCell isoString={item.updatedAt} />
                                         </td>
+                                        
                                         <td className="py-4 px-6">
                                             <div className="flex justify-center gap-2 opacity-40 group-hover:opacity-100 transition-all duration-300">
                                                 <button 
@@ -183,7 +240,7 @@ const SupplierTypeList: React.FC = () => {
                                     </tr>
                                 ))
                             ) : (
-                                <TableEmpty colSpan={6} message="Thử thay đổi từ khóa tìm kiếm hoặc điều kiện lọc." />
+                                <TableEmpty colSpan={7} message="Thử thay đổi từ khóa tìm kiếm hoặc điều kiện lọc." />
                             )}
                         </tbody>
                     </table>
@@ -192,7 +249,7 @@ const SupplierTypeList: React.FC = () => {
                 <ListPagination 
                     currentPage={currentPage} 
                     totalPages={totalPages} 
-                    totalItems={data.length} 
+                    totalItems={totalItems} 
                     onPageChange={setCurrentPage}
                     isLoading={isLoading}
                 />

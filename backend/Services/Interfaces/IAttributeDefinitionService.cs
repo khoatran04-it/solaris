@@ -1,11 +1,11 @@
-﻿using backend.DTOs;
+using backend.DTOs;
 using backend.DTOs.AttributeDefinitionDTOs;
 
 namespace backend.Services.Interfaces
 {
     public interface IAttributeDefinitionService
     {
-        Task<IEnumerable<AttributeDefinitionReadDto>> GetAllListAsync();
+        Task<IEnumerable<AttributeDefinitionReadDto>> GetAllListAsync(bool isActiveOnly = false);
 
         Task<PagedResult<AttributeDefinitionReadDto>> GetPagedAsync(
             string? search,

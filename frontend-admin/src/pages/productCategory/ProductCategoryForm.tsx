@@ -125,13 +125,13 @@ const ProductCategoryForm: React.FC = () => {
         setLoading(true);
         try {
             const cleanPayload: ProductCategoryPayload = {
-                ...formData,
                 code: formData.code.trim().toUpperCase(),
                 name: formData.name.trim(),
                 description: formData.description?.trim() || undefined,
                 imagePath: formData.imagePath?.trim() || undefined,
                 // Chuyển số 0 thành undefined để gửi xuống backend cho chuẩn kiểu nullable
-                categoryGroupId: formData.categoryGroupId === 0 ? undefined : formData.categoryGroupId
+                categoryGroupId: formData.categoryGroupId === 0 ? undefined : formData.categoryGroupId,
+                isActive: Boolean(formData.isActive)
             };
 
             if (isEditMode && id) {
@@ -143,7 +143,7 @@ const ProductCategoryForm: React.FC = () => {
             }
             setTimeout(() => navigate('/product-categories'), 1000);
         } catch (error: any) {
-            showToast('error', error.response?.status === 400 ? 'DỮ LIỆU KHÔNG HỢP LỆ' : 'CÓ LỖI XẢY RA KHI LƯU');
+            showToast('error', error.response?.data?.message || 'CÓ LỖI XẢY RA KHI LƯU');
         } finally {
             setLoading(false);
         }
@@ -199,7 +199,6 @@ const ProductCategoryForm: React.FC = () => {
                                     value={formData.imagePath || ''} disabled={loading}
                                     onChange={e => handleFieldChange('imagePath', e.target.value)} 
                                 />
-                                {/* Preview Ảnh UX Plus */}
                                 {formData.imagePath && (
                                     <div className="p-3 border border-slate-200 rounded-xl bg-slate-50 w-max">
                                         <img 

@@ -10,16 +10,21 @@ import { CustomerTypePayload } from '../../types/customerType';
 import { Toast } from '../../components/commons/Toast';
 import {
     PageContainer, FormCard, FormHeader, FormInput,
-    FormTextarea, SubmitButton,
-    FormSection
+    FormTextarea, SubmitButton, FormSection, FormSelect
 } from '../../components/commons/FormUI';
 
 // Cấu hình giá trị khởi tạo
 const INITIAL_STATE: CustomerTypePayload = {
     code: '',
     name: '',
-    description: ''
+    description: '',
+    isActive: true
 };
+
+const STATUS_OPTIONS = [
+    { label: 'Hoạt động', value: 1 },
+    { label: 'Tạm khóa', value: 0 }
+];
 
 const CustomerTypeForm: React.FC = () => {
     const navigate = useNavigate();
@@ -57,7 +62,6 @@ const CustomerTypeForm: React.FC = () => {
 
     // --- EFFECTS ---
     useEffect(() => {
-        // TỐI ƯU HÓA: Chỉ gọi API 1 lần duy nhất để lấy cả danh sách Mã và Tên
         customerTypeApi.getAllList()
             .then(res => {
                 setExistingCodes(res.map(item => item.code.toLowerCase()));
@@ -70,7 +74,8 @@ const CustomerTypeForm: React.FC = () => {
                 setFormData({
                     code: res.code || '',
                     name: res.name || '',
-                    description: res.description || ''
+                    description: res.description || '',
+                    isActive: res.isActive
                 });
                 setOriginalCode((res.code || '').toLowerCase());
                 setOriginalName((res.name || '').toLowerCase());
@@ -117,19 +122,18 @@ const CustomerTypeForm: React.FC = () => {
 
         setLoading(true);
         try {
-            // Làm sạch dữ liệu trước khi gửi đi
             const cleanPayload: CustomerTypePayload = {
-                ...formData,
                 code: formData.code.trim().toUpperCase(),
                 name: formData.name.trim(),
-                description: formData.description?.trim() || ''
+                description: formData.description?.trim() || '',
+                isActive: Boolean(formData.isActive)
             };
 
             if (isEditMode && id) {
-                await customerTypeApi.update(Number(id), cleanPayload as any);
+                await customerTypeApi.update(Number(id), cleanPayload);
                 showToast('success', 'CẬP NHẬT THÀNH CÔNG');
             } else {
-                await customerTypeApi.create(cleanPayload as any);
+                await customerTypeApi.create(cleanPayload);
                 showToast('success', 'THÊM MỚI THÀNH CÔNG');
             }
             setTimeout(() => navigate('/customer-types'), 1000);
@@ -147,33 +151,40 @@ const CustomerTypeForm: React.FC = () => {
             <FormHeader
                 icon={Hexagon}
                 title={isEditMode ? 'Chỉnh Sửa Phân Loại Khách Hàng' : 'Thêm Phân Loại Khách Hàng'}
-                subtitle="Cấu hình danh mục loại khách hàng"
+                subtitle={isEditMode ? 'Cập nhật thông tin danh mục phân loại khách hàng' : 'Thiết lập danh mục phân loại khách hàng mới cho hệ thống'}
                 onBack={() => navigate('/customer-types')}
             />
 
             <FormCard>
-                <form onSubmit={handleSubmit} className="flex flex-col gap-12">
-                    <FormSection title="Thông Tin Cơ Bản">
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
+                <form onSubmit={handleSubmit} className="flex flex-col gap-8">
+                    <FormSection title="Thông Tin Phân Loại">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
                             <FormInput
-                                label="Mã phân loại" required placeholder="CT-001"
+                                label="Mã phân loại" required placeholder="VD: HORECA, SI, LE..."
                                 value={formData.code} error={errors.code} disabled={loading}
                                 onChange={e => handleFieldChange('code', e.target.value)}
                             />
                             <FormInput
-                                label="Tên phân loại" required placeholder="Tên phân loại"
+                                label="Tên phân loại" required placeholder="VD: Khách sỉ đại lý..."
                                 value={formData.name} error={errors.name} disabled={loading}
                                 onChange={e => handleFieldChange('name', e.target.value)}
                             />
-                        </div>
-                    </FormSection>
+                            
+                            <FormSelect 
+                                label="Trạng thái phân loại" required 
+                                value={formData.isActive ? 1 : 0} 
+                                options={STATUS_OPTIONS}
+                                onSelect={val => handleFieldChange('isActive', val === 1)}
+                            />
 
-                    <FormSection title="Mô Tả">
-                        <FormTextarea
-                            label="Ghi chú bổ sung" placeholder="Mô tả về loại khách hàng này..."
-                            value={formData.description} rows={3}
-                            onChange={e => handleFieldChange('description', e.target.value)}
-                        />
+                            <div className="md:col-span-2">
+                                <FormTextarea
+                                    label="Ghi chú bổ sung" placeholder="Mô tả về phân loại khách hàng này..."
+                                    value={formData.description} rows={3} disabled={loading}
+                                    onChange={e => handleFieldChange('description', e.target.value)}
+                                />
+                            </div>
+                        </div>
                     </FormSection>
 
                     <div className="flex justify-end pt-6 border-t border-slate-100">

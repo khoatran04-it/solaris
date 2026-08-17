@@ -1,11 +1,11 @@
-﻿using backend.DTOs;
+using backend.DTOs;
 using backend.DTOs.ProductVariantDTOs;
 
 namespace backend.Services.Interfaces
 {
     public interface IProductVariantService
     {
-        Task<IEnumerable<ProductVariantReadDto>> GetAllListAsync();
+        Task<IEnumerable<ProductVariantReadDto>> GetAllListAsync(bool isActiveOnly = false);
 
         Task<PagedResult<ProductVariantReadDto>> GetPagedAsync(
             string? search,

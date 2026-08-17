@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+using AutoMapper;
 using backend.Data;
 using backend.DTOs;
 using backend.DTOs.CustomerGroupDTOs;
@@ -31,10 +31,16 @@ namespace backend.Services
         /// <summary>
         /// Lấy toàn bộ danh sách nhóm khách hàng để hiển thị trong các bộ chọn (Dropdown/Select).
         /// </summary>
-        public async Task<IEnumerable<CustomerGroupReadDto>> GetAllListAsync()
+        public async Task<IEnumerable<CustomerGroupReadDto>> GetAllListAsync(bool isActiveOnly = false)
         {
-            var groups = await _context.CustomerGroups
-                .AsNoTracking()
+            var query = _context.CustomerGroups.AsNoTracking().AsQueryable();
+
+            if (isActiveOnly)
+            {
+                query = query.Where(x => x.IsActive);
+            }
+
+            var groups = await query
                 .OrderBy(x => x.Name)
                 .ToListAsync();
 
@@ -58,7 +64,7 @@ namespace backend.Services
             // 1. Filter: Tìm kiếm đa cột (Mã hoặc Tên)
             if (!string.IsNullOrWhiteSpace(search))
             {
-                var lowerSearch = search.ToLower();
+                var lowerSearch = search.Trim().ToLower();
                 query = query.Where(x =>
                     x.Code.ToLower().Contains(lowerSearch) ||
                     x.Name.ToLower().Contains(lowerSearch)
@@ -95,7 +101,6 @@ namespace backend.Services
 
             var totalRecords = await query.CountAsync();
 
-            // Thực hiện phân trang và tối ưu hóa bộ nhớ với AsNoTracking
             var items = await query
                 .OrderByDescending(x => x.CreatedAt)
                 .Skip((pageIndex - 1) * pageSize)
@@ -139,10 +144,18 @@ namespace backend.Services
         /// </summary>
         public async Task<int> CreateAsync(CustomerGroupCreateDto dto)
         {
-            if (await _context.CustomerGroups.AnyAsync(x => x.Code == dto.Code))
-                throw new Exception("Mã nhóm khách hàng đã tồn tại trên hệ thống.");
+            var trimmedCode = dto.Code.Trim();
+
+            if (await _context.CustomerGroups.AnyAsync(x => x.Code == trimmedCode))
+                throw new Exception($"Mã nhóm khách hàng '{trimmedCode}' đã tồn tại trên hệ thống.");
 
             var entity = _mapper.Map<CustomerGroup>(dto);
+            entity.Code = trimmedCode;
+            entity.Name = dto.Name.Trim();
+            entity.Description = dto.Description?.Trim();
+            entity.IsActive = dto.IsActive;
+            entity.CreatedAt = DateTime.UtcNow;
+            entity.UpdatedAt = DateTime.UtcNow;
 
             _context.CustomerGroups.Add(entity);
             await _context.SaveChangesAsync();
@@ -159,19 +172,25 @@ namespace backend.Services
             if (entity == null)
                 throw new KeyNotFoundException("Không tìm thấy nhóm khách hàng cần sửa.");
 
-            // Đảm bảo mã nhóm không trùng lặp với các bản ghi khác trong Database
-            if (await _context.CustomerGroups.AnyAsync(x => x.Id != id && x.Code == dto.Code))
-                throw new Exception("Cập nhật thất bại: Mã nhóm này đã bị trùng lặp với dữ liệu khác.");
+            var trimmedCode = dto.Code.Trim();
+
+            if (await _context.CustomerGroups.AnyAsync(x => x.Id != id && x.Code == trimmedCode))
+                throw new Exception($"Cập nhật thất bại: Mã nhóm '{trimmedCode}' đã bị trùng lặp với dữ liệu khác.");
 
             _mapper.Map(dto, entity);
+            entity.Code = trimmedCode;
+            entity.Name = dto.Name.Trim();
+            entity.Description = dto.Description?.Trim();
+            entity.IsActive = dto.IsActive;
+            entity.UpdatedAt = DateTime.UtcNow;
+
             await _context.SaveChangesAsync();
 
             return true;
         }
 
         /// <summary>
-        /// Xóa nhóm khách hàng. 
-        /// Lưu ý: Sử dụng Soft Delete để đảm bảo không mất dữ liệu lịch sử của khách hàng trong nhóm.
+        /// Xóa nhóm khách hàng. Kiểm tra an toàn ràng buộc dữ liệu.
         /// </summary>
         public async Task<bool> DeleteAsync(int id)
         {
@@ -179,7 +198,15 @@ namespace backend.Services
             if (entity == null)
                 throw new KeyNotFoundException("Không tìm thấy nhóm khách hàng cần xóa.");
 
-            // Thao tác xóa vật lý sẽ được Interceptor tự động chuyển đổi thành xóa mềm (IsDeleted = true)
+            // Kiểm tra xem có khách hàng nào đang trong nhóm này không
+            bool hasMembers = await _context.CustomerGroupLinks.AnyAsync(l => l.CustomerGroupId == id && !l.IsDeleted);
+            if (hasMembers)
+            {
+                // Tự động gỡ bỏ các liên kết khách hàng của nhóm khi xóa nhóm (Soft Delete links)
+                var links = await _context.CustomerGroupLinks.Where(l => l.CustomerGroupId == id).ToListAsync();
+                _context.CustomerGroupLinks.RemoveRange(links);
+            }
+
             _context.CustomerGroups.Remove(entity);
             await _context.SaveChangesAsync();
 
@@ -187,7 +214,7 @@ namespace backend.Services
         }
 
         /// <summary>
-        /// Thay đổi trạng thái Hoạt động/Khóa của nhóm khách hàng một cách nhanh chóng.
+        /// Thay đổi trạng thái Hoạt động/Khóa của nhóm khách hàng.
         /// </summary>
         public async Task<bool> ToggleActiveAsync(int id)
         {
@@ -195,8 +222,8 @@ namespace backend.Services
             if (entity == null)
                 throw new KeyNotFoundException("Không tìm thấy nhóm khách hàng.");
 
-            // Đảo ngược trạng thái hiện tại
             entity.IsActive = !entity.IsActive;
+            entity.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
 

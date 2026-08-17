@@ -1,7 +1,10 @@
-﻿using backend.DTOs.SupplierAddressDTOs;
+using backend.DTOs.SupplierAddressDTOs;
 
 namespace backend.DTOs.SupplierDTOs
 {
+    /// <summary>
+    /// DTO hiển thị chi tiết Hồ sơ Nhà cung cấp.
+    /// </summary>
     public class SupplierReadDto
     {
         public int Id { get; set; }
@@ -11,11 +14,12 @@ namespace backend.DTOs.SupplierDTOs
         public string Email { get; set; } = string.Empty;
         public string? LogoPath { get; set; }
         public string? TaxCode { get; set; }
-        public string? Website {  get; set; }
+        public string? Website { get; set; }
         public string? SocialLink { get; set; }
         public string? BankAccount { get; set; }
         public string? BankName { get; set; }
         public string? Note { get; set; }
+
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
         public bool IsActive { get; set; }

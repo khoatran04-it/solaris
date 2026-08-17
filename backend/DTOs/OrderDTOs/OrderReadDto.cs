@@ -36,6 +36,7 @@ namespace backend.DTOs.OrderDTOs
         public DateTime UpdatedAt { get; set; }
 
         public List<OrderDetailReadDto> Details { get; set; } = new();
+        public List<OrderIssuedItemDto> IssuedItems { get; set; } = new();
     }
 
     public class OrderDetailReadDto
@@ -54,5 +55,27 @@ namespace backend.DTOs.OrderDTOs
         public decimal DiscountAmount { get; set; }
         public decimal TotalPrice { get; set; }
         public decimal IssuedQuantity { get; set; }
+    }
+
+    public class OrderIssuedItemDto
+    {
+        public int? OrderDetailId { get; set; }
+        public int VariantId { get; set; }
+        public string VariantName { get; set; } = string.Empty;
+        public string VariantCode { get; set; } = string.Empty;
+
+        public int BatchId { get; set; }
+        public string BatchCode { get; set; } = string.Empty;
+        public DateTime? ExpiryDate { get; set; }
+
+        public int UoMId { get; set; }
+        public string UoMName { get; set; } = string.Empty;
+
+        public decimal QuantityIssued { get; set; }
+        public decimal UnitPrice { get; set; }
+        public decimal TotalPrice { get; set; }
+
+        public string IssueCode { get; set; } = string.Empty;
+        public DateTime IssueDate { get; set; }
     }
 }

@@ -21,7 +21,7 @@ import {
     InfoField
 } from '../../components/commons/TabUI';
 import { Toast } from '../../components/commons/Toast';
-import { DateTimeCell } from '../../components/commons/ListUI';
+import { DateCell, DateTimeCell } from '../../components/commons/ListUI';
 
 import { customerReturnApi } from '../../api/customerReturnApi';
 import {
@@ -244,7 +244,7 @@ const CustomerReturnDetail: React.FC = () => {
                                 
                                 <div className="flex flex-col items-start">
                                     <span className="text-[11px] font-bold text-slate-400 uppercase mb-1">Ngày tiếp nhận</span>
-                                    <DateTimeCell isoString={ret.returnDate} />
+                                    <DateCell isoString={ret.returnDate} />
                                 </div>
                                 
                                 <InfoField label="Số tiền hoàn lại" value={<span className="font-black text-rose-600 text-lg">{formatCurrency(ret.refundAmount)}</span>} />

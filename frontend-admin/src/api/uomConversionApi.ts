@@ -9,8 +9,8 @@ export const uomConversionApi = {
     },
 
     // 2. GET ALL (Không phân trang)
-    getAllList: (): Promise<UoMConversion[]> => {
-        return axiosClient.get('/UoMConversions/all');
+    getAllList: (isActiveOnly: boolean = false): Promise<UoMConversion[]> => {
+        return axiosClient.get('/UoMConversions/all', { params: { isActive: isActiveOnly ? true : undefined } });
     },
 
     // 3. GET by ID
@@ -32,4 +32,9 @@ export const uomConversionApi = {
     delete: (id: number): Promise<void> => {
         return axiosClient.delete(`/UoMConversions/${id}`);
     },
+
+    // 7. PATCH (Thay đổi trạng thái Hoạt động / Tạm khóa)
+    toggleActive: (id: number): Promise<void> => {
+        return axiosClient.patch(`/UoMConversions/${id}/toggle-active`);
+    }
 };

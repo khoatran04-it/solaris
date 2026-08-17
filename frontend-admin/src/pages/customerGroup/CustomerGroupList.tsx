@@ -31,6 +31,7 @@ const CustomerGroupList: React.FC = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [currentPage, setCurrentPage] = useState(1);
     const [totalPages, setTotalPages] = useState(0);
+    const [totalItems, setTotalItems] = useState(0);
     const [searchTerm, setSearchTerm] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
     const pageSize = 10;
@@ -42,7 +43,7 @@ const CustomerGroupList: React.FC = () => {
 
     const statusOptions = [
         { label: 'Hoạt động', value: 1 },
-        { label: 'Ngừng hoạt động', value: 0 }
+        { label: 'Tạm khóa', value: 0 }
     ];
 
     // --- STATE MODAL & TOAST ---
@@ -84,8 +85,9 @@ const CustomerGroupList: React.FC = () => {
                 updatedAt: updatedAtFilter ? updatedAtFilter.toLocaleDateString('en-CA') : undefined
             });
             
-            setData(response.items);
-            setTotalPages(response.totalPages);
+            setData(response.items || []);
+            setTotalPages(response.totalPages || 0);
+            setTotalItems(response.totalRecords || 0);
         } catch (error) {
             showToast('error', 'CÓ LỖI XẢY RA KHI TẢI DỮ LIỆU');
         } finally {
@@ -105,8 +107,18 @@ const CustomerGroupList: React.FC = () => {
             setIsModalOpen(false);
             fetchData();
             showToast('success', `Xóa thành công nhóm khách hàng "${deletingRecord.name}"`);
+        } catch (error: any) {
+            showToast('error', error.response?.data?.message || 'Lỗi khi thực hiện xóa dữ liệu');
+        }
+    };
+
+    const handleToggleActive = async (id: number, currentStatus: boolean) => {
+        try {
+            await customerGroupApi.toggleActive(id);
+            fetchData();
+            showToast('success', `Đã ${currentStatus ? 'tạm khóa' : 'kích hoạt'} nhóm khách hàng`);
         } catch (error) {
-            showToast('error', 'Lỗi khi thực hiện xóa dữ liệu');
+            showToast('error', 'Không thể thay đổi trạng thái hoạt động');
         }
     };
 
@@ -129,10 +141,10 @@ const CustomerGroupList: React.FC = () => {
                     <table className="w-full text-left border-collapse">
                         <thead>
                             <tr className="bg-slate-50/70 border-b border-slate-100">
-                                <th className="w-[10%] py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Mã Nhóm</th>
-                                <th className="w-[20%] py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Nhóm KH</th>
-                                <th className="w-[20%] py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Mô tả</th>
-                                <th className="w-[15%] py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">
+                                <th className="w-[12%] py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Mã Nhóm</th>
+                                <th className="w-[22%] py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Tên Nhóm KH</th>
+                                <th className="w-[22%] py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Mô tả</th>
+                                <th className="w-[14%] py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">
                                     <div className="flex justify-center">
                                         <CustomFilter 
                                             title="TRẠNG THÁI" 
@@ -142,7 +154,7 @@ const CustomerGroupList: React.FC = () => {
                                         />
                                     </div>
                                 </th>
-                                <th className="w-[12%] py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">
+                                <th className="w-[10%] py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">
                                     <div className="flex justify-center">
                                         <CustomDateFilter 
                                             title="NGÀY TẠO" 
@@ -151,7 +163,7 @@ const CustomerGroupList: React.FC = () => {
                                         />
                                     </div>
                                 </th>
-                                <th className="w-[12%] py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">
+                                <th className="w-[10%] py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">
                                     <div className="flex justify-center">
                                         <CustomDateFilter 
                                             title="CẬP NHẬT" 
@@ -160,7 +172,7 @@ const CustomerGroupList: React.FC = () => {
                                         />
                                     </div>
                                 </th> 
-                                <th className="w-[11%] py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">Thao Tác</th>                               
+                                <th className="w-[10%] py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">Thao Tác</th>                               
                             </tr>
                         </thead>
                         
@@ -177,17 +189,23 @@ const CustomerGroupList: React.FC = () => {
                                         </td>
                                         <td className="py-4 px-6 font-semibold text-slate-800">{item.name}</td>
                                         <td className="py-4 px-6 text-slate-500 text-sm truncate max-w-50">{item.description || '---'}</td>
+                                        
+                                        {/* CỘT TRẠNG THÁI KÈM TOGGLE */}
                                         <td className="py-4 px-6 text-center">
-                                            <div className="flex justify-center">
-                                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold border ${
-                                                    item.isActive 
-                                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200/40' 
-                                                    : 'bg-slate-100 text-slate-400 border-slate-200/50'
-                                                }`}>
-                                                    {item.isActive ? 'Hoạt động' : 'Ngừng hoạt động'}
-                                                </span>
-                                            </div>
+                                            <button
+                                                onClick={() => handleToggleActive(item.id, item.isActive)}
+                                                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                                                    item.isActive
+                                                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100'
+                                                        : 'bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-200'
+                                                }`}
+                                                title="Nhấn để đổi trạng thái"
+                                            >
+                                                <span className={`w-1.5 h-1.5 rounded-full ${item.isActive ? 'bg-emerald-500' : 'bg-slate-400'}`}></span>
+                                                {item.isActive ? 'Hoạt động' : 'Tạm khóa'}
+                                            </button>
                                         </td>
+
                                         <td className="py-4 px-6 text-center">
                                             <DateTimeCell isoString={item.createdAt} />
                                         </td>
@@ -224,8 +242,8 @@ const CustomerGroupList: React.FC = () => {
                 <ListPagination 
                     currentPage={currentPage} 
                     totalPages={totalPages} 
-                    totalItems={data.length} 
-                    onPageChange={setCurrentPage}
+                    totalItems={totalItems} 
+                    onPageChange={setCurrentPage} 
                     isLoading={isLoading}
                 />
             </ListCard>
@@ -238,6 +256,6 @@ const CustomerGroupList: React.FC = () => {
             />
         </ListPageContainer>
     );
-}
+};
 
 export default CustomerGroupList;

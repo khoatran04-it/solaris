@@ -1,4 +1,4 @@
-﻿using backend.Models;
+using backend.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -19,14 +19,12 @@ namespace backend.Configurations
             builder.Property(x => x.Description).HasMaxLength(1000).HasColumnType("nvarchar(1000)");
             builder.Property(x => x.ImagePath).HasMaxLength(500);
 
-            // 🔥 ĐÃ GỠ BỎ: builder.Property(x => x.DefaultPrice)...
-
             builder.Property(x => x.InventoryGuideline).HasDefaultValue(0);
 
             // Audit & Soft Delete
             builder.Property(x => x.CreatedAt).HasColumnType("datetime2");
             builder.Property(x => x.UpdatedAt).HasColumnType("datetime2");
-            builder.Property(x => x.IsActive).HasDefaultValue(true);
+            builder.Property(x => x.IsActive);
             builder.Property(x => x.IsDeleted).HasDefaultValue(false);
             builder.HasQueryFilter(x => !x.IsDeleted);
 

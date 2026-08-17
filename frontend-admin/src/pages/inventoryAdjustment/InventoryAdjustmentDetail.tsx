@@ -7,7 +7,8 @@ import {
     CheckCircle,
     XCircle,
     AlertCircle,
-    Loader2
+    Loader2,
+    Trash2
 } from 'lucide-react';
 
 import {
@@ -20,7 +21,8 @@ import {
     InfoField
 } from '../../components/commons/TabUI';
 import { Toast } from '../../components/commons/Toast';
-import { DateTimeCell } from '../../components/commons/ListUI';
+import { DateCell, DateTimeCell } from '../../components/commons/ListUI';
+import { ConfirmDeleteModal } from '../../components/modals/ConfirmDeleteModal';
 
 import { inventoryAdjustmentApi } from '../../api/inventoryAdjustmentApi';
 import {
@@ -46,14 +48,17 @@ const InventoryAdjustmentDetail: React.FC = () => {
     const [cancelModalOpen, setCancelModalOpen] = useState(false);
     const [cancelReason, setCancelReason] = useState('');
 
+    // Delete Modal
+    const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+
     // Toast
-    const [toast, setToast] = useState<{ show: boolean; type: 'success' | 'error'; message: string }>({
+    const [toast, setToast] = useState<{ show: boolean; type: 'success' | 'error' | 'warning'; message: string }>({
         show: false,
         type: 'success',
         message: '',
     });
 
-    const showToast = (type: 'success' | 'error', message: string) => {
+    const showToast = (type: 'success' | 'error' | 'warning', message: string) => {
         setToast({ show: true, type, message });
         setTimeout(() => setToast(prev => ({ ...prev, show: false })), 3000);
     };
@@ -106,6 +111,21 @@ const InventoryAdjustmentDetail: React.FC = () => {
         }
     };
 
+    const handleDelete = async () => {
+        if (!adj) return;
+        try {
+            setActionLoading(true);
+            await inventoryAdjustmentApi.delete(adj.id);
+            showToast('success', 'XÓA PHIẾU ĐIỀU CHỈNH NHÁP THÀNH CÔNG');
+            setDeleteModalOpen(false);
+            setTimeout(() => navigate('/inventory-adjustments'), 1000);
+        } catch (err: any) {
+            showToast('error', err.response?.data?.message || 'Không thể xóa phiếu điều chỉnh!');
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
     const formatCurrency = (amount: number) => {
         return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount || 0);
     };
@@ -127,35 +147,42 @@ const InventoryAdjustmentDetail: React.FC = () => {
             />
 
             {/* ACTION TOOLBAR */}
-            <div className="flex flex-wrap items-center gap-3 mb-6 p-4 bg-white border border-slate-200 rounded-xl shadow-sm">
-                <div className="flex-1 flex items-center gap-3">
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-6 p-4 bg-white border border-slate-200 rounded-xl shadow-sm">
+                <div className="flex flex-wrap items-center gap-3">
                     <span className="text-sm font-bold text-slate-500">Trạng thái:</span>
                     <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold border ${InventoryAdjustmentStatusColors[adj.status]}`}>
                         {InventoryAdjustmentStatusLabels[adj.status]}
                     </span>
-                    <span className="text-xs font-medium text-slate-700 bg-slate-100 px-2.5 py-1 rounded-lg">
+                    <span className="text-xs font-medium text-slate-700 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200">
                         Lý do: {InventoryAdjustmentReasonLabels[adj.reason]}
                     </span>
                 </div>
 
                 {adj.status === InventoryAdjustmentStatus.Draft && (
-                    <>
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={() => setDeleteModalOpen(true)}
+                            disabled={actionLoading}
+                            className="flex items-center gap-1.5 px-3 py-2 bg-rose-50 text-rose-600 border border-rose-200/80 rounded-lg font-bold text-xs hover:bg-rose-100 transition-colors cursor-pointer"
+                        >
+                            <Trash2 size={15} /> Xóa Nháp
+                        </button>
                         <button
                             onClick={() => setCancelModalOpen(true)}
                             disabled={actionLoading}
-                            className="flex items-center gap-2 px-4 py-2 bg-white text-rose-600 border border-rose-200 rounded-lg font-bold text-sm hover:bg-rose-50 transition-colors"
+                            className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 text-slate-700 border border-slate-200 rounded-lg font-bold text-xs hover:bg-slate-200 transition-colors cursor-pointer"
                         >
-                            <XCircle size={16} /> Hủy Phiếu
+                            <XCircle size={15} /> Hủy Phiếu
                         </button>
                         <button
                             onClick={handleApprove}
                             disabled={actionLoading}
-                            className="flex items-center gap-2 px-5 py-2 bg-emerald-600 text-white rounded-lg font-bold text-sm hover:bg-emerald-700 transition-all shadow-sm shadow-emerald-200 disabled:opacity-50"
+                            className="flex items-center gap-2 px-5 py-2 bg-emerald-600 text-white rounded-lg font-bold text-xs hover:bg-emerald-700 transition-all shadow-sm shadow-emerald-200 disabled:opacity-50 cursor-pointer"
                         >
-                            {actionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle size={16} />}
+                            {actionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle size={15} />}
                             Duyệt & Cập Nhật Tồn Kho
                         </button>
-                    </>
+                    </div>
                 )}
             </div>
 
@@ -178,9 +205,9 @@ const InventoryAdjustmentDetail: React.FC = () => {
             {/* TAB 1: CHI TIẾT MẶT HÀNG */}
             {activeTab === 'items' && (
                 <DetailCard>
-                    <div className="p-8 flex flex-col gap-6">
+                    <div className="p-6 flex flex-col gap-6">
                         <div className="overflow-x-auto border border-slate-200 rounded-xl shadow-sm">
-                            <table className="w-full text-left whitespace-nowrap">
+                            <table className="w-full text-left whitespace-nowrap min-w-225">
                                 <thead className="bg-slate-50 text-slate-500 font-bold text-xs uppercase tracking-wider border-b border-slate-200">
                                     <tr>
                                         <th className="px-4 py-3.5 text-center w-12">#</th>
@@ -235,7 +262,7 @@ const InventoryAdjustmentDetail: React.FC = () => {
             {/* TAB 2: THÔNG TIN CHỨNG TỪ */}
             {activeTab === 'info' && (
                 <DetailCard>
-                    <div className="p-8 flex flex-col gap-8">
+                    <div className="p-6 flex flex-col gap-6">
                         <DetailSection title="Thông Tin Quản Trị">
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-y-6 gap-x-8">
                                 <InfoField label="Kho hàng" value={<span className="font-bold text-indigo-700">{adj.warehouseName}</span>} />
@@ -254,7 +281,7 @@ const InventoryAdjustmentDetail: React.FC = () => {
                                 />
                                 <InfoField label="Người lập phiếu" value={adj.createdByName} />
                                 <InfoField label="Người duyệt" value={adj.approvedByName || 'Chưa duyệt'} />
-                                <InfoField label="Ngày lập" value={<DateTimeCell isoString={adj.adjustmentDate} />} />
+                                <InfoField label="Ngày lập" value={<DateCell isoString={adj.adjustmentDate} />} />
                                 <InfoField label="Ngày duyệt" value={adj.approvedDate ? <DateTimeCell isoString={adj.approvedDate} /> : '---'} />
                             </div>
 
@@ -295,14 +322,14 @@ const InventoryAdjustmentDetail: React.FC = () => {
                             <button
                                 onClick={() => { setCancelModalOpen(false); setCancelReason(''); }}
                                 disabled={actionLoading}
-                                className="px-4 py-2 border border-slate-300 rounded-lg text-sm font-bold text-slate-600 bg-white hover:bg-slate-50"
+                                className="px-4 py-2 border border-slate-300 rounded-lg text-sm font-bold text-slate-600 bg-white hover:bg-slate-50 cursor-pointer"
                             >
                                 Đóng
                             </button>
                             <button
                                 onClick={handleCancel}
                                 disabled={actionLoading || !cancelReason.trim()}
-                                className="px-4 py-2 bg-rose-600 text-white rounded-lg text-sm font-bold hover:bg-rose-700 disabled:opacity-50 flex items-center gap-2"
+                                className="px-4 py-2 bg-rose-600 text-white rounded-lg text-sm font-bold hover:bg-rose-700 disabled:opacity-50 flex items-center gap-2 cursor-pointer"
                             >
                                 {actionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
                                 Xác Nhận Hủy
@@ -311,6 +338,16 @@ const InventoryAdjustmentDetail: React.FC = () => {
                     </div>
                 </div>
             )}
+
+            {/* DELETE MODAL */}
+            <ConfirmDeleteModal
+                isOpen={deleteModalOpen}
+                onClose={() => setDeleteModalOpen(false)}
+                onConfirm={handleDelete}
+                loading={actionLoading}
+                title="Xóa Phiếu Điều Chỉnh Nháp"
+                message={`Bạn có chắc chắn muốn xóa phiếu điều chỉnh "${adj.adjustmentCode}" không? Thao tác này không thể hoàn tác.`}
+            />
         </DetailPageContainer>
     );
 };

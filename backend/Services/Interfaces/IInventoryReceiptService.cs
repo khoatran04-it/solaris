@@ -11,5 +11,6 @@ namespace backend.Services.Interfaces
         Task<int> CreateAsync(InventoryReceiptCreateDto dto);
         Task<bool> CompleteReceiptAsync(int id, int receivedById, string? note);
         Task<bool> CancelReceiptAsync(int id, string reason);
+        Task<bool> DeleteAsync(int id);
     }
 }

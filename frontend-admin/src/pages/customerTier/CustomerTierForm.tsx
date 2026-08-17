@@ -10,7 +10,7 @@ import { CustomerTierPayload } from '../../types/customerTier';
 import { Toast } from '../../components/commons/Toast';
 import { 
     PageContainer, FormCard, FormHeader, FormInput, 
-    SubmitButton, FormSection
+    SubmitButton, FormSection, FormSelect
 } from '../../components/commons/FormUI';
 
 // Cấu hình giá trị khởi tạo
@@ -18,8 +18,14 @@ const INITIAL_STATE: CustomerTierPayload = {
     code: '',
     name: '',
     discountPercent: 0,
-    minSpending: 0
+    minSpending: 0,
+    isActive: true
 };
+
+const STATUS_OPTIONS = [
+    { label: 'Hoạt động', value: 1 },
+    { label: 'Tạm khóa', value: 0 }
+];
 
 const CustomerTierForm: React.FC = () => {
     const navigate = useNavigate();
@@ -70,7 +76,8 @@ const CustomerTierForm: React.FC = () => {
                     code: res.code || '',
                     name: res.name || '',
                     discountPercent: res.discountPercent || 0,
-                    minSpending: res.minSpending || 0
+                    minSpending: res.minSpending || 0,
+                    isActive: res.isActive
                 });
                 setOriginalCode((res.code || '').toLowerCase());
                 setOriginalName((res.name || '').toLowerCase());
@@ -103,6 +110,14 @@ const CustomerTierForm: React.FC = () => {
             const isSelf = isEditMode && trimmedName === originalName;
             if (isDuplicate && !isSelf) newErrors.name = 'Tên phân bậc đã tồn tại!';
         }
+
+        if (formData.discountPercent < 0 || formData.discountPercent > 100) {
+            newErrors.discountPercent = 'Chiết khấu phải từ 0% đến 100%.';
+        }
+
+        if (formData.minSpending < 0) {
+            newErrors.minSpending = 'Chi tiêu tối thiểu không được âm.';
+        }
         
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
@@ -116,18 +131,18 @@ const CustomerTierForm: React.FC = () => {
         setLoading(true);
         try {
             const cleanPayload: CustomerTierPayload = {
-                ...formData,
                 code: formData.code.trim().toUpperCase(),
                 name: formData.name.trim(),
                 discountPercent: Number(formData.discountPercent),
-                minSpending: Number(formData.minSpending)
+                minSpending: Number(formData.minSpending),
+                isActive: Boolean(formData.isActive)
             };
 
             if (isEditMode && id) {
-                await customerTierApi.update(Number(id), cleanPayload as any);
+                await customerTierApi.update(Number(id), cleanPayload);
                 showToast('success', 'CẬP NHẬT THÀNH CÔNG');
             } else {
-                await customerTierApi.create(cleanPayload as any);
+                await customerTierApi.create(cleanPayload);
                 showToast('success', 'THÊM MỚI THÀNH CÔNG');
             }
             setTimeout(() => navigate('/customer-tiers'), 1000);
@@ -145,14 +160,14 @@ const CustomerTierForm: React.FC = () => {
             <FormHeader
                 icon={Hexagon} 
                 title={isEditMode ? 'Chỉnh Sửa Phân Bậc Khách Hàng' : 'Thêm Phân Bậc Khách Hàng'}
-                subtitle="Cấu hình danh mục bậc khách hàng" 
+                subtitle={isEditMode ? 'Cập nhật thông tin chính sách bậc khách hàng' : 'Thiết lập chính sách bậc khách hàng và chiết khấu mới'}
                 onBack={() => navigate('/customer-tiers')}
             />
 
             <FormCard>
-                <form onSubmit={handleSubmit} className="flex flex-col gap-12">
+                <form onSubmit={handleSubmit} className="flex flex-col gap-8">
                     <FormSection title="Thông Tin Cơ Bản">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
                             <FormInput 
                                 label="Mã phân bậc" required placeholder="VANG, BAC, KIM CUONG..."
                                 value={formData.code} error={errors.code} disabled={loading}
@@ -166,17 +181,23 @@ const CustomerTierForm: React.FC = () => {
                         </div>
                     </FormSection>
 
-                    <FormSection title="Cấu Hình Chiết Khấu">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <FormSection title="Cấu Hình Chiết Khấu & Trạng Thái">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-6">
                             <FormInput 
-                                label="Chiết khấu (%)" required type="number" step="0.1"
+                                label="Chiết khấu (%)" required type="number" step="0.1" min="0" max="100"
                                 value={formData.discountPercent} error={errors.discountPercent} disabled={loading}
                                 onChange={e => handleFieldChange('discountPercent', e.target.value)} 
                             />
                             <FormInput 
-                                label="Chi tiêu tối thiểu (VNĐ)" required type="number"
+                                label="Chi tiêu tối thiểu (VNĐ)" required type="number" min="0"
                                 value={formData.minSpending} error={errors.minSpending} disabled={loading}
                                 onChange={e => handleFieldChange('minSpending', e.target.value)} 
+                            />
+                            <FormSelect 
+                                label="Trạng thái phân bậc" required 
+                                value={formData.isActive ? 1 : 0} 
+                                options={STATUS_OPTIONS}
+                                onSelect={val => handleFieldChange('isActive', val === 1)}
                             />
                         </div>
                     </FormSection>
@@ -192,6 +213,6 @@ const CustomerTierForm: React.FC = () => {
             </FormCard>
         </PageContainer>
     );        
-}
+};
 
 export default CustomerTierForm;

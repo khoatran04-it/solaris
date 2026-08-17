@@ -8,6 +8,8 @@ export interface CustomerAddress {
     ward: string;
     streetAddress: string;
     fullAddress: string;
+    latitude?: number;
+    longitude?: number;
     isDefault: boolean;
     createdAt: string;
     updatedAt: string;
@@ -20,5 +22,7 @@ export interface CustomerAddressPayload {
     district: string;
     ward: string;
     streetAddress: string;
+    latitude?: number;
+    longitude?: number;
     isDefault: boolean;
 }

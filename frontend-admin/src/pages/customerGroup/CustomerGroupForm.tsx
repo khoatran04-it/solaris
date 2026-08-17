@@ -23,7 +23,7 @@ const INITIAL_STATE: CustomerGroupPayload = {
 
 const STATUS_OPTIONS = [
     { label: 'Hoạt động', value: 1 },
-    { label: 'Ngừng hoạt động', value: 0 }
+    { label: 'Tạm khóa', value: 0 }
 ];
 
 const CustomerGroupForm: React.FC = () => {
@@ -127,10 +127,10 @@ const CustomerGroupForm: React.FC = () => {
         setLoading(true);
         try {
             const cleanPayload: CustomerGroupPayload = {
-                ...formData,
                 code: formData.code.trim().toUpperCase(),
                 name: formData.name.trim(),
-                description: formData.description?.trim() || ''
+                description: formData.description?.trim() || '',
+                isActive: Boolean(formData.isActive)
             };
 
             if (isEditMode && id) {
@@ -142,7 +142,7 @@ const CustomerGroupForm: React.FC = () => {
             }
             setTimeout(() => navigate('/customer-groups'), 1000);
         } catch (error: any) {
-            showToast('error', error.response?.status === 400 ? 'DỮ LIỆU KHÔNG HỢP LỆ' : 'CÓ LỖI XẢY RA');
+            showToast('error', error.response?.data?.message || 'CÓ LỖI XẢY RA');
         } finally {
             setLoading(false);
         }
@@ -169,7 +169,7 @@ const CustomerGroupForm: React.FC = () => {
                                 onChange={e => handleFieldChange('code', e.target.value)} 
                             />
                             <FormInput 
-                                label="Tên nhóm khách hàng" required placeholder="VD: Nhóm Lâu Năm"
+                                label="Tên nhóm khách hàng" required placeholder="VD: Khách sỉ lâu năm"
                                 value={formData.name} error={errors.name} disabled={loading}
                                 onChange={e => handleFieldChange('name', e.target.value)} 
                             />
@@ -200,6 +200,6 @@ const CustomerGroupForm: React.FC = () => {
             </FormCard>          
         </PageContainer>
     );
-}
+};
 
 export default CustomerGroupForm;

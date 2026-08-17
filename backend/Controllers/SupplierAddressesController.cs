@@ -1,5 +1,6 @@
-﻿using backend.DTOs.SupplierAddressDTOs;
+using backend.DTOs.SupplierAddressDTOs;
 using backend.Services.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -11,6 +12,7 @@ namespace backend.Controllers
     /// </summary>
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize]
     public class SupplierAddressesController : ControllerBase
     {
         private readonly ISupplierAddressService _service;
@@ -32,9 +34,24 @@ namespace backend.Controllers
         /// <returns>Danh sách địa chỉ (địa chỉ mặc định luôn đứng đầu).</returns>
         [HttpGet("supplier/{supplierId}")]
         [ProducesResponseType(typeof(IEnumerable<SupplierAddressReadDto>), StatusCodes.Status200OK)]
-        public async Task<IActionResult> GetBySupplierId(int supplierId)
+        public async Task<ActionResult<IEnumerable<SupplierAddressReadDto>>> GetBySupplierId(int supplierId)
         {
             var result = await _service.GetBySupplierIdAsync(supplierId);
+            return Ok(result);
+        }
+
+        /// <summary>
+        /// Lấy chi tiết một địa chỉ theo ID.
+        /// </summary>
+        [HttpGet("{id}")]
+        [ProducesResponseType(typeof(SupplierAddressReadDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<ActionResult<SupplierAddressReadDto>> GetById(int id)
+        {
+            var result = await _service.GetByIdAsync(id);
+            if (result == null)
+                return NotFound(new { Message = "Không tìm thấy địa chỉ kho." });
+
             return Ok(result);
         }
 
@@ -52,14 +69,15 @@ namespace backend.Controllers
         /// <param name="supplierId">ID nhà cung cấp chủ quản.</param>
         /// <param name="dto">Thông tin địa chỉ mới.</param>
         [HttpPost("{supplierId}")]
-        [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(object), StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Create(int supplierId, [FromBody] SupplierAddressCreateDto dto)
         {
             try
             {
                 var id = await _service.CreateAsync(supplierId, dto);
-                return Ok(new { Message = "Thêm địa chỉ kho thành công", Id = id });
+                var createdAddress = await _service.GetByIdAsync(id);
+                return CreatedAtAction(nameof(GetById), new { id }, createdAddress);
             }
             catch (Exception ex)
             {
@@ -71,6 +89,7 @@ namespace backend.Controllers
         /// Cập nhật thông tin chi tiết của một địa chỉ.
         /// </summary>
         /// <param name="id">ID của địa chỉ cần sửa.</param>
+        /// <param name="dto">Dữ liệu cập nhật.</param>
         [HttpPut("{id}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -80,7 +99,7 @@ namespace backend.Controllers
             try
             {
                 await _service.UpdateAsync(id, dto);
-                return Ok(new { Message = "Cập nhật địa chỉ kho thành công" });
+                return Ok(new { Message = "Cập nhật địa chỉ kho thành công." });
             }
             catch (KeyNotFoundException ex)
             {
@@ -105,7 +124,7 @@ namespace backend.Controllers
             try
             {
                 await _service.DeleteAsync(id);
-                return Ok(new { Message = "Xóa địa chỉ kho thành công" });
+                return Ok(new { Message = "Xóa địa chỉ kho thành công." });
             }
             catch (KeyNotFoundException ex)
             {
@@ -139,7 +158,7 @@ namespace backend.Controllers
             try
             {
                 await _service.SetDefaultAsync(id, supplierId);
-                return Ok(new { Message = "Đã thay đổi địa chỉ mặc định" });
+                return Ok(new { Message = "Đã thay đổi địa chỉ mặc định." });
             }
             catch (KeyNotFoundException ex)
             {

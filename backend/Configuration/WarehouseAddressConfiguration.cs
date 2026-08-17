@@ -1,4 +1,4 @@
-﻿using backend.Models;
+using backend.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -12,10 +12,10 @@ namespace backend.Configurations
             builder.HasKey(x => x.Id);
 
             // Bắt buộc và giới hạn độ dài
-            builder.Property(x => x.Province).IsRequired().HasMaxLength(100);
-            builder.Property(x => x.District).IsRequired().HasMaxLength(100);
-            builder.Property(x => x.Ward).IsRequired().HasMaxLength(100);
-            builder.Property(x => x.StreetAddress).IsRequired().HasMaxLength(255);
+            builder.Property(x => x.Province).IsRequired().HasMaxLength(100).HasColumnType("nvarchar(100)");
+            builder.Property(x => x.District).IsRequired().HasMaxLength(100).HasColumnType("nvarchar(100)");
+            builder.Property(x => x.Ward).IsRequired().HasMaxLength(100).HasColumnType("nvarchar(100)");
+            builder.Property(x => x.StreetAddress).IsRequired().HasMaxLength(255).HasColumnType("nvarchar(255)");
 
             // Bỏ qua cột tính toán này khi map xuống Database
             builder.Ignore(x => x.FullAddress);
@@ -23,6 +23,12 @@ namespace backend.Configurations
             // Tọa độ GPS cần độ chính xác cao
             builder.Property(x => x.Latitude).HasColumnType("float");
             builder.Property(x => x.Longitude).HasColumnType("float");
+
+            // Audit & Soft Delete
+            builder.Property(x => x.CreatedAt).HasColumnType("datetime2");
+            builder.Property(x => x.UpdatedAt).HasColumnType("datetime2");
+            builder.Property(x => x.IsDeleted).HasDefaultValue(false);
+            builder.HasQueryFilter(x => !x.IsDeleted);
         }
     }
 }

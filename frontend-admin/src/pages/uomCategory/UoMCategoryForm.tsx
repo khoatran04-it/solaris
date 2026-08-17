@@ -4,6 +4,7 @@ import { Layers, Save, Plus } from 'lucide-react';
 
 // API & Types
 import { uomCategoryApi } from '../../api/uomCategoryApi';
+import { uomApi } from '../../api/uomApi';
 import { UoMCategoryPayload } from '../../types/uomCategory';
 
 // Shared UI Components
@@ -43,7 +44,7 @@ const UoMCategoryForm: React.FC = () => {
     
     const [loading, setLoading] = useState(false);
     
-    // Tạm thời để trống. Sau này làm API UoM xong sẽ map data vào đây.
+    // Options cho BaseUoM
     const [uomOptions, setUomOptions] = useState<{ label: string, value: number }[]>([]); 
 
     const [toast, setToast] = useState<{ show: boolean, type: 'success' | 'warning' | 'error', message: string }>({ 
@@ -52,15 +53,23 @@ const UoMCategoryForm: React.FC = () => {
 
     // --- EFFECTS ---
     useEffect(() => {
-        // Lấy danh sách để check trùng lặp tên/mã
-        uomCategoryApi.getAllList()
-            .then(res => {
-                setExistingCodes(res.map(c => c.code.toLowerCase()));
-                setExistingNames(res.map(c => c.name.toLowerCase()));
-            })
-            .catch(() => showToast('warning', 'Không tải được danh sách kiểm tra trùng lặp'));
-
-        // TODO: Chỗ này sau này thêm logic gọi `uomApi.getAllList()` để setUomOptions
+        // Lấy danh sách để check trùng lặp tên/mã và danh sách UoM
+        Promise.all([
+            uomCategoryApi.getAllList(),
+            uomApi.getAllList()
+        ]).then(([categories, uoms]) => {
+            setExistingCodes(categories.map(c => c.code.toLowerCase()));
+            setExistingNames(categories.map(c => c.name.toLowerCase()));
+            
+            // Lọc các UoM thuộc category này nếu đang ở Edit mode hoặc hiển thị tất cả
+            const formattedUoms = [
+                { label: '-- Chưa thiết lập đơn vị gốc --', value: 0 },
+                ...uoms
+                    .filter(u => !isEditMode || !id || u.categoryId === Number(id))
+                    .map(u => ({ label: `${u.name} (${u.code})`, value: u.id }))
+            ];
+            setUomOptions(formattedUoms);
+        }).catch(() => showToast('warning', 'Không tải được danh sách kiểm tra trùng lặp'));
 
         // Tải dữ liệu chi tiết khi Edit
         if (isEditMode && id) {
@@ -123,9 +132,10 @@ const UoMCategoryForm: React.FC = () => {
         setLoading(true);
         try {
             const cleanPayload: UoMCategoryPayload = {
-                ...formData,
-                code: formData.code.trim().toUpperCase(), // Tự động viết hoa mã
+                code: formData.code.trim().toUpperCase(),
                 name: formData.name.trim(),
+                baseUoMId: formData.baseUoMId === 0 ? null : (formData.baseUoMId || null),
+                isActive: Boolean(formData.isActive)
             };
 
             if (isEditMode && id) {
@@ -137,7 +147,7 @@ const UoMCategoryForm: React.FC = () => {
             }
             setTimeout(() => navigate('/uom-categories'), 1000);
         } catch (error: any) {
-            showToast('error', error.response?.status === 400 ? 'DỮ LIỆU KHÔNG HỢP LỆ' : 'CÓ LỖI XẢY RA KHI LƯU');
+            showToast('error', error.response?.data?.message || 'CÓ LỖI XẢY RA KHI LƯU');
         } finally {
             setLoading(false);
         }
@@ -185,7 +195,7 @@ const UoMCategoryForm: React.FC = () => {
                             <FormSelect 
                                 label="Đơn vị gốc (Base UoM)" 
                                 placeholder="Chưa thiết lập..." 
-                                value={formData.baseUoMId || 0} // Hiển thị 0 nếu chưa có
+                                value={formData.baseUoMId || 0}
                                 options={uomOptions}
                                 onSelect={val => handleFieldChange('baseUoMId', val === 0 ? null : val)}
                             />

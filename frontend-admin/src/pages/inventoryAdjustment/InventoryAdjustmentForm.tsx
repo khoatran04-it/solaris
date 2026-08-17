@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { SlidersHorizontal, Plus, Trash2 } from 'lucide-react';
+import { SlidersHorizontal, Plus, Trash2, Save, AlertCircle, Calendar } from 'lucide-react';
 
 import {
   PageContainer,
@@ -27,6 +27,7 @@ import {
   InventoryAdjustmentType,
   InventoryAdjustmentTypeLabels
 } from '../../types/inventoryAdjustment';
+import { ProductBatch } from '../../types/productBatch';
 
 interface DetailRow {
   variantId: number | '';
@@ -52,7 +53,7 @@ const InventoryAdjustmentForm: React.FC = () => {
   // Dropdowns
   const [warehouses, setWarehouses] = useState<{ value: number; label: string }[]>([]);
   const [variants, setVariants] = useState<{ value: number; label: string; prices: any[] }[]>([]);
-  const [batches, setBatches] = useState<{ id: number; variantId: number; batchCode: string }[]>([]);
+  const [batches, setBatches] = useState<ProductBatch[]>([]);
   const [uoms, setUoms] = useState<{ value: number; label: string }[]>([]);
 
   // Form States
@@ -65,7 +66,7 @@ const InventoryAdjustmentForm: React.FC = () => {
       variantId: '',
       batchId: '',
       uoMId: '',
-      adjustmentType: InventoryAdjustmentType.DecreaseAvailable,
+      adjustmentType: InventoryAdjustmentType.MoveToDamaged,
       quantity: 1,
       unitPrice: 0,
       reasonDetail: ''
@@ -78,26 +79,27 @@ const InventoryAdjustmentForm: React.FC = () => {
     setTimeout(() => setToast(prev => ({ ...prev, show: false })), 3000);
   };
 
-  useEffect(() => {
-    const loadInit = async () => {
-      try {
-        const [whList, varList, batchList, uomList] = await Promise.all([
-          warehouseApi.getAllList().catch(() => []),
-          productVariantApi.getAllList().catch(() => []),
-          productBatchApi.getAllList().catch(() => []),
-          uomApi.getAllList().catch(() => []),
-        ]);
+  const loadInitData = useCallback(async () => {
+    try {
+      const [whList, varList, batchList, uomList] = await Promise.all([
+        warehouseApi.getAllList().catch(() => []),
+        productVariantApi.getAllList().catch(() => []),
+        productBatchApi.getAllList().catch(() => []),
+        uomApi.getAllList().catch(() => []),
+      ]);
 
-        setWarehouses(whList.map((w: any) => ({ value: w.id, label: w.name })));
-        setVariants(varList.map((v: any) => ({ value: v.id, label: `${v.code} - ${v.name}`, prices: v.prices || [] })));
-        setBatches(batchList.map((b: any) => ({ id: b.id, variantId: b.variantId, batchCode: b.batchCode })));
-        setUoms(uomList.map((u: any) => ({ value: u.id, label: u.name })));
-      } catch (err) {
-        showToast('error', 'Lỗi tải danh mục bổ trợ!');
-      }
-    };
-    loadInit();
+      setWarehouses(whList.map((w: any) => ({ value: w.id, label: w.name })));
+      setVariants(varList.map((v: any) => ({ value: v.id, label: `${v.code} - ${v.name}`, prices: v.prices || [] })));
+      setBatches(batchList || []);
+      setUoms(uomList.map((u: any) => ({ value: u.id, label: u.name })));
+    } catch (err) {
+      showToast('error', 'Lỗi tải danh mục bổ trợ!');
+    }
   }, []);
+
+  useEffect(() => {
+    loadInitData();
+  }, [loadInitData]);
 
   const handleAddRow = () => {
     setDetails([
@@ -106,7 +108,7 @@ const InventoryAdjustmentForm: React.FC = () => {
         variantId: '',
         batchId: '',
         uoMId: '',
-        adjustmentType: InventoryAdjustmentType.DecreaseAvailable,
+        adjustmentType: InventoryAdjustmentType.MoveToDamaged,
         quantity: 1,
         unitPrice: 0,
         reasonDetail: ''
@@ -115,6 +117,10 @@ const InventoryAdjustmentForm: React.FC = () => {
   };
 
   const handleRemoveRow = (index: number) => {
+    if (details.length === 1) {
+      showToast('warning', 'Phiếu điều chỉnh phải có ít nhất 1 dòng chi tiết!');
+      return;
+    }
     const updated = [...details];
     updated.splice(index, 1);
     setDetails(updated);
@@ -124,23 +130,39 @@ const InventoryAdjustmentForm: React.FC = () => {
     const updated = [...details];
     updated[index] = { ...updated[index], [field]: value };
 
+    // Tự động gán ĐVT và Đơn giá khi chọn Biến thể
     if (field === 'variantId' && value) {
       const v = variants.find(item => item.value === Number(value));
       if (v && v.prices && v.prices.length > 0) {
         const defPrice = v.prices.find(p => p.isDefault) || v.prices[0];
         if (defPrice) {
-          updated[index].uoMId = defPrice.uoMId;
-          updated[index].unitPrice = defPrice.price;
+          updated[index].uoMId = defPrice.uoMId || '';
+          updated[index].unitPrice = defPrice.price || 0;
         }
       }
+      // Reset Lô khi đổi SP
+      updated[index].batchId = '';
     }
 
     setDetails(updated);
+
+    // Xóa lỗi trường tương ứng
+    if (errors[`${field}_${index}`]) {
+      setErrors(prev => {
+        const e = { ...prev };
+        delete e[`${field}_${index}`];
+        return e;
+      });
+    }
+  };
+
+  const calculateTotal = () => {
+    return details.reduce((sum, row) => sum + (Number(row.quantity || 0) * Number(row.unitPrice || 0)), 0);
   };
 
   const validate = (): boolean => {
     const errs: Record<string, string> = {};
-    if (!warehouseId) errs.warehouseId = 'Vui lòng chọn kho';
+    if (!warehouseId) errs.warehouseId = 'Vui lòng chọn kho xảy ra biến động';
 
     if (details.length === 0) {
       errs.details = 'Cần ít nhất 1 dòng điều chỉnh';
@@ -149,7 +171,8 @@ const InventoryAdjustmentForm: React.FC = () => {
         if (!d.variantId) errs[`variantId_${idx}`] = 'Chọn SP';
         if (!d.batchId) errs[`batchId_${idx}`] = 'Chọn Lô';
         if (!d.uoMId) errs[`uoMId_${idx}`] = 'Chọn ĐVT';
-        if (Number(d.quantity) <= 0) errs[`quantity_${idx}`] = '> 0';
+        if (Number(d.quantity) <= 0) errs[`quantity_${idx}`] = 'SL > 0';
+        if (Number(d.unitPrice) < 0) errs[`unitPrice_${idx}`] = 'Giá >= 0';
       });
     }
 
@@ -159,30 +182,37 @@ const InventoryAdjustmentForm: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validate()) return showToast('warning', 'Vui lòng kiểm tra lại thông tin!');
+    if (!validate()) return showToast('warning', 'Vui lòng điền đầy đủ các trường bắt buộc màu đỏ!');
 
     try {
       setLoading(true);
       const payload: InventoryAdjustmentCreatePayload = {
         warehouseId: Number(warehouseId),
-        reason,
+        reason: Number(reason),
         createdById: userInfo?.id || 1,
-        note: note.trim(),
+        note: (note || '').trim(),
         details: details.map(d => ({
           variantId: Number(d.variantId),
           batchId: Number(d.batchId),
           uoMId: Number(d.uoMId),
-          adjustmentType: d.adjustmentType,
+          adjustmentType: Number(d.adjustmentType),
           quantity: Number(d.quantity),
           unitPrice: Number(d.unitPrice),
-          reasonDetail: d.reasonDetail.trim()
+          reasonDetail: (d.reasonDetail || '').trim()
         }))
       };
 
       const res = await inventoryAdjustmentApi.create(payload);
       showToast('success', 'TẠO PHIẾU ĐIỀU CHỈNH THÀNH CÔNG! VUI LÒNG DUYỆT ĐỂ CẬP NHẬT KHO.');
-      setTimeout(() => navigate(`/inventory-adjustments/${res.id}`), 1200);
+      
+      const targetId = res?.id || (res as any)?.Id;
+      if (targetId) {
+        setTimeout(() => navigate(`/inventory-adjustments/${targetId}`), 1200);
+      } else {
+        setTimeout(() => navigate('/inventory-adjustments'), 1200);
+      }
     } catch (err: any) {
+      console.error('Create adjustment error:', err);
       showToast('error', err.response?.data?.message || 'Không thể tạo phiếu điều chỉnh!');
     } finally {
       setLoading(false);
@@ -194,23 +224,30 @@ const InventoryAdjustmentForm: React.FC = () => {
       <Toast {...toast} />
 
       <FormHeader
-        title="Tạo Phiếu Điều Chỉnh Tồn Kho"
-        subtitle="Xử lý hao hụt, hư hỏng, chuyển hàng hỏng hoặc xuất hủy"
+        title="Tạo Phiếu Điều Chỉnh & Xuất Hủy Tồn Kho"
+        subtitle="Xử lý hao hụt tự nhiên, hư hỏng, cách ly hàng hỏng, hoặc tiêu hủy nông sản"
         icon={SlidersHorizontal}
         onBack={() => navigate('/inventory-adjustments')}
       />
 
       <FormCard>
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+          
+          {/* 1. THÔNG TIN CHUNG */}
           <FormSection title="1. Thông Tin Phiếu Điều Chỉnh">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <FormSelect
-                label="Kho hàng"
+                label="Kho hàng xảy ra biến động"
                 value={warehouseId}
-                onSelect={(val) => setWarehouseId(val ? Number(val) : '')}
+                onSelect={(val) => {
+                  setWarehouseId(val ? Number(val) : '');
+                  setErrors(prev => ({ ...prev, warehouseId: '' }));
+                }}
                 options={warehouses}
                 error={errors.warehouseId}
                 required
+                showSearch
+                placeholder="-- Chọn kho hàng --"
               />
 
               <FormSelect
@@ -228,146 +265,216 @@ const InventoryAdjustmentForm: React.FC = () => {
                 <FormTextarea
                   label="Ghi chú & Biên bản giải trình"
                   value={note}
-                  onChange={(e) => setNote(e.target.value)}
+                  onChange={(e: any) => setNote(e.target.value)}
                   rows={2}
-                  placeholder="Hàng bị dập nát do rơi vỡ trong ca bốc xếp sáng nay..."
+                  placeholder="Diễn giải nguyên nhân (VD: Hàng bị dập nát do rơi vỡ trong ca bốc dỡ sáng nay...)"
                 />
               </div>
             </div>
           </FormSection>
 
-          <FormSection title="2. Chi Tiết Mặt Hàng Cần Điều Chỉnh">
+          {/* 2. CHI TIẾT BIẾN ĐỘNG */}
+          <FormSection title="2. Danh Sách Mặt Hàng Cần Điều Chỉnh">
             {errors.details && (
-              <div className="mb-4 text-rose-500 text-sm font-bold">{errors.details}</div>
+              <div className="mb-4 p-3 bg-rose-50 text-rose-600 text-sm font-bold rounded-lg border border-rose-200 flex items-center gap-2">
+                <AlertCircle size={16} />
+                <span>{errors.details}</span>
+              </div>
             )}
 
-            <div className="mb-4 flex justify-end">
-              <button
-                type="button"
-                onClick={handleAddRow}
-                className="flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 rounded-lg text-sm font-bold transition-colors"
-              >
-                <Plus size={16} /> Thêm mặt hàng
-              </button>
-            </div>
+            <div className="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-sm">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm border-collapse min-w-237.5">
+                  <thead className="bg-slate-50 text-slate-600 font-bold text-xs uppercase tracking-wider border-b border-slate-200">
+                    <tr>
+                      <th className="py-3 px-3 text-center w-10">#</th>
+                      <th className="py-3 px-3 w-[26%]">Sản Phẩm (SKU) <span className="text-red-500">*</span></th>
+                      <th className="py-3 px-3 w-[22%]">Lô Hàng Nông Sản <span className="text-red-500">*</span></th>
+                      <th className="py-3 px-3 w-[22%]">Loại Điều Chỉnh <span className="text-red-500">*</span></th>
+                      <th className="py-3 px-2 w-[10%] text-center">ĐVT <span className="text-red-500">*</span></th>
+                      <th className="py-3 px-2 w-[10%] text-center">Số Lượng <span className="text-red-500">*</span></th>
+                      <th className="py-3 px-3 w-[10%] text-right">Đơn Giá</th>
+                      <th className="py-3 px-2 text-center w-12">Xóa</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {details.map((row, idx) => {
+                      const rowBatches = batches.filter(b => b.variantId === Number(row.variantId));
+                      const selectedBatch = batches.find(b => b.id === Number(row.batchId));
 
-            <div className="overflow-x-auto border border-slate-200 rounded-xl shadow-sm mb-6">
-              <table className="w-full text-left text-sm whitespace-nowrap">
-                <thead className="bg-slate-50 text-slate-600 font-bold text-xs uppercase tracking-wider border-b border-slate-200">
-                  <tr>
-                    <th className="px-4 py-3 text-center w-12">#</th>
-                    <th className="px-4 py-3 min-w-48">Sản phẩm</th>
-                    <th className="px-4 py-3 min-w-44">Lô Hàng</th>
-                    <th className="px-4 py-3 min-w-56">Loại điều chỉnh</th>
-                    <th className="px-4 py-3 min-w-28 text-center">ĐVT</th>
-                    <th className="px-4 py-3 w-28 text-center">Số lượng</th>
-                    <th className="px-4 py-3 w-32 text-right">Đơn giá</th>
-                    <th className="px-4 py-3 min-w-40">Giải trình chi tiết</th>
-                    <th className="px-4 py-3 w-16 text-center">Xóa</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {details.map((row, idx) => {
-                    const rowBatches = batches.filter(b => b.variantId === Number(row.variantId));
-                    return (
-                      <tr key={idx} className="hover:bg-slate-50/50">
-                        <td className="px-4 py-3 text-center text-slate-400">{idx + 1}</td>
-                        <td className="px-4 py-3">
-                          <select
-                            value={row.variantId}
-                            onChange={(e) => {
-                              handleDetailChange(idx, 'variantId', e.target.value);
-                              handleDetailChange(idx, 'batchId', '');
-                            }}
-                            className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-400 outline-none"
-                          >
-                            <option value="">-- Chọn sản phẩm --</option>
-                            {variants.map(v => <option key={v.value} value={v.value}>{v.label}</option>)}
-                          </select>
-                        </td>
-                        <td className="px-4 py-3">
-                          <select
-                            value={row.batchId}
-                            onChange={(e) => handleDetailChange(idx, 'batchId', e.target.value)}
-                            className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm font-bold text-indigo-700 focus:ring-2 focus:ring-indigo-400 outline-none"
-                            disabled={!row.variantId}
-                          >
-                            <option value="">-- Chọn Lô --</option>
-                            {rowBatches.map(b => (
-                              <option key={b.id} value={b.id}>{b.batchCode}</option>
-                            ))}
-                          </select>
-                        </td>
-                        <td className="px-4 py-3">
-                          <select
-                            value={row.adjustmentType}
-                            onChange={(e) => handleDetailChange(idx, 'adjustmentType', Number(e.target.value))}
-                            className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs font-bold text-slate-800 focus:ring-2 focus:ring-indigo-400 outline-none"
-                          >
-                            {Object.keys(InventoryAdjustmentTypeLabels).map(key => (
-                              <option key={key} value={key}>
-                                {InventoryAdjustmentTypeLabels[Number(key) as InventoryAdjustmentType]}
-                              </option>
-                            ))}
-                          </select>
-                        </td>
-                        <td className="px-4 py-3">
-                          <select
-                            value={row.uoMId}
-                            onChange={(e) => handleDetailChange(idx, 'uoMId', e.target.value)}
-                            className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-400 outline-none"
-                          >
-                            <option value="">-- ĐVT --</option>
-                            {uoms.map(u => <option key={u.value} value={u.value}>{u.label}</option>)}
-                          </select>
-                        </td>
-                        <td className="px-4 py-3">
-                          <input
-                            type="number"
-                            min="0.01"
-                            step="any"
-                            value={row.quantity}
-                            onChange={(e) => handleDetailChange(idx, 'quantity', parseFloat(e.target.value) || 0)}
-                            className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-center font-bold focus:ring-2 focus:ring-indigo-400 outline-none"
-                          />
-                        </td>
-                        <td className="px-4 py-3">
-                          <input
-                            type="number"
-                            min="0"
-                            value={row.unitPrice}
-                            onChange={(e) => handleDetailChange(idx, 'unitPrice', parseFloat(e.target.value) || 0)}
-                            className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-right focus:ring-2 focus:ring-indigo-400 outline-none"
-                          />
-                        </td>
-                        <td className="px-4 py-3">
-                          <input
-                            type="text"
-                            placeholder="Chi tiết lý do..."
-                            value={row.reasonDetail}
-                            onChange={(e) => handleDetailChange(idx, 'reasonDetail', e.target.value)}
-                            className="w-full px-2 py-1 border border-slate-200 rounded text-xs focus:ring-2 focus:ring-indigo-400 outline-none"
-                          />
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveRow(idx)}
-                            className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                      return (
+                        <tr key={idx} className="hover:bg-slate-50/60 transition-colors">
+                          <td className="py-3 px-3 text-center text-slate-400 font-medium">{idx + 1}</td>
+                          
+                          {/* SẢN PHẨM */}
+                          <td className="py-3 px-3">
+                            <select
+                              value={row.variantId}
+                              onChange={(e) => handleDetailChange(idx, 'variantId', e.target.value)}
+                              className={`w-full px-3 py-2 border rounded-lg text-xs font-semibold focus:ring-2 focus:ring-yellow-400 outline-none bg-white ${
+                                errors[`variantId_${idx}`] ? 'border-rose-400 bg-rose-50/30' : 'border-slate-300'
+                              }`}
+                            >
+                              <option value="">-- Chọn sản phẩm --</option>
+                              {variants.map(v => (
+                                <option key={v.value} value={v.value}>{v.label}</option>
+                              ))}
+                            </select>
+                            {errors[`variantId_${idx}`] && (
+                              <span className="text-[11px] text-rose-500 font-bold block mt-0.5">
+                                {errors[`variantId_${idx}`]}
+                              </span>
+                            )}
+                          </td>
+
+                          {/* LÔ HÀNG */}
+                          <td className="py-3 px-3">
+                            <select
+                              value={row.batchId}
+                              onChange={(e) => handleDetailChange(idx, 'batchId', e.target.value)}
+                              disabled={!row.variantId}
+                              className={`w-full px-3 py-2 border rounded-lg text-xs font-bold focus:ring-2 focus:ring-yellow-400 outline-none disabled:bg-slate-100 ${
+                                errors[`batchId_${idx}`] ? 'border-rose-400 bg-rose-50/30 text-rose-700' : 'border-slate-300 text-indigo-700'
+                              }`}
+                            >
+                              <option value="">{row.variantId ? '-- Chọn Lô Hàng --' : '-- Chọn SP trước --'}</option>
+                              {rowBatches.map(b => (
+                                <option key={b.id} value={b.id}>
+                                  {b.batchCode} (HSD: {b.expiryDate ? new Date(b.expiryDate).toLocaleDateString('vi-VN') : 'N/A'})
+                                </option>
+                              ))}
+                            </select>
+                            {selectedBatch?.expiryDate && (
+                              <div className="flex items-center gap-1 mt-1 text-[11px] text-slate-500">
+                                <Calendar size={12} className="text-amber-600" />
+                                <span>HSD: {new Date(selectedBatch.expiryDate).toLocaleDateString('vi-VN')}</span>
+                              </div>
+                            )}
+                            {errors[`batchId_${idx}`] && (
+                              <span className="text-[11px] text-rose-500 font-bold block mt-0.5">
+                                {errors[`batchId_${idx}`]}
+                              </span>
+                            )}
+                          </td>
+
+                          {/* LOẠI ĐIỀU CHỈNH */}
+                          <td className="py-3 px-3">
+                            <select
+                              value={row.adjustmentType}
+                              onChange={(e) => handleDetailChange(idx, 'adjustmentType', Number(e.target.value))}
+                              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-bold text-slate-800 focus:ring-2 focus:ring-yellow-400 outline-none bg-white"
+                            >
+                              {Object.keys(InventoryAdjustmentTypeLabels).map(key => (
+                                <option key={key} value={key}>
+                                  {InventoryAdjustmentTypeLabels[Number(key) as InventoryAdjustmentType]}
+                                </option>
+                              ))}
+                            </select>
+                            <input
+                              type="text"
+                              placeholder="Lý do chi tiết dòng..."
+                              value={row.reasonDetail}
+                              onChange={(e) => handleDetailChange(idx, 'reasonDetail', e.target.value)}
+                              className="w-full px-2 py-1 mt-1 border border-slate-200 rounded text-[11px] focus:ring-1 focus:ring-yellow-400 outline-none"
+                            />
+                          </td>
+
+                          {/* ĐVT */}
+                          <td className="py-3 px-2 text-center">
+                            <select
+                              value={row.uoMId}
+                              onChange={(e) => handleDetailChange(idx, 'uoMId', e.target.value)}
+                              className={`w-full px-2 py-2 border rounded-lg text-xs font-medium focus:ring-2 focus:ring-yellow-400 outline-none bg-white ${
+                                errors[`uoMId_${idx}`] ? 'border-rose-400' : 'border-slate-300'
+                              }`}
+                            >
+                              <option value="">-- ĐVT --</option>
+                              {uoms.map(u => (
+                                <option key={u.value} value={u.value}>{u.label}</option>
+                              ))}
+                            </select>
+                            {errors[`uoMId_${idx}`] && (
+                              <span className="text-[10px] text-rose-500 font-bold block mt-0.5">
+                                {errors[`uoMId_${idx}`]}
+                              </span>
+                            )}
+                          </td>
+
+                          {/* SỐ LƯỢNG */}
+                          <td className="py-3 px-2 text-center">
+                            <input
+                              type="number"
+                              min="0.01"
+                              step="any"
+                              value={row.quantity}
+                              onChange={(e) => handleDetailChange(idx, 'quantity', parseFloat(e.target.value) || 0)}
+                              className={`w-full px-2 py-2 border rounded-lg text-xs text-center font-black focus:ring-2 focus:ring-yellow-400 outline-none bg-white ${
+                                errors[`quantity_${idx}`] ? 'border-rose-400 text-rose-700' : 'border-slate-300 text-slate-800'
+                              }`}
+                            />
+                            {errors[`quantity_${idx}`] && (
+                              <span className="text-[10px] text-rose-500 font-bold block mt-0.5">
+                                {errors[`quantity_${idx}`]}
+                              </span>
+                            )}
+                          </td>
+
+                          {/* ĐƠN GIÁ */}
+                          <td className="py-3 px-3 text-right">
+                            <input
+                              type="number"
+                              min="0"
+                              value={row.unitPrice}
+                              onChange={(e) => handleDetailChange(idx, 'unitPrice', parseFloat(e.target.value) || 0)}
+                              className="w-full px-2 py-2 border border-slate-300 rounded-lg text-xs text-right font-medium focus:ring-2 focus:ring-yellow-400 outline-none bg-white"
+                            />
+                            <div className="text-[11px] font-bold text-slate-600 mt-1">
+                              = {((row.quantity || 0) * (row.unitPrice || 0)).toLocaleString('vi-VN')} ₫
+                            </div>
+                          </td>
+
+                          {/* XÓA DÒNG */}
+                          <td className="py-3 px-2 text-center">
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveRow(idx)}
+                              className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                              title="Xóa dòng"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                  <tfoot className="bg-slate-50/80 font-medium border-t border-slate-200">
+                    <tr>
+                      <td colSpan={5} className="px-4 py-3.5 text-right text-slate-600 text-xs font-bold uppercase tracking-wider">
+                        Tổng Giá Trị Điều Chỉnh Dự Kiến:
+                      </td>
+                      <td colSpan={3} className="px-4 py-3.5 text-left text-blue-700 font-black text-base">
+                        {calculateTotal().toLocaleString('vi-VN')} ₫
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+
+              <div className="p-3 bg-slate-50/50 border-t border-slate-200 flex justify-center">
+                <button
+                  type="button"
+                  onClick={handleAddRow}
+                  className="flex items-center gap-2 px-4 py-2 text-xs font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200/60 rounded-lg transition-colors cursor-pointer"
+                >
+                  <Plus size={15} strokeWidth={2.5} /> THÊM MẶT HÀNG
+                </button>
+              </div>
             </div>
           </FormSection>
 
-          <div className="flex justify-end pt-6">
-            <SubmitButton loading={loading} isEditMode={false} />
+          <div className="flex justify-end pt-4 border-t border-slate-100">
+            <SubmitButton loading={loading} isEditMode={false} icon={Save} />
           </div>
         </form>
       </FormCard>

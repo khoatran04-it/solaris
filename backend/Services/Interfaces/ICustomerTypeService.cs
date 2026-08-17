@@ -1,32 +1,39 @@
-﻿using backend.DTOs;
+using backend.DTOs;
 using backend.DTOs.CustomerTypeDTOs;
 
 namespace backend.Services.Interfaces
 {
+    /// <summary>
+    /// Giao diện Service quản lý Phân loại khách hàng (Customer Type).
+    /// </summary>
     public interface ICustomerTypeService
     {
-        // 1. GET ALL (Load Dropdown)
+        /// <summary>Lấy toàn bộ danh sách phân loại (dùng cho dropdown/combobox)</summary>
         Task<IEnumerable<CustomerTypeReadDto>> GetAllListAsync();
 
-        // 2. GET PAGED (Load Table UI, search & filter)
+        /// <summary>Lấy danh sách phân loại có phân trang và bộ lọc</summary>
         Task<PagedResult<CustomerTypeReadDto>> GetPagedAsync(
             string? search,
             string? names,
+            bool? isActive,
             DateTime? createdAt,
             DateTime? updatedAt,
             int pageIndex,
             int pageSize);
 
-        // 3. GET BY ID
+        /// <summary>Lấy chi tiết phân loại theo ID</summary>
         Task<CustomerTypeReadDto?> GetByIdAsync(int id);
 
-        // 4. CREATE
+        /// <summary>Tạo mới phân loại khách hàng</summary>
         Task<int> CreateAsync(CustomerTypeCreateDto dto);
 
-        // 5. UPDATE
+        /// <summary>Cập nhật thông tin phân loại</summary>
         Task<bool> UpdateAsync(int id, CustomerTypeUpdateDto dto);
 
-        // 6. DELETE
+        /// <summary>Xóa phân loại (có kiểm tra khách hàng liên kết)</summary>
         Task<bool> DeleteAsync(int id);
+
+        /// <summary>Chuyển đổi trạng thái Hoạt động / Tạm khóa</summary>
+        Task<bool> ToggleActiveAsync(int id);
     }
 }

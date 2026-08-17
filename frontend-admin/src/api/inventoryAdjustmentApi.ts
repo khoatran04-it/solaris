@@ -15,15 +15,19 @@ export const inventoryAdjustmentApi = {
         return axiosClient.get(`/InventoryAdjustments/${id}`);
     },
 
-    create: (data: InventoryAdjustmentCreatePayload): Promise<{ id: number }> => {
+    create: (data: InventoryAdjustmentCreatePayload): Promise<{ id: number; message?: string }> => {
         return axiosClient.post('/InventoryAdjustments', data);
     },
 
-    approve: (id: number): Promise<void> => {
+    approve: (id: number): Promise<{ message?: string }> => {
         return axiosClient.post(`/InventoryAdjustments/${id}/approve`);
     },
 
-    cancel: (id: number, reason: string): Promise<void> => {
+    cancel: (id: number, reason: string): Promise<{ message?: string }> => {
         return axiosClient.post(`/InventoryAdjustments/${id}/cancel`, { reason });
+    },
+
+    delete: (id: number): Promise<{ message?: string }> => {
+        return axiosClient.delete(`/InventoryAdjustments/${id}`);
     },
 };

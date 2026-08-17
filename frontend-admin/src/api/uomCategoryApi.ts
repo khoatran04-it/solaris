@@ -1,16 +1,16 @@
 import axiosClient from './axiosClient';
 import { PagedResult } from '../types/common';
-import { UoMCategory, UoMCategoryPayload } from '../types/uomCategory';
+import { UoMCategory, UoMCategoryPayload, UoMCategoryQueryParams } from '../types/uomCategory';
 
 export const uomCategoryApi = {
     // 1. GET Paged (Dành cho bảng danh sách có phân trang và filter)
-    getAll: (params?: any): Promise<PagedResult<UoMCategory>> => {
+    getAll: (params?: UoMCategoryQueryParams): Promise<PagedResult<UoMCategory>> => {
         return axiosClient.get('/UoMCategories', { params });
     },
 
     // 2. GET ALL (Không phân trang - Dùng cho Dropdown Select ở form UoM)
-    getAllList: (): Promise<UoMCategory[]> => {
-        return axiosClient.get('/UoMCategories/all');
+    getAllList: (isActiveOnly: boolean = false): Promise<UoMCategory[]> => {
+        return axiosClient.get('/UoMCategories/all', { params: { isActive: isActiveOnly ? true : undefined } });
     },
 
     // 3. GET by ID (Dùng khi mở form Edit để fetch dữ liệu cũ)
@@ -32,4 +32,9 @@ export const uomCategoryApi = {
     delete: (id: number): Promise<void> => {
         return axiosClient.delete(`/UoMCategories/${id}`);
     },
+
+    // 7. PATCH (Thay đổi trạng thái Hoạt động / Tạm khóa)
+    toggleActive: (id: number): Promise<void> => {
+        return axiosClient.patch(`/UoMCategories/${id}/toggle-active`);
+    }
 };

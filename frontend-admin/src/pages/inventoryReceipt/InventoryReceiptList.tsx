@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ClipboardCheck, Eye } from 'lucide-react';
+import { ClipboardCheck, Eye, Trash2 } from 'lucide-react';
 
 // API & Types
 import { inventoryReceiptApi } from '../../api/inventoryReceiptApi';
@@ -21,11 +21,13 @@ import {
     TableLoading,
     TableEmpty,
     ListPagination,
+    DateCell,
     DateTimeCell
 } from '../../components/commons/ListUI';
 import { CustomFilter } from '../../components/commons/CustomFilter';
 import { CustomDateFilter } from '../../components/commons/CustomDateFilter';
 import { Toast } from '../../components/commons/Toast';
+import { ConfirmDeleteModal } from '../../components/modals/ConfirmDeleteModal';
 
 const InventoryReceiptList: React.FC = () => {
     const navigate = useNavigate();
@@ -45,7 +47,12 @@ const InventoryReceiptList: React.FC = () => {
     const [supplierFilter, setSupplierFilter] = useState<(string | number)[]>([]);
     const [statusFilter, setStatusFilter] = useState<(string | number)[]>([]);
     const [startDateFilter, setStartDateFilter] = useState<Date | null>(null);
-    const [endDateFilter, setEndDateFilter] = useState<Date | null>(null); // Bổ sung lọc Đến ngày
+    const [endDateFilter, setEndDateFilter] = useState<Date | null>(null);
+
+    // --- STATE DELETE MODAL ---
+    const [deleteId, setDeleteId] = useState<number | null>(null);
+    const [deleteCode, setDeleteCode] = useState('');
+    const [isDeleting, setIsDeleting] = useState(false);
 
     // --- STATE TOAST ---
     const [toast, setToast] = useState<{ show: boolean, type: 'success' | 'error' | 'warning', message: string }>({ 
@@ -56,7 +63,6 @@ const InventoryReceiptList: React.FC = () => {
     const [warehouseOptions, setWarehouseOptions] = useState<{ label: string, value: number }[]>([]);
     const [supplierOptions, setSupplierOptions] = useState<{ label: string, value: number }[]>([]);
     
-    // Lấy keys từ object Labels để tránh lỗi Reverse Mapping của Enum
     const statusOptions = Object.keys(InventoryReceiptStatusLabels).map(key => ({
         label: InventoryReceiptStatusLabels[Number(key) as InventoryReceiptStatus],
         value: Number(key)
@@ -100,9 +106,9 @@ const InventoryReceiptList: React.FC = () => {
                 endDate: endDateFilter ? endDateFilter.toLocaleDateString('en-CA') : undefined,
             });
             
-            setData(response.items);
-            setTotalPages(response.totalPages);
-            setTotalItems(response.totalRecords);
+            setData(response.items || []);
+            setTotalPages(response.totalPages || 0);
+            setTotalItems(response.totalRecords || 0);
         } catch (error) {
             console.error("Lỗi khi tải danh sách phiếu nhập kho:", error);
             showToast('error', 'CÓ LỖI XẢY RA KHI TẢI DỮ LIỆU');
@@ -115,10 +121,24 @@ const InventoryReceiptList: React.FC = () => {
         fetchData(); 
     }, [fetchData]);
 
-    // --- HANDLERS ---
     const showToast = (type: 'success' | 'error' | 'warning', message: string) => {
         setToast({ show: true, type, message });
         setTimeout(() => setToast(prev => ({ ...prev, show: false })), 3000);
+    };
+
+    const handleDelete = async () => {
+        if (!deleteId) return;
+        try {
+            setIsDeleting(true);
+            await inventoryReceiptApi.delete(deleteId);
+            showToast('success', 'XÓA PHIẾU NHẬP KHO CHỜ XỬ LÝ THÀNH CÔNG');
+            setDeleteId(null);
+            fetchData();
+        } catch (error: any) {
+            showToast('error', error.response?.data?.message || 'Không thể xóa phiếu nhập kho!');
+        } finally {
+            setIsDeleting(false);
+        }
     };
 
     return (
@@ -136,8 +156,8 @@ const InventoryReceiptList: React.FC = () => {
             />
 
             <ListCard>
-                <div className="overflow-x-auto flex-1 min-h-100 pb-24">
-                    <table className="w-full text-left border-collapse min-w-250">
+                <div className="overflow-x-auto flex-1 min-h-[400px] pb-24">
+                    <table className="w-full text-left border-collapse min-w-[950px]">
                         <thead>
                             <tr className="bg-slate-50/70 border-b border-slate-100">
                                 <th className="w-[14%] py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider text-left">Mã Phiếu</th>
@@ -195,14 +215,14 @@ const InventoryReceiptList: React.FC = () => {
                                         
                                         {/* CELL 3: NHÀ CUNG CẤP */}
                                         <td className="py-3 px-2">
-                                            <div className="text-[13px] text-slate-600 truncate max-w-48" title={receipt.supplierName}>
+                                            <div className="text-[13px] text-slate-600 truncate max-w-[180px]" title={receipt.supplierName}>
                                                 {receipt.supplierName || <span className="italic text-slate-400">Không có</span>}
                                             </div>
                                         </td>
                                         
                                         {/* CELL 4 & 5: NGÀY NHẬP */}
                                         <td className="py-3 px-2 text-center" colSpan={2}>
-                                            {receipt.receiptDate ? <DateTimeCell isoString={receipt.receiptDate} /> : <span className="text-sm text-slate-400">-</span>}
+                                            <DateCell isoString={receipt.receiptDate} />
                                         </td>
                                         
                                         {/* CELL 6: TRẠNG THÁI */}
@@ -223,15 +243,26 @@ const InventoryReceiptList: React.FC = () => {
                                         
                                         {/* CELL 8: THAO TÁC */}
                                         <td className="py-3 px-6">
-                                            <div className="flex justify-center gap-1.5 opacity-40 group-hover:opacity-100 transition-all duration-300">
+                                            <div className="flex justify-center gap-1.5 opacity-60 group-hover:opacity-100 transition-all duration-300">
                                                 <button
                                                     onClick={() => navigate(`/inventory-receipts/${receipt.id}`)}
-                                                    className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                                                    className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors cursor-pointer"
                                                     title="Xem chi tiết"
                                                 >
                                                     <Eye size={17} strokeWidth={2.5} />
                                                 </button>
-                                                {/* Lưu ý: UI Phiếu nhập thường không cho Delete trực tiếp ngoài list mà phải vào Detail để Cancel */}
+                                                {receipt.status === InventoryReceiptStatus.Pending && (
+                                                    <button
+                                                        onClick={() => {
+                                                            setDeleteId(receipt.id);
+                                                            setDeleteCode(receipt.receiptCode);
+                                                        }}
+                                                        className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                                                        title="Xóa phiếu chờ"
+                                                    >
+                                                        <Trash2 size={17} strokeWidth={2.5} />
+                                                    </button>
+                                                )}
                                             </div>
                                         </td>
                                     </tr>
@@ -239,7 +270,7 @@ const InventoryReceiptList: React.FC = () => {
                             ) : (
                                 <TableEmpty 
                                     colSpan={8} 
-                                    message="Thử thay đổi từ khóa tìm kiếm hoặc điều kiện lọc." 
+                                    message="Không tìm thấy phiếu nhập kho nào phù hợp." 
                                 />
                             )}
                         </tbody>
@@ -254,6 +285,15 @@ const InventoryReceiptList: React.FC = () => {
                     isLoading={isLoading}
                 />
             </ListCard>
+
+            <ConfirmDeleteModal
+                isOpen={Boolean(deleteId)}
+                onClose={() => setDeleteId(null)}
+                onConfirm={handleDelete}
+                loading={isDeleting}
+                title="Xóa Phiếu Nhập Kho Chờ Xử Lý"
+                message={`Bạn có chắc chắn muốn xóa phiếu nhập kho "${deleteCode}" không? Thao tác này không thể hoàn tác.`}
+            />
         </ListPageContainer>
     );
 };

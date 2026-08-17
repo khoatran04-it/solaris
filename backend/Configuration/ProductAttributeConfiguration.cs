@@ -1,4 +1,4 @@
-﻿using backend.Models;
+using backend.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -19,7 +19,7 @@ namespace backend.Configurations
             // Audit & Soft Delete
             builder.Property(x => x.CreatedAt).HasColumnType("datetime2");
             builder.Property(x => x.UpdatedAt).HasColumnType("datetime2");
-            builder.Property(x => x.IsActive).HasDefaultValue(true);
+            builder.Property(x => x.IsActive);
             builder.Property(x => x.IsDeleted).HasDefaultValue(false);
             builder.HasQueryFilter(x => !x.IsDeleted);
 
@@ -31,7 +31,6 @@ namespace backend.Configurations
                    .OnDelete(DeleteBehavior.Cascade);
 
             // 2. Nối với Từ điển thuộc tính (AttributeDefinition)
-            // Lưu ý: Đảm bảo sếp sẽ tạo model AttributeDefinition sau nhé
             builder.HasOne(x => x.AttributeDefinition)
                    .WithMany()
                    .HasForeignKey(x => x.AttributeDefinitionId)

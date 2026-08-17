@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
-    ClipboardCheck, FileText, Package, Loader2, CheckCircle, XCircle, AlertCircle 
+    ClipboardCheck, FileText, Package, Loader2, CheckCircle, XCircle, AlertCircle, Trash2 
 } from 'lucide-react';
 
 // API & Types
@@ -19,7 +19,8 @@ import {
     DetailPageContainer, DetailHeader, TabGroup, TabButton, 
     DetailCard, DetailSection, InfoField 
 } from '../../components/commons/TabUI';
-import { DateTimeCell, TableEmpty } from '../../components/commons/ListUI';
+import { DateCell, DateTimeCell, TableEmpty } from '../../components/commons/ListUI';
+import { ConfirmDeleteModal } from '../../components/modals/ConfirmDeleteModal';
 
 type TabType = 'info' | 'details';
 
@@ -37,6 +38,10 @@ const InventoryReceiptDetail: React.FC = () => {
     const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
     const [cancelReason, setCancelReason] = useState('');
     const [isCancelling, setIsCancelling] = useState(false);
+
+    // Delete Modal States
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
 
     // Complete Action State
     const [isCompleting, setIsCompleting] = useState(false);
@@ -65,12 +70,11 @@ const InventoryReceiptDetail: React.FC = () => {
         if (!id) return;
         setIsCompleting(true);
         try {
-            // Lưu ý: Cần đảm bảo inventoryReceiptApi.complete hoặc updateStatus có tồn tại bên API file
             await inventoryReceiptApi.complete(Number(id));
-            showToast('success', 'HOÀN TẤT NHẬP KHO THÀNH CÔNG!');
+            showToast('success', 'HOÀN TẤT NHẬP KHO THÀNH CÔNG! ĐÃ CẬP NHẬT TỒN KHO & GHI SỔ CÁI.');
             fetchReceipt();
-        } catch (error) {
-            showToast('error', 'CÓ LỖI XẢY RA KHI HOÀN TẤT NHẬP KHO.');
+        } catch (error: any) {
+            showToast('error', error.response?.data?.message || 'CÓ LỖI XẢY RA KHI HOÀN TẤT NHẬP KHO.');
         } finally {
             setIsCompleting(false);
         }
@@ -80,16 +84,30 @@ const InventoryReceiptDetail: React.FC = () => {
         if (!id || !cancelReason.trim()) return;
         setIsCancelling(true);
         try {
-            // Tương tự, dùng method hủy phiếu từ API
             await inventoryReceiptApi.cancel(Number(id), cancelReason.trim());
             showToast('success', 'ĐÃ HỦY PHIẾU NHẬP KHO!');
             setIsCancelModalOpen(false);
             setCancelReason('');
             fetchReceipt();
-        } catch (error) {
-            showToast('error', 'CÓ LỖI XẢY RA KHI HỦY PHIẾU NHẬP KHO.');
+        } catch (error: any) {
+            showToast('error', error.response?.data?.message || 'CÓ LỖI XẢY RA KHI HỦY PHIẾU NHẬP KHO.');
         } finally {
             setIsCancelling(false);
+        }
+    };
+
+    const handleDelete = async () => {
+        if (!id) return;
+        setIsDeleting(true);
+        try {
+            await inventoryReceiptApi.delete(Number(id));
+            showToast('success', 'XÓA PHIẾU NHẬP KHO THÀNH CÔNG');
+            setIsDeleteModalOpen(false);
+            setTimeout(() => navigate('/inventory-receipts'), 1000);
+        } catch (error: any) {
+            showToast('error', error.response?.data?.message || 'Không thể xóa phiếu nhập kho!');
+        } finally {
+            setIsDeleting(false);
         }
     };
 
@@ -121,8 +139,8 @@ const InventoryReceiptDetail: React.FC = () => {
             />
 
             {/* ================= THANH CÔNG CỤ (ACTION BUTTONS) ================= */}
-            <div className="flex flex-wrap gap-3 mb-6 p-4 bg-white border border-slate-200 rounded-xl shadow-sm">
-                <div className="flex-1 flex items-center gap-3">
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-6 p-4 bg-white border border-slate-200 rounded-xl shadow-sm">
+                <div className="flex items-center gap-3">
                     <span className="text-sm font-bold text-slate-500">Trạng thái hiện tại:</span>
                     <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold border ${InventoryReceiptStatusColors[receipt.status]}`}>
                         {InventoryReceiptStatusLabels[receipt.status]}
@@ -131,23 +149,32 @@ const InventoryReceiptDetail: React.FC = () => {
 
                 {/* Chờ Nhập Kho hoặc Đang Kiểm Đếm đều có quyền Hoàn tất hoặc Hủy */}
                 {(receipt.status === InventoryReceiptStatus.Pending || receipt.status === InventoryReceiptStatus.Inspecting) && (
-                    <>
+                    <div className="flex items-center gap-2">
+                        {receipt.status === InventoryReceiptStatus.Pending && (
+                            <button
+                                onClick={() => setIsDeleteModalOpen(true)}
+                                disabled={isCancelling || isCompleting || isDeleting}
+                                className="flex items-center gap-1.5 px-3 py-2 bg-rose-50 text-rose-600 border border-rose-200/80 rounded-lg font-bold text-xs hover:bg-rose-100 transition-colors cursor-pointer"
+                            >
+                                <Trash2 size={15} /> Xóa Phiếu
+                            </button>
+                        )}
                         <button
                             onClick={() => { setCancelReason(''); setIsCancelModalOpen(true); }}
-                            disabled={isCancelling || isCompleting}
-                            className="flex items-center gap-2 px-5 py-2 bg-white text-rose-600 border border-rose-200 rounded-lg font-bold text-sm hover:bg-rose-50 transition-colors disabled:opacity-50"
+                            disabled={isCancelling || isCompleting || isDeleting}
+                            className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 text-slate-700 border border-slate-200 rounded-lg font-bold text-xs hover:bg-slate-200 transition-colors cursor-pointer"
                         >
-                            <XCircle size={16} /> Hủy Phiếu
+                            <XCircle size={15} /> Hủy Phiếu
                         </button>
                         <button
                             onClick={handleComplete}
-                            disabled={isCompleting || isCancelling}
-                            className="flex items-center gap-2 px-5 py-2 bg-emerald-600 text-white rounded-lg font-bold text-sm hover:bg-emerald-700 transition-colors disabled:opacity-50 shadow-sm shadow-emerald-200"
+                            disabled={isCompleting || isCancelling || isDeleting}
+                            className="flex items-center gap-2 px-5 py-2 bg-emerald-600 text-white rounded-lg font-bold text-xs hover:bg-emerald-700 transition-all shadow-sm shadow-emerald-200 disabled:opacity-50 cursor-pointer"
                         >
-                            {isCompleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle size={16} />} 
+                            {isCompleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle size={15} />} 
                             Hoàn Tất Nhập Kho
                         </button>
-                    </>
+                    </div>
                 )}
             </div>
 
@@ -180,7 +207,7 @@ const InventoryReceiptDetail: React.FC = () => {
                                 
                                 <div className="flex flex-col items-start">
                                     <span className="text-[11px] font-bold text-slate-400 uppercase mb-1">Ngày xe cập bến</span>
-                                    {receipt.receiptDate ? <DateTimeCell isoString={receipt.receiptDate} /> : <span className="text-sm text-slate-800 font-medium">---</span>}
+                                    <DateCell isoString={receipt.receiptDate} />
                                 </div>
                                 <div className="flex flex-col items-start">
                                     <span className="text-[11px] font-bold text-slate-400 uppercase mb-1">Thời gian lập phiếu</span>
@@ -201,7 +228,7 @@ const InventoryReceiptDetail: React.FC = () => {
                 {activeTab === 'details' && (
                     <div className="p-8 flex flex-col gap-6 animate-in fade-in duration-300">
                         <div className="overflow-x-auto border border-slate-200 rounded-xl shadow-sm">
-                            <table className="w-full text-left whitespace-nowrap">
+                            <table className="w-full text-left whitespace-nowrap min-w-[900px]">
                                 <thead>
                                     <tr className="bg-slate-50/80 border-b border-slate-200">
                                         <th className="w-12 py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">#</th>
@@ -225,7 +252,6 @@ const InventoryReceiptDetail: React.FC = () => {
                                                 <td className="py-4 px-4 text-sm font-bold text-indigo-600">{detail.batchCode || '---'}</td>
                                                 <td className="py-4 px-4 text-sm text-slate-600 text-center">{detail.uoMName}</td>
                                                 
-                                                {/* Đổ màu các cột Khối lượng để nổi bật */}
                                                 <td className="py-4 px-4 text-sm font-medium text-slate-700 text-right bg-slate-50/50 border-l border-slate-100">{detail.expectedQuantity.toLocaleString('vi-VN')}</td>
                                                 <td className="py-4 px-4 text-[15px] font-black text-emerald-600 text-right bg-emerald-50/30 border-l border-emerald-100">{detail.acceptedQuantity.toLocaleString('vi-VN')}</td>
                                                 <td className="py-4 px-4 text-[15px] font-black text-rose-600 text-right bg-rose-50/30 border-l border-rose-100">{detail.rejectedQuantity.toLocaleString('vi-VN')}</td>
@@ -285,7 +311,7 @@ const InventoryReceiptDetail: React.FC = () => {
                         <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
                             <button
                                 onClick={() => { setIsCancelModalOpen(false); setCancelReason(''); }}
-                                className="px-5 py-2 text-sm font-bold text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors"
+                                className="px-5 py-2 text-sm font-bold text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer"
                                 disabled={isCancelling}
                             >
                                 Đóng Lại
@@ -293,7 +319,7 @@ const InventoryReceiptDetail: React.FC = () => {
                             <button
                                 onClick={handleCancel}
                                 disabled={!cancelReason.trim() || isCancelling}
-                                className="px-5 py-2 text-sm font-bold text-white bg-rose-600 rounded-lg hover:bg-rose-700 disabled:opacity-50 shadow-sm flex items-center gap-2 transition-colors"
+                                className="px-5 py-2 text-sm font-bold text-white bg-rose-600 rounded-lg hover:bg-rose-700 disabled:opacity-50 shadow-sm flex items-center gap-2 transition-colors cursor-pointer"
                             >
                                 {isCancelling ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
                                 Xác Nhận Hủy
@@ -302,6 +328,16 @@ const InventoryReceiptDetail: React.FC = () => {
                     </div>
                 </div>
             )}
+
+            {/* ================= MODAL XÓA PHIẾU ================= */}
+            <ConfirmDeleteModal
+                isOpen={isDeleteModalOpen}
+                onClose={() => setIsDeleteModalOpen(false)}
+                onConfirm={handleDelete}
+                loading={isDeleting}
+                title="Xóa Phiếu Nhập Kho"
+                message={`Bạn có chắc chắn muốn xóa phiếu nhập kho "${receipt.receiptCode}" không? Thao tác này không thể hoàn tác.`}
+            />
         </DetailPageContainer>
     );
 };

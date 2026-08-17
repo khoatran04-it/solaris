@@ -1,7 +1,10 @@
-﻿using backend.DTOs.CustomerAddressDTOs;
+using backend.DTOs.CustomerAddressDTOs;
 
 namespace backend.DTOs.CustomerDTOs
 {
+    /// <summary>
+    /// DTO hiển thị thông tin Khách Hàng.
+    /// </summary>
     public class CustomerReadDto
     {
         public int Id { get; set; }
@@ -24,8 +27,11 @@ namespace backend.DTOs.CustomerDTOs
         public int? CustomerTierId { get; set; }
         public string? CustomerTierName { get; set; }
 
-        // Mảng chứa các ID Nhóm khách hàng mà người này đang tham gia
+        // Mảng chứa các Tên & ID Nhóm khách hàng mà người này đang tham gia
         public List<string> Groups { get; set; } = new List<string>();
         public List<int> GroupIds { get; set; } = new List<int>();
+
+        // Danh sách địa chỉ giao hàng
+        public List<CustomerAddressReadDto> Addresses { get; set; } = new List<CustomerAddressReadDto>();
     }
 }

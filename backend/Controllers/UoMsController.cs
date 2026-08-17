@@ -1,6 +1,7 @@
-﻿using backend.DTOs;
+using backend.DTOs;
 using backend.DTOs.UoMDTOs;
 using backend.Services.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -12,6 +13,7 @@ namespace backend.Controllers
     /// </summary>
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize]
     public class UoMsController : ControllerBase
     {
         private readonly IUoMService _service;
@@ -29,8 +31,6 @@ namespace backend.Controllers
         /// <summary>
         /// Truy vấn danh sách đơn vị tính có phân trang và bộ lọc nâng cao.
         /// </summary>
-        /// <param name="search">Tìm kiếm theo Mã, Tên hoặc Từ đồng nghĩa.</param>
-        /// <param name="categoryId">Lọc theo nhóm đơn vị (Khối lượng, Chiều dài...).</param>
         [HttpGet]
         [ProducesResponseType(typeof(PagedResult<UoMReadDto>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetPaged(
@@ -49,12 +49,11 @@ namespace backend.Controllers
         /// <summary>
         /// Lấy toàn bộ danh sách đơn vị tính không phân trang.
         /// </summary>
-        /// <remarks>Thường dùng để đổ dữ liệu vào các thành phần chọn nhanh (Dropdown Select) trên giao diện.</remarks>
         [HttpGet("all")]
         [ProducesResponseType(typeof(IEnumerable<UoMReadDto>), StatusCodes.Status200OK)]
-        public async Task<IActionResult> GetAllList()
+        public async Task<IActionResult> GetAllList([FromQuery] bool? isActive = null)
         {
-            var result = await _service.GetAllListAsync();
+            var result = await _service.GetAllListAsync(isActive ?? false);
             return Ok(result);
         }
 
@@ -84,21 +83,19 @@ namespace backend.Controllers
         /// <summary>
         /// Thêm mới một đơn vị tính vào hệ thống.
         /// </summary>
-        /// <response code="200">Thành công, trả về ID bản ghi mới.</response>
-        /// <response code="400">Lỗi nếu trùng mã hoặc nhóm đơn vị không tồn tại.</response>
         [HttpPost]
-        [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(UoMReadDto), StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Create([FromBody] UoMCreateDto dto)
         {
             try
             {
                 var id = await _service.CreateAsync(dto);
-                return Ok(new { Message = "Thêm mới đơn vị tính thành công", Id = id });
+                var created = await _service.GetByIdAsync(id);
+                return CreatedAtAction(nameof(GetById), new { id }, created);
             }
             catch (Exception ex)
             {
-                // Note: Lỗi thường gặp là trùng Code hoặc vi phạm logic CategoryId
                 return BadRequest(new { Message = ex.Message });
             }
         }
@@ -107,7 +104,7 @@ namespace backend.Controllers
         /// Cập nhật thông tin chi tiết đơn vị tính.
         /// </summary>
         [HttpPut("{id}")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Update(int id, [FromBody] UoMUpdateDto dto)
@@ -115,7 +112,7 @@ namespace backend.Controllers
             try
             {
                 await _service.UpdateAsync(id, dto);
-                return Ok(new { Message = "Cập nhật đơn vị tính thành công" });
+                return NoContent();
             }
             catch (KeyNotFoundException ex)
             {
@@ -130,9 +127,8 @@ namespace backend.Controllers
         /// <summary>
         /// Xóa bỏ đơn vị tính khỏi hệ thống.
         /// </summary>
-        /// <remarks>Hệ thống sẽ chặn xóa nếu đơn vị này đang được dùng làm Đơn vị gốc (Base UoM) của một nhóm.</remarks>
         [HttpDelete("{id}")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Delete(int id)
@@ -140,7 +136,7 @@ namespace backend.Controllers
             try
             {
                 await _service.DeleteAsync(id);
-                return Ok(new { Message = "Xóa đơn vị tính thành công" });
+                return NoContent();
             }
             catch (KeyNotFoundException ex)
             {
@@ -148,7 +144,6 @@ namespace backend.Controllers
             }
             catch (Exception ex)
             {
-                // Chặn lỗi logic nghiệp vụ từ tầng Service
                 return BadRequest(new { Message = ex.Message });
             }
         }
@@ -157,7 +152,7 @@ namespace backend.Controllers
 
 
         // ==========================================
-        // SECTION: SPECIAL BUSINESS ACTIONS (PATCH)
+        // SECTION: SPECIAL BUSINESS ACTIONS (PATCH / PUT)
         // ==========================================
         #region Business Logic Actions
 
@@ -165,6 +160,7 @@ namespace backend.Controllers
         /// Thay đổi nhanh trạng thái hoạt động (Bật/Khóa) của đơn vị tính.
         /// </summary>
         [HttpPatch("{id}/toggle-active")]
+        [HttpPut("{id}/toggle-active")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]

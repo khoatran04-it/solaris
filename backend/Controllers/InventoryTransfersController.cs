@@ -6,6 +6,9 @@ using System.Security.Claims;
 
 namespace backend.Controllers
 {
+    /// <summary>
+    /// API Quản lý Phiếu Điều Chuyển Hàng Liên Kho 2 Bước (Inventory Transfers).
+    /// </summary>
     [Route("api/[controller]")]
     [ApiController]
     [Authorize]

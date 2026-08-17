@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+using AutoMapper;
 using backend.Models;
 using backend.DTOs.SupplierTypeDTOs;
 
@@ -12,11 +12,12 @@ namespace backend.Profiles
             CreateMap<SupplierType, SupplierTypeReadDto>();
 
             //POST
-            CreateMap<SupplierTypeCreateDto, SupplierType>();
+            CreateMap<SupplierTypeCreateDto, SupplierType>()
+                .ForMember(dest => dest.IsActive, opt => opt.MapFrom(src => src.IsActive));
 
             //PUT
-            CreateMap<SupplierTypeUpdateDto, SupplierType>();
-
+            CreateMap<SupplierTypeUpdateDto, SupplierType>()
+                .ForMember(dest => dest.IsActive, opt => opt.MapFrom(src => src.IsActive));
         }
     }
 }

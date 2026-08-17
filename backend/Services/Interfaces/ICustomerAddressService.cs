@@ -1,25 +1,28 @@
-﻿using backend.DTOs.CustomerAddressDTOs;
+using backend.DTOs.CustomerAddressDTOs;
 
 namespace backend.Services.Interfaces
 {
+    /// <summary>
+    /// Giao diện Service quản lý Sổ địa chỉ giao hàng của khách hàng.
+    /// </summary>
     public interface ICustomerAddressService
     {
-        // 1. GET ALL (Load Dropdown)
+        /// <summary>Lấy danh sách địa chỉ của một khách hàng</summary>
         Task<IEnumerable<CustomerAddressReadDto>> GetByCustomerIdAsync(int customerId);
 
-        // 2. GET BY ID
+        /// <summary>Lấy chi tiết địa chỉ theo ID</summary>
         Task<CustomerAddressReadDto?> GetByIdAsync(int id);
 
-        // 3. CREATE
+        /// <summary>Tạo mới địa chỉ giao hàng cho khách hàng</summary>
         Task<int> CreateAsync(int customerId, CustomerAddressCreateDto dto);
 
-        // 4. UPDATE
+        /// <summary>Cập nhật thông tin địa chỉ</summary>
         Task<bool> UpdateAsync(int id, CustomerAddressUpdateDto dto);
 
-        // 5. DELETE
+        /// <summary>Xóa địa chỉ (có kiểm tra đơn hàng đang sử dụng)</summary>
         Task<bool> DeleteAsync(int id);
 
-        // 6. SET DEFAULT
+        /// <summary>Chỉ định một địa chỉ làm mặc định</summary>
         Task<bool> SetDefaultAsync(int id, int customerId);
     }
 }

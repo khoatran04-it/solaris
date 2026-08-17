@@ -1,14 +1,17 @@
-﻿using backend.DTOs;
+using backend.DTOs;
 using backend.DTOs.SupplierDTOs;
 
 namespace backend.Services.Interfaces
 {
+    /// <summary>
+    /// Giao diện Service quản lý Nhà cung cấp (Supplier).
+    /// </summary>
     public interface ISupplierService
     {
-        // 1. GET ALL (Load Dropdown)
+        /// <summary>Lấy toàn bộ danh sách nhà cung cấp (dùng cho dropdown/combobox)</summary>
         Task<IEnumerable<SupplierReadDto>> GetAllListAsync();
 
-        // 2. GET PAGED (Load Table UI, search & filter)
+        /// <summary>Lấy danh sách nhà cung cấp có phân trang và bộ lọc</summary>
         Task<PagedResult<SupplierReadDto>> GetPagedAsync(
             string? search,
             string? supplierTypesId,
@@ -18,19 +21,19 @@ namespace backend.Services.Interfaces
             int pageIndex,
             int pageSize);
 
-        // 3. GET BY ID
+        /// <summary>Lấy chi tiết nhà cung cấp theo ID kèm danh sách địa chỉ</summary>
         Task<SupplierReadDto?> GetByIdAsync(int id);
 
-        // 4. CREATE
+        /// <summary>Tạo mới nhà cung cấp (kèm địa chỉ ban đầu nếu có)</summary>
         Task<int> CreateAsync(SupplierCreateDto dto);
 
-        // 5. UPDATE
+        /// <summary>Cập nhật thông tin nhà cung cấp</summary>
         Task<bool> UpdateAsync(int id, SupplierUpdateDto dto);
 
-        // 6. DELETE
+        /// <summary>Xóa nhà cung cấp (có kiểm tra ràng buộc PO và Lô hàng)</summary>
         Task<bool> DeleteAsync(int id);
 
-        //7. TOGGLE
+        /// <summary>Chuyển đổi trạng thái Hoạt động / Tạm khóa</summary>
         Task<bool> ToggleActiveAsync(int id);
     }
 }

@@ -46,10 +46,11 @@ namespace backend.Services
 
             if (!string.IsNullOrWhiteSpace(search))
             {
-                var s = search.ToLower();
+                var s = search.ToLower().Trim();
                 query = query.Where(o => o.OrderCode.ToLower().Contains(s) ||
                                          (o.ReceiverName != null && o.ReceiverName.ToLower().Contains(s)) ||
-                                         (o.ReceiverPhone != null && o.ReceiverPhone.Contains(s)));
+                                         (o.ReceiverPhone != null && o.ReceiverPhone.Contains(s)) ||
+                                         (o.Customer != null && o.Customer.Name.ToLower().Contains(s)));
             }
 
             if (customerId.HasValue) query = query.Where(o => o.CustomerId == customerId.Value);
@@ -87,6 +88,12 @@ namespace backend.Services
                 .Include(o => o.Warehouse)
                 .Include(o => o.Details).ThenInclude(d => d.Variant)
                 .Include(o => o.Details).ThenInclude(d => d.UoM)
+                .Include(o => o.InventoryIssues)
+                    .ThenInclude(i => i.Details).ThenInclude(d => d.Variant)
+                .Include(o => o.InventoryIssues)
+                    .ThenInclude(i => i.Details).ThenInclude(d => d.Batch)
+                .Include(o => o.InventoryIssues)
+                    .ThenInclude(i => i.Details).ThenInclude(d => d.UoM)
                 .AsNoTracking()
                 .AsQueryable();
 
@@ -98,33 +105,101 @@ namespace backend.Services
             var entity = await query.FirstOrDefaultAsync(o => o.Id == id);
             if (entity == null) throw new KeyNotFoundException("Không tìm thấy Đơn hàng.");
 
-            return _mapper.Map<OrderReadDto>(entity);
+            var dto = _mapper.Map<OrderReadDto>(entity);
+
+            // Trích xuất toàn bộ các dòng Lô Hàng đã xuất kho thực tế (Completed Inventory Issues)
+            if (entity.InventoryIssues != null && entity.InventoryIssues.Any())
+            {
+                dto.IssuedItems = entity.InventoryIssues
+                    .Where(i => !i.IsDeleted && i.Status == InventoryIssueStatus.Completed)
+                    .SelectMany(i => i.Details.Select(d => new OrderIssuedItemDto
+                    {
+                        OrderDetailId = d.OrderDetailId,
+                        VariantId = d.VariantId,
+                        VariantName = d.Variant?.Name ?? string.Empty,
+                        VariantCode = d.Variant?.Code ?? string.Empty,
+                        BatchId = d.BatchId,
+                        BatchCode = d.Batch?.BatchCode ?? string.Empty,
+                        ExpiryDate = d.Batch?.ExpiryDate,
+                        UoMId = d.UoMId,
+                        UoMName = d.UoM?.Name ?? string.Empty,
+                        QuantityIssued = d.Quantity,
+                        UnitPrice = d.UnitPrice,
+                        TotalPrice = d.TotalPrice,
+                        IssueCode = i.IssueCode,
+                        IssueDate = i.IssueDate
+                    }))
+                    .ToList();
+            }
+
+            return dto;
         }
 
-        public async Task<int> CreateAsync(OrderCreateDto dto)
+        public async Task<int> CreateAsync(OrderCreateDto dto, int? currentUserId = null)
         {
             if (dto.Details == null || !dto.Details.Any())
                 throw new ArgumentException("Đơn hàng phải có ít nhất 1 dòng sản phẩm.");
 
+            // 1. Kiểm tra Khách hàng tồn tại
+            var customerExists = await _context.Customers.AnyAsync(c => c.Id == dto.CustomerId);
+            if (!customerExists)
+                throw new ArgumentException($"Khách hàng với ID {dto.CustomerId} không tồn tại.");
+
+            // 2. Xác thực an toàn CustomerAddressId
+            int? validAddressId = null;
+            if (dto.CustomerAddressId.HasValue && dto.CustomerAddressId.Value > 0)
+            {
+                var addrExists = await _context.CustomerAddresses.AnyAsync(a => a.Id == dto.CustomerAddressId.Value && a.CustomerId == dto.CustomerId);
+                if (addrExists) validAddressId = dto.CustomerAddressId.Value;
+            }
+
+            // 3. Xác thực an toàn Người thực hiện (Creator / Current User)
+            int safeUserId = currentUserId ?? 1;
+            var userExists = await _context.IAUsers.AnyAsync(u => u.Id == safeUserId);
+            if (!userExists)
+            {
+                var firstUser = await _context.IAUsers.FirstOrDefaultAsync();
+                safeUserId = firstUser?.Id ?? 1;
+            }
+
             using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
-                // 1. Định tuyến kho thông minh nếu chưa chỉ định kho
-                int assignedWarehouseId = dto.WarehouseId ?? 0;
-                if (assignedWarehouseId == 0)
+                // 4. Định tuyến kho thông minh nếu chưa chỉ định kho
+                int? assignedWarehouseId = null;
+                if (dto.WarehouseId.HasValue && dto.WarehouseId.Value > 0)
                 {
-                    var routing = await _routingService.DetermineOptimalWarehouseAsync(dto.CustomerAddressId, dto.Details);
-                    assignedWarehouseId = routing.OptimalWarehouseId;
+                    var whExists = await _context.Warehouses.AnyAsync(w => w.Id == dto.WarehouseId.Value && w.IsActive && !w.IsDeleted);
+                    if (whExists) assignedWarehouseId = dto.WarehouseId.Value;
                 }
 
-                // 2. Lấy thông tin người nhận nếu có Address
-                string? recName = dto.ReceiverName;
-                string? recPhone = dto.ReceiverPhone;
-                string? delAddress = dto.DeliveryAddress;
-
-                if (dto.CustomerAddressId.HasValue && string.IsNullOrWhiteSpace(delAddress))
+                if (!assignedWarehouseId.HasValue)
                 {
-                    var addr = await _context.CustomerAddresses.FindAsync(dto.CustomerAddressId.Value);
+                    try
+                    {
+                        var routing = await _routingService.DetermineOptimalWarehouseAsync(validAddressId, dto.Details);
+                        if (routing.OptimalWarehouseId > 0)
+                        {
+                            var rWhExists = await _context.Warehouses.AnyAsync(w => w.Id == routing.OptimalWarehouseId && w.IsActive && !w.IsDeleted);
+                            if (rWhExists) assignedWarehouseId = routing.OptimalWarehouseId;
+                        }
+                    }
+                    catch
+                    {
+                        // Fallback lấy kho đầu tiên đang hoạt động
+                        var firstWh = await _context.Warehouses.FirstOrDefaultAsync(w => w.IsActive && !w.IsDeleted);
+                        if (firstWh != null) assignedWarehouseId = firstWh.Id;
+                    }
+                }
+
+                // 5. Lấy thông tin người nhận nếu có Address
+                string? recName = dto.ReceiverName?.Trim();
+                string? recPhone = dto.ReceiverPhone?.Trim();
+                string? delAddress = dto.DeliveryAddress?.Trim();
+
+                if (validAddressId.HasValue && string.IsNullOrWhiteSpace(delAddress))
+                {
+                    var addr = await _context.CustomerAddresses.FindAsync(validAddressId.Value);
                     if (addr != null)
                     {
                         recName ??= addr.ReceiverName;
@@ -133,12 +208,12 @@ namespace backend.Services
                     }
                 }
 
-                // 3. Khởi tạo Entity Đơn hàng
+                // 6. Khởi tạo Entity Đơn hàng
                 var order = new Order
                 {
-                    OrderCode = $"ORD-{DateTime.UtcNow:yyyyMMdd}-{DateTime.UtcNow:HHmmss}",
+                    OrderCode = $"ORD-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString()[..6].ToUpper()}",
                     CustomerId = dto.CustomerId,
-                    CustomerAddressId = dto.CustomerAddressId,
+                    CustomerAddressId = validAddressId,
                     ReceiverName = recName,
                     ReceiverPhone = recPhone,
                     DeliveryAddress = delAddress,
@@ -147,13 +222,16 @@ namespace backend.Services
                     PaymentStatus = PaymentStatus.Unpaid,
                     PaymentMethod = dto.PaymentMethod,
                     ShippingFee = dto.ShippingFee,
-                    Note = dto.Note,
-                    OrderDate = DateTime.UtcNow
+                    Note = dto.Note?.Trim(),
+                    OrderDate = DateTime.UtcNow,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow,
+                    IsDeleted = false
                 };
 
                 decimal subTotal = 0;
 
-                // 4. Xử lý từng dòng chi tiết & Khóa tồn kho (Reserve)
+                // 7. Xử lý từng dòng chi tiết & Khóa tồn kho (Reserve)
                 foreach (var item in dto.Details)
                 {
                     decimal unitPrice = item.UnitPrice ?? 0;
@@ -173,7 +251,7 @@ namespace backend.Services
                         VariantId = item.VariantId,
                         UoMId = item.UoMId,
                         Quantity = item.Quantity,
-                        BaseQuantity = item.Quantity, // TODO: nếu có quy đổi UoM, nhân tỷ lệ quy đổi
+                        BaseQuantity = item.Quantity,
                         UnitPrice = unitPrice,
                         DiscountAmount = item.DiscountAmount,
                         TotalPrice = lineTotal,
@@ -181,34 +259,39 @@ namespace backend.Services
                     };
                     order.Details.Add(detail);
 
-                    // 5. GIỮ CHỖ TỒN KHO (Tăng QuantityReserved, Giảm QuantityAvailable)
-                    var inventories = await _context.WarehouseInventories
-                        .Where(i => i.WarehouseId == assignedWarehouseId && i.VariantId == item.VariantId && i.QuantityAvailable > 0)
-                        .OrderBy(i => i.Batch != null ? i.Batch.ExpiryDate : DateTime.MaxValue)
-                        .ToListAsync();
-
-                    decimal remainingToReserve = item.Quantity;
-                    foreach (var inv in inventories)
+                    // 8. GIỮ CHỖ TỒN KHO nếu đã xác định được Kho xuất
+                    if (assignedWarehouseId.HasValue && assignedWarehouseId.Value > 0)
                     {
-                        if (remainingToReserve <= 0) break;
-                        var reserveAmount = Math.Min(inv.QuantityAvailable, remainingToReserve);
-                        inv.QuantityAvailable -= reserveAmount;
-                        inv.QuantityReserved += reserveAmount;
-                        remainingToReserve -= reserveAmount;
+                        var inventories = await _context.WarehouseInventories
+                            .Where(i => i.WarehouseId == assignedWarehouseId.Value && i.VariantId == item.VariantId && i.QuantityAvailable > 0)
+                            .OrderBy(i => i.Batch != null ? i.Batch.ExpiryDate : DateTime.MaxValue)
+                            .ToListAsync();
 
-                        // Ghi sổ cái Reserve
-                        _context.InventoryTransactions.Add(new InventoryTransaction
+                        decimal remainingToReserve = item.Quantity;
+                        foreach (var inv in inventories)
                         {
-                            TransactionCode = $"TXN-{DateTime.UtcNow:yyyyMMddHHmmss}-{Guid.NewGuid().ToString()[..4].ToUpper()}",
-                            WarehouseId = assignedWarehouseId,
-                            VariantId = item.VariantId,
-                            BatchId = inv.BatchId,
-                            Type = TransactionType.Reserve,
-                            Quantity = reserveAmount,
-                            ReferenceCode = order.OrderCode,
-                            Note = $"Giữ chỗ đơn hàng {order.OrderCode}",
-                            CreatedById = 1
-                        });
+                            if (remainingToReserve <= 0) break;
+                            var reserveAmount = Math.Min(inv.QuantityAvailable, remainingToReserve);
+                            inv.QuantityAvailable -= reserveAmount;
+                            inv.QuantityReserved += reserveAmount;
+                            inv.UpdatedAt = DateTime.UtcNow;
+                            remainingToReserve -= reserveAmount;
+
+                            // Ghi sổ cái Reserve
+                            _context.InventoryTransactions.Add(new InventoryTransaction
+                            {
+                                TransactionCode = $"TXN-{DateTime.UtcNow:yyyyMMddHHmmss}-{Guid.NewGuid().ToString()[..4].ToUpper()}",
+                                WarehouseId = assignedWarehouseId.Value,
+                                VariantId = item.VariantId,
+                                BatchId = inv.BatchId,
+                                Type = TransactionType.Reserve,
+                                Quantity = reserveAmount,
+                                ReferenceCode = order.OrderCode,
+                                Note = $"Giữ chỗ đơn hàng {order.OrderCode}",
+                                CreatedById = safeUserId,
+                                CreatedAt = DateTime.UtcNow
+                            });
+                        }
                     }
                 }
 
@@ -235,16 +318,25 @@ namespace backend.Services
 
             if (dto.Status.HasValue) order.Status = dto.Status.Value;
             if (dto.PaymentStatus.HasValue) order.PaymentStatus = dto.PaymentStatus.Value;
-            if (dto.WarehouseId.HasValue) order.WarehouseId = dto.WarehouseId.Value;
-            if (dto.Note != null) order.Note = dto.Note;
-            if (dto.CancellationReason != null) order.CancellationReason = dto.CancellationReason;
+            if (dto.WarehouseId.HasValue && dto.WarehouseId.Value > 0) order.WarehouseId = dto.WarehouseId.Value;
+            if (dto.Note != null) order.Note = dto.Note.Trim();
+            if (dto.CancellationReason != null) order.CancellationReason = dto.CancellationReason.Trim();
+            order.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
             return true;
         }
 
-        public async Task<bool> CancelAsync(int id, string reason)
+        public async Task<bool> CancelAsync(int id, string reason, int? currentUserId = null)
         {
+            int safeUserId = currentUserId ?? 1;
+            var userExists = await _context.IAUsers.AnyAsync(u => u.Id == safeUserId);
+            if (!userExists)
+            {
+                var firstUser = await _context.IAUsers.FirstOrDefaultAsync();
+                safeUserId = firstUser?.Id ?? 1;
+            }
+
             using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
@@ -257,7 +349,7 @@ namespace backend.Services
                     throw new InvalidOperationException("Không thể hủy đơn hàng đã xuất kho hoặc đã hoàn tất.");
 
                 // Hoàn trả tồn kho (Unreserve) nếu đơn hàng đã từng giữ chỗ
-                if (order.WarehouseId.HasValue)
+                if (order.WarehouseId.HasValue && order.WarehouseId.Value > 0)
                 {
                     foreach (var item in order.Details)
                     {
@@ -275,6 +367,7 @@ namespace backend.Services
                             var releaseAmount = Math.Min(inv.QuantityReserved, remainingToRelease);
                             inv.QuantityReserved -= releaseAmount;
                             inv.QuantityAvailable += releaseAmount;
+                            inv.UpdatedAt = DateTime.UtcNow;
                             remainingToRelease -= releaseAmount;
 
                             _context.InventoryTransactions.Add(new InventoryTransaction
@@ -287,14 +380,16 @@ namespace backend.Services
                                 Quantity = releaseAmount,
                                 ReferenceCode = order.OrderCode,
                                 Note = $"Hủy giữ chỗ đơn hàng {order.OrderCode}",
-                                CreatedById = 1
+                                CreatedById = safeUserId,
+                                CreatedAt = DateTime.UtcNow
                             });
                         }
                     }
                 }
 
                 order.Status = OrderStatus.Cancelled;
-                order.CancellationReason = reason;
+                order.CancellationReason = reason?.Trim();
+                order.UpdatedAt = DateTime.UtcNow;
 
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
@@ -305,6 +400,22 @@ namespace backend.Services
                 await transaction.RollbackAsync();
                 throw;
             }
+        }
+
+        public async Task<bool> DeleteAsync(int id)
+        {
+            var order = await _context.Orders.FindAsync(id);
+            if (order == null) throw new KeyNotFoundException("Không tìm thấy Đơn hàng.");
+
+            if (order.Status != OrderStatus.Confirmed && order.Status != OrderStatus.Cancelled)
+                throw new InvalidOperationException("Chỉ được phép xóa đơn hàng chưa thực hiện xuất kho hoặc đã hủy.");
+
+            order.IsDeleted = true;
+            order.DeletedAt = DateTime.UtcNow;
+            order.UpdatedAt = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+            return true;
         }
     }
 }

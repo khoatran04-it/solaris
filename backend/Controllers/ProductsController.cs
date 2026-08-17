@@ -1,12 +1,18 @@
-﻿using backend.DTOs;
+using backend.DTOs;
 using backend.DTOs.ProductDTOs;
 using backend.Services.Interfaces;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace backend.Controllers
 {
+    /// <summary>
+    /// API Quản lý Sản phẩm cha (Product Master).
+    /// </summary>
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class ProductsController : ControllerBase
     {
         private readonly IProductService _service;
@@ -16,14 +22,25 @@ namespace backend.Controllers
             _service = service;
         }
 
+        // ==========================================
+        // SECTION: READ OPERATIONS (GET)
+        // ==========================================
+        #region Read Operations
+
+        /// <summary>
+        /// Lấy toàn bộ danh sách sản phẩm không phân trang.
+        /// </summary>
         [HttpGet("all")]
         [ProducesResponseType(typeof(IEnumerable<ProductReadDto>), StatusCodes.Status200OK)]
-        public async Task<IActionResult> GetAllList()
+        public async Task<IActionResult> GetAllList([FromQuery] bool? isActive = null)
         {
-            var data = await _service.GetAllListAsync();
+            var data = await _service.GetAllListAsync(isActive ?? false);
             return Ok(data);
         }
 
+        /// <summary>
+        /// Lấy danh sách sản phẩm có phân trang, tìm kiếm và bộ lọc đa luồng.
+        /// </summary>
         [HttpGet]
         [ProducesResponseType(typeof(PagedResult<ProductReadDto>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetPaged(
@@ -40,8 +57,9 @@ namespace backend.Controllers
             return Ok(result);
         }
 
-
-
+        /// <summary>
+        /// Lấy thông tin chi tiết một sản phẩm theo ID.
+        /// </summary>
         [HttpGet("{id}")]
         [ProducesResponseType(typeof(ProductReadDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -58,85 +76,9 @@ namespace backend.Controllers
             }
         }
 
-        [HttpPost]
-        [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<IActionResult> Create([FromBody] ProductCreateDto dto)
-        {
-            try
-            {
-                int newId = await _service.CreateAsync(dto);
-                return Ok(new { Message = "Thêm mới sản phẩm thành công", Id = newId });
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { Message = ex.Message });
-            }
-        }
-
-        [HttpPut("{id}")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<IActionResult> Update(int id, [FromBody] ProductUpdateDto dto)
-        {
-            try
-            {
-                await _service.UpdateAsync(id, dto);
-                return Ok(new { Message = "Cập nhật sản phẩm thành công" });
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(new { Message = ex.Message });
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { Message = ex.Message });
-            }
-        }
-
-        [HttpDelete("{id}")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<IActionResult> Delete(int id)
-        {
-            try
-            {
-                await _service.DeleteAsync(id);
-                return Ok(new { Message = "Xóa sản phẩm thành công" });
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(new { Message = ex.Message });
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { Message = ex.Message });
-            }
-        }
-
-        // API chuyên biệt dùng để bật/tắt hiển thị (Active/Inactive)
-        [HttpPatch("{id}/toggle-active")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> ToggleActive(int id)
-        {
-            try
-            {
-                await _service.ToggleActiveAsync(id);
-                return Ok(new { Message = "Thay đổi trạng thái thành công" });
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(new { Message = ex.Message });
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { Message = ex.Message });
-            }
-        }
-
+        /// <summary>
+        /// Lấy cấu hình các thuộc tính động (EAV Template) cho sản phẩm theo danh mục.
+        /// </summary>
         [HttpGet("{id}/attributes-config")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -157,5 +99,115 @@ namespace backend.Controllers
             }
         }
 
+        #endregion
+
+
+        // ==========================================
+        // SECTION: WRITE OPERATIONS (POST, PUT, DELETE)
+        // ==========================================
+        #region Write Operations
+
+        /// <summary>
+        /// Tạo mới một sản phẩm gốc.
+        /// </summary>
+        [HttpPost]
+        [ProducesResponseType(typeof(ProductReadDto), StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> Create([FromBody] ProductCreateDto dto)
+        {
+            try
+            {
+                int newId = await _service.CreateAsync(dto);
+                var created = await _service.GetByIdAsync(newId);
+                return CreatedAtAction(nameof(GetById), new { id = newId }, created);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Message = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Cập nhật thông tin sản phẩm gốc.
+        /// </summary>
+        [HttpPut("{id}")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> Update(int id, [FromBody] ProductUpdateDto dto)
+        {
+            try
+            {
+                await _service.UpdateAsync(id, dto);
+                return NoContent();
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { Message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Message = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Xóa mềm một sản phẩm gốc.
+        /// </summary>
+        [HttpDelete("{id}")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> Delete(int id)
+        {
+            try
+            {
+                await _service.DeleteAsync(id);
+                return NoContent();
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { Message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Message = ex.Message });
+            }
+        }
+
+        #endregion
+
+
+        // ==========================================
+        // SECTION: SPECIAL BUSINESS ACTIONS (PATCH / PUT)
+        // ==========================================
+        #region Business Logic Actions
+
+        /// <summary>
+        /// Thay đổi trạng thái hiển thị (Đang bán / Ngừng bán) của sản phẩm.
+        /// </summary>
+        [HttpPatch("{id}/toggle-active")]
+        [HttpPut("{id}/toggle-active")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> ToggleActive(int id)
+        {
+            try
+            {
+                await _service.ToggleActiveAsync(id);
+                return Ok(new { Message = "Thay đổi trạng thái thành công" });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { Message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Message = ex.Message });
+            }
+        }
+
+        #endregion
     }
 }

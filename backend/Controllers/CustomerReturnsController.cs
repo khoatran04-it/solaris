@@ -6,6 +6,9 @@ using System.Security.Claims;
 
 namespace backend.Controllers
 {
+    /// <summary>
+    /// API Quản lý Phiếu Khách Hàng Trả Hàng & Hoàn Tồn (Customer Returns & RMA).
+    /// </summary>
     [Route("api/[controller]")]
     [ApiController]
     [Authorize]
@@ -51,11 +54,15 @@ namespace backend.Controllers
         {
             try
             {
-                var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "1";
-                if (int.TryParse(userIdStr, out int userId)) dto.ReceivedById = userId;
+                var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                int? userId = null;
+                if (!string.IsNullOrEmpty(userIdStr) && int.TryParse(userIdStr, out int parsedId))
+                {
+                    userId = parsedId;
+                }
 
-                var newId = await _service.CreateAsync(dto);
-                return CreatedAtAction(nameof(GetById), new { id = newId }, new { id = newId });
+                var newId = await _service.CreateAsync(dto, userId);
+                return CreatedAtAction(nameof(GetById), new { id = newId }, new { id = newId, message = "Tạo phiếu trả hàng thành công" });
             }
             catch (Exception ex)
             {
@@ -68,11 +75,15 @@ namespace backend.Controllers
         {
             try
             {
-                var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "1";
-                if (!int.TryParse(userIdStr, out int userId)) userId = 1;
+                var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                int userId = 1;
+                if (!string.IsNullOrEmpty(userIdStr) && int.TryParse(userIdStr, out int parsedId))
+                {
+                    userId = parsedId;
+                }
 
                 await _service.InspectAndCompleteAsync(id, userId, dto);
-                return NoContent();
+                return Ok(new { message = "Nghiệm thu phiếu trả hàng thành công" });
             }
             catch (KeyNotFoundException ex)
             {
@@ -90,7 +101,25 @@ namespace backend.Controllers
             try
             {
                 await _service.RejectReturnAsync(id, request.Reason);
-                return NoContent();
+                return Ok(new { message = "Từ chối phiếu trả hàng thành công" });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> Delete(int id)
+        {
+            try
+            {
+                await _service.DeleteAsync(id);
+                return Ok(new { message = "Xóa phiếu trả hàng thành công" });
             }
             catch (KeyNotFoundException ex)
             {

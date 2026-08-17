@@ -1,14 +1,16 @@
-﻿using AutoMapper;
+using AutoMapper;
 using backend.Data;
 using backend.DTOs;
 using backend.DTOs.CustomerDTOs;
 using backend.Models;
 using backend.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
-using System.ComponentModel;
 
 namespace backend.Services
 {
+    /// <summary>
+    /// Service quản lý hồ sơ Khách hàng và các liên kết nghiệp vụ (Nhóm, Hạng, Loại, Địa chỉ).
+    /// </summary>
     public class CustomerService : ICustomerService
     {
         private readonly SolarisDbContext _context;
@@ -23,7 +25,10 @@ namespace backend.Services
         public async Task<IEnumerable<CustomerReadDto>> GetAllListAsync()
         {
             var customers = await _context.Customers
+                .Include(c => c.CustomerType)
+                .Include(c => c.CustomerTier)
                 .Include(c => c.GroupLinks)
+                    .ThenInclude(gl => gl.CustomerGroup)
                 .AsNoTracking()
                 .OrderByDescending(x => x.CreatedAt)
                 .ToListAsync();
@@ -46,12 +51,12 @@ namespace backend.Services
                 .Include(c => c.CustomerType)
                 .Include(c => c.CustomerTier)
                 .Include(c => c.GroupLinks)
-                .ThenInclude(gl => gl.CustomerGroup)
+                    .ThenInclude(gl => gl.CustomerGroup)
                 .AsQueryable();
 
             if (!string.IsNullOrWhiteSpace(search))
             {
-                var lowerSearch = search.ToLower();
+                var lowerSearch = search.Trim().ToLower();
                 query = query.Where(x =>
                     x.Code.ToLower().Contains(lowerSearch) ||
                     x.Name.ToLower().Contains(lowerSearch) ||
@@ -97,7 +102,6 @@ namespace backend.Services
 
                 if (groupIdList.Any())
                 {
-                    // Lấy khách hàng có ít nhất 1 Group nằm trong danh sách đang được tick lọc
                     query = query.Where(x => x.GroupLinks.Any(gl => groupIdList.Contains(gl.CustomerGroupId)));
                 }
             }
@@ -148,8 +152,9 @@ namespace backend.Services
             var customer = await _context.Customers
                 .Include(c => c.CustomerType)
                 .Include(c => c.CustomerTier)
+                .Include(c => c.Addresses)
                 .Include(c => c.GroupLinks)
-                .ThenInclude(gl => gl.CustomerGroup)
+                    .ThenInclude(gl => gl.CustomerGroup)
                 .AsNoTracking()
                 .AsSplitQuery()
                 .FirstOrDefaultAsync(c => c.Id == id);
@@ -161,21 +166,37 @@ namespace backend.Services
 
         public async Task<int> CreateAsync(CustomerCreateDto dto)
         {
-            if (await _context.Customers.AnyAsync(c => c.Code == dto.Code || c.PhoneNumber == dto.PhoneNumber))
-                throw new Exception("Mã khách hàng hoặc Số điện thoại đã tồn tại.");
+            var trimmedCode = dto.Code.Trim();
+            var trimmedPhone = dto.PhoneNumber.Trim();
+
+            if (await _context.Customers.AnyAsync(c => c.Code == trimmedCode))
+                throw new Exception($"Mã khách hàng '{trimmedCode}' đã tồn tại.");
+
+            if (await _context.Customers.AnyAsync(c => c.PhoneNumber == trimmedPhone))
+                throw new Exception($"Số điện thoại '{trimmedPhone}' đã được đăng ký cho khách hàng khác.");
 
             using var transaction = await _context.Database.BeginTransactionAsync();
 
             try
             {
                 var newCustomer = _mapper.Map<Customer>(dto);
+                newCustomer.Code = trimmedCode;
+                newCustomer.Name = dto.Name.Trim();
+                newCustomer.PhoneNumber = trimmedPhone;
+                newCustomer.Email = dto.Email?.Trim();
+                newCustomer.TaxCode = dto.TaxCode?.Trim();
+                newCustomer.Note = dto.Note?.Trim();
+                newCustomer.IsActive = dto.IsActive;
+                newCustomer.CreatedAt = DateTime.UtcNow;
+                newCustomer.UpdatedAt = DateTime.UtcNow;
 
                 _context.Customers.Add(newCustomer);
                 await _context.SaveChangesAsync();
 
+                // Gán Nhóm khách hàng
                 if (dto.GroupIds != null && dto.GroupIds.Any())
                 {
-                    var groupLinks = dto.GroupIds.Select(groupId => new CustomerGroupLink
+                    var groupLinks = dto.GroupIds.Distinct().Select(groupId => new CustomerGroupLink
                     {
                         CustomerId = newCustomer.Id,
                         CustomerGroupId = groupId,
@@ -183,16 +204,35 @@ namespace backend.Services
                     });
 
                     await _context.CustomerGroupLinks.AddRangeAsync(groupLinks);
-                    await _context.SaveChangesAsync();
                 }
 
+                // Gán Địa chỉ ban đầu (nếu có gửi kèm)
+                if (dto.Addresses != null && dto.Addresses.Any())
+                {
+                    var isFirst = true;
+                    foreach (var addrDto in dto.Addresses)
+                    {
+                        if (!string.IsNullOrWhiteSpace(addrDto.StreetAddress))
+                        {
+                            var addrEntity = _mapper.Map<CustomerAddress>(addrDto);
+                            addrEntity.CustomerId = newCustomer.Id;
+                            addrEntity.IsDefault = isFirst || addrDto.IsDefault;
+                            addrEntity.CreatedAt = DateTime.UtcNow;
+                            addrEntity.UpdatedAt = DateTime.UtcNow;
+                            _context.CustomerAddresses.Add(addrEntity);
+                            isFirst = false;
+                        }
+                    }
+                }
+
+                await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
                 return newCustomer.Id;
             }
-            catch
+            catch (Exception ex)
             {
                 await transaction.RollbackAsync();
-                throw new Exception("Có lỗi xảy ra khi lưu dữ liệu. Đã hoàn tác an toàn.");
+                throw new Exception(ex.Message);
             }
         }
 
@@ -204,23 +244,34 @@ namespace backend.Services
 
             if (customer == null) throw new KeyNotFoundException("Không tìm thấy khách hàng.");
 
-            bool isDuplicate = await _context.Customers.AnyAsync(c =>
-                c.Id != id &&
-                (c.Code == dto.Code || c.PhoneNumber == dto.PhoneNumber));
+            var trimmedCode = dto.Code.Trim();
+            var trimmedPhone = dto.PhoneNumber.Trim();
 
-            if (isDuplicate)
-                throw new Exception("Cập nhật thất bại: Mã khách hàng hoặc Số điện thoại đã bị trùng lặp.");
+            if (await _context.Customers.AnyAsync(c => c.Id != id && c.Code == trimmedCode))
+                throw new Exception($"Cập nhật thất bại: Mã khách hàng '{trimmedCode}' đã tồn tại.");
+
+            if (await _context.Customers.AnyAsync(c => c.Id != id && c.PhoneNumber == trimmedPhone))
+                throw new Exception($"Cập nhật thất bại: Số điện thoại '{trimmedPhone}' đã được đăng ký bởi khách hàng khác.");
 
             using var transaction = await _context.Database.BeginTransactionAsync();
 
             try
             {
                 _mapper.Map(dto, customer);
+                customer.Code = trimmedCode;
+                customer.Name = dto.Name.Trim();
+                customer.PhoneNumber = trimmedPhone;
+                customer.Email = dto.Email?.Trim();
+                customer.TaxCode = dto.TaxCode?.Trim();
+                customer.Note = dto.Note?.Trim();
+                customer.IsActive = dto.IsActive;
+                customer.UpdatedAt = DateTime.UtcNow;
+
                 _context.CustomerGroupLinks.RemoveRange(customer.GroupLinks);
 
                 if (dto.GroupIds != null && dto.GroupIds.Any())
                 {
-                    var newLinks = dto.GroupIds.Select(groupId => new CustomerGroupLink
+                    var newLinks = dto.GroupIds.Distinct().Select(groupId => new CustomerGroupLink
                     {
                         CustomerId = customer.Id,
                         CustomerGroupId = groupId,
@@ -228,15 +279,15 @@ namespace backend.Services
                     });
                     await _context.CustomerGroupLinks.AddRangeAsync(newLinks);
                 }
-                await _context.SaveChangesAsync();
 
+                await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
                 return true;
             }
-            catch
+            catch (Exception ex)
             {
                 await transaction.RollbackAsync();
-                throw new Exception("Cập nhật thất bại. Đã hoàn tác an toàn.");
+                throw new Exception(ex.Message);
             }
         }
 
@@ -245,7 +296,16 @@ namespace backend.Services
             var customer = await _context.Customers.FindAsync(id);
             if (customer == null) throw new KeyNotFoundException("Không tìm thấy khách hàng.");
 
-            _context.Customers.Remove(customer); // Interceptor sẽ hack thành Soft Delete
+            // Kiểm tra ràng buộc dữ liệu toàn vẹn
+            bool hasOrders = await _context.Orders.AnyAsync(o => o.CustomerId == id && !o.IsDeleted);
+            if (hasOrders)
+                throw new Exception("Không thể xóa khách hàng này vì đã có lịch sử Đơn Hàng trong hệ thống.");
+
+            bool hasReturns = await _context.CustomerReturns.AnyAsync(cr => cr.CustomerId == id && !cr.IsDeleted);
+            if (hasReturns)
+                throw new Exception("Không thể xóa khách hàng này vì đã có lịch sử Phiếu Trả Hàng trong hệ thống.");
+
+            _context.Customers.Remove(customer); // Soft Delete
             await _context.SaveChangesAsync();
             return true;
         }
@@ -256,9 +316,9 @@ namespace backend.Services
             if (customer == null) throw new KeyNotFoundException("Không tìm thấy khách hàng.");
 
             customer.IsActive = !customer.IsActive;
+            customer.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
-
             return true;
         }
     }

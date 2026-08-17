@@ -99,7 +99,7 @@ const PurchaseOrderDetail: React.FC = () => {
 
     const formatDate = (dateString?: string) => {
         if (!dateString) return '---';
-        return new Date(dateString).toLocaleDateString('vi-VN');
+        return dateString.includes('T') ? dateString.split('T')[0] : dateString.substring(0, 10);
     };
 
     // --- RENDER ---

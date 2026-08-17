@@ -15,15 +15,19 @@ export const inventoryReceiptApi = {
         return axiosClient.get(`/InventoryReceipts/${id}`);
     },
 
-    create: (data: InventoryReceiptCreatePayload): Promise<{ id: number }> => {
+    create: (data: InventoryReceiptCreatePayload): Promise<{ id: number; message?: string }> => {
         return axiosClient.post('/InventoryReceipts', data);
     },
 
-    complete: (id: number, note?: string): Promise<void> => {
+    complete: (id: number, note?: string): Promise<{ message?: string }> => {
         return axiosClient.post(`/InventoryReceipts/${id}/complete`, { note });
     },
 
-    cancel: (id: number, reason: string): Promise<void> => {
+    cancel: (id: number, reason: string): Promise<{ message?: string }> => {
         return axiosClient.post(`/InventoryReceipts/${id}/cancel`, { reason });
+    },
+
+    delete: (id: number): Promise<{ message?: string }> => {
+        return axiosClient.delete(`/InventoryReceipts/${id}`);
     },
 };

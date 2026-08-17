@@ -19,8 +19,9 @@ namespace backend.Services.Interfaces
         );
 
         Task<OrderReadDto> GetByIdAsync(int id, List<int>? allowedWarehouseIds = null);
-        Task<int> CreateAsync(OrderCreateDto dto);
+        Task<int> CreateAsync(OrderCreateDto dto, int? currentUserId = null);
         Task<bool> UpdateStatusAsync(int id, OrderUpdateDto dto);
-        Task<bool> CancelAsync(int id, string reason);
+        Task<bool> CancelAsync(int id, string reason, int? currentUserId = null);
+        Task<bool> DeleteAsync(int id);
     }
 }

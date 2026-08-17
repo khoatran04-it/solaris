@@ -27,6 +27,7 @@ const UoMConversionList: React.FC = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [currentPage, setCurrentPage] = useState(1);
     const [totalPages, setTotalPages] = useState(0);
+    const [totalItems, setTotalItems] = useState(0);
     const [searchTerm, setSearchTerm] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
     const pageSize = 10;
@@ -88,8 +89,9 @@ const UoMConversionList: React.FC = () => {
                 updatedAt: updatedAtFilter ? updatedAtFilter.toLocaleDateString('en-CA') : undefined
             });
             
-            setData(response.items);
-            setTotalPages(response.totalPages);
+            setData(response.items || []);
+            setTotalPages(response.totalPages || 0);
+            setTotalItems(response.totalRecords || 0);
         } catch (error) {
             showToast('error', 'CÓ LỖI XẢY RA KHI TẢI DỮ LIỆU');
         } finally {
@@ -117,6 +119,16 @@ const UoMConversionList: React.FC = () => {
             showToast('success', `Xóa thành công dữ liệu quy đổi.`);
         } catch (error) {
             showToast('error', 'Lỗi khi thực hiện xóa dữ liệu');
+        }
+    };
+
+    const handleToggleActive = async (id: number, currentStatus: boolean) => {
+        try {
+            await uomConversionApi.toggleActive(id);
+            fetchData();
+            showToast('success', `Đã ${currentStatus ? 'tạm khóa' : 'kích hoạt'} quy tắc quy đổi`);
+        } catch (error) {
+            showToast('error', 'Không thể thay đổi trạng thái hoạt động');
         }
     };
 
@@ -207,16 +219,18 @@ const UoMConversionList: React.FC = () => {
                                         </td>
 
                                         <td className="py-4 px-2 text-center">
-                                            <div className="flex justify-center">
-                                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold border ${
-                                                    item.isActive 
-                                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200/40' 
-                                                    : 'bg-slate-100 text-slate-400 border-slate-200/50'
-                                                }`}>
-                                                    <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${item.isActive ? 'bg-emerald-500' : 'bg-slate-300'}`}></span>
-                                                    {item.isActive ? 'Hoạt động' : 'Tạm khóa'}
-                                                </span>
-                                            </div>
+                                            <button
+                                                onClick={() => handleToggleActive(item.id, item.isActive)}
+                                                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                                                    item.isActive
+                                                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100'
+                                                        : 'bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-200'
+                                                }`}
+                                                title="Nhấn để đổi trạng thái"
+                                            >
+                                                <span className={`w-1.5 h-1.5 rounded-full ${item.isActive ? 'bg-emerald-500' : 'bg-slate-400'}`}></span>
+                                                {item.isActive ? 'Hoạt động' : 'Tạm khóa'}
+                                            </button>
                                         </td>
 
                                         <td className="py-4 px-2 text-center">
@@ -228,12 +242,14 @@ const UoMConversionList: React.FC = () => {
                                                 <button 
                                                     onClick={() => navigate(`/uom-conversions/edit/${item.id}`)}
                                                     className="p-1.5 text-slate-400 hover:text-yellow-600 hover:bg-yellow-50 rounded-lg transition-colors"
+                                                    title="Chỉnh sửa"
                                                 >
                                                     <Edit3 size={17} strokeWidth={2.5} />
                                                 </button>
                                                 <button 
                                                     onClick={() => { setDeletingRecord(item); setIsModalOpen(true); }}
                                                     className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                                    title="Xóa"
                                                 >
                                                     <Trash2 size={17} strokeWidth={2.5} />
                                                 </button>
@@ -249,14 +265,19 @@ const UoMConversionList: React.FC = () => {
                 </div>
 
                 <ListPagination 
-                    currentPage={currentPage} totalPages={totalPages} totalItems={data.length} 
-                    onPageChange={setCurrentPage} isLoading={isLoading}
+                    currentPage={currentPage} 
+                    totalPages={totalPages} 
+                    totalItems={totalItems} 
+                    onPageChange={setCurrentPage} 
+                    isLoading={isLoading}
                 />
             </ListCard>
 
             <ConfirmDeleteModal 
-                isOpen={isModalOpen} itemName="dữ liệu quy đổi này" 
-                onClose={() => setIsModalOpen(false)} onConfirm={confirmDelete} 
+                isOpen={isModalOpen} 
+                itemName="dữ liệu quy đổi này" 
+                onClose={() => setIsModalOpen(false)} 
+                onConfirm={confirmDelete} 
             />
         </ListPageContainer>
     );

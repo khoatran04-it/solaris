@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+using AutoMapper;
 using backend.Data;
 using backend.DTOs;
 using backend.DTOs.ProductVariantDTOs;
@@ -23,20 +23,28 @@ namespace backend.Services
         // 1. CÁC HÀM GET & XỬ LÝ LOGIC KHUYẾN MÃI
         // ==========================================================
 
-        public async Task<IEnumerable<ProductVariantReadDto>> GetAllListAsync()
+        public async Task<IEnumerable<ProductVariantReadDto>> GetAllListAsync(bool isActiveOnly = false)
         {
-            var items = await _context.ProductVariants
+            var query = _context.ProductVariants
                 .Include(x => x.Product)
-                .Include(x => x.Prices).ThenInclude(p => p.UoM) // 🔥 Kéo theo bảng giá và đơn vị tính
+                .Include(x => x.Prices).ThenInclude(p => p.UoM)
                 .Include(x => x.PromotionVariants)
                     .ThenInclude(pv => pv.PromotionCampaign)
                 .AsNoTracking()
-                .OrderByDescending(x => x.CreatedAt)
+                .AsQueryable();
+
+            if (isActiveOnly)
+            {
+                query = query.Where(x => x.IsActive);
+            }
+
+            var items = await query
+                .OrderBy(x => x.Name)
                 .ToListAsync();
 
             var dtos = _mapper.Map<List<ProductVariantReadDto>>(items);
 
-            // 🔥 Áp dụng khuyến mãi lên từng dòng giá của biến thể
+            // Áp dụng khuyến mãi lên từng dòng giá của biến thể
             ApplyPromotionsToDtos(items, dtos);
 
             return dtos;
@@ -49,14 +57,14 @@ namespace backend.Services
                 .Include(x => x.Product)
                 .Include(x => x.Attributes)
                     .ThenInclude(a => a.AttributeDefinition)
-                .Include(x => x.Prices).ThenInclude(p => p.UoM) // 🔥 Kéo theo bảng giá
+                .Include(x => x.Prices).ThenInclude(p => p.UoM)
                 .Include(x => x.PromotionVariants)
                     .ThenInclude(pv => pv.PromotionCampaign)
                 .AsQueryable();
 
             if (!string.IsNullOrWhiteSpace(search))
             {
-                var lowerSearch = search.ToLower();
+                var lowerSearch = search.Trim().ToLower();
                 query = query.Where(x => x.Code.ToLower().Contains(lowerSearch) || x.Name.ToLower().Contains(lowerSearch));
             }
 
@@ -92,7 +100,7 @@ namespace backend.Services
 
             var dtos = _mapper.Map<List<ProductVariantReadDto>>(items);
 
-            // 🔥 Áp dụng khuyến mãi lên từng dòng giá
+            // Áp dụng khuyến mãi lên từng dòng giá
             ApplyPromotionsToDtos(items, dtos);
 
             return new PagedResult<ProductVariantReadDto>
@@ -111,7 +119,7 @@ namespace backend.Services
                 .Include(x => x.Product)
                 .Include(x => x.Attributes)
                     .ThenInclude(a => a.AttributeDefinition)
-                .Include(x => x.Prices).ThenInclude(p => p.UoM) // 🔥 Kéo theo bảng giá
+                .Include(x => x.Prices).ThenInclude(p => p.UoM)
                 .Include(x => x.PromotionVariants)
                     .ThenInclude(pv => pv.PromotionCampaign)
                 .AsNoTracking()
@@ -121,7 +129,7 @@ namespace backend.Services
 
             var dto = _mapper.Map<ProductVariantReadDto>(entity);
 
-            // 🔥 Áp dụng khuyến mãi
+            // Áp dụng khuyến mãi
             ApplyPromotionsToDtos(new List<ProductVariant> { entity }, new List<ProductVariantReadDto> { dto });
 
             return dto;
@@ -133,14 +141,26 @@ namespace backend.Services
 
         public async Task<int> CreateAsync(ProductVariantCreateDto dto)
         {
-            if (await _context.ProductVariants.AnyAsync(x => x.Code == dto.Code))
-                throw new Exception("Mã SKU của biến thể này đã tồn tại trong hệ thống.");
+            var trimmedCode = dto.Code.Trim();
+
+            if (await _context.ProductVariants.AnyAsync(x => x.Code == trimmedCode))
+                throw new Exception($"Mã SKU '{trimmedCode}' của biến thể này đã tồn tại trong hệ thống.");
+
+            // Kiểm tra ProductId hợp lệ
+            if (!await _context.Products.AnyAsync(p => p.Id == dto.ProductId && !p.IsDeleted))
+                throw new Exception("Sản phẩm gốc không tồn tại.");
 
             using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
-                // AutoMapper sẽ tự động map mảng Attributes và Prices từ DTO sang Model
                 var entity = _mapper.Map<ProductVariant>(dto);
+                entity.Code = trimmedCode;
+                entity.Name = dto.Name.Trim();
+                entity.Description = dto.Description?.Trim();
+                entity.ImagePath = dto.ImagePath?.Trim();
+                entity.CreatedAt = DateTime.UtcNow;
+                entity.UpdatedAt = DateTime.UtcNow;
+                entity.IsActive = dto.IsActive;
 
                 _context.ProductVariants.Add(entity);
                 await _context.SaveChangesAsync();
@@ -160,7 +180,6 @@ namespace backend.Services
             using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
-                // 🔥 Kéo theo Attributes và Prices để RemoveRange
                 var entity = await _context.ProductVariants
                     .Include(x => x.Attributes)
                     .Include(x => x.Prices)
@@ -168,11 +187,22 @@ namespace backend.Services
 
                 if (entity == null) throw new KeyNotFoundException("Không tìm thấy biến thể sản phẩm cần sửa.");
 
-                if (await _context.ProductVariants.AnyAsync(x => x.Id != id && x.Code == dto.Code))
-                    throw new Exception("Cập nhật thất bại: Mã SKU này đã bị trùng với một biến thể khác.");
+                var trimmedCode = dto.Code.Trim();
+                if (await _context.ProductVariants.AnyAsync(x => x.Id != id && x.Code == trimmedCode))
+                    throw new Exception($"Cập nhật thất bại: Mã SKU '{trimmedCode}' này đã bị trùng với một biến thể khác.");
+
+                // Kiểm tra ProductId hợp lệ
+                if (!await _context.Products.AnyAsync(p => p.Id == dto.ProductId && !p.IsDeleted))
+                    throw new Exception("Sản phẩm gốc không tồn tại.");
 
                 // 1. Map các trường cơ bản (AutoMapper đã Ignore Attributes và Prices)
                 _mapper.Map(dto, entity);
+                entity.Code = trimmedCode;
+                entity.Name = dto.Name.Trim();
+                entity.Description = dto.Description?.Trim();
+                entity.ImagePath = dto.ImagePath?.Trim();
+                entity.UpdatedAt = DateTime.UtcNow;
+                entity.IsActive = dto.IsActive;
 
                 // 2. XÓA SẠCH thuộc tính và bảng giá cũ
                 if (entity.Attributes.Any())
@@ -191,6 +221,9 @@ namespace backend.Services
                     foreach (var attr in newAttributes)
                     {
                         attr.VariantId = id;
+                        attr.CreatedAt = DateTime.UtcNow;
+                        attr.UpdatedAt = DateTime.UtcNow;
+                        attr.IsActive = true;
                         _context.Add(attr);
                     }
                 }
@@ -202,6 +235,9 @@ namespace backend.Services
                     foreach (var price in newPrices)
                     {
                         price.VariantId = id;
+                        price.CreatedAt = DateTime.UtcNow;
+                        price.UpdatedAt = DateTime.UtcNow;
+                        price.IsActive = true;
                         _context.Add(price);
                     }
                 }
@@ -227,6 +263,36 @@ namespace backend.Services
             var entity = await _context.ProductVariants.FindAsync(id);
             if (entity == null) throw new KeyNotFoundException("Không tìm thấy biến thể để xóa.");
 
+            // 1. SAFETY SHIELD: Chặn xóa nếu có Lô hàng
+            var hasBatches = await _context.ProductBatches.AnyAsync(b => b.VariantId == id && !b.IsDeleted);
+            if (hasBatches)
+                throw new Exception("Không thể xóa biến thể này vì đang có các lô hàng liên kết.");
+
+            // 2. SAFETY SHIELD: Chặn xóa nếu có Bảng giá Nhà cung cấp
+            var hasSupplierProducts = await _context.SupplierProducts.AnyAsync(sp => sp.VariantId == id && !sp.IsDeleted);
+            if (hasSupplierProducts)
+                throw new Exception("Không thể xóa biến thể này vì đang có bảng giá nhà cung cấp liên kết.");
+
+            // 3. SAFETY SHIELD: Chặn xóa nếu có trong Đơn mua hàng (PO)
+            var hasPO = await _context.PurchaseOrderDetails.AnyAsync(pod => pod.VariantId == id);
+            if (hasPO)
+                throw new Exception("Không thể xóa biến thể này vì đã phát sinh trong đơn mua hàng (PO).");
+
+            // 4. SAFETY SHIELD: Chặn xóa nếu có trong Đơn bán hàng (SO)
+            var hasSO = await _context.OrderDetails.AnyAsync(od => od.VariantId == id);
+            if (hasSO)
+                throw new Exception("Không thể xóa biến thể này vì đã phát sinh trong đơn bán hàng.");
+
+            // 5. SAFETY SHIELD: Chặn xóa nếu có trong Phiếu nhập kho
+            var hasIR = await _context.InventoryReceiptDetails.AnyAsync(ird => ird.VariantId == id);
+            if (hasIR)
+                throw new Exception("Không thể xóa biến thể này vì đã phát sinh trong phiếu nhập kho.");
+
+            // 6. SAFETY SHIELD: Chặn xóa nếu có trong Phiếu xuất kho
+            var hasII = await _context.InventoryIssueDetails.AnyAsync(iid => iid.VariantId == id);
+            if (hasII)
+                throw new Exception("Không thể xóa biến thể này vì đã phát sinh trong phiếu xuất kho.");
+
             _context.ProductVariants.Remove(entity);
             await _context.SaveChangesAsync();
             return true;
@@ -238,6 +304,7 @@ namespace backend.Services
             if (entity == null) throw new KeyNotFoundException("Không tìm thấy biến thể sản phẩm.");
 
             entity.IsActive = !entity.IsActive;
+            entity.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
             return true;
         }
@@ -259,7 +326,6 @@ namespace backend.Services
                 var variant = entities[i];
                 var dto = dtos[i];
 
-                // Lọc ra các chiến dịch đang Active
                 var activeCampaigns = variant.PromotionVariants?
                     .Where(pv => pv.PromotionCampaign != null
                               && pv.PromotionCampaign.IsActive
@@ -270,13 +336,11 @@ namespace backend.Services
 
                 if (!activeCampaigns.Any() || !dto.Prices.Any()) continue;
 
-                // Duyệt qua từng đơn giá (Kg, Nải, Thùng...)
                 foreach (var priceDto in dto.Prices)
                 {
                     decimal bestPrice = priceDto.Price;
                     bool isDiscounted = false;
 
-                    // Tính xem campaign nào giảm giá sâu nhất cho quy cách này
                     foreach (var campaign in activeCampaigns)
                     {
                         decimal currentCalcPrice = priceDto.Price;

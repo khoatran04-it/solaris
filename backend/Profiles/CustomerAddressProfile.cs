@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+using AutoMapper;
 using backend.Models;
 using backend.DTOs.CustomerAddressDTOs;
 
@@ -8,13 +8,13 @@ namespace backend.Profiles
     {
         public CustomerAddressProfile() 
         {
-            //GET
+            // GET
             CreateMap<CustomerAddress, CustomerAddressReadDto>();
 
-            //POST
+            // POST
             CreateMap<CustomerAddressCreateDto, CustomerAddress>();
 
-            //PUT
+            // PUT
             CreateMap<CustomerAddressUpdateDto, CustomerAddress>();
         }
     }

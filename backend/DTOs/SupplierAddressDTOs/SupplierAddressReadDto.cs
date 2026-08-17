@@ -1,18 +1,20 @@
-﻿namespace backend.DTOs.SupplierAddressDTOs
+namespace backend.DTOs.SupplierAddressDTOs
 {
+    /// <summary>
+    /// DTO hiển thị thông tin chi tiết Địa chỉ giao nhận của Nhà cung cấp.
+    /// </summary>
     public class SupplierAddressReadDto
     {
         public int Id { get; set; }
-
         public int SupplierId { get; set; }
 
-        public string ContactName { get; set; }
-        public string ContactPhone { get; set; }
+        public string ContactName { get; set; } = string.Empty;
+        public string ContactPhone { get; set; } = string.Empty;
 
-        public string Province { get; set; }
-        public string District { get; set; }
-        public string Ward { get; set; }
-        public string StreetAddress { get; set; }
+        public string Province { get; set; } = string.Empty;
+        public string District { get; set; } = string.Empty;
+        public string Ward { get; set; } = string.Empty;
+        public string StreetAddress { get; set; } = string.Empty;
 
         public string? FullAddress { get; set; }
 

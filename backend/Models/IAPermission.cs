@@ -1,16 +1,20 @@
-﻿namespace backend.Models
+namespace backend.Models
 {
+    /// <summary>
+    /// Thực thể Quyền hạn chi tiết trong hệ thống (Granular Permission).
+    /// Được nhóm theo Module để phục vụ ma trận phân quyền trực quan trên giao diện Admin.
+    /// </summary>
     public class IAPermission
     {
         public int Id { get; set; }
 
-        // Phân nhóm quyền cho dễ nhìn trên UI (VD: "Quản lý Sản phẩm", "Quản lý Đơn hàng", "Kho hàng")
+        /// <summary>Phân nhóm module (Ví dụ: "Hệ thống", "Sản phẩm", "Kho hàng", "Bán hàng")</summary>
         public required string Module { get; set; }
 
-        // Mã quyền, dùng để Code check quyền (VD: "PRODUCT_VIEW", "PRODUCT_CREATE", "ORDER_DELETE")
+        /// <summary>Mã định danh quyền hạn (Ví dụ: "USER_VIEW", "PRODUCT_CREATE", "ORDER_APPROVE")</summary>
         public required string Code { get; set; }
 
-        // Tên hiển thị (VD: "Xem danh sách sản phẩm")
+        /// <summary>Tên hiển thị tiếng Việt của quyền hạn</summary>
         public required string Name { get; set; }
 
         // --- NAVIGATION PROPERTIES ---

@@ -1,24 +1,32 @@
 import { PaginationParams } from './common';
+
 export interface SupplierProduct {
     id: number;
-    supplierSku?: string;
-    lastImportPrice?: number;
+    supplierSKU?: string;
+    lastImportPrice: number;
     minimumOrderQuantity: number;
     leadTimeDays: number;
     isActive: boolean;
     variantId: number;
-    variantName?: string;
     supplierId: number;
-    supplierName?: string;
     purchaseUoMId: number;
-    purchaseUoMName?: string;
     createdAt: string;
     updatedAt: string;
+
+    // Enriched fields from Backend
+    variantCode?: string;
+    variantName?: string;
+    variantSKU?: string;
+    variantBarcode?: string;
+    variantImage?: string;
+    supplierCode?: string;
+    supplierName?: string;
+    purchaseUoMName?: string;
 }
 
 export interface SupplierProductPayload {
-    supplierSku?: string;
-    lastImportPrice?: number;
+    supplierSKU?: string;
+    lastImportPrice: number;
     minimumOrderQuantity: number;
     leadTimeDays: number;
     isActive: boolean;
@@ -31,4 +39,6 @@ export interface SupplierProductQueryParams extends PaginationParams {
     isActive?: boolean;
     variantId?: number;
     supplierId?: number;
+    createdAt?: string;
+    updatedAt?: string;
 }

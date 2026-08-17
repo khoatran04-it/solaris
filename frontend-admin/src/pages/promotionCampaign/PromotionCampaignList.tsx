@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Megaphone, Edit3, Trash2, Eye, Tag } from 'lucide-react';
+import { Megaphone, Edit3, Trash2, Tag } from 'lucide-react';
 
 // API & Types
 import { promotionCampaignApi } from '../../api/promotionCampaignApi';
@@ -31,6 +31,7 @@ const PromotionCampaignList: React.FC = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [currentPage, setCurrentPage] = useState(1);
     const [totalPages, setTotalPages] = useState(0);
+    const [totalItems, setTotalItems] = useState(0);
     const [searchTerm, setSearchTerm] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
     const pageSize = 10;
@@ -77,8 +78,9 @@ const PromotionCampaignList: React.FC = () => {
                 endDate: endDateFilter ? endDateFilter.toLocaleDateString('en-CA') : undefined
             });
 
-            setData(response.items);
-            setTotalPages(response.totalPages);
+            setData(response.items || []);
+            setTotalPages(response.totalPages || 0);
+            setTotalItems(response.totalRecords || 0);
         } catch (error) {
             showToast('error', 'CÓ LỖI XẢY RA KHI TẢI DỮ LIỆU CHIẾN DỊCH');
         } finally {
@@ -104,16 +106,16 @@ const PromotionCampaignList: React.FC = () => {
             setIsModalOpen(false);
             fetchData();
             showToast('success', `Xóa thành công chiến dịch "${deletingRecord.name}"`);
-        } catch (error) {
-            showToast('error', 'Lỗi khi thực hiện xóa dữ liệu');
+        } catch (error: any) {
+            showToast('error', error?.response?.data?.message || 'Lỗi khi thực hiện xóa dữ liệu');
         }
     };
 
     const handleToggleActive = async (id: number, currentStatus: boolean) => {
         try {
             await promotionCampaignApi.toggleActive(id);
-            fetchData(); // Tải lại data để cập nhật UI
-            showToast('success', `Đã ${currentStatus ? 'khóa' : 'kích hoạt'} chiến dịch`);
+            fetchData();
+            showToast('success', `Đã ${currentStatus ? 'tạm khóa' : 'kích hoạt'} chiến dịch`);
         } catch (error) {
             showToast('error', 'Không thể thay đổi trạng thái');
         }
@@ -199,7 +201,6 @@ const PromotionCampaignList: React.FC = () => {
                                                     <div className="flex flex-col">
                                                         <span className="font-extrabold text-slate-800 text-[14px] leading-tight">{item.name}</span>
                                                         <div className="flex items-center gap-2 mt-1.5">
-                                                            {/* Huy hiệu thời hạn */}
                                                             <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold border uppercase tracking-wide ${timeStatus.style}`}>
                                                                 {timeStatus.text}
                                                             </span>
@@ -223,12 +224,14 @@ const PromotionCampaignList: React.FC = () => {
                                                 <div className="flex justify-center">
                                                     <button 
                                                         onClick={() => handleToggleActive(item.id, item.isActive)}
-                                                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold border transition-colors ${
+                                                        className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
                                                         item.isActive
-                                                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200/40 hover:bg-red-50 hover:text-red-600 hover:border-red-200'
-                                                            : 'bg-slate-100 text-slate-400 border-slate-200/50 hover:bg-emerald-50 hover:text-emerald-600 hover:border-emerald-200'
-                                                    }`}>
-                                                        <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${item.isActive ? 'bg-emerald-500' : 'bg-slate-300'}`}></span>
+                                                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100'
+                                                            : 'bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-200'
+                                                    }`}
+                                                        title="Nhấn để đổi trạng thái"
+                                                    >
+                                                        <span className={`w-1.5 h-1.5 rounded-full ${item.isActive ? 'bg-emerald-500' : 'bg-slate-400'}`}></span>
                                                         {item.isActive ? 'Hoạt động' : 'Tạm khóa'}
                                                     </button>
                                                 </div>
@@ -246,16 +249,9 @@ const PromotionCampaignList: React.FC = () => {
                                             <td className="py-3 px-6">
                                                 <div className="flex justify-center gap-1.5 opacity-40 group-hover:opacity-100 transition-all duration-300">
                                                     <button
-                                                        onClick={() => navigate(`/promotions/${item.id}`)}
-                                                        className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
-                                                        title="Xem & Gắn Sản Phẩm"
-                                                    >
-                                                        <Eye size={17} strokeWidth={2.5} />
-                                                    </button>
-                                                    <button
                                                         onClick={() => navigate(`/promotions/edit/${item.id}`)}
                                                         className="p-1.5 text-slate-400 hover:text-yellow-600 hover:bg-yellow-50 rounded-lg transition-colors"
-                                                        title="Sửa thông tin"
+                                                        title="Sửa thông tin & Gắn sản phẩm"
                                                     >
                                                         <Edit3 size={17} strokeWidth={2.5} />
                                                     </button>
@@ -281,7 +277,7 @@ const PromotionCampaignList: React.FC = () => {
                 <ListPagination
                     currentPage={currentPage}
                     totalPages={totalPages}
-                    totalItems={data.length}
+                    totalItems={totalItems}
                     onPageChange={setCurrentPage}
                     isLoading={isLoading}
                 />
