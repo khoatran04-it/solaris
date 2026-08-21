@@ -1,9 +1,9 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { ChevronLeft, ChevronRight, Sparkles, Clock, ArrowRight } from 'lucide-react';
-import { ShopPromotionBadge } from '@/types/shop';
+import { ShopPromotionBadge } from '@/types/product';
 
 interface PromoBannerSliderProps {
     promotions: ShopPromotionBadge[];

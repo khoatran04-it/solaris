@@ -1,43 +1,14 @@
-﻿'use client';
-
-import React, { useState } from 'react';
+import React from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
-import { ShoppingBag, Sparkles, MapPin, Award, Check } from 'lucide-react';
-import { ShopProductCard } from '@/types/shop';
-import { formatVND } from '@/lib/api';
-import { useCartStore } from '@/stores/cartStore';
+import { MapPin, Award, ArrowRight } from 'lucide-react';
+import { ShopProductCard } from '@/types/product';
+import { formatVND } from '@/lib/utils';
 
 interface ProductCardProps {
     product: ShopProductCard;
 }
 
 export default function ProductCard({ product }: ProductCardProps) {
-    const { addItem } = useCartStore();
-    const [isAdding, setIsAdding] = useState(false);
-    const [addedSuccess, setAddedSuccess] = useState(false);
-
-    const handleQuickAdd = async (e: React.MouseEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
-
-        if (isAdding) return;
-        setIsAdding(true);
-
-        try {
-            // Thêm biến thể mặc định của sản phẩm vào giỏ
-            // Default uoMId = 1 or based on default price
-            await addItem(product.id, 1, 1);
-            setAddedSuccess(true);
-            setTimeout(() => setAddedSuccess(false), 1500);
-        } catch {
-            // If failed, redirect to detail page for variant selection
-            window.location.href = `/san-pham/${product.slug}`;
-        } finally {
-            setIsAdding(false);
-        }
-    };
-
     return (
         <div className="group relative bg-white rounded-2xl border border-slate-100 shadow-xs hover:shadow-xl hover:border-emerald-200 transition-all duration-300 flex flex-col overflow-hidden">
             
@@ -73,7 +44,6 @@ export default function ProductCard({ product }: ProductCardProps) {
 
             {/* Content Area */}
             <div className="p-4 flex-1 flex flex-col justify-between space-y-3">
-                
                 <div className="space-y-1.5">
                     {/* Category & Origin Tags */}
                     <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
@@ -83,14 +53,12 @@ export default function ProductCard({ product }: ProductCardProps) {
                                 {product.origin}
                             </span>
                         )}
-
                         {product.certification && (
                             <span className="inline-flex items-center gap-0.5 px-2 py-0.5 bg-emerald-50 text-emerald-700 font-bold rounded-md border border-emerald-200">
                                 <Award className="w-2.5 h-2.5 text-emerald-600" />
                                 {product.certification}
                             </span>
                         )}
-
                         {product.brixLevel && (
                             <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-amber-50 text-amber-700 font-bold rounded-md">
                                 🍬 {product.brixLevel}°Bx
@@ -106,7 +74,7 @@ export default function ProductCard({ product }: ProductCardProps) {
                     </h3>
                 </div>
 
-                {/* Pricing & Add Button */}
+                {/* Pricing & View Detail Button */}
                 <div className="pt-2 border-t border-slate-50 flex items-center justify-between">
                     <div>
                         <div className="flex items-baseline gap-1.5">
@@ -117,7 +85,6 @@ export default function ProductCard({ product }: ProductCardProps) {
                                 /{product.baseUoMName || 'Kg'}
                             </span>
                         </div>
-
                         {product.hasPromotion && product.discountedPrice < product.originalPrice && (
                             <span className="text-[11px] text-slate-400 line-through">
                                 {formatVND(product.originalPrice)}
@@ -125,23 +92,19 @@ export default function ProductCard({ product }: ProductCardProps) {
                         )}
                     </div>
 
-                    {/* Add to Cart Button */}
-                    <button
-                        onClick={handleQuickAdd}
-                        disabled={!product.isInStock || isAdding}
-                        title={product.isInStock ? 'Thêm vào giỏ hàng' : 'Hết hàng'}
+                    {/* View Detail Button (replaces broken Quick Add) */}
+                    <Link
+                        href={`/san-pham/${product.slug}`}
+                        title={product.isInStock ? 'Xem chi tiết & Chọn mua' : 'Hết hàng'}
                         className={`p-2.5 rounded-full transition-all duration-200 shadow-xs flex items-center justify-center ${
-                            !product.isInStock 
-                                ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
-                                : addedSuccess
-                                ? 'bg-emerald-600 text-white'
+                            !product.isInStock
+                                ? 'bg-slate-100 text-slate-400 pointer-events-none'
                                 : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-600 hover:text-white active:scale-95'
                         }`}
                     >
-                        {addedSuccess ? <Check className="w-4 h-4" /> : <ShoppingBag className="w-4 h-4" />}
-                    </button>
+                        <ArrowRight className="w-4 h-4" />
+                    </Link>
                 </div>
-
             </div>
         </div>
     );

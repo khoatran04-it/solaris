@@ -1,6 +1,5 @@
-﻿import { create } from 'zustand';
-import { ShopCustomerInfo, ShopAuthResponse } from '@/types/shop';
-import { apiClient } from '@/lib/api';
+import { create } from 'zustand';
+import { ShopCustomerInfo } from '@/types/auth';
 
 interface AuthState {
     token: string | null;

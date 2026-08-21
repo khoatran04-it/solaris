@@ -15,8 +15,9 @@ import {
     CheckCircle2
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
-import { apiClient, formatVND, formatDate } from '@/lib/api';
-import { ShopOrder } from '@/types/shop';
+import shopOrderApi from '@/api/shopOrderApi';
+import { formatVND, formatDateTime } from '@/lib/utils';
+import { ShopOrder } from '@/types/order';
 
 export default function OrderDetailPage() {
     const params = useParams();
@@ -40,7 +41,7 @@ export default function OrderDetailPage() {
             return;
         }
 
-        apiClient.get<ShopOrder>(`/orders/${orderCode}`)
+        shopOrderApi.getByCode(orderCode)
             .then((res) => {
                 setOrder(res);
                 setIsLoading(false);
@@ -56,12 +57,12 @@ export default function OrderDetailPage() {
 
         setIsCancelling(true);
         try {
-            await apiClient.post(`/orders/${orderCode}/cancel`, {
+            await shopOrderApi.cancel(orderCode, {
                 reason: cancelReason.trim()
             });
 
             // Reload order
-            const updated = await apiClient.get<ShopOrder>(`/orders/${orderCode}`);
+            const updated = await shopOrderApi.getByCode(orderCode);
             setOrder(updated);
             setShowCancelModal(false);
         } catch (error: any) {
@@ -110,7 +111,7 @@ export default function OrderDetailPage() {
                             Đơn Hàng: {order.orderCode}
                         </h1>
                         <p className="text-xs text-slate-500 mt-0.5">
-                            Ngày đặt: {formatDate(order.orderDate)}
+                            Ngày đặt: {formatDateTime(order.orderDate)}
                         </p>
                     </div>
                 </div>
@@ -265,3 +266,5 @@ export default function OrderDetailPage() {
         </div>
     );
 }
+
+

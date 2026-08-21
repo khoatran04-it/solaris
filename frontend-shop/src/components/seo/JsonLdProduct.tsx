@@ -1,5 +1,5 @@
-﻿import React from 'react';
-import { ShopProductDetail } from '@/types/shop';
+import React from 'react';
+import { ShopProductDetail } from '@/types/product';
 
 interface JsonLdProductProps {
     product: ShopProductDetail;

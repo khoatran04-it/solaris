@@ -1,12 +1,12 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { MapPin, User, Package, RotateCcw, Plus, Trash2, CheckCircle2, Star } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
-import { apiClient } from '@/lib/api';
-import { ShopAddress } from '@/types/shop';
+import shopCustomerApi from '@/api/shopCustomerApi';
+import { ShopAddress, ShopAddressPayload } from '@/types/customer';
 
 export default function DiaChiPage() {
     const router = useRouter();
@@ -29,7 +29,7 @@ export default function DiaChiPage() {
     }, [initAuth]);
 
     const loadAddresses = () => {
-        apiClient.get<ShopAddress[]>('/customer/addresses')
+        shopCustomerApi.getAddresses()
             .then(setAddresses)
             .catch(() => {});
     };
@@ -47,7 +47,7 @@ export default function DiaChiPage() {
         setIsSaving(true);
 
         try {
-            await apiClient.post('/customer/addresses', {
+            await shopCustomerApi.createAddress({
                 receiverName: receiverName.trim(),
                 phone: phone.trim(),
                 province: province.trim(),
@@ -57,7 +57,7 @@ export default function DiaChiPage() {
                 isDefault,
                 latitude: 10.7769,
                 longitude: 106.7009
-            });
+            } as ShopAddressPayload);
 
             setShowAddForm(false);
             setReceiverName('');
@@ -77,7 +77,7 @@ export default function DiaChiPage() {
     const handleDelete = async (id: number) => {
         if (!confirm('Bạn có chắc muốn xóa địa chỉ này?')) return;
         try {
-            await apiClient.delete(`/customer/addresses/${id}`);
+            await shopCustomerApi.deleteAddress(id);
             loadAddresses();
         } catch (error: any) {
             alert(error?.message || 'Không thể xóa địa chỉ.');
@@ -86,7 +86,7 @@ export default function DiaChiPage() {
 
     const handleSetDefault = async (id: number) => {
         try {
-            await apiClient.post(`/customer/addresses/${id}/default`, {});
+            await shopCustomerApi.setDefaultAddress(id);
             loadAddresses();
         } catch (error: any) {
             alert(error?.message || 'Không thể thiết lập địa chỉ mặc định.');
@@ -317,3 +317,4 @@ export default function DiaChiPage() {
         </div>
     );
 }
+

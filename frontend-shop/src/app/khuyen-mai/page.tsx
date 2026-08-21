@@ -2,8 +2,9 @@
 import { Metadata } from 'next';
 import Link from 'next/link';
 import { Sparkles, Clock, ArrowRight, Tag } from 'lucide-react';
-import { apiClient, formatDate } from '@/lib/api';
-import { ShopPromotionBadge } from '@/types/shop';
+import shopProductApi from '@/api/shopProductApi';
+import { formatDate } from '@/lib/utils';
+import { ShopPromotionBadge } from '@/types/product';
 
 export const metadata: Metadata = {
     title: 'Khuyến Mãi Nông Sản Sạch',
@@ -15,7 +16,7 @@ export const revalidate = 60;
 export default async function KhuyenMaiPage() {
     let promotions: ShopPromotionBadge[] = [];
     try {
-        promotions = await apiClient.get<ShopPromotionBadge[]>('/products/promotions');
+        promotions = await shopProductApi.getPromotions();
     } catch {
         promotions = [];
     }
@@ -86,3 +87,4 @@ export default async function KhuyenMaiPage() {
         </div>
     );
 }
+

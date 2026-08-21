@@ -1,11 +1,13 @@
-﻿import React from 'react';
+import React from 'react';
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { Sparkles, Clock, Tag } from 'lucide-react';
 import ProductCard from '@/components/product/ProductCard';
-import { apiClient, formatDate } from '@/lib/api';
-import { ShopPromotionDetail } from '@/types/shop';
+import shopProductApi from '@/api/shopProductApi';
+import { formatDate } from '@/lib/utils';
+import { ShopProductCard } from '@/types/product';
+import { ShopPromotionDetail } from '@/types/promotion';
 
 interface PromoDetailPageProps {
     params: Promise<{
@@ -16,7 +18,7 @@ interface PromoDetailPageProps {
 export async function generateMetadata({ params }: PromoDetailPageProps): Promise<Metadata> {
     const { slug } = await params;
     try {
-        const promo = await apiClient.get<ShopPromotionDetail>(`/products/promotions/${slug}`);
+        const promo = await shopProductApi.getPromotionBySlug(slug);
         if (!promo) return { title: 'Chương trình khuyến mãi' };
 
         return {
@@ -33,7 +35,7 @@ export default async function PromoDetailPage({ params }: PromoDetailPageProps) 
 
     let promo: ShopPromotionDetail | null = null;
     try {
-        promo = await apiClient.get<ShopPromotionDetail>(`/products/promotions/${slug}`);
+        promo = await shopProductApi.getPromotionBySlug(slug);
     } catch {
         notFound();
     }
@@ -90,7 +92,7 @@ export default async function PromoDetailPage({ params }: PromoDetailPageProps) 
 
                 {promo.products.length > 0 ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                        {promo.products.map((product) => (
+                        {promo.products.map((product: ShopProductCard) => (
                             <ProductCard key={product.id} product={product} />
                         ))}
                     </div>
@@ -111,3 +113,4 @@ export default async function PromoDetailPage({ params }: PromoDetailPageProps) 
         </div>
     );
 }
+

@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -19,8 +19,8 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { useCartStore } from '@/stores/cartStore';
-import { apiClient } from '@/lib/api';
-import { ShopCategoryTree } from '@/types/shop';
+import { ShopCategoryTree } from '@/types/product';
+import shopProductApi from '@/api/shopProductApi';
 
 export default function Header() {
     const router = useRouter();
@@ -38,7 +38,7 @@ export default function Header() {
         fetchCart();
 
         // Load categories for navigation
-        apiClient.get<ShopCategoryTree[]>('/products/categories')
+        shopProductApi.getCategories()
             .then(res => setCategories(res))
             .catch(() => {});
     }, [initAuth, fetchCart]);

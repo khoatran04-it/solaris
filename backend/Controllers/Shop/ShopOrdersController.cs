@@ -1,4 +1,4 @@
-﻿using backend.DTOs;
+using backend.DTOs;
 using backend.DTOs.ShopDTOs;
 using backend.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
@@ -24,9 +24,24 @@ namespace backend.Controllers.Shop
         [HttpPost("checkout")]
         public async Task<ActionResult<ShopOrderReadDto>> Checkout([FromBody] ShopCheckoutRequestDto request)
         {
-            int customerId = GetCurrentCustomerId();
-            var order = await _orderService.CheckoutAsync(customerId, request);
-            return Ok(order);
+            try
+            {
+                int customerId = GetCurrentCustomerId();
+                var order = await _orderService.CheckoutAsync(customerId, request);
+                return Ok(order);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
         }
 
         /// <summary>
@@ -60,9 +75,24 @@ namespace backend.Controllers.Shop
         [HttpPost("{orderCode}/cancel")]
         public async Task<ActionResult> CancelOrder(string orderCode, [FromBody] ShopOrderCancelRequestDto request)
         {
-            int customerId = GetCurrentCustomerId();
-            await _orderService.CancelOrderAsync(customerId, orderCode, request.Reason);
-            return Ok(new { message = "Đã hủy đơn hàng và hoàn trả tồn kho thành công." });
+            try
+            {
+                int customerId = GetCurrentCustomerId();
+                await _orderService.CancelOrderAsync(customerId, orderCode, request.Reason);
+                return Ok(new { message = "Đã hủy đơn hàng và hoàn trả tồn kho thành công." });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
         }
     }
 }

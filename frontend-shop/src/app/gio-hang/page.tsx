@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { ShoppingBag, Trash2, ArrowRight, ShieldCheck, Truck, RotateCcw, AlertTriangle } from 'lucide-react';
 import { useCartStore } from '@/stores/cartStore';
 import { useAuthStore } from '@/stores/authStore';
-import { formatVND } from '@/lib/api';
+import { formatVND } from '@/lib/utils';
 
 export default function GioHangPage() {
     const router = useRouter();
@@ -215,3 +215,4 @@ export default function GioHangPage() {
         </div>
     );
 }
+

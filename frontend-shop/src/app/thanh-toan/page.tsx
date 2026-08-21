@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -15,8 +15,11 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { useCartStore } from '@/stores/cartStore';
-import { apiClient, formatVND } from '@/lib/api';
-import { ShopAddress, ShopOrder } from '@/types/shop';
+import shopOrderApi from '@/api/shopOrderApi';
+import shopCustomerApi from '@/api/shopCustomerApi';
+import { formatVND } from '@/lib/utils';
+import { ShopAddress } from '@/types/customer';
+import { ShopOrder, ShopCheckoutPayload } from '@/types/order';
 
 export default function ThanhToanPage() {
     const router = useRouter();
@@ -47,10 +50,10 @@ export default function ThanhToanPage() {
 
     useEffect(() => {
         if (isAuthenticated) {
-            apiClient.get<ShopAddress[]>('/customer/addresses')
-                .then((addrs) => {
+            shopCustomerApi.getAddresses()
+                .then((addrs: ShopAddress[]) => {
                     setAddresses(addrs);
-                    const defaultAddr = addrs.find(a => a.isDefault) || addrs[0];
+                    const defaultAddr = addrs.find((a: ShopAddress) => a.isDefault) || addrs[0];
                     if (defaultAddr) {
                         setSelectedAddressId(defaultAddr.id);
                     } else {
@@ -87,21 +90,21 @@ export default function ThanhToanPage() {
         setIsSubmitting(true);
 
         try {
-            const payload = {
-                CustomerAddressId: useNewAddress ? null : selectedAddressId,
-                ReceiverName: useNewAddress ? receiverName.trim() : null,
-                ReceiverPhone: useNewAddress ? receiverPhone.trim() : null,
-                Province: useNewAddress ? province : null,
-                District: useNewAddress ? district : null,
-                Ward: useNewAddress ? ward : null,
-                StreetAddress: useNewAddress ? streetAddress.trim() : null,
-                Latitude: 10.7769, // Default HCM GPS coords
-                Longitude: 106.7009,
-                PaymentMethod: paymentMethod,
-                Note: note.trim()
+            const payload: ShopCheckoutPayload = {
+                customerAddressId: useNewAddress ? undefined : (selectedAddressId ?? undefined),
+                receiverName: useNewAddress ? receiverName.trim() : undefined,
+                receiverPhone: useNewAddress ? receiverPhone.trim() : undefined,
+                province: useNewAddress ? province : undefined,
+                district: useNewAddress ? district : undefined,
+                ward: useNewAddress ? ward : undefined,
+                streetAddress: useNewAddress ? streetAddress.trim() : undefined,
+                latitude: 10.7769,
+                longitude: 106.7009,
+                paymentMethod: paymentMethod,
+                note: note.trim()
             };
 
-            const order: ShopOrder = await apiClient.post('/orders/checkout', payload);
+            const order: ShopOrder = await shopOrderApi.checkout(payload);
             
             // Xóa giỏ hàng trên client
             await clearCart();
@@ -109,7 +112,8 @@ export default function ThanhToanPage() {
             // Redirect tới chi tiết đơn hàng
             router.push(`/tai-khoan/don-hang/${order.orderCode}`);
         } catch (error: any) {
-            setErrorMessage(error?.message || 'Có lỗi xảy ra trong quá trình đặt hàng. Vui lòng thử lại.');
+            const msg = error?.message || error?.Message || error?.details || error?.Details || error?.title || (typeof error === 'string' ? error : 'Có lỗi xảy ra trong quá trình đặt hàng. Vui lòng thử lại.');
+            setErrorMessage(msg);
         } finally {
             setIsSubmitting(false);
         }
@@ -418,3 +422,4 @@ export default function ThanhToanPage() {
         </div>
     );
 }
+

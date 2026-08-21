@@ -1,12 +1,14 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Package, Calendar, ArrowRight, Eye, User, MapPin, RotateCcw, Clock } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
-import { apiClient, formatVND, formatDate } from '@/lib/api';
-import { PagedResult, ShopOrder } from '@/types/shop';
+import shopOrderApi from '@/api/shopOrderApi';
+import { formatVND, formatDateTime } from '@/lib/utils';
+import { PagedResult } from '@/types/common';
+import { ShopOrder } from '@/types/order';
 
 export default function DonHangListPage() {
     const router = useRouter();
@@ -30,7 +32,7 @@ export default function DonHangListPage() {
             return;
         }
 
-        apiClient.get<PagedResult<ShopOrder>>('/orders?pageIndex=1&pageSize=10')
+        shopOrderApi.getAll(1, 10)
             .then((res) => {
                 setOrdersResult(res);
                 setIsLoading(false);
@@ -120,7 +122,7 @@ export default function DonHangListPage() {
                                         </p>
                                         <span className="text-[11px] text-slate-400 flex items-center gap-1 mt-0.5">
                                             <Calendar className="w-3 h-3" />
-                                            {formatDate(order.orderDate)}
+                                            {formatDateTime(order.orderDate)}
                                         </span>
                                     </div>
 
@@ -189,3 +191,5 @@ export default function DonHangListPage() {
         </div>
     );
 }
+
+

@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
@@ -6,8 +6,8 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Lock, User, Phone, Mail, ArrowRight, AlertCircle } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { useCartStore } from '@/stores/cartStore';
-import { apiClient } from '@/lib/api';
-import { ShopAuthResponse } from '@/types/shop';
+import shopAuthApi from '@/api/shopAuthApi';
+import { ShopAuthResponse } from '@/types/auth';
 
 function DangKyContent() {
     const router = useRouter();
@@ -20,7 +20,7 @@ function DangKyContent() {
     const [name, setName] = useState('');
     const [phoneNumber, setPhoneNumber] = useState('');
     const [email, setEmail] = useState('');
-    const [username, setUsername] = useState('');
+    
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -53,11 +53,10 @@ function DangKyContent() {
         setIsLoading(true);
 
         try {
-            const res: ShopAuthResponse = await apiClient.post('/auth/register', {
-                name: name.trim(),
+            const res = await shopAuthApi.register({
+                fullName: name.trim(),
                 phoneNumber: phoneNumber.trim(),
-                email: email.trim() || null,
-                username: username.trim(),
+                email: email.trim() || undefined,
                 password: password.trim()
             });
 
@@ -65,7 +64,8 @@ function DangKyContent() {
             await syncGuestCartOnLogin();
             router.push(redirectUrl);
         } catch (error: any) {
-            setErrorMsg(error?.message || 'Không thể tạo tài khoản. Vui lòng kiểm tra lại thông tin.');
+            const msg = error?.message || error?.Message || error?.details || error?.Details || error?.title || (typeof error === 'string' ? error : 'Không thể tạo tài khoản. Vui lòng kiểm tra lại thông tin.');
+            setErrorMsg(msg);
         } finally {
             setIsLoading(false);
         }
@@ -137,20 +137,7 @@ function DangKyContent() {
                     </div>
                 </div>
 
-                <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-700 block">Tên đăng nhập *</label>
-                    <div className="relative">
-                        <input
-                            type="text"
-                            placeholder="username..."
-                            value={username}
-                            onChange={(e) => setUsername(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs focus:ring-2 focus:ring-emerald-500 font-medium"
-                            required
-                        />
-                        <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-                    </div>
-                </div>
+
 
                 <div className="space-y-1">
                     <label className="text-xs font-bold text-slate-700 block">Mật khẩu (tối thiểu 6 ký tự) *</label>
@@ -213,3 +200,5 @@ export default function DangKyPage() {
         </div>
     );
 }
+
+

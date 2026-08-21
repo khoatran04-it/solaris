@@ -1,9 +1,10 @@
-﻿import React from 'react';
+import React from 'react';
 import { Metadata } from 'next';
 import ProductCard from '@/components/product/ProductCard';
 import ProductFilter from '@/components/product/ProductFilter';
-import { apiClient } from '@/lib/api';
-import { PagedResult, ShopProductCard, ShopCategoryTree } from '@/types/shop';
+import shopProductApi from '@/api/shopProductApi';
+import { PagedResult } from '@/types/common';
+import { ShopProductCard, ShopCategoryTree, ShopProductFilterParams } from '@/types/product';
 import Link from 'next/link';
 
 export const metadata: Metadata = {
@@ -34,16 +35,16 @@ export default async function SanPhamPage({ searchParams }: SanPhamPageProps) {
     const sort = params.sort || 'newest';
 
     // Fetch products, categories, origins and certs in parallel
-    const queryStr = new URLSearchParams({
-        PageIndex: page.toString(),
-        PageSize: '12',
-        Search: search,
-        CategorySlug: categorySlug,
-        CategoryGroupSlug: groupSlug,
-        Origin: origin,
-        Certification: cert,
-        SortBy: sort
-    }).toString();
+    const filterParams: ShopProductFilterParams = {
+        pageIndex: page,
+        pageSize: 12,
+        search: search || undefined,
+        categorySlug: categorySlug || undefined,
+        categoryGroupSlug: groupSlug || undefined,
+        origin: origin || undefined,
+        certification: cert || undefined,
+        sortBy: sort,
+    };
 
     let productsResult: PagedResult<ShopProductCard> = { items: [], totalRecords: 0, totalPages: 0, currentPage: 1, pageSize: 12 };
     let categories: ShopCategoryTree[] = [];
@@ -52,10 +53,10 @@ export default async function SanPhamPage({ searchParams }: SanPhamPageProps) {
 
     try {
         const [prodRes, catRes, origRes, certRes] = await Promise.all([
-            apiClient.get<PagedResult<ShopProductCard>>(`/products?${queryStr}`),
-            apiClient.get<ShopCategoryTree[]>('/products/categories').catch(() => []),
-            apiClient.get<string[]>('/products/origins').catch(() => []),
-            apiClient.get<string[]>('/products/certifications').catch(() => []),
+            shopProductApi.getAll(filterParams),
+            shopProductApi.getCategories().catch(() => []),
+            shopProductApi.getOrigins().catch(() => []),
+            shopProductApi.getCertifications().catch(() => []),
         ]);
 
         productsResult = prodRes;
@@ -164,3 +165,6 @@ export default async function SanPhamPage({ searchParams }: SanPhamPageProps) {
         </div>
     );
 }
+
+
+

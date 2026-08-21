@@ -7,6 +7,7 @@ export default function robots(): MetadataRoute.Robots {
             allow: '/',
             disallow: ['/tai-khoan/', '/thanh-toan/'],
         },
-        sitemap: 'https://solaris.vn/sitemap.xml',
+        sitemap: (process.env.NEXT_PUBLIC_SITE_URL || 'https://solaris.vn') + '/sitemap.xml',
     };
 }
+

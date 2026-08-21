@@ -1,9 +1,9 @@
-﻿'use client';
+'use client';
 
 import React, { useState } from 'react';
 import { ShoppingBag, Check, ShieldCheck, Truck, RotateCcw, Award, MapPin, Heart, Sparkles } from 'lucide-react';
-import { ShopProductDetail, ShopProductVariant, ShopVariantPrice } from '@/types/shop';
-import { formatVND } from '@/lib/api';
+import { ShopProductDetail, ShopProductVariant, ShopVariantPrice } from '@/types/product';
+import { formatVND } from '@/lib/utils';
 import { useCartStore } from '@/stores/cartStore';
 
 interface ProductDetailClientProps {

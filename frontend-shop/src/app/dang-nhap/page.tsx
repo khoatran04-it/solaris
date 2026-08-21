@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
@@ -6,8 +6,8 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Lock, User, ArrowRight, AlertCircle } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { useCartStore } from '@/stores/cartStore';
-import { apiClient } from '@/lib/api';
-import { ShopAuthResponse } from '@/types/shop';
+import shopAuthApi from '@/api/shopAuthApi';
+import { ShopAuthResponse } from '@/types/auth';
 
 function DangNhapContent() {
     const router = useRouter();
@@ -38,16 +38,14 @@ function DangNhapContent() {
         setErrorMsg('');
 
         try {
-            const res: ShopAuthResponse = await apiClient.post('/auth/login', {
-                username: username.trim(),
-                password: password.trim()
-            });
+            const res = await shopAuthApi.login({ username: username.trim(), password: password.trim() });
 
             login(res.token, res.customerInfo);
             await syncGuestCartOnLogin();
             router.push(redirectUrl);
         } catch (error: any) {
-            setErrorMsg(error?.message || 'Tên đăng nhập hoặc mật khẩu không chính xác.');
+            const msg = error?.message || error?.Message || error?.details || error?.Details || error?.title || (typeof error === 'string' ? error : 'Tên đăng nhập hoặc mật khẩu không chính xác.');
+            setErrorMsg(msg);
         } finally {
             setIsLoading(false);
         }
@@ -136,3 +134,4 @@ export default function DangNhapPage() {
         </div>
     );
 }
+

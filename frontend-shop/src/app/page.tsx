@@ -3,8 +3,8 @@ import Link from 'next/link';
 import { Sparkles, ArrowRight, ShieldCheck, Flame, Leaf, CheckCircle2, TrendingUp } from 'lucide-react';
 import PromoBannerSlider from '@/components/promotion/PromoBannerSlider';
 import ProductCard from '@/components/product/ProductCard';
-import { apiClient } from '@/lib/api';
-import { ShopCategoryTree, ShopProductCard, ShopPromotionBadge } from '@/types/shop';
+import shopProductApi from '@/api/shopProductApi';
+import { ShopCategoryTree, ShopProductCard, ShopPromotionBadge } from '@/types/product';
 
 // Revalidate page every 60 seconds (ISR)
 export const revalidate = 60;
@@ -12,10 +12,10 @@ export const revalidate = 60;
 async function getHomeData() {
     try {
         const [promotions, categories, featured, newArrivals] = await Promise.all([
-            apiClient.get<ShopPromotionBadge[]>('/products/promotions').catch(() => []),
-            apiClient.get<ShopCategoryTree[]>('/products/categories').catch(() => []),
-            apiClient.get<ShopProductCard[]>('/products/featured?limit=8').catch(() => []),
-            apiClient.get<ShopProductCard[]>('/products/new-arrivals?limit=8').catch(() => []),
+            shopProductApi.getPromotions().catch(() => []),
+            shopProductApi.getCategories().catch(() => []),
+            shopProductApi.getFeatured(8).catch(() => []),
+            shopProductApi.getNewArrivals(8).catch(() => []),
         ]);
 
         return { promotions, categories, featured, newArrivals };
@@ -186,3 +186,4 @@ export default async function HomePage() {
         </div>
     );
 }
+

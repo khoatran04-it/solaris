@@ -1,9 +1,9 @@
-﻿'use client';
+'use client';
 
 import React, { Suspense } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { Filter, RotateCcw, Check, Sparkles, MapPin, Award } from 'lucide-react';
-import { ShopCategoryTree } from '@/types/shop';
+import { ShopCategoryTree } from '@/types/product';
 
 interface ProductFilterProps {
     categories: ShopCategoryTree[];

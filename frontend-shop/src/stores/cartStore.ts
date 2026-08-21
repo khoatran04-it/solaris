@@ -1,6 +1,6 @@
-﻿import { create } from 'zustand';
-import { ShopCart, ShopCartItem } from '@/types/shop';
-import { apiClient } from '@/lib/api';
+import { create } from 'zustand';
+import { ShopCart } from '@/types/cart';
+import axiosClient from '@/api/axiosClient';
 
 interface CartState {
     cart: ShopCart | null;
@@ -36,7 +36,7 @@ export const useCartStore = create<CartState>((set, get) => ({
 
         try {
             set({ isLoading: true });
-            const cartData: ShopCart = await apiClient.get('/cart');
+            const cartData: ShopCart = await axiosClient.get('/cart');
             const totalCount = cartData.items.reduce((sum, item) => sum + item.quantity, 0);
             set({ cart: cartData, totalCount, isLoading: false });
         } catch {
@@ -64,7 +64,7 @@ export const useCartStore = create<CartState>((set, get) => ({
         }
 
         try {
-            const updatedCart: ShopCart = await apiClient.post('/cart/items', { variantId, uoMId, quantity });
+            const updatedCart: ShopCart = await axiosClient.post('/cart/items', { variantId, uoMId, quantity });
             const totalCount = updatedCart.items.reduce((sum, item) => sum + item.quantity, 0);
             set({ cart: updatedCart, totalCount });
         } catch (error) {
@@ -76,7 +76,7 @@ export const useCartStore = create<CartState>((set, get) => ({
         const token = typeof window !== 'undefined' ? localStorage.getItem('solaris_shop_token') : null;
         if (token) {
             try {
-                const updatedCart: ShopCart = await apiClient.put(`/cart/items/${cartItemId}`, { quantity });
+                const updatedCart: ShopCart = await axiosClient.put(`/cart/items/${cartItemId}`, { quantity });
                 const totalCount = updatedCart.items.reduce((sum, item) => sum + item.quantity, 0);
                 set({ cart: updatedCart, totalCount });
             } catch (error) {
@@ -89,7 +89,7 @@ export const useCartStore = create<CartState>((set, get) => ({
         const token = typeof window !== 'undefined' ? localStorage.getItem('solaris_shop_token') : null;
         if (token) {
             try {
-                const updatedCart: ShopCart = await apiClient.delete(`/cart/items/${cartItemId}`);
+                const updatedCart: ShopCart = await axiosClient.delete(`/cart/items/${cartItemId}`);
                 const totalCount = updatedCart.items.reduce((sum, item) => sum + item.quantity, 0);
                 set({ cart: updatedCart, totalCount });
             } catch (error) {
@@ -101,7 +101,7 @@ export const useCartStore = create<CartState>((set, get) => ({
     clearCart: async () => {
         const token = typeof window !== 'undefined' ? localStorage.getItem('solaris_shop_token') : null;
         if (token) {
-            await apiClient.delete('/cart');
+            await axiosClient.delete('/cart');
             set({ cart: null, totalCount: 0 });
         } else {
             if (typeof window !== 'undefined') {
@@ -119,7 +119,7 @@ export const useCartStore = create<CartState>((set, get) => ({
         try {
             const guestItems = JSON.parse(saved);
             if (guestItems && guestItems.length > 0) {
-                const updatedCart: ShopCart = await apiClient.post('/cart/sync', { items: guestItems });
+                const updatedCart: ShopCart = await axiosClient.post('/cart/sync', { items: guestItems });
                 localStorage.removeItem('solaris_guest_cart');
                 const totalCount = updatedCart.items.reduce((sum, item) => sum + item.quantity, 0);
                 set({ cart: updatedCart, guestItems: [], totalCount });

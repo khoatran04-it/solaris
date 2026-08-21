@@ -1,15 +1,27 @@
-﻿import axios, { AxiosRequestConfig } from 'axios';
+import axios, { AxiosRequestConfig } from 'axios';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:7070/api/shop';
+
+// Cho phép bỏ qua chứng chỉ SSL tự ký (self-signed dev certs) khi chạy SSR trên Node.js
+let httpsAgent: any = undefined;
+if (typeof window === 'undefined') {
+    try {
+        const https = require('https');
+        httpsAgent = new https.Agent({ rejectUnauthorized: false });
+    } catch {
+        // Ignore in browser bundle
+    }
+}
 
 const axiosInstance = axios.create({
     baseURL: API_BASE_URL,
     headers: {
         'Content-Type': 'application/json',
     },
+    httpsAgent: httpsAgent,
 });
 
-// Interceptor gắn JWT Token nếu có
+// Interceptor: gắn JWT Token
 axiosInstance.interceptors.request.use(
     (config) => {
         if (typeof window !== 'undefined') {
@@ -23,7 +35,7 @@ axiosInstance.interceptors.request.use(
     (error) => Promise.reject(error)
 );
 
-// Interceptor bóc tách response.data
+// Interceptor: bóc tách response.data + xử lý 401
 axiosInstance.interceptors.response.use(
     (response) => response.data,
     (error) => {
@@ -35,8 +47,7 @@ axiosInstance.interceptors.response.use(
     }
 );
 
-// Wrapper chuẩn hóa Type-Safe trả về data trực tiếp
-export const apiClient = {
+const axiosClient = {
     get: async <T>(url: string, config?: AxiosRequestConfig): Promise<T> => {
         return axiosInstance.get(url, config) as unknown as Promise<T>;
     },
@@ -51,23 +62,4 @@ export const apiClient = {
     }
 };
 
-export function formatVND(amount: number | undefined | null): string {
-    if (amount === undefined || amount === null || isNaN(amount)) return '0 ₫';
-    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
-}
-
-export function formatDate(dateStr: string | undefined | null): string {
-    if (!dateStr) return '';
-    try {
-        const d = new Date(dateStr);
-        return d.toLocaleDateString('vi-VN', {
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
-    } catch {
-        return dateStr;
-    }
-}
+export default axiosClient;

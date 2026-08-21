@@ -1,12 +1,12 @@
-﻿import React from 'react';
+import React from 'react';
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { MapPin, Award, CheckCircle2, ShieldAlert, Sparkles, FileText, Info } from 'lucide-react';
 import ProductDetailClient from '@/components/product/ProductDetailClient';
 import JsonLdProduct from '@/components/seo/JsonLdProduct';
-import { apiClient } from '@/lib/api';
-import { ShopProductDetail } from '@/types/shop';
+import shopProductApi from '@/api/shopProductApi';
+import { ShopProductDetail } from '@/types/product';
 
 interface ProductDetailPageProps {
     params: Promise<{
@@ -18,7 +18,7 @@ interface ProductDetailPageProps {
 export async function generateMetadata({ params }: ProductDetailPageProps): Promise<Metadata> {
     const { slug } = await params;
     try {
-        const product = await apiClient.get<ShopProductDetail>(`/products/${slug}`);
+        const product = await shopProductApi.getBySlug(slug);
         if (!product) return { title: 'Sản phẩm không tồn tại' };
 
         const origin = product.attributes['Xuất xứ / Vùng trồng'] || product.attributes['Xuất xứ'] || 'Việt Nam';
@@ -47,7 +47,7 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
 
     let product: ShopProductDetail | null = null;
     try {
-        product = await apiClient.get<ShopProductDetail>(`/products/${slug}`);
+        product = await shopProductApi.getBySlug(slug);
     } catch {
         notFound();
     }
@@ -210,3 +210,5 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
         </div>
     );
 }
+
+

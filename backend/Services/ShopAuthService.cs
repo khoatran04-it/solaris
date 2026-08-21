@@ -1,4 +1,4 @@
-﻿using backend.Data;
+using backend.Data;
 using backend.DTOs.ShopDTOs;
 using backend.Models;
 using backend.Services.Interfaces;
@@ -25,6 +25,79 @@ namespace backend.Services
         {
             // 1. Kiểm tra tài khoản đã tồn tại hay chưa
             string normalizedUsername = request.PhoneNumber.Trim();
+
+            var existingPhone = await _context.Customers
+                .Include(c => c.CustomerTier)
+                .Include(c => c.Addresses)
+                .FirstOrDefaultAsync(c => c.PhoneNumber == normalizedUsername || c.Username == normalizedUsername);
+
+            if (existingPhone != null)
+            {
+                // Trường hợp 1: Tài khoản đã có mật khẩu online
+                if (!string.IsNullOrEmpty(existingPhone.PasswordHash))
+                {
+                    throw new InvalidOperationException("Số điện thoại này đã được đăng ký tài khoản trực tuyến. Vui lòng đăng nhập.");
+                }
+
+                // Trường hợp 2: Khách hàng đã có hồ sơ (từ Admin/Cửa hàng) nhưng chưa có tài khoản trực tuyến -> Kích hoạt tài khoản online
+                if (!string.IsNullOrWhiteSpace(request.Email))
+                {
+                    var existingEmail = await _context.Customers
+                        .FirstOrDefaultAsync(c => c.Id != existingPhone.Id && (c.Email == request.Email.Trim() || c.Username == request.Email.Trim()));
+                    if (existingEmail != null)
+                        throw new InvalidOperationException("Email này đã được sử dụng bởi một tài khoản khác.");
+
+                    existingPhone.Email = request.Email.Trim();
+                }
+
+                existingPhone.Name = request.FullName.Trim();
+                existingPhone.Username = normalizedUsername;
+                existingPhone.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password);
+                existingPhone.IsActive = true;
+                existingPhone.UpdatedAt = DateTime.UtcNow;
+
+                // Nếu có địa chỉ ban đầu thì lưu
+                if (!string.IsNullOrWhiteSpace(request.Province) && !string.IsNullOrWhiteSpace(request.StreetAddress))
+                {
+                    existingPhone.Addresses.Add(new CustomerAddress
+                    {
+                        ReceiverName = request.FullName.Trim(),
+                        Phone = normalizedUsername,
+                        Province = request.Province.Trim(),
+                        District = request.District?.Trim() ?? string.Empty,
+                        Ward = request.Ward?.Trim() ?? string.Empty,
+                        StreetAddress = request.StreetAddress.Trim(),
+                        IsDefault = true,
+                        Latitude = request.Latitude,
+                        Longitude = request.Longitude,
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow
+                    });
+                }
+
+                await _context.SaveChangesAsync();
+
+                string activeToken = GenerateCustomerToken(existingPhone, existingPhone.CustomerTier?.Name ?? "Thành Viên", existingPhone.CustomerTier?.DiscountPercent ?? 0);
+
+                return new ShopAuthResponseDto
+                {
+                    Token = activeToken,
+                    CustomerInfo = new ShopCustomerInfoDto
+                    {
+                        Id = existingPhone.Id,
+                        Code = existingPhone.Code,
+                        Name = existingPhone.Name,
+                        PhoneNumber = existingPhone.PhoneNumber,
+                        Email = existingPhone.Email,
+                        AvatarPath = existingPhone.AvatarPath,
+                        CustomerTierId = existingPhone.CustomerTierId,
+                        CustomerTierName = existingPhone.CustomerTier?.Name ?? "Thành Viên",
+                        DiscountPercent = existingPhone.CustomerTier?.DiscountPercent ?? 0
+                    }
+                };
+            }
+
+            // Trường hợp 3: Khách hàng mới hoàn toàn
             if (!string.IsNullOrWhiteSpace(request.Email))
             {
                 var existingEmail = await _context.Customers
@@ -32,11 +105,6 @@ namespace backend.Services
                 if (existingEmail != null)
                     throw new InvalidOperationException("Email này đã được sử dụng bởi một tài khoản khác.");
             }
-
-            var existingPhone = await _context.Customers
-                .FirstOrDefaultAsync(c => c.PhoneNumber == normalizedUsername || c.Username == normalizedUsername);
-            if (existingPhone != null)
-                throw new InvalidOperationException("Số điện thoại này đã được đăng ký tài khoản.");
 
             // 2. Tìm CustomerType mặc định (ví dụ: Khách lẻ)
             var defaultType = await _context.CustomerTypes

@@ -1,11 +1,11 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { User, Package, MapPin, RotateCcw, Award, CheckCircle2, ShieldCheck, Phone, Mail, Calendar } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
-import { apiClient } from '@/lib/api';
+import shopCustomerApi from '@/api/shopCustomerApi';
 
 export default function TaiKhoanPage() {
     const router = useRouter();
@@ -28,12 +28,12 @@ export default function TaiKhoanPage() {
             return;
         }
 
-        apiClient.get<any>('/customer/profile')
-            .then((prof) => {
+        shopCustomerApi.getProfile()
+            .then((prof: any) => {
                 setName(prof.name || '');
                 setPhoneNumber(prof.phoneNumber || '');
                 setEmail(prof.email || '');
-                setGender(prof.gender || '');
+                setGender(prof.gender === true ? 'Nam' : prof.gender === false ? 'Nữ' : '');
             })
             .catch(() => {});
     }, [isAuthenticated, router]);
@@ -44,11 +44,12 @@ export default function TaiKhoanPage() {
         setSaveMessage('');
 
         try {
-            const updated = await apiClient.put<any>('/customer/profile', {
+            const genderValue: boolean | null | undefined = gender === 'Nam' ? true : gender === 'Nữ' ? false : null;
+            const updated: any = await shopCustomerApi.updateProfile({
                 name,
                 phoneNumber,
                 email,
-                gender
+                gender: genderValue
             });
 
             if (user) {
@@ -231,3 +232,4 @@ export default function TaiKhoanPage() {
         </div>
     );
 }
+

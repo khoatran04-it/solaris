@@ -1,12 +1,16 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { RotateCcw, User, Package, MapPin, Plus, CheckCircle2, AlertCircle, Calendar } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
-import { apiClient, formatVND, formatDate } from '@/lib/api';
-import { PagedResult, ShopReturn, ShopOrder } from '@/types/shop';
+import shopOrderApi from '@/api/shopOrderApi';
+import shopReturnApi from '@/api/shopReturnApi';
+import { formatVND, formatDateTime } from '@/lib/utils';
+import { PagedResult } from '@/types/common';
+import { ShopReturn } from '@/types/return';
+import { ShopOrder } from '@/types/order';
 
 function TraHangContent() {
     const router = useRouter();
@@ -34,7 +38,7 @@ function TraHangContent() {
     }, [initAuth]);
 
     const loadReturns = () => {
-        apiClient.get<PagedResult<ShopReturn>>('/returns?pageIndex=1&pageSize=10')
+        shopReturnApi.getAll(1, 10)
             .then(setReturnsResult)
             .catch(() => {});
     };
@@ -50,7 +54,7 @@ function TraHangContent() {
     const handleSearchOrder = async () => {
         if (!orderCode.trim()) return;
         try {
-            const ord: ShopOrder = await apiClient.get(`/orders/${orderCode.trim()}`);
+            const ord: ShopOrder = await shopOrderApi.getByCode(orderCode.trim());
             setTargetOrder(ord);
             const init: any = {};
             ord.items.forEach(i => {
@@ -76,7 +80,7 @@ function TraHangContent() {
                 reason: data.reason
             })).filter(i => i.returnedQuantity > 0);
 
-            await apiClient.post('/returns', {
+            await shopReturnApi.create({
                 orderCode: targetOrder.orderCode,
                 reason: reason.trim(),
                 items
@@ -255,7 +259,7 @@ function TraHangContent() {
                                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100">
                                     <div>
                                         <p className="font-mono font-bold text-xs text-slate-900">{ret.returnCode}</p>
-                                        <p className="text-[11px] text-slate-500">Đơn hàng: <strong>{ret.orderCode}</strong> • {formatDate(ret.returnDate)}</p>
+                                        <p className="text-[11px] text-slate-500">Đơn hàng: <strong>{ret.orderCode}</strong> • {formatDateTime(ret.returnDate)}</p>
                                     </div>
 
                                     <span className="px-3 py-1 bg-amber-50 text-amber-800 border border-amber-200 text-xs font-bold rounded-full">
@@ -301,3 +305,4 @@ export default function TraHangPage() {
         </div>
     );
 }
+
