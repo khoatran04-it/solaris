@@ -14,6 +14,9 @@ namespace backend.Models
         /// <summary>Tên hiển thị danh mục</summary>
         public required string Name { get; set; }
 
+        /// <summary>Đường dẫn thân thiện cho SEO (Ví dụ: trai-cay-nhap-khau)</summary>
+        public string? Slug { get; set; }
+
         /// <summary>Mô tả chi tiết danh mục</summary>
         public string? Description { get; set; }
 

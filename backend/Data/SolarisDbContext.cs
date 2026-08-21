@@ -75,6 +75,10 @@ namespace backend.Data
         public DbSet<CustomerReturn> CustomerReturns { get; set; }
         public DbSet<CustomerReturnDetail> CustomerReturnDetails { get; set; }
 
+        // --- Danh mục E-Commerce Shop & Giỏ hàng ---
+        public DbSet<ShoppingCart> ShoppingCarts { get; set; }
+        public DbSet<ShoppingCartItem> ShoppingCartItems { get; set; }
+
         // --- Danh mục Logistics & Transfer (Phase 5) ---
         public DbSet<InventoryTransfer> InventoryTransfers { get; set; }
         public DbSet<InventoryTransferDetail> InventoryTransferDetails { get; set; }

@@ -150,6 +150,10 @@ namespace backend.Migrations
                     b.Property<string>("Note")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("PasswordHash")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
                     b.Property<string>("PhoneNumber")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -162,6 +166,10 @@ namespace backend.Migrations
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<string>("Username")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
                     b.HasKey("Id");
 
                     b.HasIndex("Code")
@@ -170,6 +178,8 @@ namespace backend.Migrations
                     b.HasIndex("CustomerTierId");
 
                     b.HasIndex("CustomerTypeId");
+
+                    b.HasIndex("Username");
 
                     b.ToTable("Customers", (string)null);
                 });
@@ -1777,6 +1787,10 @@ namespace backend.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
+                    b.Property<string>("Slug")
+                        .HasMaxLength(250)
+                        .HasColumnType("nvarchar(250)");
+
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime2");
 
@@ -1788,6 +1802,8 @@ namespace backend.Migrations
 
                     b.HasIndex("Code")
                         .IsUnique();
+
+                    b.HasIndex("Slug");
 
                     b.ToTable("Products", (string)null);
                 });
@@ -1947,6 +1963,10 @@ namespace backend.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
+                    b.Property<string>("Slug")
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime2");
 
@@ -1956,6 +1976,8 @@ namespace backend.Migrations
 
                     b.HasIndex("Code")
                         .IsUnique();
+
+                    b.HasIndex("Slug");
 
                     b.ToTable("ProductCategories", (string)null);
                 });
@@ -2001,6 +2023,10 @@ namespace backend.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
+                    b.Property<string>("Slug")
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime2");
 
@@ -2008,6 +2034,8 @@ namespace backend.Migrations
 
                     b.HasIndex("Code")
                         .IsUnique();
+
+                    b.HasIndex("Slug");
 
                     b.ToTable("ProductCategoryGroups", (string)null);
                 });
@@ -2131,6 +2159,10 @@ namespace backend.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("BannerImagePath")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
@@ -2163,6 +2195,10 @@ namespace backend.Migrations
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)");
 
+                    b.Property<string>("Slug")
+                        .HasMaxLength(250)
+                        .HasColumnType("nvarchar(250)");
+
                     b.Property<DateTime>("StartDate")
                         .HasColumnType("datetime2");
 
@@ -2174,6 +2210,8 @@ namespace backend.Migrations
                     b.HasIndex("IsActive");
 
                     b.HasIndex("Name");
+
+                    b.HasIndex("Slug");
 
                     b.HasIndex("StartDate", "EndDate");
 
@@ -2312,6 +2350,68 @@ namespace backend.Migrations
                     b.HasIndex("VariantId");
 
                     b.ToTable("PurchaseOrderDetails", (string)null);
+                });
+
+            modelBuilder.Entity("backend.Models.ShoppingCart", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("CustomerId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CustomerId")
+                        .IsUnique();
+
+                    b.ToTable("ShoppingCarts", (string)null);
+                });
+
+            modelBuilder.Entity("backend.Models.ShoppingCartItem", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("AddedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("CartId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("Quantity")
+                        .HasColumnType("decimal(18,3)");
+
+                    b.Property<int>("UoMId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("VariantId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CartId");
+
+                    b.HasIndex("UoMId");
+
+                    b.HasIndex("VariantId");
+
+                    b.ToTable("ShoppingCartItems", (string)null);
                 });
 
             modelBuilder.Entity("backend.Models.Supplier", b =>
@@ -3692,6 +3792,44 @@ namespace backend.Migrations
                     b.Navigation("Variant");
                 });
 
+            modelBuilder.Entity("backend.Models.ShoppingCart", b =>
+                {
+                    b.HasOne("backend.Models.Customer", "Customer")
+                        .WithMany()
+                        .HasForeignKey("CustomerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Customer");
+                });
+
+            modelBuilder.Entity("backend.Models.ShoppingCartItem", b =>
+                {
+                    b.HasOne("backend.Models.ShoppingCart", "Cart")
+                        .WithMany("Items")
+                        .HasForeignKey("CartId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("backend.Models.UoM", "UoM")
+                        .WithMany()
+                        .HasForeignKey("UoMId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("backend.Models.ProductVariant", "Variant")
+                        .WithMany()
+                        .HasForeignKey("VariantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Cart");
+
+                    b.Navigation("UoM");
+
+                    b.Navigation("Variant");
+                });
+
             modelBuilder.Entity("backend.Models.Supplier", b =>
                 {
                     b.HasOne("backend.Models.SupplierType", "SupplierType")
@@ -3956,6 +4094,11 @@ namespace backend.Migrations
             modelBuilder.Entity("backend.Models.PurchaseOrderDetail", b =>
                 {
                     b.Navigation("ReceiptDetails");
+                });
+
+            modelBuilder.Entity("backend.Models.ShoppingCart", b =>
+                {
+                    b.Navigation("Items");
                 });
 
             modelBuilder.Entity("backend.Models.Supplier", b =>

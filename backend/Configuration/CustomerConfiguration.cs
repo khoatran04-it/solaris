@@ -24,6 +24,8 @@ namespace backend.Configurations
 
             builder.Property(x => x.Birthday).HasColumnType("datetime2");
             builder.Property(x => x.Gender).HasColumnType("bit");
+            builder.Property(x => x.Username).HasMaxLength(100).HasColumnType("nvarchar(100)");
+            builder.Property(x => x.PasswordHash).HasMaxLength(255).HasColumnType("nvarchar(255)");
             builder.Property(x => x.CreatedAt).HasColumnType("datetime2");
             builder.Property(x => x.UpdatedAt).HasColumnType("datetime2");
 
@@ -31,6 +33,7 @@ namespace backend.Configurations
 
             // --- INDEX UNIQUE (BẮT BUỘC TRONG ERP) ---
             builder.HasIndex(x => x.Code).IsUnique();
+            builder.HasIndex(x => x.Username);
 
             // --- CẤU HÌNH XÓA MỀM ---
             builder.Property(x => x.IsDeleted).HasDefaultValue(false);

@@ -35,6 +35,12 @@ namespace backend.Models
         /// <summary>Ghi chú chăm sóc khách hàng</summary>
         public string? Note { get; set; }
 
+        /// <summary>Tên đăng nhập hệ thống Shop (Email hoặc Số điện thoại)</summary>
+        public string? Username { get; set; }
+
+        /// <summary>Mật khẩu đăng nhập Shop (mã hóa BCrypt)</summary>
+        public string? PasswordHash { get; set; }
+
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
         public bool IsActive { get; set; } = true;

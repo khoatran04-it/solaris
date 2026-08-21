@@ -18,9 +18,10 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowViteApp", policy =>
     {
-        policy.WithOrigins("http://localhost:5173")
+        policy.WithOrigins("http://localhost:5173", "http://localhost:3000")
               .AllowAnyHeader()
-              .AllowAnyMethod();
+              .AllowAnyMethod()
+              .AllowCredentials();
     });
 });
 
@@ -152,6 +153,14 @@ builder.Services.AddScoped<IInventoryAuditService, InventoryAuditService>();
 builder.Services.AddScoped<IInventoryAdjustmentService, InventoryAdjustmentService>();
 builder.Services.AddScoped<IInventoryReconciliationService, InventoryReconciliationService>();
 
+// --- Đăng ký DI cho nhóm Shop E-Commerce ---
+builder.Services.AddScoped<IShopAuthService, ShopAuthService>();
+builder.Services.AddScoped<IShopCustomerService, ShopCustomerService>();
+builder.Services.AddScoped<IShopProductService, ShopProductService>();
+builder.Services.AddScoped<IShopCartService, ShopCartService>();
+builder.Services.AddScoped<IShopOrderService, ShopOrderService>();
+builder.Services.AddScoped<IShopReturnService, ShopReturnService>();
+
 var app = builder.Build();
 
 // 4. Middlewares
@@ -193,6 +202,60 @@ using (var scope = app.Services.CreateScope())
         db.Database.ExecuteSqlRaw("UPDATE PromotionCampaigns SET IsActive = 1 WHERE IsActive = 0 AND IsDeleted = 0;");
         db.Database.ExecuteSqlRaw("UPDATE Warehouses SET IsActive = 1 WHERE IsActive = 0 AND IsDeleted = 0;");
         db.Database.ExecuteSqlRaw("UPDATE SupplierProducts SET IsActive = 1 WHERE IsActive = 0 AND IsDeleted = 0;");
+
+        // Seed Từ điển thuộc tính EAV Nông sản
+        var defaultAttrs = new List<(string Name, string DataType)>
+        {
+            ("Xuất xứ / Vùng trồng", "string"),
+            ("Chứng nhận chất lượng", "string"),
+            ("Độ ngọt (Brix)", "number"),
+            ("Hướng dẫn bảo quản", "string"),
+            ("Hướng dẫn sử dụng", "string"),
+            ("Khối lượng tịnh", "string")
+        };
+
+        foreach (var attr in defaultAttrs)
+        {
+            if (!db.AttributeDefinitions.Any(a => a.Name.ToLower() == attr.Name.ToLower() && !a.IsDeleted))
+            {
+                db.AttributeDefinitions.Add(new AttributeDefinition
+                {
+                    Name = attr.Name,
+                    DataType = attr.DataType,
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                });
+            }
+        }
+        db.SaveChanges();
+
+        // Tự động sinh Slugs cho các bản ghi cũ nếu chưa có
+        var productsWithoutSlug = db.Products.Where(p => string.IsNullOrEmpty(p.Slug) && !p.IsDeleted).ToList();
+        foreach (var p in productsWithoutSlug)
+        {
+            p.Slug = backend.Helpers.SlugHelper.GenerateSlug(p.Name);
+        }
+
+        var categoriesWithoutSlug = db.ProductCategories.Where(c => string.IsNullOrEmpty(c.Slug) && !c.IsDeleted).ToList();
+        foreach (var c in categoriesWithoutSlug)
+        {
+            c.Slug = backend.Helpers.SlugHelper.GenerateSlug(c.Name);
+        }
+
+        var groupsWithoutSlug = db.ProductCategoryGroups.Where(g => string.IsNullOrEmpty(g.Slug) && !g.IsDeleted).ToList();
+        foreach (var g in groupsWithoutSlug)
+        {
+            g.Slug = backend.Helpers.SlugHelper.GenerateSlug(g.Name);
+        }
+
+        var promosWithoutSlug = db.PromotionCampaigns.Where(pr => string.IsNullOrEmpty(pr.Slug) && !pr.IsDeleted).ToList();
+        foreach (var pr in promosWithoutSlug)
+        {
+            pr.Slug = backend.Helpers.SlugHelper.GenerateSlug(pr.Name);
+        }
+
+        db.SaveChanges();
     }
     catch
     {

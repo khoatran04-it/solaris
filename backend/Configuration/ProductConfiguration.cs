@@ -17,6 +17,8 @@ namespace backend.Configurations
 
             // Ràng buộc Name & Description
             builder.Property(x => x.Name).IsRequired().HasMaxLength(200).HasColumnType("nvarchar(200)");
+            builder.Property(x => x.Slug).HasMaxLength(250).HasColumnType("nvarchar(250)");
+            builder.HasIndex(x => x.Slug);
             builder.Property(x => x.Description).HasMaxLength(1000).HasColumnType("nvarchar(1000)");
             builder.Property(x => x.ImagePath).HasMaxLength(1000);
 

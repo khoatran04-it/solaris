@@ -14,6 +14,9 @@ namespace backend.Models
         /// <summary>Tên dòng sản phẩm</summary>
         public required string Name { get; set; }
 
+        /// <summary>Đường dẫn thân thiện cho SEO (Ví dụ: tao-envy-new-zealand)</summary>
+        public string? Slug { get; set; }
+
         /// <summary>Mô tả tổng quan sản phẩm</summary>
         public string? Description { get; set; }
 

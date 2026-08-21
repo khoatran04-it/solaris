@@ -16,6 +16,14 @@ namespace backend.Configurations
                 .HasMaxLength(255)
                 .HasColumnType("nvarchar(255)");
 
+            builder.Property(x => x.Slug)
+                .HasMaxLength(250)
+                .HasColumnType("nvarchar(250)");
+            builder.HasIndex(x => x.Slug);
+
+            builder.Property(x => x.BannerImagePath)
+                .HasMaxLength(1000);
+
             builder.Property(x => x.Description)
                 .HasMaxLength(1000)
                 .HasColumnType("nvarchar(1000)");

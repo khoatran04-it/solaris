@@ -15,6 +15,8 @@ namespace backend.Configurations
             builder.HasIndex(x => x.Code).IsUnique();
 
             builder.Property(x => x.Name).IsRequired().HasMaxLength(100).HasColumnType("nvarchar(100)");
+            builder.Property(x => x.Slug).HasMaxLength(150).HasColumnType("nvarchar(150)");
+            builder.HasIndex(x => x.Slug);
             builder.Property(x => x.Description).HasMaxLength(500).HasColumnType("nvarchar(500)");
             builder.Property(x => x.ImagePath).HasMaxLength(500);
 

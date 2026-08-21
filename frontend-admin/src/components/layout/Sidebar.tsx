@@ -1,154 +1,92 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { 
-    LayoutDashboard, Home, Package, Users, Settings, 
+    LayoutDashboard, Package, ShieldCheck, Settings, 
     Sun, ChevronLeft, ChevronRight, ChevronDown, LucideIcon,
-    Apple, Ruler, ShieldCheck, LogOut, ShoppingCart, ClipboardCheck,
-    ShoppingBag, ArrowLeftRight, ClipboardList, Scale
+    Apple, LogOut, ShoppingCart, ShoppingBag, Search
 } from 'lucide-react';
 
 // 🔥 Import store và constants quyền
 import { useAuthStore } from '../../stores/useAuthStore';
 import { PERMISSIONS } from '../../constants/permissions';
 
-// 1. CẤU HÌNH MENU (Thêm trường permission)
+// 1. CẤU HÌNH MENU (Đã bỏ basePath, gom nhóm chuẩn ERP)
 interface MenuItem {
     id: string;
     label: string;
     icon: LucideIcon;
     path?: string;
-    basePath?: string;
-    permission?: string; // Quyền của Menu cha
-    children?: { label: string; path: string; permission?: string }[]; // Quyền của Menu con
+    permission?: string; 
+    children?: { label: string; path: string; permission?: string }[];
 }
 
 const MENU_CONFIG: MenuItem[] = [
     { 
         id: 'dashboard', 
-        label: 'Dashboard', 
+        label: 'Tổng quan', 
         icon: LayoutDashboard, 
         path: '/' 
-        // Không truyền permission -> Ai đăng nhập cũng thấy
     },
     { 
-        id: 'supplier', 
-        label: 'Nhà cung cấp', 
-        icon: Home, 
-        basePath: '/supplier',
-        permission: PERMISSIONS.SUPPLIER.VIEW,
+        id: 'sales', 
+        label: 'Bán hàng & Khách hàng', 
+        icon: ShoppingBag, 
         children: [
-            { label: 'Phân loại NCC', path: '/supplier-types', permission: PERMISSIONS.SUPPLIER.CONFIG },
-            { label: 'Danh sách NCC', path: '/suppliers', permission: PERMISSIONS.SUPPLIER.VIEW },
-            { label: 'Bảng giá & SP NCC', path: '/supplier-products', permission: PERMISSIONS.SUPPLIER.VIEW },
-        ]
-    },
-    { 
-        id: 'customer', 
-        label: 'Khách hàng', 
-        icon: Users, 
-        basePath: '/customer',
-        permission: PERMISSIONS.CUSTOMER.VIEW,
-        children: [
-            { label: 'Phân loại KH', path: '/customer-types', permission: PERMISSIONS.CUSTOMER.CONFIG },
-            { label: 'Phân nhóm KH', path: '/customer-groups', permission: PERMISSIONS.CUSTOMER.CONFIG },
-            { label: 'Phân bậc KH', path: '/customer-tiers', permission: PERMISSIONS.CUSTOMER.CONFIG },
-            { label: 'Danh sách KH', path: '/customers', permission: PERMISSIONS.CUSTOMER.VIEW },
-        ]
-    },
-    {
-        id: 'product',
-        label: 'Sản phẩm',
-        icon: Apple,
-        basePath: '/products',
-        permission: PERMISSIONS.PRODUCT.VIEW,
-        children: [
-            { label: 'Danh sách SP', path: '/products', permission: PERMISSIONS.PRODUCT.VIEW },
-            { label: 'Biến thể SP', path: '/product-variants', permission: PERMISSIONS.PRODUCT.VIEW },
-            { label: 'Nhóm danh mục', path: '/product-category-groups', permission: PERMISSIONS.PRODUCT.CATEGORY_MANAGE },
-            { label: 'Danh mục SP', path: '/product-categories', permission: PERMISSIONS.PRODUCT.CATEGORY_MANAGE },
-            { label: 'Từ điển thuộc tính', path: '/attributes', permission: PERMISSIONS.ATTRIBUTE.MANAGE },
-            { label: 'Thuộc tính loại SP', path: '/category-attributes', permission: PERMISSIONS.ATTRIBUTE.MANAGE },
+            { label: 'Đơn hàng bán', path: '/orders', permission: PERMISSIONS.INVENTORY.VIEW },
+            { label: 'Đơn hàng trả', path: '/customer-returns', permission: PERMISSIONS.INVENTORY.VIEW },
+            { label: 'Danh sách Khách hàng', path: '/customers', permission: PERMISSIONS.CUSTOMER.VIEW },
+            { label: 'Phân loại Khách hàng', path: '/customer-types', permission: PERMISSIONS.CUSTOMER.CONFIG },
+            { label: 'Phân nhóm Khách hàng', path: '/customer-groups', permission: PERMISSIONS.CUSTOMER.CONFIG },
+            { label: 'Phân bậc Khách hàng', path: '/customer-tiers', permission: PERMISSIONS.CUSTOMER.CONFIG },
             { label: 'Danh sách khuyến mãi', path: '/promotions', permission: PERMISSIONS.PROMOTION.VIEW },
         ]
     },
     {
-        id: 'uom',
-        label: 'Đơn vị tính',
-        icon: Ruler,
-        basePath: '/uom',
-        permission: PERMISSIONS.UOM.VIEW,
+        id: 'procurement',
+        label: 'Mua hàng & Nhà cung cấp',
+        icon: ShoppingCart,
         children: [
-            { label: 'Danh mục ĐVT', path: '/uom-categories', permission: PERMISSIONS.UOM.VIEW },
-            { label: 'Đơn vị tính', path: '/uoms', permission: PERMISSIONS.UOM.VIEW },
-            { label: 'Danh sách quy đổi', path: '/uom-conversions', permission: PERMISSIONS.UOM.VIEW },
+            { label: 'Đơn mua hàng', path: '/purchase-orders', permission: PERMISSIONS.INVENTORY.VIEW },
+            { label: 'Danh sách Nhà cung cấp', path: '/suppliers', permission: PERMISSIONS.SUPPLIER.VIEW },
+            { label: 'Phân loại Nhà cung cấp', path: '/supplier-types', permission: PERMISSIONS.SUPPLIER.CONFIG },
+            { label: 'Sản phẩm Nhà cung cấp', path: '/supplier-products', permission: PERMISSIONS.SUPPLIER.VIEW },
         ]
     },
     { 
-        id: 'warehouse', 
-        label: 'Kho Vật Tư', 
+        id: 'inventory', 
+        label: 'Quản lý Kho bãi', 
         icon: Package, 
-        basePath: '/warehouse',
-        permission: PERMISSIONS.WAREHOUSE.VIEW,
         children: [
-            { label: 'Danh sách kho', path: '/warehouses', permission: PERMISSIONS.WAREHOUSE.VIEW },
-            { label: 'Tồn kho', path: '/inventories', permission: PERMISSIONS.INVENTORY.VIEW },
-        ]
-    },
-    {
-        id: 'procurement',
-        label: 'Mua hàng & Nhập kho',
-        icon: ShoppingCart,
-        basePath: '/purchase',
-        permission: PERMISSIONS.INVENTORY.VIEW,
-        children: [
-            { label: 'Đơn mua hàng', path: '/purchase-orders', permission: PERMISSIONS.INVENTORY.VIEW },
+            { label: 'Tổng quan Tồn kho', path: '/inventories', permission: PERMISSIONS.INVENTORY.VIEW },
             { label: 'Phiếu nhập kho', path: '/inventory-receipts', permission: PERMISSIONS.INVENTORY.VIEW },
-        ]
-    },
-    {
-        id: 'sales',
-        label: 'Bán hàng & Xuất kho',
-        icon: ShoppingBag,
-        basePath: '/orders',
-        permission: PERMISSIONS.INVENTORY.VIEW,
-        children: [
-            { label: 'Đơn bán hàng', path: '/orders', permission: PERMISSIONS.INVENTORY.VIEW },
             { label: 'Phiếu xuất kho', path: '/inventory-issues', permission: PERMISSIONS.INVENTORY.VIEW },
-        ]
-    },
-    {
-        id: 'logistics',
-        label: 'Điều phối & Trả hàng',
-        icon: ArrowLeftRight,
-        basePath: '/logistics',
-        permission: PERMISSIONS.INVENTORY.VIEW,
-        children: [
             { label: 'Chuyển kho nội bộ', path: '/inventory-transfers', permission: PERMISSIONS.INVENTORY.VIEW },
-            { label: 'Khách hàng trả hàng', path: '/customer-returns', permission: PERMISSIONS.INVENTORY.VIEW },
-        ]
-    },
-    {
-        id: 'audit',
-        label: 'Kiểm kê & Sổ cái',
-        icon: ClipboardList,
-        basePath: '/audit',
-        permission: PERMISSIONS.INVENTORY.VIEW,
-        children: [
             { label: 'Kiểm kê kho', path: '/inventory-audits', permission: PERMISSIONS.INVENTORY.VIEW },
             { label: 'Điều chỉnh tồn kho', path: '/inventory-adjustments', permission: PERMISSIONS.INVENTORY.VIEW },
             { label: 'Sổ cái & Chốt ca', path: '/inventory-reconciliation', permission: PERMISSIONS.INVENTORY.VIEW },
+            { label: 'Danh sách Kho bãi', path: '/warehouses', permission: PERMISSIONS.WAREHOUSE.VIEW },
         ]
     },
-
-    
-    
-    // 🔥 Nhóm quản trị hệ thống (Roles & Users)
+    {
+        id: 'catalog',
+        label: 'Cấu hình Sản phẩm',
+        icon: Apple,
+        children: [
+            { label: 'Danh sách Sản phẩm', path: '/products', permission: PERMISSIONS.PRODUCT.VIEW },
+            { label: 'Biến thể Sản phẩm', path: '/product-variants', permission: PERMISSIONS.PRODUCT.VIEW },
+            { label: 'Danh mục Sản phẩm', path: '/product-categories', permission: PERMISSIONS.PRODUCT.CATEGORY_MANAGE },
+            { label: 'Nhóm danh mục', path: '/product-category-groups', permission: PERMISSIONS.PRODUCT.CATEGORY_MANAGE },
+            { label: 'Từ điển thuộc tính', path: '/attributes', permission: PERMISSIONS.ATTRIBUTE.MANAGE },
+            { label: 'Thuộc tính loại Sản phẩm', path: '/category-attributes', permission: PERMISSIONS.ATTRIBUTE.MANAGE },
+            { label: 'Đơn vị tính', path: '/uoms', permission: PERMISSIONS.UOM.VIEW },
+            { label: 'Danh mục Đơn vị tính', path: '/uom-categories', permission: PERMISSIONS.UOM.VIEW },
+            { label: 'Quy đổi Đơn vị tính', path: '/uom-conversions', permission: PERMISSIONS.UOM.VIEW },
+        ]
+    },
     {
         id: 'system',
         label: 'Hệ thống',
         icon: ShieldCheck,
-        basePath: '/system',
-        permission: PERMISSIONS.SYSTEM.USER_VIEW, // Tạm lấy quyền xem user làm gốc
         children: [
             { label: 'Quản lý Vai trò', path: '/roles', permission: PERMISSIONS.SYSTEM.ROLE_VIEW },
             { label: 'Quản lý Nhân sự', path: '/users', permission: PERMISSIONS.SYSTEM.USER_VIEW },
@@ -160,46 +98,75 @@ export const Sidebar: React.FC = () => {
     const navigate = useNavigate();
     const location = useLocation();
     
-    // 🔥 Lấy thông tin quyền VÀ HÀM LOGOUT từ Zustand
     const { userInfo, logout } = useAuthStore();
     const userPermissions = userInfo?.permissions || [];
 
     const [isCollapsed, setIsCollapsed] = useState(false);
     const [openMenus, setOpenMenus] = useState<string[]>([]);
+    
+    // 🔥 State cho thanh tìm kiếm
+    const [searchTerm, setSearchTerm] = useState('');
 
-    // 🔥 HÀM XỬ LÝ ĐĂNG XUẤT
     const handleLogout = () => {
-        logout(); // Xóa Token và State trong Zustand/LocalStorage
-        navigate('/login'); // Đá văng về trang Đăng nhập
+        logout();
+        navigate('/login');
     };
 
-    // 🔥 HÀM KIỂM TRA QUYỀN
     const hasPermission = (requiredPermission?: string) => {
-        if (!requiredPermission) return true; // Nếu không yêu cầu quyền -> Ai cũng xem được
+        if (!requiredPermission) return true;
         return userPermissions.includes(requiredPermission);
     };
 
-    // 🔥 LỌC MENU DỰA TRÊN QUYỀN
-    const filteredMenu = MENU_CONFIG.map(menu => {
-        if (!hasPermission(menu.permission)) return null;
+    // Lọc menu theo quyền (Dùng useMemo để tối ưu)
+    const permittedMenu = useMemo(() => {
+        return MENU_CONFIG.map(menu => {
+            if (menu.permission && !hasPermission(menu.permission)) return null;
 
-        let allowedChildren = undefined;
-        if (menu.children) {
-            allowedChildren = menu.children.filter(child => hasPermission(child.permission));
-            if (allowedChildren.length === 0 && !menu.path) return null;
-        }
+            let allowedChildren = undefined;
+            if (menu.children) {
+                allowedChildren = menu.children.filter(child => hasPermission(child.permission));
+                if (allowedChildren.length === 0) return null;
+            }
 
-        return { ...menu, children: allowedChildren };
-    }).filter(Boolean) as MenuItem[]; 
+            return { ...menu, children: allowedChildren };
+        }).filter(Boolean) as MenuItem[];
+    }, [userPermissions]);
 
+    // Lọc tiếp menu dựa trên từ khóa tìm kiếm
+    const displayMenu = useMemo(() => {
+        if (!searchTerm.trim()) return permittedMenu;
+
+        const lowerTerm = searchTerm.toLowerCase();
+        return permittedMenu.map(menu => {
+            const matchParent = menu.label.toLowerCase().includes(lowerTerm);
+            const matchedChildren = menu.children?.filter(c => c.label.toLowerCase().includes(lowerTerm));
+
+            if (matchParent || (matchedChildren && matchedChildren.length > 0)) {
+                return {
+                    ...menu,
+                    children: matchParent ? menu.children : matchedChildren
+                };
+            }
+            return null;
+        }).filter(Boolean) as MenuItem[];
+    }, [permittedMenu, searchTerm]);
+
+    // Tự động mở menu cha nếu đang ở menu con HOẶC khi đang search
     useEffect(() => {
-        const activeParent = filteredMenu.find(m => 
-            m.children?.some(c => location.pathname.includes(c.path))
-        );
-        if (activeParent && !openMenus.includes(activeParent.id)) {
-            setOpenMenus(prev => [...prev, activeParent.id]);
+        if (searchTerm) {
+            // Khi search, tự động mở bung tất cả các menu có kết quả
+            const allParentIds = displayMenu.map(m => m.id);
+            setOpenMenus(allParentIds);
+        } else {
+            // Khi không search, mở menu chứa url hiện tại
+            const activeParent = displayMenu.find(m => 
+                m.children?.some(c => location.pathname.startsWith(c.path))
+            );
+            if (activeParent && !openMenus.includes(activeParent.id)) {
+                setOpenMenus(prev => [...prev, activeParent.id]);
+            }
         }
-    }, [location.pathname]);
+    }, [location.pathname, searchTerm, displayMenu]);
 
     const toggleSubmenu = (id: string) => {
         if (isCollapsed) setIsCollapsed(false);
@@ -207,16 +174,16 @@ export const Sidebar: React.FC = () => {
     };
 
     return (
-        <aside className={`relative bg-white border-r border-slate-100 flex flex-col z-50 transition-all duration-500 ease-in-out ${isCollapsed ? 'w-19.5' : 'w-64'}`}>
+        <aside className={`relative flex flex-col h-screen bg-white border-r border-slate-200 z-50 transition-all duration-300 ease-in-out ${isCollapsed ? 'w-20' : 'w-72'}`}>
             
             {/* --- LOGO AREA --- */}
-            <div className={`h-16 flex items-center bg-amber-400 shrink-0 shadow-[0_4px_20px_-4px_rgba(251,191,36,0.4)] transition-all duration-500 ${isCollapsed ? 'justify-center' : 'px-6'}`}>
-                <div className="flex items-center justify-center">
-                    <div className="bg-slate-900 p-2 rounded-xl shrink-0 shadow-lg flex items-center justify-center transition-transform duration-500 hover:rotate-12">
-                        <Sun size={20} className="text-amber-400 fill-amber-400" />
+            <div className={`h-16 flex items-center shrink-0 border-b border-slate-100 transition-all duration-300 ${isCollapsed ? 'justify-center' : 'px-6'}`}>
+                <div className="flex items-center gap-3">
+                    <div className="bg-amber-400 p-2 rounded-lg flex items-center justify-center shrink-0 shadow-sm transition-transform duration-300 hover:rotate-12">
+                        <Sun size={24} className="text-white fill-white" />
                     </div>
                     {!isCollapsed && (
-                        <span className="font-black text-xl tracking-[0.2em] text-slate-900 italic ml-3 animate-in fade-in slide-in-from-left-4 duration-700 whitespace-nowrap">
+                        <span className="font-black text-xl tracking-wider text-slate-800 whitespace-nowrap overflow-hidden transition-opacity duration-300">
                             SOLARIS
                         </span>
                     )}
@@ -226,68 +193,80 @@ export const Sidebar: React.FC = () => {
             {/* --- TOGGLE BUTTON --- */}
             <button 
                 onClick={() => setIsCollapsed(!isCollapsed)}
-                className="absolute -right-3.5 top-16 -translate-y-1/2 w-7 h-7 bg-white border border-slate-200 rounded-full flex items-center justify-center cursor-pointer z-60 hover:border-amber-400 hover:text-amber-600 transition-all duration-300 shadow-[0_2px_8px_rgba(0,0,0,0.08)] group"
+                className="absolute -right-3 top-20 bg-white border border-slate-200 rounded-full p-1 text-slate-400 hover:text-amber-600 hover:border-amber-400 hover:bg-amber-50 shadow-sm cursor-pointer z-50 transition-colors"
             >
-                {isCollapsed ? <ChevronRight size={16} className="group-hover:translate-x-0.5 transition-transform" /> : <ChevronLeft size={16} className="group-hover:-translate-x-0.5 transition-transform" />}
+                {isCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
             </button>
 
+            {/* 🔥 THANH TÌM KIẾM --- */}
+            {!isCollapsed && (
+                <div className="px-4 py-3 shrink-0">
+                    <div className="relative flex items-center">
+                        <Search size={16} className="absolute left-3 text-slate-400" />
+                        <input 
+                            type="text"
+                            placeholder="Tìm tính năng..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-9 pr-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500 transition-all placeholder:text-slate-400"
+                        />
+                    </div>
+                </div>
+            )}
+
             {/* --- NAV AREA --- */}
-            <nav className="flex-1 py-8 px-3.5 flex flex-col gap-2 overflow-y-auto overflow-x-hidden custom-scrollbar">
-                
-                {filteredMenu.map((item) => {
+            <nav className={`flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar flex flex-col gap-1.5 ${isCollapsed ? 'py-4 px-3' : 'px-3 pb-4'}`}>
+                {displayMenu.map((item) => {
                     const Icon = item.icon;
                     const isOpen = openMenus.includes(item.id);
-                    const isActive = item.path 
-                        ? location.pathname === item.path 
-                        : location.pathname.startsWith(item.basePath || '##');
+                    
+                    const isChildActive = item.children?.some(c => location.pathname.startsWith(c.path));
+                    const isActive = (item.path && location.pathname === item.path) || isChildActive;
 
                     return (
                         <div key={item.id} className="flex flex-col">
                             {/* Menu Button */}
                             <button 
                                 onClick={() => item.children ? toggleSubmenu(item.id) : navigate(item.path!)}
-                                className={`w-full flex items-center rounded-2xl transition-all duration-300 group p-3.5 relative
-                                ${isCollapsed ? 'justify-center' : 'justify-between'} 
-                                ${isActive ? 'bg-amber-50 text-amber-700 shadow-[inset_0_0_0_1px_rgba(251,191,36,0.2)]' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'}`}
+                                className={`w-full flex items-center justify-between p-3 rounded-xl transition-colors group
+                                ${isActive ? 'bg-amber-50 text-amber-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}
+                                ${isCollapsed ? 'justify-center' : ''}`}
                             >
-                                <div className="flex items-center justify-center">
-                                    <div className={`shrink-0 transition-all duration-300 ${isActive ? 'text-amber-600 scale-110' : 'group-hover:text-amber-500 group-hover:scale-110'}`}>
-                                        <Icon size={22} strokeWidth={isActive ? 2.5 : 2} />
-                                    </div>
+                                <div className="flex items-center gap-3 overflow-hidden">
+                                    <Icon size={20} className={`shrink-0 transition-colors ${isActive ? 'text-amber-600' : 'text-slate-400 group-hover:text-slate-600'}`} />
+                                    
                                     {!isCollapsed && (
-                                        <span className="text-[13px] font-bold tracking-wide uppercase ml-3 whitespace-nowrap animate-in fade-in duration-500">
+                                        <span className={`text-sm whitespace-nowrap transition-all duration-300 ${isActive ? 'font-semibold' : 'font-medium'}`}>
                                             {item.label}
                                         </span>
                                     )}
                                 </div>
                                 
                                 {item.children && !isCollapsed && (
-                                    <ChevronDown size={16} className={`transition-transform duration-500 ${isOpen ? 'rotate-180' : 'text-slate-300'}`} />
-                                )}
-
-                                {/* Indicator Line */}
-                                {isActive && !isCollapsed && (
-                                    <div className="absolute left-0 top-3 bottom-3 w-1.5 bg-amber-500 rounded-r-full shadow-[2px_0_8px_rgba(245,158,11,0.4)]" />
+                                    <ChevronDown size={16} className={`shrink-0 transition-transform duration-300 ${isOpen ? 'rotate-180 text-amber-600' : 'text-slate-400'}`} />
                                 )}
                             </button>
 
                             {/* Submenu Area */}
                             {item.children && !isCollapsed && (
-                                <div className={`grid transition-all duration-500 ease-in-out ${isOpen ? 'grid-rows-[1fr] opacity-100 mt-1' : 'grid-rows-[0fr] opacity-0'}`}>
-                                    <div className="overflow-hidden">
+                                /* 🔥 FIXED BUG: Đã xóa "|| isActive" khỏi class điều kiện, menu giờ chỉ mở nếu isOpen = true */
+                                <div className={`grid transition-all duration-300 ease-in-out ${isOpen ? 'grid-rows-[1fr] opacity-100 mt-1' : 'grid-rows-[0fr] opacity-0'}`}>
+                                    <div className="overflow-hidden flex flex-col gap-1 relative">
+                                        <div className="absolute left-5 top-0 bottom-2 w-px bg-slate-200" />
+                                        
                                         {item.children.map((child) => {
-                                            const isSubActive = location.pathname.includes(child.path);
+                                            const isSubActive = location.pathname.startsWith(child.path);
                                             return (
                                                 <button 
                                                     key={child.path}
                                                     onClick={() => navigate(child.path)}
-                                                    className={`w-full flex items-center py-2.5 pl-12 pr-4 rounded-xl text-[12px] font-bold transition-all duration-300 group
-                                                    ${isSubActive ? 'text-amber-600 bg-amber-50/40' : 'text-slate-400 hover:text-slate-900 hover:bg-slate-50 hover:pl-13'}`}
+                                                    className={`relative w-full flex items-center py-2.5 pl-11 pr-3 rounded-lg text-sm transition-all
+                                                    ${isSubActive ? 'text-amber-700 font-medium bg-amber-50/50' : 'text-slate-500 font-normal hover:text-slate-900 hover:bg-slate-50'}`}
                                                 >
-                                                    <div className={`mr-3 w-1.5 h-1.5 rounded-full border-2 transition-all duration-500 
-                                                        ${isSubActive ? 'bg-amber-500 border-amber-200 scale-125 shadow-[0_0_8px_rgba(245,158,11,0.5)]' : 'bg-transparent border-slate-300 group-hover:border-amber-400'}`} 
-                                                    />
-                                                    <span className="uppercase tracking-widest whitespace-nowrap">{child.label}</span>
+                                                    {isSubActive && (
+                                                        <div className="absolute left-4.5 w-1.5 h-1.5 rounded-full bg-amber-500 ring-4 ring-white" />
+                                                    )}
+                                                    <span className="whitespace-nowrap text-left truncate flex-1">{child.label}</span>
                                                 </button>
                                             );
                                         })}
@@ -297,36 +276,28 @@ export const Sidebar: React.FC = () => {
                         </div>
                     );
                 })}
+                
+                {/* Text báo không tìm thấy */}
+                {displayMenu.length === 0 && searchTerm && (
+                    <div className="text-center py-8 px-4 text-slate-500 text-sm">
+                        Không tìm thấy tính năng "{searchTerm}"
+                    </div>
+                )}
             </nav>
 
-            {/* --- FOOTER (Cài đặt & Đăng xuất) --- */}
-            <div className="p-4 border-t border-slate-50 flex flex-col gap-1">
-                {/* Nút Cài đặt */}
-                <button 
-                    onClick={() => {}}
-                    className={`w-full flex items-center rounded-2xl transition-all duration-300 group p-3.5
-                    ${isCollapsed ? 'justify-center' : 'justify-start'} text-slate-500 hover:bg-slate-50 hover:text-slate-900`}
-                >
-                    <div className="shrink-0 group-hover:rotate-45 transition-transform duration-500">
-                        <Settings size={22} />
-                    </div>
-                    {!isCollapsed && (
-                        <span className="text-[13px] font-bold tracking-wide uppercase ml-3 whitespace-nowrap">Cài đặt hệ thống</span>
-                    )}
+            {/* --- FOOTER --- */}
+            <div className="p-3 border-t border-slate-200 flex flex-col gap-1 shrink-0">
+                <button className={`w-full flex items-center gap-3 p-3 rounded-xl transition-colors group text-slate-600 hover:bg-slate-50 hover:text-slate-900 ${isCollapsed ? 'justify-center' : ''}`}>
+                    <Settings size={20} className="shrink-0 text-slate-400 group-hover:rotate-90 group-hover:text-slate-600 transition-all duration-300" />
+                    {!isCollapsed && <span className="text-sm font-medium whitespace-nowrap">Cài đặt</span>}
                 </button>
 
-                {/* 🔥 Nút Đăng xuất MỚI */}
                 <button 
                     onClick={handleLogout}
-                    className={`w-full flex items-center rounded-2xl transition-all duration-300 group p-3.5
-                    ${isCollapsed ? 'justify-center' : 'justify-start'} text-red-500 hover:bg-red-50 hover:text-red-600`}
+                    className={`w-full flex items-center gap-3 p-3 rounded-xl transition-colors group text-slate-600 hover:bg-red-50 hover:text-red-600 ${isCollapsed ? 'justify-center' : ''}`}
                 >
-                    <div className="shrink-0 transition-transform duration-500 group-hover:scale-110">
-                        <LogOut size={22} />
-                    </div>
-                    {!isCollapsed && (
-                        <span className="text-[13px] font-bold tracking-wide uppercase ml-3 whitespace-nowrap">Đăng xuất</span>
-                    )}
+                    <LogOut size={20} className="shrink-0 text-slate-400 group-hover:text-red-600 transition-colors" />
+                    {!isCollapsed && <span className="text-sm font-medium whitespace-nowrap">Đăng xuất</span>}
                 </button>
             </div>
         </aside>

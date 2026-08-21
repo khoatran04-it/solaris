@@ -11,6 +11,12 @@ namespace backend.Models
         /// <summary>Tên chiến dịch khuyến mãi (Ví dụ: Flash Sale Cuối Tuần, Giảm Giá Mùa Thu Hoạch)</summary>
         public required string Name { get; set; }
 
+        /// <summary>Đường dẫn thân thiện cho SEO (Ví dụ: flash-sale-cuoi-tuan)</summary>
+        public string? Slug { get; set; }
+
+        /// <summary>Ảnh banner quảng cáo trên trang chủ / trang khuyến mãi</summary>
+        public string? BannerImagePath { get; set; }
+
         /// <summary>Mô tả chi tiết và thể lệ chương trình</summary>
         public string? Description { get; set; }
 
