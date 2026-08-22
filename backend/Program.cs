@@ -28,8 +28,12 @@ builder.Services.AddCors(options =>
 // 2. Database Setting
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddDbContext<SolarisDbContext>(options =>
-    options.UseSqlServer(connectionString)
-           .AddInterceptors(new TimestampInterceptor())
+    options.UseSqlServer(connectionString, sqlOptions => sqlOptions.EnableRetryOnFailure(
+        maxRetryCount: 5,
+        maxRetryDelay: TimeSpan.FromSeconds(30),
+        errorNumbersToAdd: null
+    ))
+    .AddInterceptors(new TimestampInterceptor())
 );
 
 // Add services to the container.
