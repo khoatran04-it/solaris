@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { Metadata } from 'next';
 import Link from 'next/link';
 import { Sparkles, Clock, ArrowRight, Tag } from 'lucide-react';
@@ -11,7 +11,8 @@ export const metadata: Metadata = {
     description: 'Tổng hợp các chương trình ưu đãi, flash sale nông sản sạch tươi ngon tại Solaris Farm.',
 };
 
-export const revalidate = 60;
+// Force dynamic rendering to avoid build-time static hang
+export const dynamic = 'force-dynamic';
 
 export default async function KhuyenMaiPage() {
     let promotions: ShopPromotionBadge[] = [];

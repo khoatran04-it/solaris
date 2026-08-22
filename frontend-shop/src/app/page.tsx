@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import Link from 'next/link';
 import { Sparkles, ArrowRight, ShieldCheck, Flame, Leaf, CheckCircle2, TrendingUp } from 'lucide-react';
 import PromoBannerSlider from '@/components/promotion/PromoBannerSlider';
@@ -6,8 +6,8 @@ import ProductCard from '@/components/product/ProductCard';
 import shopProductApi from '@/api/shopProductApi';
 import { ShopCategoryTree, ShopProductCard, ShopPromotionBadge } from '@/types/product';
 
-// Revalidate page every 60 seconds (ISR)
-export const revalidate = 60;
+// Force dynamic rendering to avoid build-time static hang
+export const dynamic = 'force-dynamic';
 
 async function getHomeData() {
     try {
