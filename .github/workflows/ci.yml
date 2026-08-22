@@ -1,0 +1,88 @@
+name: Solaris CI Pipeline
+
+on:
+  push:
+    branches: [ "main", "dev" ]
+  pull_request:
+    branches: [ "main", "dev" ]
+
+jobs:
+  # ==========================================
+  # 1. BUILD & TEST BACKEND (.NET 8)
+  # ==========================================
+  backend-ci:
+    name: Build Backend Web API
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore dependencies
+        working-directory: ./backend
+        run: dotnet restore
+
+      - name: Build Backend (Release)
+        working-directory: ./backend
+        run: dotnet build --no-restore --configuration Release
+
+  # ==========================================
+  # 2. BUILD FRONTEND ADMIN (Vite + React 19)
+  # ==========================================
+  frontend-admin-ci:
+    name: Build Frontend Admin
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+          cache-dependency-path: ./frontend-admin/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ./frontend-admin
+        run: npm ci
+
+      - name: Build Admin Bundle
+        working-directory: ./frontend-admin
+        run: npm run build
+
+  # ==========================================
+  # 3. BUILD FRONTEND SHOP (Next.js 15 SSR)
+  # ==========================================
+  frontend-shop-ci:
+    name: Build Frontend Shop
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+          cache-dependency-path: ./frontend-shop/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ./frontend-shop
+        run: npm ci
+
+      - name: Build Next.js 15 Standalone
+        working-directory: ./frontend-shop
+        env:
+          NEXT_TELEMETRY_DISABLED: 1
+          NEXT_PUBLIC_API_URL: https://localhost:7070/api/shop
+          NEXT_PUBLIC_SITE_URL: http://localhost:3000
+        run: npm run build

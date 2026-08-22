@@ -1,0 +1,97 @@
+services:
+  # ==========================================
+  # 1. SQL SERVER DATABASE
+  # ==========================================
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: solaris-sqlserver
+    restart: always
+    environment:
+      - ACCEPT_EULA=Y
+      - MSSQL_SA_PASSWORD=SolarisDb@StrongPass2026!
+      - MSSQL_PID=Developer
+    ports:
+      - "1433:1433"
+    volumes:
+      - solaris_sql_data:/var/opt/mssql
+    networks:
+      - solaris-network
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P 'SolarisDb@StrongPass2026!' -Q 'SELECT 1' -C || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+
+  # ==========================================
+  # 2. BACKEND .NET 8 WEB API
+  # ==========================================
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: solaris-backend
+    restart: always
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__DefaultConnection=Server=sqlserver,1433;Database=SolarisDb;User Id=sa;Password=SolarisDb@StrongPass2026!;TrustServerCertificate=True;
+      - JwtSettings__SecretKey=SuperSecretKey@SolarisERP_2026_ToTheMoon_And_Beyond!!!
+      - JwtSettings__Issuer=SolarisERP
+      - JwtSettings__Audience=SolarisERP_Clients
+      - JwtSettings__ExpiryMinutes=1440
+    ports:
+      - "7070:8080"
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    networks:
+      - solaris-network
+
+  # ==========================================
+  # 3. FRONTEND ADMIN (Vite + React + Nginx)
+  # ==========================================
+  frontend-admin:
+    build:
+      context: ./frontend-admin
+      dockerfile: Dockerfile
+      args:
+        - VITE_API_BASE_URL=http://localhost:7070/api
+    container_name: solaris-frontend-admin
+    restart: always
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+    networks:
+      - solaris-network
+
+  # ==========================================
+  # 4. FRONTEND SHOP (Next.js 15 SSR Standalone)
+  # ==========================================
+  frontend-shop:
+    build:
+      context: ./frontend-shop
+      dockerfile: Dockerfile
+      args:
+        - NEXT_PUBLIC_API_URL=http://localhost:7070/api/shop
+        - NEXT_PUBLIC_SITE_URL=http://localhost:3000
+    container_name: solaris-frontend-shop
+    restart: always
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    networks:
+      - solaris-network
+
+# ==========================================
+# NETWORKS & VOLUMES
+# ==========================================
+networks:
+  solaris-network:
+    driver: bridge
+
+volumes:
+  solaris_sql_data:
+    driver: local
