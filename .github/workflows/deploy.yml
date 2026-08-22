@@ -97,6 +97,9 @@ jobs:
           imageToDeploy: ${{ secrets.ACR_NAME }}.azurecr.io/solaris-backend:${{ github.sha }}
           containerAppName: ${{ secrets.AZURE_BACKEND_APP_NAME || 'solaris-backend' }}
           resourceGroup: ${{ secrets.AZURE_RESOURCE_GROUP || 'rg-solaris-prod' }}
+          acrName: ${{ secrets.ACR_NAME }}
+          acrUsername: ${{ secrets.ACR_USERNAME }}
+          acrPassword: ${{ secrets.ACR_PASSWORD }}
 
       - name: Deploy Admin Container App
         uses: azure/container-apps-deploy-action@v1
@@ -104,6 +107,9 @@ jobs:
           imageToDeploy: ${{ secrets.ACR_NAME }}.azurecr.io/solaris-frontend-admin:${{ github.sha }}
           containerAppName: ${{ secrets.AZURE_ADMIN_APP_NAME || 'solaris-admin' }}
           resourceGroup: ${{ secrets.AZURE_RESOURCE_GROUP || 'rg-solaris-prod' }}
+          acrName: ${{ secrets.ACR_NAME }}
+          acrUsername: ${{ secrets.ACR_USERNAME }}
+          acrPassword: ${{ secrets.ACR_PASSWORD }}
 
       - name: Deploy Shop Container App
         uses: azure/container-apps-deploy-action@v1
@@ -111,3 +117,6 @@ jobs:
           imageToDeploy: ${{ secrets.ACR_NAME }}.azurecr.io/solaris-frontend-shop:${{ github.sha }}
           containerAppName: ${{ secrets.AZURE_SHOP_APP_NAME || 'solaris-shop' }}
           resourceGroup: ${{ secrets.AZURE_RESOURCE_GROUP || 'rg-solaris-prod' }}
+          acrName: ${{ secrets.ACR_NAME }}
+          acrUsername: ${{ secrets.ACR_USERNAME }}
+          acrPassword: ${{ secrets.ACR_PASSWORD }}
