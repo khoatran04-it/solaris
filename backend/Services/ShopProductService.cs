@@ -1,4 +1,4 @@
-﻿using backend.Data;
+using backend.Data;
 using backend.DTOs;
 using backend.DTOs.ShopDTOs;
 using backend.Models;
@@ -138,7 +138,7 @@ namespace backend.Services
                     var activePromo = parentVariant.PromotionVariants
                         .Select(pv => pv.PromotionCampaign)
                         .Where(pc => pc != null && pc.IsActive && !pc.IsDeleted && pc.StartDate <= now && pc.EndDate >= now)
-                        .OrderByDescending(pc => pc.DiscountValue)
+                        .OrderByDescending(pc => pc!.DiscountValue)
                         .FirstOrDefault();
 
                     if (activePromo != null)
@@ -314,7 +314,7 @@ namespace backend.Services
                 var promo = v.PromotionVariants
                     .Select(pv => pv.PromotionCampaign)
                     .Where(pc => pc != null && pc.IsActive && !pc.IsDeleted && pc.StartDate <= now && pc.EndDate >= now)
-                    .OrderByDescending(pc => pc.DiscountValue)
+                    .OrderByDescending(pc => pc!.DiscountValue)
                     .FirstOrDefault();
 
                 var prices = v.Prices.Select(pr =>
