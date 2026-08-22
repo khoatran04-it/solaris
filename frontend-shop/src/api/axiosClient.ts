@@ -1,6 +1,6 @@
 import axios, { AxiosRequestConfig } from 'axios';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:7070/api/shop';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:7070/api/shop';
 
 // Cho phép bỏ qua chứng chỉ SSL tự ký (self-signed dev certs) khi chạy SSR trên Node.js
 let httpsAgent: any = undefined;
