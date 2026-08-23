@@ -518,7 +518,7 @@ namespace backend.Services
         {
             var geminiSection = _config.GetSection("GeminiSettings");
             string apiKey = geminiSection["ApiKey"] ?? "AQ.Ab8RN6Ko-9K1tmb7cmtOnCitJg-3nNntiZFmh7jvycBIdFmEfg";
-            string model = geminiSection["Model"] ?? "gemini-2.5-flash";
+            string model = geminiSection["Model"] ?? "gemini-flash-latest";
             string baseUrl = geminiSection["BaseUrl"] ?? "https://generativelanguage.googleapis.com/v1beta/models/";
 
             string systemInstruction = @"Bạn là Solaris AI Assistant - Trợ lý bán hàng & chăm sóc khách hàng trực tuyến 24/7 của Sàn Thương Mại Điện Tử Nông Sản Sạch Cao Cấp Solaris (solaris-os.io.vn).

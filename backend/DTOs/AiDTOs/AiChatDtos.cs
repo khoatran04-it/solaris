@@ -5,7 +5,7 @@ namespace backend.DTOs.AiDTOs
     {
         public int? SessionId { get; set; }
         public string? SessionToken { get; set; }
-        public required string Message { get; set; }
+        public string Message { get; set; } = string.Empty;
     }
 
     public class AiChatResponseDto
