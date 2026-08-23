@@ -52,7 +52,7 @@ jobs:
           file: ./frontend-admin/Dockerfile
           push: true
           build-args: |
-            VITE_API_BASE_URL=${{ secrets.PROD_API_URL || 'https://api.solaris.vn/api' }}
+            VITE_API_BASE_URL=${{ secrets.PROD_API_URL || 'https://www.solaris-api.io.vn/api' }}
           tags: |
             ${{ secrets.ACR_NAME }}.azurecr.io/solaris-frontend-admin:${{ github.sha }}
             ${{ secrets.ACR_NAME }}.azurecr.io/solaris-frontend-admin:latest
@@ -69,8 +69,8 @@ jobs:
           file: ./frontend-shop/Dockerfile
           push: true
           build-args: |
-            NEXT_PUBLIC_API_URL=${{ secrets.PROD_SHOP_API_URL || 'https://api.solaris.vn/api/shop' }}
-            NEXT_PUBLIC_SITE_URL=${{ secrets.PROD_SHOP_URL || 'https://solaris.vn' }}
+            NEXT_PUBLIC_API_URL=${{ secrets.PROD_SHOP_API_URL || 'https://www.solaris-api.io.vn/api/shop' }}
+            NEXT_PUBLIC_SITE_URL=${{ secrets.PROD_SHOP_URL || 'https://www.solaris-os.io.vn' }}
           tags: |
             ${{ secrets.ACR_NAME }}.azurecr.io/solaris-frontend-shop:${{ github.sha }}
             ${{ secrets.ACR_NAME }}.azurecr.io/solaris-frontend-shop:latest

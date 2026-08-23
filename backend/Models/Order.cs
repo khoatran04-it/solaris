@@ -51,6 +51,24 @@ namespace backend.Models
         /// <summary>Tổng tiền khách phải thanh toán = SubTotal - DiscountAmount + ShippingFee</summary>
         public decimal TotalAmount { get; set; } = 0;
 
+        /// <summary>Mã giao dịch từ cổng thanh toán điện tử (VNPay Transaction No / Mã tham chiếu)</summary>
+        public string? PaymentTransactionNo { get; set; }
+
+        /// <summary>Đơn vị vận chuyển (GHN, Internal, None)</summary>
+        public string? ShippingProvider { get; set; }
+
+        /// <summary>Mã vận đơn giao hàng (GHN Tracking Code)</summary>
+        public string? TrackingCode { get; set; }
+
+        /// <summary>Ngày dự kiến giao hàng</summary>
+        public DateTime? ExpectedDeliveryDate { get; set; }
+
+        /// <summary>Mã Quận/Huyện GHN</summary>
+        public int? GhnDistrictId { get; set; }
+
+        /// <summary>Mã Phường/Xã GHN</summary>
+        public string? GhnWardCode { get; set; }
+
         public string? Note { get; set; }
         public string? CancellationReason { get; set; }
 

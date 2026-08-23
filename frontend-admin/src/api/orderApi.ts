@@ -33,6 +33,10 @@ export const orderApi = {
         return axiosClient.post(`/Orders/${id}/cancel`, { reason });
     },
 
+    createGhnOrder: (id: number): Promise<{ orderCode: string; expectedDeliveryDate?: string; totalFee?: number }> => {
+        return axiosClient.post(`/shipping/ghn/create-order/${id}`);
+    },
+
     delete: (id: number): Promise<{ message?: string }> => {
         return axiosClient.delete(`/Orders/${id}`);
     },

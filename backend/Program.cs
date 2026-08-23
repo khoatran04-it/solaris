@@ -165,6 +165,10 @@ builder.Services.AddScoped<IShopCartService, ShopCartService>();
 builder.Services.AddScoped<IShopOrderService, ShopOrderService>();
 builder.Services.AddScoped<IShopReturnService, ShopReturnService>();
 
+// --- Đăng ký DI cho nhóm Payment & Shipping (Phase 2) ---
+builder.Services.AddScoped<IVnPayService, VnPayService>();
+builder.Services.AddHttpClient<IGhnService, GhnService>();
+
 var app = builder.Build();
 
 // 4. Middlewares
@@ -187,6 +191,7 @@ using (var scope = app.Services.CreateScope())
     try
     {
         var db = scope.ServiceProvider.GetRequiredService<SolarisDbContext>();
+        db.Database.Migrate();
         db.Database.ExecuteSqlRaw("UPDATE SupplierTypes SET IsActive = 1 WHERE IsActive = 0 AND IsDeleted = 0;");
         db.Database.ExecuteSqlRaw("UPDATE CustomerTypes SET IsActive = 1 WHERE IsActive = 0 AND IsDeleted = 0;");
         db.Database.ExecuteSqlRaw("UPDATE CustomerTiers SET IsActive = 1 WHERE IsActive = 0 AND IsDeleted = 0;");

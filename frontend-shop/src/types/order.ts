@@ -30,6 +30,9 @@ export interface ShopOrder {
     receiverName?: string;
     receiverPhone?: string;
     deliveryAddress?: string;
+    trackingCode?: string;
+    shippingProvider?: string;
+    expectedDeliveryDate?: string;
     note?: string;
     cancellationReason?: string;
     items: ShopOrderItem[];
@@ -43,6 +46,9 @@ export interface ShopCheckoutPayload {
     district?: string;
     ward?: string;
     streetAddress?: string;
+    ghnDistrictId?: number;
+    ghnWardCode?: string;
+    shippingFee?: number;
     latitude?: number;
     longitude?: number;
     paymentMethod: number;

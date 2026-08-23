@@ -1,4 +1,4 @@
-﻿using backend.Models.Enums;
+using backend.Models.Enums;
 
 namespace backend.DTOs.ShopDTOs
 {
@@ -13,6 +13,9 @@ namespace backend.DTOs.ShopDTOs
         public string? District { get; set; }
         public string? Ward { get; set; }
         public string? StreetAddress { get; set; }
+        public int? GhnDistrictId { get; set; }
+        public string? GhnWardCode { get; set; }
+        public decimal ShippingFee { get; set; }
         public double Latitude { get; set; }
         public double Longitude { get; set; }
 
@@ -59,6 +62,10 @@ namespace backend.DTOs.ShopDTOs
         public string? ReceiverName { get; set; }
         public string? ReceiverPhone { get; set; }
         public string? DeliveryAddress { get; set; }
+
+        public string? TrackingCode { get; set; }
+        public string? ShippingProvider { get; set; }
+        public string? ExpectedDeliveryDate { get; set; }
 
         public string? Note { get; set; }
         public string? CancellationReason { get; set; }

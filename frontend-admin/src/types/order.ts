@@ -111,6 +111,11 @@ export interface Order {
     shippingFee: number;
     totalAmount: number;
 
+    trackingCode?: string;
+    shippingProvider?: string;
+    expectedDeliveryDate?: string;
+    paymentTransactionNo?: string;
+
     note?: string;
     cancellationReason?: string;
 

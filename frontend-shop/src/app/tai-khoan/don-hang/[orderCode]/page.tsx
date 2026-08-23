@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -192,6 +192,20 @@ export default function OrderDetailPage() {
                         <p className="text-slate-600 leading-relaxed">{order.deliveryAddress}</p>
                         {order.note && (
                             <p className="text-[11px] text-slate-500 italic pt-1">Ghi chú: {order.note}</p>
+                        )}
+
+                        {order.trackingCode && (
+                            <div className="mt-3 p-3 bg-blue-50/70 border border-blue-100 rounded-xl space-y-1">
+                                <p className="font-bold text-blue-900 flex items-center gap-1.5">
+                                    <span>🚚</span> Giao Hàng Nhanh (GHN)
+                                </p>
+                                <p className="text-slate-600">
+                                    Mã vận đơn: <span className="font-mono font-bold text-blue-700">{order.trackingCode}</span>
+                                </p>
+                                {order.expectedDeliveryDate && (
+                                    <p className="text-[11px] text-slate-500">Dự kiến giao: {order.expectedDeliveryDate}</p>
+                                )}
+                            </div>
                         )}
                     </div>
 

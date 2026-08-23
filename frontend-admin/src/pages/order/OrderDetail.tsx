@@ -137,6 +137,28 @@ const OrderDetail: React.FC = () => {
 
                     {/* Nút luồng đi tiếp: Nằm bên trái */}
                     <div className="flex items-center gap-2">
+                        {/* Nút Đẩy Đơn Sang GHN */}
+                        {!order.trackingCode && order.status !== OrderStatus.Cancelled && order.status !== OrderStatus.Completed && (
+                            <button
+                                onClick={async () => {
+                                    try {
+                                        setActionLoading(true);
+                                        const res = await orderApi.createGhnOrder(order.id);
+                                        showToast('success', `ĐÃ TẠO VẬN ĐƠN GHN: ${res.orderCode}`);
+                                        fetchOrder();
+                                    } catch (err: any) {
+                                        showToast('error', err.response?.data?.message || 'Lỗi đẩy đơn sang GHN');
+                                    } finally {
+                                        setActionLoading(false);
+                                    }
+                                }}
+                                disabled={actionLoading}
+                                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-bold text-sm hover:bg-blue-700 transition-all shadow-sm shadow-blue-200 disabled:opacity-50"
+                            >
+                                <Truck size={16} /> Tạo Đơn GHN
+                            </button>
+                        )}
+
                         {(order.status === OrderStatus.Confirmed || order.status === OrderStatus.Processing) && (
                             <button
                                 onClick={() => navigate(`/inventory-issues/create?orderId=${order.id}`)}
@@ -231,6 +253,24 @@ const OrderDetail: React.FC = () => {
                                 </div>
                                 
                                 <InfoField label="Tổng tiền thanh toán" value={<span className="font-black text-emerald-600 text-[17px]">{formatCurrency(order.totalAmount)}</span>} />
+
+                                {order.trackingCode && (
+                                    <InfoField 
+                                        label="Mã vận đơn GHN" 
+                                        value={
+                                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 text-blue-700 font-mono font-bold rounded-md border border-blue-200">
+                                                🚚 {order.trackingCode}
+                                            </span>
+                                        } 
+                                    />
+                                )}
+
+                                {order.paymentTransactionNo && (
+                                    <InfoField 
+                                        label="Mã GD VNPay" 
+                                        value={<span className="font-mono text-xs font-semibold text-slate-700">{order.paymentTransactionNo}</span>} 
+                                    />
+                                )}
                             </div>
 
                             {order.note && (

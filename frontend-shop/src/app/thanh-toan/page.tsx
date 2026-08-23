@@ -1,45 +1,61 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { 
     MapPin, 
     CreditCard, 
     Truck, 
-    ShieldCheck, 
     CheckCircle2, 
     ShoppingBag, 
     ArrowRight,
-    AlertCircle
+    AlertCircle,
+    Sparkles,
+    Gift
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { useCartStore } from '@/stores/cartStore';
 import shopOrderApi from '@/api/shopOrderApi';
 import shopCustomerApi from '@/api/shopCustomerApi';
+import shopShippingApi from '@/api/shopShippingApi';
+import shopPaymentApi from '@/api/shopPaymentApi';
 import { formatVND } from '@/lib/utils';
 import { ShopAddress } from '@/types/customer';
 import { ShopOrder, ShopCheckoutPayload } from '@/types/order';
+import { GhnProvince, GhnDistrict, GhnWard } from '@/types/shipping';
 
 export default function ThanhToanPage() {
     const router = useRouter();
-    const { user, isAuthenticated, initAuth } = useAuthStore();
+    const { isAuthenticated, initAuth } = useAuthStore();
     const { cart, fetchCart, clearCart } = useCartStore();
 
     const [addresses, setAddresses] = useState<ShopAddress[]>([]);
     const [selectedAddressId, setSelectedAddressId] = useState<number | null>(null);
 
-    // New address form
+    // GHN Location Data
+    const [provinces, setProvinces] = useState<GhnProvince[]>([]);
+    const [districts, setDistricts] = useState<GhnDistrict[]>([]);
+    const [wards, setWards] = useState<GhnWard[]>([]);
+
+    // Address selection state
     const [useNewAddress, setUseNewAddress] = useState(false);
     const [receiverName, setReceiverName] = useState('');
     const [receiverPhone, setReceiverPhone] = useState('');
-    const [province, setProvince] = useState('TP. Hồ Chí Minh');
-    const [district, setDistrict] = useState('');
-    const [ward, setWard] = useState('');
+    const [selectedProvinceId, setSelectedProvinceId] = useState<number>(201); // Mặc định TP.HCM
+    const [selectedDistrictId, setSelectedDistrictId] = useState<number | null>(null);
+    const [selectedWardCode, setSelectedWardCode] = useState<string>('');
     const [streetAddress, setStreetAddress] = useState('');
     const [note, setNote] = useState('');
 
-    const [paymentMethod, setPaymentMethod] = useState<number>(0); // 0 = COD, 1 = BankTransfer
+    // Shipping Fee & Freeship State
+    const [shippingFee, setShippingFee] = useState<number>(25000);
+    const [isFreeShipping, setIsFreeShipping] = useState<boolean>(false);
+    const [isCalculatingFee, setIsCalculatingFee] = useState<boolean>(false);
+    const freeShippingThreshold = 300000;
+
+    // Payment method: 1 = COD, 2 = BankTransfer, 3 = VNPay
+    const [paymentMethod, setPaymentMethod] = useState<number>(3); // Mặc định VNPay Sandbox
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errorMessage, setErrorMessage] = useState('');
 
@@ -48,6 +64,81 @@ export default function ThanhToanPage() {
         fetchCart();
     }, [initAuth, fetchCart]);
 
+    // Load Provinces
+    useEffect(() => {
+        shopShippingApi.getProvinces()
+            .then(data => {
+                setProvinces(data);
+                if (data.length > 0) {
+                    const hcm = data.find(p => p.provinceName.includes('Hồ Chí Minh')) || data[0];
+                    setSelectedProvinceId(hcm.provinceID);
+                }
+            })
+            .catch(() => {});
+    }, []);
+
+    // Load Districts when Province changes
+    useEffect(() => {
+        if (selectedProvinceId) {
+            shopShippingApi.getDistricts(selectedProvinceId)
+                .then(data => {
+                    setDistricts(data);
+                    if (data.length > 0) {
+                        setSelectedDistrictId(data[0].districtID);
+                    } else {
+                        setSelectedDistrictId(null);
+                    }
+                })
+                .catch(() => {});
+        }
+    }, [selectedProvinceId]);
+
+    // Load Wards when District changes
+    useEffect(() => {
+        if (selectedDistrictId) {
+            shopShippingApi.getWards(selectedDistrictId)
+                .then(data => {
+                    setWards(data);
+                    if (data.length > 0) {
+                        setSelectedWardCode(data[0].wardCode);
+                    } else {
+                        setSelectedWardCode('');
+                    }
+                })
+                .catch(() => {});
+        }
+    }, [selectedDistrictId]);
+
+    // Calculate Realtime Shipping Fee via GHN
+    const calculateFee = useCallback(async () => {
+        if (!selectedDistrictId || !selectedWardCode || !cart) return;
+
+        setIsCalculatingFee(true);
+        try {
+            const res = await shopShippingApi.calculateFee({
+                toDistrictId: selectedDistrictId,
+                toWardCode: selectedWardCode,
+                subTotal: cart.subTotal - cart.totalDiscount,
+                weightGram: cart.items.length * 500
+            });
+
+            setShippingFee(res.totalFee);
+            setIsFreeShipping(res.isFreeShipping);
+        } catch {
+            // Giữ giá trị dự phòng nếu có lỗi mạng
+            const isEligibleFree = (cart.subTotal - cart.totalDiscount) >= freeShippingThreshold;
+            setShippingFee(isEligibleFree ? 0 : 25000);
+            setIsFreeShipping(isEligibleFree);
+        } finally {
+            setIsCalculatingFee(false);
+        }
+    }, [selectedDistrictId, selectedWardCode, cart]);
+
+    useEffect(() => {
+        calculateFee();
+    }, [calculateFee]);
+
+    // Load saved customer addresses if authenticated
     useEffect(() => {
         if (isAuthenticated) {
             shopCustomerApi.getAddresses()
@@ -90,26 +181,47 @@ export default function ThanhToanPage() {
         setIsSubmitting(true);
 
         try {
+            const currentProvince = provinces.find(p => p.provinceID === selectedProvinceId)?.provinceName || 'TP. Hồ Chí Minh';
+            const currentDistrict = districts.find(d => d.districtID === selectedDistrictId)?.districtName || '';
+            const currentWard = wards.find(w => w.wardCode === selectedWardCode)?.wardName || '';
+
             const payload: ShopCheckoutPayload = {
                 customerAddressId: useNewAddress ? undefined : (selectedAddressId ?? undefined),
                 receiverName: useNewAddress ? receiverName.trim() : undefined,
                 receiverPhone: useNewAddress ? receiverPhone.trim() : undefined,
-                province: useNewAddress ? province : undefined,
-                district: useNewAddress ? district : undefined,
-                ward: useNewAddress ? ward : undefined,
+                province: useNewAddress ? currentProvince : undefined,
+                district: useNewAddress ? currentDistrict : undefined,
+                ward: useNewAddress ? currentWard : undefined,
                 streetAddress: useNewAddress ? streetAddress.trim() : undefined,
+                ghnDistrictId: selectedDistrictId ?? undefined,
+                ghnWardCode: selectedWardCode || undefined,
+                shippingFee: shippingFee,
                 latitude: 10.7769,
                 longitude: 106.7009,
                 paymentMethod: paymentMethod,
                 note: note.trim()
             };
 
+            // 1. Tạo đơn hàng trên backend
             const order: ShopOrder = await shopOrderApi.checkout(payload);
             
-            // Xóa giỏ hàng trên client
+            // 2. Xóa giỏ hàng trên client
             await clearCart();
 
-            // Redirect tới chi tiết đơn hàng
+            // 3. Nếu chọn VNPay -> Tạo URL thanh toán và chuyển hướng
+            if (paymentMethod === 3) {
+                const vnPayRes = await shopPaymentApi.createVnPayUrl({
+                    orderCode: order.orderCode,
+                    orderDescription: `Thanh toán đơn hàng Solaris ${order.orderCode}`
+                });
+                
+                if (vnPayRes?.paymentUrl) {
+                    window.location.href = vnPayRes.paymentUrl;
+                    return;
+                }
+            }
+
+            // Redirect tới chi tiết đơn hàng (COD / BankTransfer)
             router.push(`/tai-khoan/don-hang/${order.orderCode}`);
         } catch (error: any) {
             const msg = error?.message || error?.Message || error?.details || error?.Details || error?.title || (typeof error === 'string' ? error : 'Có lỗi xảy ra trong quá trình đặt hàng. Vui lòng thử lại.');
@@ -122,13 +234,18 @@ export default function ThanhToanPage() {
     if (!cart || cart.items.length === 0) {
         return (
             <div className="max-w-7xl mx-auto px-4 py-16 text-center space-y-4">
-                <p className="text-sm text-slate-500">Giỏ hàng đang trống.</p>
-                <Link href="/san-pham" className="inline-block px-5 py-2.5 bg-emerald-600 text-white text-xs font-bold rounded-full">
+                <ShoppingBag className="w-12 h-12 text-slate-300 mx-auto" />
+                <p className="text-sm font-semibold text-slate-600">Giỏ hàng của bạn đang trống.</p>
+                <Link href="/san-pham" className="inline-block px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-full transition-colors shadow-md">
                     Tiếp tục mua hàng
                 </Link>
             </div>
         );
     }
+
+    const netSubTotal = cart.subTotal - cart.totalDiscount;
+    const finalTotal = Math.max(0, netSubTotal + shippingFee);
+    const amountMissingForFreeShip = Math.max(0, freeShippingThreshold - netSubTotal);
 
     return (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
@@ -139,8 +256,34 @@ export default function ThanhToanPage() {
                     Xác Nhận & Thanh Toán
                 </h1>
                 <p className="text-xs text-slate-500 mt-1">
-                    Vui lòng kiểm tra kỹ địa chỉ nhận hàng và phương thức thanh toán
+                    Giao hàng nhanh toàn quốc qua GHN • Thanh toán bảo mật VNPay Sandbox
                 </p>
+            </div>
+
+            {/* Freeship Alert Banner */}
+            <div className={`p-4 rounded-2xl border transition-all flex items-center justify-between gap-3 text-xs ${
+                isFreeShipping || netSubTotal >= freeShippingThreshold
+                    ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                    : 'bg-amber-50 border-amber-200 text-amber-900'
+            }`}>
+                <div className="flex items-center gap-2.5 font-medium">
+                    {isFreeShipping || netSubTotal >= freeShippingThreshold ? (
+                        <>
+                            <Sparkles className="w-5 h-5 text-emerald-600 shrink-0" />
+                            <span>🎉 Chúc mừng! Đơn hàng của bạn đạt điều kiện <strong>MIỄN PHÍ VẬN CHUYỂN</strong> toàn quốc.</span>
+                        </>
+                    ) : (
+                        <>
+                            <Gift className="w-5 h-5 text-amber-600 shrink-0" />
+                            <span>Mua thêm <strong>{formatVND(amountMissingForFreeShip)}</strong> để được <strong>FREESHIP 100%</strong> (Đơn từ 300k).</span>
+                        </>
+                    )}
+                </div>
+                {amountMissingForFreeShip > 0 && (
+                    <Link href="/san-pham" className="text-[11px] font-bold text-amber-800 underline shrink-0 hover:text-amber-900">
+                        Mua thêm
+                    </Link>
+                )}
             </div>
 
             {errorMessage && (
@@ -155,12 +298,12 @@ export default function ThanhToanPage() {
                 {/* Left (2 Columns): Delivery Info & Payment */}
                 <div className="lg:col-span-2 space-y-6">
                     
-                    {/* 1. Sổ Địa Chỉ Giao Hàng */}
+                    {/* 1. Sổ Địa Chỉ Giao Hàng & GHN Selector */}
                     <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-xs space-y-5">
                         <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                             <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
                                 <MapPin className="w-4 h-4 text-emerald-600" />
-                                1. Địa Chỉ Nhận Hàng
+                                1. Địa Chỉ Nhận Hàng (GHN Logistics)
                             </h2>
 
                             {addresses.length > 0 && (
@@ -209,7 +352,7 @@ export default function ThanhToanPage() {
                                 ))}
                             </div>
                         ) : (
-                            /* New Address Form */
+                            /* New Address Form with GHN 3-level selector */
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div className="space-y-1">
                                     <label className="text-xs font-semibold text-slate-700">Họ tên người nhận *</label>
@@ -236,47 +379,58 @@ export default function ThanhToanPage() {
                                 </div>
 
                                 <div className="space-y-1">
-                                    <label className="text-xs font-semibold text-slate-700">Tỉnh / Thành phố *</label>
-                                    <input
-                                        type="text"
-                                        value={province}
-                                        onChange={(e) => setProvince(e.target.value)}
-                                        className="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-xl"
-                                        required={useNewAddress}
-                                    />
+                                    <label className="text-xs font-semibold text-slate-700">Tỉnh / Thành phố (GHN) *</label>
+                                    <select
+                                        value={selectedProvinceId}
+                                        onChange={(e) => setSelectedProvinceId(Number(e.target.value))}
+                                        className="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500"
+                                    >
+                                        {provinces.map(p => (
+                                            <option key={p.provinceID} value={p.provinceID}>
+                                                {p.provinceName}
+                                            </option>
+                                        ))}
+                                    </select>
                                 </div>
 
                                 <div className="space-y-1">
-                                    <label className="text-xs font-semibold text-slate-700">Quận / Huyện *</label>
-                                    <input
-                                        type="text"
-                                        placeholder="Quận 1 / TP. Thủ Đức"
-                                        value={district}
-                                        onChange={(e) => setDistrict(e.target.value)}
-                                        className="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-xl"
-                                        required={useNewAddress}
-                                    />
+                                    <label className="text-xs font-semibold text-slate-700">Quận / Huyện (GHN) *</label>
+                                    <select
+                                        value={selectedDistrictId || ''}
+                                        onChange={(e) => setSelectedDistrictId(Number(e.target.value))}
+                                        className="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500"
+                                    >
+                                        {districts.map(d => (
+                                            <option key={d.districtID} value={d.districtID}>
+                                                {d.districtName}
+                                            </option>
+                                        ))}
+                                    </select>
                                 </div>
 
                                 <div className="space-y-1">
-                                    <label className="text-xs font-semibold text-slate-700">Phường / Xã</label>
-                                    <input
-                                        type="text"
-                                        placeholder="Phường Bến Nghé"
-                                        value={ward}
-                                        onChange={(e) => setWard(e.target.value)}
-                                        className="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-xl"
-                                    />
+                                    <label className="text-xs font-semibold text-slate-700">Phường / Xã (GHN) *</label>
+                                    <select
+                                        value={selectedWardCode}
+                                        onChange={(e) => setSelectedWardCode(e.target.value)}
+                                        className="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500"
+                                    >
+                                        {wards.map(w => (
+                                            <option key={w.wardCode} value={w.wardCode}>
+                                                {w.wardName}
+                                            </option>
+                                        ))}
+                                    </select>
                                 </div>
 
-                                <div className="space-y-1 sm:col-span-2">
+                                <div className="space-y-1">
                                     <label className="text-xs font-semibold text-slate-700">Địa chỉ cụ thể (Số nhà, tên đường) *</label>
                                     <input
                                         type="text"
                                         placeholder="123 Đường Lê Lợi"
                                         value={streetAddress}
                                         onChange={(e) => setStreetAddress(e.target.value)}
-                                        className="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-xl"
+                                        className="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500"
                                         required={useNewAddress}
                                     />
                                 </div>
@@ -290,7 +444,7 @@ export default function ThanhToanPage() {
                                 placeholder="Ví dụ: Giao vào giờ hành chính, gọi trước khi đến..."
                                 value={note}
                                 onChange={(e) => setNote(e.target.value)}
-                                className="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-xl"
+                                className="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500"
                             />
                         </div>
                     </div>
@@ -302,51 +456,83 @@ export default function ThanhToanPage() {
                             2. Phương Thức Thanh Toán
                         </h2>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            {/* VNPay */}
                             <div
-                                onClick={() => setPaymentMethod(0)}
-                                className={`p-4 rounded-2xl border cursor-pointer transition-all flex items-center justify-between ${
-                                    paymentMethod === 0
+                                onClick={() => setPaymentMethod(3)}
+                                className={`p-4 rounded-2xl border cursor-pointer transition-all flex flex-col justify-between ${
+                                    paymentMethod === 3
                                         ? 'border-emerald-600 bg-emerald-50/50 shadow-xs'
                                         : 'border-slate-200 hover:border-slate-300'
                                 }`}
                             >
-                                <div className="flex items-center gap-3">
-                                    <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-sm">
-                                        💵
+                                <div className="space-y-2">
+                                    <div className="flex items-center justify-between">
+                                        <div className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center font-black text-xs">
+                                            VNP
+                                        </div>
+                                        {paymentMethod === 3 && <CheckCircle2 className="w-4 h-4 text-emerald-600" />}
                                     </div>
                                     <div>
-                                        <h4 className="font-bold text-xs text-slate-900">Thanh toán khi nhận (COD)</h4>
-                                        <p className="text-[10px] text-slate-500">Kiểm hàng trước khi thanh toán</p>
+                                        <h4 className="font-bold text-xs text-slate-900">Cổng VNPay Sandbox</h4>
+                                        <p className="text-[10px] text-slate-500">Quét VNPAY-QR, Thẻ ATM/Visa</p>
                                     </div>
                                 </div>
-                                {paymentMethod === 0 && <CheckCircle2 className="w-4 h-4 text-emerald-600" />}
                             </div>
 
+                            {/* COD */}
                             <div
                                 onClick={() => setPaymentMethod(1)}
-                                className={`p-4 rounded-2xl border cursor-pointer transition-all flex items-center justify-between ${
+                                className={`p-4 rounded-2xl border cursor-pointer transition-all flex flex-col justify-between ${
                                     paymentMethod === 1
                                         ? 'border-emerald-600 bg-emerald-50/50 shadow-xs'
                                         : 'border-slate-200 hover:border-slate-300'
                                 }`}
                             >
-                                <div className="flex items-center gap-3">
-                                    <div className="w-9 h-9 rounded-xl bg-blue-100 text-blue-800 flex items-center justify-center font-bold text-sm">
-                                        🏦
+                                <div className="space-y-2">
+                                    <div className="flex items-center justify-between">
+                                        <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-sm">
+                                            💵
+                                        </div>
+                                        {paymentMethod === 1 && <CheckCircle2 className="w-4 h-4 text-emerald-600" />}
+                                    </div>
+                                    <div>
+                                        <h4 className="font-bold text-xs text-slate-900">Khi nhận hàng (COD)</h4>
+                                        <p className="text-[10px] text-slate-500">Kiểm hàng trước khi trả tiền</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* BankTransfer */}
+                            <div
+                                onClick={() => setPaymentMethod(2)}
+                                className={`p-4 rounded-2xl border cursor-pointer transition-all flex flex-col justify-between ${
+                                    paymentMethod === 2
+                                        ? 'border-emerald-600 bg-emerald-50/50 shadow-xs'
+                                        : 'border-slate-200 hover:border-slate-300'
+                                }`}
+                            >
+                                <div className="space-y-2">
+                                    <div className="flex items-center justify-between">
+                                        <div className="w-8 h-8 rounded-lg bg-purple-100 text-purple-800 flex items-center justify-center font-bold text-sm">
+                                            🏦
+                                        </div>
+                                        {paymentMethod === 2 && <CheckCircle2 className="w-4 h-4 text-emerald-600" />}
                                     </div>
                                     <div>
                                         <h4 className="font-bold text-xs text-slate-900">Chuyển khoản VietQR</h4>
-                                        <p className="text-[10px] text-slate-500">Quét mã QR qua Mobile Banking</p>
+                                        <p className="text-[10px] text-slate-500">Quét mã QR Mobile Banking</p>
                                     </div>
                                 </div>
-                                {paymentMethod === 1 && <CheckCircle2 className="w-4 h-4 text-emerald-600" />}
                             </div>
                         </div>
 
-                        <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-[11px] text-amber-800">
-                            💡 Cổng thanh toán trực tuyến tự động <strong>VNPay Gateway</strong> sẽ được tích hợp hoàn thiện trong <strong>Phase 2</strong>.
-                        </div>
+                        {paymentMethod === 3 && (
+                            <div className="p-3 bg-blue-50/70 rounded-xl border border-blue-100 text-[11px] text-blue-900 flex items-center gap-2">
+                                <span>🔒</span>
+                                <span>Sau khi bấm đặt hàng, bạn sẽ được chuyển hướng an toàn sang cổng <strong>VNPay Sandbox</strong> để hoàn tất thanh toán.</span>
+                            </div>
+                        )}
                     </div>
 
                 </div>
@@ -388,14 +574,23 @@ export default function ThanhToanPage() {
                                 </div>
                             )}
 
-                            <div className="flex justify-between text-slate-600">
-                                <span>Phí giao hàng:</span>
-                                <span className="font-semibold text-emerald-600">Miễn phí</span>
+                            <div className="flex justify-between items-center text-slate-600">
+                                <span className="flex items-center gap-1">
+                                    <Truck className="w-3.5 h-3.5 text-slate-400" />
+                                    Phí giao hàng (GHN):
+                                </span>
+                                {isCalculatingFee ? (
+                                    <span className="text-[11px] text-slate-400 italic">Đang tính...</span>
+                                ) : isFreeShipping || shippingFee === 0 ? (
+                                    <span className="font-bold text-emerald-600">Miễn phí</span>
+                                ) : (
+                                    <span className="font-semibold text-slate-900">{formatVND(shippingFee)}</span>
+                                )}
                             </div>
 
                             <div className="pt-3 border-t border-slate-100 flex justify-between items-baseline">
                                 <span className="font-bold text-slate-800 text-sm">Tổng thanh toán:</span>
-                                <span className="font-black text-xl text-emerald-700">{formatVND(cart.estimatedTotal)}</span>
+                                <span className="font-black text-xl text-emerald-700">{formatVND(finalTotal)}</span>
                             </div>
                         </div>
 
@@ -404,15 +599,15 @@ export default function ThanhToanPage() {
                             disabled={isSubmitting}
                             className="w-full py-4 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-2xl text-xs font-bold transition-all shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-2 active:scale-98 disabled:opacity-50"
                         >
-                            <span>{isSubmitting ? 'Đang xử lý...' : 'Xác Nhận & Đặt Hàng'}</span>
+                            <span>{isSubmitting ? 'Đang xử lý...' : paymentMethod === 3 ? 'Thanh Toán Qua VNPay' : 'Xác Nhận & Đặt Hàng'}</span>
                             <ArrowRight className="w-4 h-4" />
                         </button>
                     </div>
 
                     <div className="p-4 bg-emerald-50/50 rounded-2xl border border-emerald-100 text-xs text-emerald-800 space-y-1">
-                        <p className="font-bold">🛡️ Cam kết giữ chỗ tồn kho tức thì</p>
+                        <p className="font-bold">🛡️ Cam kết giao nông sản tươi mới</p>
                         <p className="text-[11px] text-slate-600">
-                            Ngay sau khi đặt hàng, hệ thống tự động khóa giữ chỗ lô hàng còn hạn sử dụng mới nhất cho bạn.
+                            Đơn hàng được bàn giao ngay cho GHN Express với bao bì đóng gói bảo quản nông sản chuyên dụng.
                         </p>
                     </div>
                 </div>
@@ -422,4 +617,3 @@ export default function ThanhToanPage() {
         </div>
     );
 }
-
