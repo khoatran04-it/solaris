@@ -583,31 +583,40 @@ NGUYÊN TẮC PHỤC VỤ CỦA BẠN:
                 }
             };
 
-            try
-            {
-                string endpoint = $"{baseUrl}{model}:generateContent?key={apiKey}";
-                var json = JsonSerializer.Serialize(requestBody);
-                using var httpContent = new StringContent(json, Encoding.UTF8, "application/json");
+            string[] candidateModels = new[] { model, "gemini-flash-latest", "gemini-flash-lite-latest" };
 
-                var response = await _httpClient.PostAsync(endpoint, httpContent);
-                if (response.IsSuccessStatusCode)
+            foreach (var currentModel in candidateModels.Distinct())
+            {
+                try
                 {
-                    var responseStr = await response.Content.ReadAsStringAsync();
-                    using var doc = JsonDocument.Parse(responseStr);
-                    if (doc.RootElement.TryGetProperty("candidates", out var candidates) &&
-                        candidates.GetArrayLength() > 0 &&
-                        candidates[0].TryGetProperty("content", out var contentElem) &&
-                        contentElem.TryGetProperty("parts", out var parts) &&
-                        parts.GetArrayLength() > 0 &&
-                        parts[0].TryGetProperty("text", out var textElem))
+                    string endpoint = $"{baseUrl}{currentModel}:generateContent?key={apiKey}";
+                    var json = JsonSerializer.Serialize(requestBody);
+                    using var httpContent = new StringContent(json, Encoding.UTF8, "application/json");
+
+                    var response = await _httpClient.PostAsync(endpoint, httpContent);
+                    if (response.IsSuccessStatusCode)
                     {
-                        return textElem.GetString() ?? GetFallbackReply(userMessage, payloadType);
+                        var responseStr = await response.Content.ReadAsStringAsync();
+                        using var doc = JsonDocument.Parse(responseStr);
+                        if (doc.RootElement.TryGetProperty("candidates", out var candidates) &&
+                            candidates.GetArrayLength() > 0 &&
+                            candidates[0].TryGetProperty("content", out var contentElem) &&
+                            contentElem.TryGetProperty("parts", out var parts) &&
+                            parts.GetArrayLength() > 0 &&
+                            parts[0].TryGetProperty("text", out var textElem))
+                        {
+                            string? reply = textElem.GetString();
+                            if (!string.IsNullOrWhiteSpace(reply))
+                            {
+                                return reply;
+                            }
+                        }
                     }
                 }
-            }
-            catch
-            {
-                // Fallback nếu mạng quốc tế timeout
+                catch
+                {
+                    // Thử model tiếp theo
+                }
             }
 
             return GetFallbackReply(userMessage, payloadType);
