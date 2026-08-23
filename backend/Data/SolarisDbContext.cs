@@ -89,6 +89,9 @@ namespace backend.Data
         public DbSet<InventoryAdjustment> InventoryAdjustments { get; set; }
         public DbSet<InventoryAdjustmentDetail> InventoryAdjustmentDetails { get; set; }
 
+        // --- Danh mục AI Chatbot & Hội thoại (Phase 3) ---
+        public DbSet<ChatSession> ChatSessions { get; set; }
+        public DbSet<ChatMessage> ChatMessages { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

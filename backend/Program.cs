@@ -169,6 +169,9 @@ builder.Services.AddScoped<IShopReturnService, ShopReturnService>();
 builder.Services.AddScoped<IVnPayService, VnPayService>();
 builder.Services.AddHttpClient<IGhnService, GhnService>();
 
+// --- Đăng ký DI cho nhóm AI Chatbot (Phase 3) ---
+builder.Services.AddHttpClient<IGeminiChatService, GeminiChatService>();
+
 var app = builder.Build();
 
 // 4. Middlewares
