@@ -1,8 +1,9 @@
 namespace backend.Models
 {
     /// <summary>
-    /// Bảng liên kết trung gian Phân quyền dữ liệu cấp độ Kho (Data-level Authorization).
-    /// Xác định nhân viên nào được phép xem, nhập, xuất và kiểm kê tại Kho nào.
+    /// Thực thể phân quyền dữ liệu cấp độ Kho hàng (Data-level Authorization).
+    /// Xác định phạm vi kho mà người dùng được phép truy cập và thao tác nghiệp vụ.
+    /// Khóa chính phức hợp (Composite Key): (UserId, WarehouseId).
     /// </summary>
     public class IAUserWarehouse
     {
@@ -10,9 +11,9 @@ namespace backend.Models
         public virtual IAUser? User { get; set; }
 
         public int WarehouseId { get; set; }
-        public virtual Warehouse? Warehouse { get; set; } 
+        public virtual Warehouse? Warehouse { get; set; }
 
-        /// <summary>Thời điểm gán quyền quản lý kho</summary>
+        /// <summary>Thời điểm gán quyền truy cập kho cho người dùng (UTC).</summary>
         public DateTime AssignedAt { get; set; } = DateTime.UtcNow;
     }
 }

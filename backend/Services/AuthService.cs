@@ -1,15 +1,18 @@
-﻿using backend.Data;
+﻿using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
+using backend.Data;
 using backend.DTOs.AuthDTOs;
 using backend.Models;
 using backend.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using System.Text;
 
 namespace backend.Services
 {
+    /// <summary>
+    /// Dịch vụ xử lý xác thực danh tính, tính toán ma trận phân quyền và cấp phát JWT Token.
+    /// </summary>
     public class AuthService : IAuthService
     {
         private readonly SolarisDbContext _context;
@@ -23,7 +26,7 @@ namespace backend.Services
 
         public async Task<LoginResponseDto> LoginAsync(LoginRequestDto request)
         {
-            // 1. Tìm User và "kéo" theo toàn bộ dây nhợ (Roles, Kho, Quyền)
+            #region 1. Truy vấn người dùng và nạp quan hệ liên quan (Eager Loading)
             var user = await _context.IAUsers
                 .Include(u => u.UserRoles)
                     .ThenInclude(ur => ur.Role)
@@ -34,20 +37,25 @@ namespace backend.Services
                     .ThenInclude(up => up.Permission)
                 .FirstOrDefaultAsync(u => u.Username == request.Username);
 
-            // Kiểm tra trạng thái tài khoản
             if (user == null || !user.IsActive)
+            {
                 throw new UnauthorizedAccessException("Tài khoản không tồn tại hoặc đã bị khóa.");
+            }
+            #endregion
 
-            // 2. Kiểm tra Mật khẩu bằng BCrypt
+            #region 2. Xác thực mật khẩu
             bool isPasswordValid = BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash);
             if (!isPasswordValid)
-                throw new UnauthorizedAccessException("Mật khẩu không chính xác.");
+            {
+                throw new UnauthorizedAccessException("Tên đăng nhập hoặc mật khẩu không chính xác.");
+            }
 
-            // 3. Cập nhật thời gian đăng nhập
+            // Ghi nhận thời điểm đăng nhập thành công gần nhất
             user.LastLoginAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
+            #endregion
 
-            // 4. Lấy danh sách Roles (Chỉ lấy Role đang Active)
+            #region 3. Trích xuất vai trò & kho được phân quyền
             var activeRoles = user.UserRoles
                 .Where(ur => ur.Role != null && ur.Role.IsActive)
                 .Select(ur => ur.Role!)
@@ -55,42 +63,36 @@ namespace backend.Services
 
             var roleCodes = activeRoles.Select(r => r.Code).ToList();
             var warehouseIds = user.UserWarehouses.Select(uw => uw.WarehouseId).ToList();
+            #endregion
 
-            // ==============================================================
-            // 🔥 BƯỚC 5: TÍNH TOÁN MA TRẬN PHÂN QUYỀN (CÔNG THỨC TOÁN HỌC)
-            // Quyền Thực Tế = [Quyền Mặc Định] + [Tặng Thêm] - [Tước Bỏ]
-            // ==============================================================
-
-            // A. Lấy Quyền Mặc Định từ các Role
+            #region 4. Tính toán ma trận phân quyền (Quyền mặc định + Cấp thêm - Tước bỏ)
+            // A. Tập quyền mặc định kế thừa từ tất cả vai trò đang kích hoạt
             var defaultPermissions = activeRoles
                 .SelectMany(r => r.RolePermissions)
                 .Where(rp => rp.Permission != null)
-                .Select(rp => rp.Permission!.Code)
-                .ToList();
+                .Select(rp => rp.Permission!.Code);
 
-            // B. Lấy Quyền Tặng Thêm (IsGranted = true)
+            // B. Tập quyền được cấp thêm riêng cho tài khoản (Override: Allow)
             var grantedPermissions = user.UserPermissions
                 .Where(up => up.IsGranted && up.Permission != null)
-                .Select(up => up.Permission!.Code)
-                .ToList();
+                .Select(up => up.Permission!.Code);
 
-            // C. Lấy Quyền Bị Tước (IsGranted = false)
+            // C. Tập quyền bị tước bỏ riêng đối với tài khoản (Override: Deny)
             var revokedPermissions = user.UserPermissions
                 .Where(up => !up.IsGranted && up.Permission != null)
-                .Select(up => up.Permission!.Code)
-                .ToList();
+                .Select(up => up.Permission!.Code);
 
-            // D. Gộp lại và chốt hạ (Union = Gom không trùng, Except = Loại trừ)
+            // D. Tổng hợp tập quyền hiệu lực thực tế (Effective Permissions)
             var finalPermissions = defaultPermissions
                 .Union(grantedPermissions)
                 .Except(revokedPermissions)
                 .Distinct()
                 .ToList();
+            #endregion
 
-            // 6. Tạo Token JWT
+            #region 5. Sinh JWT Token & Đóng gói DTO phản hồi
             var token = GenerateJwtToken(user, roleCodes, warehouseIds, finalPermissions);
 
-            // 7. Trả về kết quả
             return new LoginResponseDto
             {
                 Token = token,
@@ -103,9 +105,10 @@ namespace backend.Services
                     AvatarUrl = user.AvatarUrl,
                     Roles = roleCodes,
                     WarehouseIds = warehouseIds,
-                    Permissions = finalPermissions // Gửi xuống cho Frontend giấu nút bấm
+                    Permissions = finalPermissions
                 }
             };
+            #endregion
         }
 
         public Task<string> HashPasswordAsync(string rawPassword)
@@ -113,42 +116,46 @@ namespace backend.Services
             return Task.FromResult(BCrypt.Net.BCrypt.HashPassword(rawPassword));
         }
 
-        // --- HÀM NỘI BỘ TẠO TOKEN ---
+        #region Helper: Cấp phát JWT Token
         private string GenerateJwtToken(IAUser user, List<string> roles, List<int> warehouseIds, List<string> permissions)
         {
             var jwtSettings = _config.GetSection("JwtSettings");
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings["SecretKey"]!));
+            var secretKey = jwtSettings["SecretKey"]
+                ?? throw new InvalidOperationException("Chưa cấu hình SecretKey trong JwtSettings.");
 
-            // Đóng gói Claims cơ bản
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey));
+
+            // Khởi tạo các Claims tiêu chuẩn định danh người dùng
             var claims = new List<Claim>
             {
-                new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
-                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-                new Claim(ClaimTypes.Name, user.Username),
-                new Claim("FullName", user.FullName)
+                new(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
+                new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+                new(ClaimTypes.NameIdentifier, user.Id.ToString()),
+                new(ClaimTypes.Name, user.Username),
+                new("FullName", user.FullName)
             };
 
-            // Nhét Roles vào Token
+            // Đính kèm danh sách Vai trò (Roles)
             foreach (var role in roles)
             {
                 claims.Add(new Claim(ClaimTypes.Role, role));
             }
 
-            // Nhét Các Quyền vào Token (Để API Backend check Authorize)
+            // Đính kèm các Quyền chi tiết (Granular Permissions) phục vụ Policy Authorization
             foreach (var perm in permissions)
             {
                 claims.Add(new Claim("Permission", perm));
             }
 
-            // Nhét WarehouseIds vào Token
+            // Đính kèm danh sách ID kho để kiểm tra phân quyền dữ liệu (Data-level Authorization)
             if (warehouseIds.Any())
             {
                 claims.Add(new Claim("WarehouseIds", string.Join(",", warehouseIds)));
             }
 
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-            var expires = DateTime.UtcNow.AddMinutes(Convert.ToDouble(jwtSettings["ExpiryMinutes"]));
+            var expiryMinutes = Convert.ToDouble(jwtSettings["ExpiryMinutes"] ?? "1440");
+            var expires = DateTime.UtcNow.AddMinutes(expiryMinutes);
 
             var token = new JwtSecurityToken(
                 issuer: jwtSettings["Issuer"],
@@ -160,5 +167,6 @@ namespace backend.Services
 
             return new JwtSecurityTokenHandler().WriteToken(token);
         }
+        #endregion
     }
 }

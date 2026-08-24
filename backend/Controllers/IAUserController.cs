@@ -1,3 +1,4 @@
+using backend.DTOs;
 using backend.DTOs.AuthDTOs;
 using backend.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
@@ -6,11 +7,12 @@ using Microsoft.AspNetCore.Mvc;
 namespace backend.Controllers
 {
     /// <summary>
-    /// API Quản trị Nhân viên & Người dùng hệ thống (IAM).
+    /// API Quản trị Tài khoản & Hồ sơ nhân viên trong hệ thống (IAM).
     /// </summary>
-    [Route("api/ia-users")]
     [ApiController]
+    [Route("api/ia-users")]
     [Authorize]
+    [Produces("application/json")]
     public class IAUserController : ControllerBase
     {
         private readonly IIAUserService _userService;
@@ -20,10 +22,18 @@ namespace backend.Controllers
             _userService = userService;
         }
 
+        #region Truy vấn (Query Endpoints)
         /// <summary>
-        /// Lấy danh sách nhân viên có phân trang, tìm kiếm và lọc.
+        /// Lấy danh sách nhân viên có hỗ trợ tìm kiếm, lọc đa tiêu chí và phân trang.
         /// </summary>
+        /// <param name="search">Từ khóa tìm kiếm theo tên, username, email, SĐT hoặc CCCD.</param>
+        /// <param name="roleId">Lọc theo ID vai trò.</param>
+        /// <param name="warehouseId">Lọc theo ID kho được phân quyền.</param>
+        /// <param name="isActive">Lọc theo trạng thái kích hoạt.</param>
+        /// <param name="pageIndex">Trang hiện tại (mặc định: 1).</param>
+        /// <param name="pageSize">Số bản ghi mỗi trang (mặc định: 10).</param>
         [HttpGet]
+        [ProducesResponseType(typeof(PagedResult<IAUserReadDto>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetPaged(
             [FromQuery] string? search,
             [FromQuery] int? roleId,
@@ -37,9 +47,10 @@ namespace backend.Controllers
         }
 
         /// <summary>
-        /// Lấy toàn bộ danh sách nhân viên phục vụ dropdown.
+        /// Lấy toàn bộ danh sách nhân viên đang hoạt động (phục vụ chọn Dropdown/Select).
         /// </summary>
         [HttpGet("all")]
+        [ProducesResponseType(typeof(IEnumerable<IAUserReadDto>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetAllList()
         {
             var result = await _userService.GetAllListAsync();
@@ -47,9 +58,12 @@ namespace backend.Controllers
         }
 
         /// <summary>
-        /// Lấy thông tin chi tiết nhân viên theo ID.
+        /// Lấy thông tin chi tiết một nhân viên theo ID (kèm Vai trò, Kho, Quyền ngoại lệ).
         /// </summary>
-        [HttpGet("{id}")]
+        /// <param name="id">Mã định danh nhân viên.</param>
+        [HttpGet("{id:int}")]
+        [ProducesResponseType(typeof(IAUserReadDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetById(int id)
         {
             try
@@ -62,11 +76,16 @@ namespace backend.Controllers
                 return NotFound(new { message = ex.Message });
             }
         }
+        #endregion
 
+        #region Thao tác Dữ liệu (Command Endpoints)
         /// <summary>
-        /// Tạo mới tài khoản nhân viên.
+        /// Tạo mới tài khoản nhân viên và thiết lập phân quyền ban đầu.
         /// </summary>
+        /// <param name="dto">Thông tin tài khoản và danh sách phân quyền.</param>
         [HttpPost]
+        [ProducesResponseType(StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Create([FromBody] IAUserCreateDto dto)
         {
             try
@@ -81,15 +100,20 @@ namespace backend.Controllers
         }
 
         /// <summary>
-        /// Cập nhật thông tin hồ sơ nhân viên.
+        /// Cập nhật thông tin hồ sơ và cấu trúc phân quyền của nhân viên.
         /// </summary>
-        [HttpPut("{id}")]
+        /// <param name="id">Mã định danh nhân viên.</param>
+        /// <param name="dto">Dữ liệu hồ sơ cập nhật mới.</param>
+        [HttpPut("{id:int}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Update(int id, [FromBody] IAUserUpdateDto dto)
         {
             try
             {
                 await _userService.UpdateAsync(id, dto);
-                return Ok(new { message = "Cập nhật nhân viên thành công." });
+                return Ok(new { message = "Cập nhật thông tin nhân viên thành công." });
             }
             catch (KeyNotFoundException ex)
             {
@@ -102,15 +126,20 @@ namespace backend.Controllers
         }
 
         /// <summary>
-        /// Đổi hoặc cấp lại mật khẩu cho nhân viên.
+        /// Đổi hoặc cấp lại mật khẩu đăng nhập cho nhân viên.
         /// </summary>
-        [HttpPatch("{id}/change-password")]
+        /// <param name="id">Mã định danh nhân viên.</param>
+        /// <param name="dto">Mật khẩu mới.</param>
+        [HttpPatch("{id:int}/change-password")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> ChangePassword(int id, [FromBody] IAUserChangePasswordDto dto)
         {
             try
             {
                 await _userService.ChangePasswordAsync(id, dto);
-                return Ok(new { message = "Đổi mật khẩu thành công." });
+                return Ok(new { message = "Cập nhật mật khẩu thành công." });
             }
             catch (KeyNotFoundException ex)
             {
@@ -123,15 +152,19 @@ namespace backend.Controllers
         }
 
         /// <summary>
-        /// Xóa mềm tài khoản nhân viên.
+        /// Xóa mềm tài khoản nhân viên khỏi hệ thống.
         /// </summary>
-        [HttpDelete("{id}")]
+        /// <param name="id">Mã định danh nhân viên cần xóa.</param>
+        [HttpDelete("{id:int}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Delete(int id)
         {
             try
             {
                 await _userService.DeleteAsync(id);
-                return Ok(new { message = "Xóa nhân viên thành công." });
+                return Ok(new { message = "Xóa tài khoản nhân viên thành công." });
             }
             catch (KeyNotFoundException ex)
             {
@@ -144,15 +177,19 @@ namespace backend.Controllers
         }
 
         /// <summary>
-        /// Bật / tắt trạng thái kích hoạt của tài khoản.
+        /// Bật hoặc tắt trạng thái kích hoạt của tài khoản nhân viên (Khóa / Mở khóa).
         /// </summary>
-        [HttpPatch("{id}/toggle-active")]
+        /// <param name="id">Mã định danh nhân viên.</param>
+        [HttpPatch("{id:int}/toggle-active")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> ToggleActive(int id)
         {
             try
             {
                 await _userService.ToggleActiveAsync(id);
-                return Ok(new { message = "Thay đổi trạng thái thành công." });
+                return Ok(new { message = "Thay đổi trạng thái tài khoản thành công." });
             }
             catch (KeyNotFoundException ex)
             {
@@ -163,5 +200,6 @@ namespace backend.Controllers
                 return BadRequest(new { message = ex.Message });
             }
         }
+        #endregion
     }
 }

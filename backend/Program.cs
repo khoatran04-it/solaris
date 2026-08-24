@@ -212,6 +212,50 @@ using (var scope = app.Services.CreateScope())
         db.Database.ExecuteSqlRaw("UPDATE Warehouses SET IsActive = 1 WHERE IsActive = 0 AND IsDeleted = 0;");
         db.Database.ExecuteSqlRaw("UPDATE SupplierProducts SET IsActive = 1 WHERE IsActive = 0 AND IsDeleted = 0;");
 
+        // Tự động chuẩn hóa kiểu cột và sửa lỗi font Unicode cho IAPermissions
+        try
+        {
+            db.Database.ExecuteSqlRaw("ALTER TABLE IAPermissions ALTER COLUMN Module NVARCHAR(100) NOT NULL;");
+            db.Database.ExecuteSqlRaw("ALTER TABLE IAPermissions ALTER COLUMN Name NVARCHAR(200) NOT NULL;");
+
+            var permissionUpdates = new Dictionary<int, (string Module, string Name)>
+            {
+                { 1, ("Hệ thống", "Xem danh sách Vai trò") },
+                { 2, ("Hệ thống", "Thêm/Sửa/Xóa Vai trò & Phân quyền") },
+                { 3, ("Hệ thống", "Xem danh sách Nhân viên") },
+                { 4, ("Hệ thống", "Thêm/Sửa/Xóa Nhân viên") },
+                { 5, ("Nhà cung cấp", "Xem danh sách Nhà cung cấp") },
+                { 6, ("Nhà cung cấp", "Thêm/Sửa/Xóa Nhà cung cấp") },
+                { 7, ("Nhà cung cấp", "Cấu hình Phân loại Nhà cung cấp") },
+                { 8, ("Khách hàng", "Xem danh sách Khách hàng") },
+                { 9, ("Khách hàng", "Thêm/Sửa/Xóa Khách hàng") },
+                { 10, ("Khách hàng", "Cấu hình Khách hàng (Loại, Cấp bậc, Nhóm)") },
+                { 11, ("Sản phẩm", "Xem danh sách Sản phẩm & Biến thể") },
+                { 12, ("Sản phẩm", "Thêm/Sửa/Xóa Sản phẩm & Biến thể") },
+                { 13, ("Sản phẩm", "Quản lý Danh mục & Nhóm danh mục") },
+                { 14, ("Thuộc tính", "Quản lý Từ điển & Gán Thuộc tính") },
+                { 15, ("Đơn vị tính", "Xem Đơn vị tính & Tỷ lệ quy đổi") },
+                { 16, ("Đơn vị tính", "Quản lý Đơn vị tính, Phân loại & Quy đổi") },
+                { 17, ("Khuyến mãi", "Xem Chiến dịch Khuyến mãi") },
+                { 18, ("Khuyến mãi", "Quản lý Chiến dịch Khuyến mãi") },
+                { 19, ("Kho hàng", "Xem Kho hàng") },
+                { 20, ("Kho hàng", "Quản lý Kho hàng") },
+                { 21, ("Kho tổng", "Xem Tồn kho tổng") },
+                { 22, ("Kho tổng", "Quản lý & Điều chuyển Tồn kho") }
+            };
+
+            foreach (var kvp in permissionUpdates)
+            {
+                db.Database.ExecuteSqlRaw(
+                    "UPDATE IAPermissions SET Module = {0}, Name = {1} WHERE Id = {2}",
+                    kvp.Value.Module, kvp.Value.Name, kvp.Key);
+            }
+        }
+        catch
+        {
+            // Bỏ qua nếu bảng chưa tạo xong
+        }
+
         // Seed Từ điển thuộc tính EAV Nông sản
         var defaultAttrs = new List<(string Name, string DataType)>
         {
