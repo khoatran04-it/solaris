@@ -11,7 +11,7 @@ jobs:
   # 1. BUILD & TEST BACKEND (.NET 8)
   # ==========================================
   backend-ci:
-    name: Build Backend Web API
+    name: Build & Test Backend Web API
     runs-on: ubuntu-latest
 
     steps:
@@ -24,18 +24,22 @@ jobs:
           dotnet-version: '8.0.x'
 
       - name: Restore dependencies
-        working-directory: ./backend
-        run: dotnet restore
+        run: |
+          dotnet restore ./backend
+          dotnet restore ./tests/backend.Tests
 
       - name: Build Backend (Release)
         working-directory: ./backend
         run: dotnet build --no-restore --configuration Release
 
+      - name: Run Backend Unit Tests (xUnit)
+        run: dotnet test ./tests/backend.Tests/backend.Tests.csproj --configuration Release --no-restore --verbosity normal
+
   # ==========================================
-  # 2. BUILD FRONTEND ADMIN (Vite + React 19)
+  # 2. BUILD & TEST FRONTEND ADMIN (Vite + React 19)
   # ==========================================
   frontend-admin-ci:
-    name: Build Frontend Admin
+    name: Build & Test Frontend Admin
     runs-on: ubuntu-latest
 
     steps:
@@ -52,6 +56,14 @@ jobs:
       - name: Install dependencies
         working-directory: ./frontend-admin
         run: npm ci
+
+      - name: Run ESLint Check
+        working-directory: ./frontend-admin
+        run: npm run lint
+
+      - name: Run Frontend Component Tests (Vitest)
+        working-directory: ./frontend-admin
+        run: npm run test
 
       - name: Build Admin Bundle
         working-directory: ./frontend-admin
