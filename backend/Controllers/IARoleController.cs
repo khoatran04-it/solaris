@@ -1,3 +1,4 @@
+using backend.DTOs;
 using backend.DTOs.AuthDTOs;
 using backend.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
@@ -6,11 +7,12 @@ using Microsoft.AspNetCore.Mvc;
 namespace backend.Controllers
 {
     /// <summary>
-    /// API Quản trị Vai trò (Roles) và Phân quyền trong hệ thống.
+    /// API Quản trị Vai trò (Roles) và Cấu hình ma trận phân quyền trong hệ thống.
     /// </summary>
-    [Route("api/ia-roles")]
     [ApiController]
+    [Route("api/ia-roles")]
     [Authorize]
+    [Produces("application/json")]
     public class IARoleController : ControllerBase
     {
         private readonly IIARoleService _roleService;
@@ -20,10 +22,16 @@ namespace backend.Controllers
             _roleService = roleService;
         }
 
+        #region Truy vấn (Query Endpoints)
         /// <summary>
-        /// Lấy danh sách vai trò có phân trang và tìm kiếm.
+        /// Lấy danh sách vai trò có hỗ trợ tìm kiếm, lọc trạng thái và phân trang.
         /// </summary>
+        /// <param name="search">Từ khóa tìm kiếm theo tên hoặc mã vai trò.</param>
+        /// <param name="isActive">Lọc theo trạng thái kích hoạt.</param>
+        /// <param name="pageIndex">Trang hiện tại (mặc định: 1).</param>
+        /// <param name="pageSize">Số bản ghi mỗi trang (mặc định: 10).</param>
         [HttpGet]
+        [ProducesResponseType(typeof(PagedResult<IARoleReadDto>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetPaged(
             [FromQuery] string? search,
             [FromQuery] bool? isActive,
@@ -35,9 +43,10 @@ namespace backend.Controllers
         }
 
         /// <summary>
-        /// Lấy toàn bộ danh sách vai trò phục vụ dropdown.
+        /// Lấy toàn bộ danh sách vai trò đang hoạt động (phục vụ chọn Dropdown/Select).
         /// </summary>
         [HttpGet("all")]
+        [ProducesResponseType(typeof(IEnumerable<IARoleReadDto>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetAllList()
         {
             var result = await _roleService.GetAllListAsync();
@@ -45,9 +54,12 @@ namespace backend.Controllers
         }
 
         /// <summary>
-        /// Lấy thông tin chi tiết vai trò theo ID.
+        /// Lấy thông tin chi tiết một vai trò theo ID (kèm danh sách mã quyền trực thuộc).
         /// </summary>
-        [HttpGet("{id}")]
+        /// <param name="id">Mã định danh vai trò.</param>
+        [HttpGet("{id:int}")]
+        [ProducesResponseType(typeof(IARoleReadDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetById(int id)
         {
             try
@@ -60,11 +72,16 @@ namespace backend.Controllers
                 return NotFound(new { message = ex.Message });
             }
         }
+        #endregion
 
+        #region Thao tác Dữ liệu (Command Endpoints)
         /// <summary>
-        /// Tạo mới vai trò.
+        /// Tạo mới vai trò và gán danh sách quyền hạn ban đầu.
         /// </summary>
+        /// <param name="dto">Thông tin vai trò và danh sách quyền gán.</param>
         [HttpPost]
+        [ProducesResponseType(StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Create([FromBody] IARoleCreateDto dto)
         {
             try
@@ -79,9 +96,14 @@ namespace backend.Controllers
         }
 
         /// <summary>
-        /// Cập nhật thông tin vai trò và danh sách quyền hạn.
+        /// Cập nhật thông tin vai trò và cấu hình lại danh sách quyền hạn.
         /// </summary>
-        [HttpPut("{id}")]
+        /// <param name="id">Mã định danh vai trò.</param>
+        /// <param name="dto">Dữ liệu cập nhật mới.</param>
+        [HttpPut("{id:int}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Update(int id, [FromBody] IARoleUpdateDto dto)
         {
             try
@@ -100,9 +122,13 @@ namespace backend.Controllers
         }
 
         /// <summary>
-        /// Xóa mềm vai trò.
+        /// Xóa mềm vai trò khỏi hệ thống.
         /// </summary>
-        [HttpDelete("{id}")]
+        /// <param name="id">Mã định danh vai trò cần xóa.</param>
+        [HttpDelete("{id:int}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Delete(int id)
         {
             try
@@ -121,15 +147,19 @@ namespace backend.Controllers
         }
 
         /// <summary>
-        /// Bật / tắt trạng thái hoạt động của vai trò.
+        /// Bật hoặc tắt trạng thái kích hoạt của vai trò.
         /// </summary>
-        [HttpPatch("{id}/toggle-active")]
+        /// <param name="id">Mã định danh vai trò.</param>
+        [HttpPatch("{id:int}/toggle-active")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> ToggleActive(int id)
         {
             try
             {
                 await _roleService.ToggleActiveAsync(id);
-                return Ok(new { message = "Thay đổi trạng thái thành công." });
+                return Ok(new { message = "Thay đổi trạng thái vai trò thành công." });
             }
             catch (KeyNotFoundException ex)
             {
@@ -140,5 +170,6 @@ namespace backend.Controllers
                 return BadRequest(new { message = ex.Message });
             }
         }
+        #endregion
     }
 }

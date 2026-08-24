@@ -25,7 +25,7 @@ import {
   InventoryAdjustmentReason,
   InventoryAdjustmentReasonLabels,
   InventoryAdjustmentType,
-  InventoryAdjustmentTypeLabels
+  InventoryAdjustmentTypeLabels,
 } from '../../types/inventoryAdjustment';
 import { ProductBatch } from '../../types/productBatch';
 
@@ -44,7 +44,11 @@ const InventoryAdjustmentForm: React.FC = () => {
   const { userInfo } = useAuthStore();
 
   const [loading, setLoading] = useState(false);
-  const [toast, setToast] = useState<{ show: boolean; type: 'success' | 'warning' | 'error'; message: string }>({
+  const [toast, setToast] = useState<{
+    show: boolean;
+    type: 'success' | 'warning' | 'error';
+    message: string;
+  }>({
     show: false,
     type: 'success',
     message: '',
@@ -58,7 +62,9 @@ const InventoryAdjustmentForm: React.FC = () => {
 
   // Form States
   const [warehouseId, setWarehouseId] = useState<number | ''>('');
-  const [reason, setReason] = useState<InventoryAdjustmentReason>(InventoryAdjustmentReason.Spoilage);
+  const [reason, setReason] = useState<InventoryAdjustmentReason>(
+    InventoryAdjustmentReason.Spoilage
+  );
   const [note, setNote] = useState('');
 
   const [details, setDetails] = useState<DetailRow[]>([
@@ -69,14 +75,14 @@ const InventoryAdjustmentForm: React.FC = () => {
       adjustmentType: InventoryAdjustmentType.MoveToDamaged,
       quantity: 1,
       unitPrice: 0,
-      reasonDetail: ''
-    }
+      reasonDetail: '',
+    },
   ]);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const showToast = (type: 'success' | 'warning' | 'error', message: string) => {
     setToast({ show: true, type, message });
-    setTimeout(() => setToast(prev => ({ ...prev, show: false })), 3000);
+    setTimeout(() => setToast((prev) => ({ ...prev, show: false })), 3000);
   };
 
   const loadInitData = useCallback(async () => {
@@ -89,7 +95,13 @@ const InventoryAdjustmentForm: React.FC = () => {
       ]);
 
       setWarehouses(whList.map((w: any) => ({ value: w.id, label: w.name })));
-      setVariants(varList.map((v: any) => ({ value: v.id, label: `${v.code} - ${v.name}`, prices: v.prices || [] })));
+      setVariants(
+        varList.map((v: any) => ({
+          value: v.id,
+          label: `${v.code} - ${v.name}`,
+          prices: v.prices || [],
+        }))
+      );
       setBatches(batchList || []);
       setUoms(uomList.map((u: any) => ({ value: u.id, label: u.name })));
     } catch (err) {
@@ -111,8 +123,8 @@ const InventoryAdjustmentForm: React.FC = () => {
         adjustmentType: InventoryAdjustmentType.MoveToDamaged,
         quantity: 1,
         unitPrice: 0,
-        reasonDetail: ''
-      }
+        reasonDetail: '',
+      },
     ]);
   };
 
@@ -132,9 +144,9 @@ const InventoryAdjustmentForm: React.FC = () => {
 
     // Tự động gán ĐVT và Đơn giá khi chọn Biến thể
     if (field === 'variantId' && value) {
-      const v = variants.find(item => item.value === Number(value));
+      const v = variants.find((item) => item.value === Number(value));
       if (v && v.prices && v.prices.length > 0) {
-        const defPrice = v.prices.find(p => p.isDefault) || v.prices[0];
+        const defPrice = v.prices.find((p) => p.isDefault) || v.prices[0];
         if (defPrice) {
           updated[index].uoMId = defPrice.uoMId || '';
           updated[index].unitPrice = defPrice.price || 0;
@@ -148,7 +160,7 @@ const InventoryAdjustmentForm: React.FC = () => {
 
     // Xóa lỗi trường tương ứng
     if (errors[`${field}_${index}`]) {
-      setErrors(prev => {
+      setErrors((prev) => {
         const e = { ...prev };
         delete e[`${field}_${index}`];
         return e;
@@ -157,7 +169,10 @@ const InventoryAdjustmentForm: React.FC = () => {
   };
 
   const calculateTotal = () => {
-    return details.reduce((sum, row) => sum + (Number(row.quantity || 0) * Number(row.unitPrice || 0)), 0);
+    return details.reduce(
+      (sum, row) => sum + Number(row.quantity || 0) * Number(row.unitPrice || 0),
+      0
+    );
   };
 
   const validate = (): boolean => {
@@ -182,7 +197,8 @@ const InventoryAdjustmentForm: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validate()) return showToast('warning', 'Vui lòng điền đầy đủ các trường bắt buộc màu đỏ!');
+    if (!validate())
+      return showToast('warning', 'Vui lòng điền đầy đủ các trường bắt buộc màu đỏ!');
 
     try {
       setLoading(true);
@@ -191,20 +207,20 @@ const InventoryAdjustmentForm: React.FC = () => {
         reason: Number(reason),
         createdById: userInfo?.id || 1,
         note: (note || '').trim(),
-        details: details.map(d => ({
+        details: details.map((d) => ({
           variantId: Number(d.variantId),
           batchId: Number(d.batchId),
           uoMId: Number(d.uoMId),
           adjustmentType: Number(d.adjustmentType),
           quantity: Number(d.quantity),
           unitPrice: Number(d.unitPrice),
-          reasonDetail: (d.reasonDetail || '').trim()
-        }))
+          reasonDetail: (d.reasonDetail || '').trim(),
+        })),
       };
 
       const res = await inventoryAdjustmentApi.create(payload);
       showToast('success', 'TẠO PHIẾU ĐIỀU CHỈNH THÀNH CÔNG! VUI LÒNG DUYỆT ĐỂ CẬP NHẬT KHO.');
-      
+
       const targetId = res?.id || (res as any)?.Id;
       if (targetId) {
         setTimeout(() => navigate(`/inventory-adjustments/${targetId}`), 1200);
@@ -232,7 +248,6 @@ const InventoryAdjustmentForm: React.FC = () => {
 
       <FormCard>
         <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-          
           {/* 1. THÔNG TIN CHUNG */}
           <FormSection title="1. Thông Tin Phiếu Điều Chỉnh">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -241,7 +256,7 @@ const InventoryAdjustmentForm: React.FC = () => {
                 value={warehouseId}
                 onSelect={(val) => {
                   setWarehouseId(val ? Number(val) : '');
-                  setErrors(prev => ({ ...prev, warehouseId: '' }));
+                  setErrors((prev) => ({ ...prev, warehouseId: '' }));
                 }}
                 options={warehouses}
                 error={errors.warehouseId}
@@ -254,9 +269,9 @@ const InventoryAdjustmentForm: React.FC = () => {
                 label="Lý do điều chỉnh"
                 value={reason}
                 onSelect={(val) => setReason(Number(val) as InventoryAdjustmentReason)}
-                options={Object.keys(InventoryAdjustmentReasonLabels).map(key => ({
+                options={Object.keys(InventoryAdjustmentReasonLabels).map((key) => ({
                   value: Number(key),
-                  label: InventoryAdjustmentReasonLabels[Number(key) as InventoryAdjustmentReason]
+                  label: InventoryAdjustmentReasonLabels[Number(key) as InventoryAdjustmentReason],
                 }))}
                 required
               />
@@ -288,36 +303,54 @@ const InventoryAdjustmentForm: React.FC = () => {
                   <thead className="bg-slate-50 text-slate-600 font-bold text-xs uppercase tracking-wider border-b border-slate-200">
                     <tr>
                       <th className="py-3 px-3 text-center w-10">#</th>
-                      <th className="py-3 px-3 w-[26%]">Sản Phẩm (SKU) <span className="text-red-500">*</span></th>
-                      <th className="py-3 px-3 w-[22%]">Lô Hàng Nông Sản <span className="text-red-500">*</span></th>
-                      <th className="py-3 px-3 w-[22%]">Loại Điều Chỉnh <span className="text-red-500">*</span></th>
-                      <th className="py-3 px-2 w-[10%] text-center">ĐVT <span className="text-red-500">*</span></th>
-                      <th className="py-3 px-2 w-[10%] text-center">Số Lượng <span className="text-red-500">*</span></th>
+                      <th className="py-3 px-3 w-[26%]">
+                        Sản Phẩm (SKU) <span className="text-red-500">*</span>
+                      </th>
+                      <th className="py-3 px-3 w-[22%]">
+                        Lô Hàng Nông Sản <span className="text-red-500">*</span>
+                      </th>
+                      <th className="py-3 px-3 w-[22%]">
+                        Loại Điều Chỉnh <span className="text-red-500">*</span>
+                      </th>
+                      <th className="py-3 px-2 w-[10%] text-center">
+                        ĐVT <span className="text-red-500">*</span>
+                      </th>
+                      <th className="py-3 px-2 w-[10%] text-center">
+                        Số Lượng <span className="text-red-500">*</span>
+                      </th>
                       <th className="py-3 px-3 w-[10%] text-right">Đơn Giá</th>
                       <th className="py-3 px-2 text-center w-12">Xóa</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {details.map((row, idx) => {
-                      const rowBatches = batches.filter(b => b.variantId === Number(row.variantId));
-                      const selectedBatch = batches.find(b => b.id === Number(row.batchId));
+                      const rowBatches = batches.filter(
+                        (b) => b.variantId === Number(row.variantId)
+                      );
+                      const selectedBatch = batches.find((b) => b.id === Number(row.batchId));
 
                       return (
                         <tr key={idx} className="hover:bg-slate-50/60 transition-colors">
-                          <td className="py-3 px-3 text-center text-slate-400 font-medium">{idx + 1}</td>
-                          
+                          <td className="py-3 px-3 text-center text-slate-400 font-medium">
+                            {idx + 1}
+                          </td>
+
                           {/* SẢN PHẨM */}
                           <td className="py-3 px-3">
                             <select
                               value={row.variantId}
                               onChange={(e) => handleDetailChange(idx, 'variantId', e.target.value)}
                               className={`w-full px-3 py-2 border rounded-lg text-xs font-semibold focus:ring-2 focus:ring-yellow-400 outline-none bg-white ${
-                                errors[`variantId_${idx}`] ? 'border-rose-400 bg-rose-50/30' : 'border-slate-300'
+                                errors[`variantId_${idx}`]
+                                  ? 'border-rose-400 bg-rose-50/30'
+                                  : 'border-slate-300'
                               }`}
                             >
                               <option value="">-- Chọn sản phẩm --</option>
-                              {variants.map(v => (
-                                <option key={v.value} value={v.value}>{v.label}</option>
+                              {variants.map((v) => (
+                                <option key={v.value} value={v.value}>
+                                  {v.label}
+                                </option>
                               ))}
                             </select>
                             {errors[`variantId_${idx}`] && (
@@ -334,20 +367,31 @@ const InventoryAdjustmentForm: React.FC = () => {
                               onChange={(e) => handleDetailChange(idx, 'batchId', e.target.value)}
                               disabled={!row.variantId}
                               className={`w-full px-3 py-2 border rounded-lg text-xs font-bold focus:ring-2 focus:ring-yellow-400 outline-none disabled:bg-slate-100 ${
-                                errors[`batchId_${idx}`] ? 'border-rose-400 bg-rose-50/30 text-rose-700' : 'border-slate-300 text-indigo-700'
+                                errors[`batchId_${idx}`]
+                                  ? 'border-rose-400 bg-rose-50/30 text-rose-700'
+                                  : 'border-slate-300 text-indigo-700'
                               }`}
                             >
-                              <option value="">{row.variantId ? '-- Chọn Lô Hàng --' : '-- Chọn SP trước --'}</option>
-                              {rowBatches.map(b => (
+                              <option value="">
+                                {row.variantId ? '-- Chọn Lô Hàng --' : '-- Chọn SP trước --'}
+                              </option>
+                              {rowBatches.map((b) => (
                                 <option key={b.id} value={b.id}>
-                                  {b.batchCode} (HSD: {b.expiryDate ? new Date(b.expiryDate).toLocaleDateString('vi-VN') : 'N/A'})
+                                  {b.batchCode} (HSD:{' '}
+                                  {b.expiryDate
+                                    ? new Date(b.expiryDate).toLocaleDateString('vi-VN')
+                                    : 'N/A'}
+                                  )
                                 </option>
                               ))}
                             </select>
                             {selectedBatch?.expiryDate && (
                               <div className="flex items-center gap-1 mt-1 text-[11px] text-slate-500">
                                 <Calendar size={12} className="text-amber-600" />
-                                <span>HSD: {new Date(selectedBatch.expiryDate).toLocaleDateString('vi-VN')}</span>
+                                <span>
+                                  HSD:{' '}
+                                  {new Date(selectedBatch.expiryDate).toLocaleDateString('vi-VN')}
+                                </span>
                               </div>
                             )}
                             {errors[`batchId_${idx}`] && (
@@ -361,12 +405,18 @@ const InventoryAdjustmentForm: React.FC = () => {
                           <td className="py-3 px-3">
                             <select
                               value={row.adjustmentType}
-                              onChange={(e) => handleDetailChange(idx, 'adjustmentType', Number(e.target.value))}
+                              onChange={(e) =>
+                                handleDetailChange(idx, 'adjustmentType', Number(e.target.value))
+                              }
                               className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-bold text-slate-800 focus:ring-2 focus:ring-yellow-400 outline-none bg-white"
                             >
-                              {Object.keys(InventoryAdjustmentTypeLabels).map(key => (
+                              {Object.keys(InventoryAdjustmentTypeLabels).map((key) => (
                                 <option key={key} value={key}>
-                                  {InventoryAdjustmentTypeLabels[Number(key) as InventoryAdjustmentType]}
+                                  {
+                                    InventoryAdjustmentTypeLabels[
+                                      Number(key) as InventoryAdjustmentType
+                                    ]
+                                  }
                                 </option>
                               ))}
                             </select>
@@ -374,7 +424,9 @@ const InventoryAdjustmentForm: React.FC = () => {
                               type="text"
                               placeholder="Lý do chi tiết dòng..."
                               value={row.reasonDetail}
-                              onChange={(e) => handleDetailChange(idx, 'reasonDetail', e.target.value)}
+                              onChange={(e) =>
+                                handleDetailChange(idx, 'reasonDetail', e.target.value)
+                              }
                               className="w-full px-2 py-1 mt-1 border border-slate-200 rounded text-[11px] focus:ring-1 focus:ring-yellow-400 outline-none"
                             />
                           </td>
@@ -389,8 +441,10 @@ const InventoryAdjustmentForm: React.FC = () => {
                               }`}
                             >
                               <option value="">-- ĐVT --</option>
-                              {uoms.map(u => (
-                                <option key={u.value} value={u.value}>{u.label}</option>
+                              {uoms.map((u) => (
+                                <option key={u.value} value={u.value}>
+                                  {u.label}
+                                </option>
                               ))}
                             </select>
                             {errors[`uoMId_${idx}`] && (
@@ -407,9 +461,13 @@ const InventoryAdjustmentForm: React.FC = () => {
                               min="0.01"
                               step="any"
                               value={row.quantity}
-                              onChange={(e) => handleDetailChange(idx, 'quantity', parseFloat(e.target.value) || 0)}
+                              onChange={(e) =>
+                                handleDetailChange(idx, 'quantity', parseFloat(e.target.value) || 0)
+                              }
                               className={`w-full px-2 py-2 border rounded-lg text-xs text-center font-black focus:ring-2 focus:ring-yellow-400 outline-none bg-white ${
-                                errors[`quantity_${idx}`] ? 'border-rose-400 text-rose-700' : 'border-slate-300 text-slate-800'
+                                errors[`quantity_${idx}`]
+                                  ? 'border-rose-400 text-rose-700'
+                                  : 'border-slate-300 text-slate-800'
                               }`}
                             />
                             {errors[`quantity_${idx}`] && (
@@ -425,11 +483,19 @@ const InventoryAdjustmentForm: React.FC = () => {
                               type="number"
                               min="0"
                               value={row.unitPrice}
-                              onChange={(e) => handleDetailChange(idx, 'unitPrice', parseFloat(e.target.value) || 0)}
+                              onChange={(e) =>
+                                handleDetailChange(
+                                  idx,
+                                  'unitPrice',
+                                  parseFloat(e.target.value) || 0
+                                )
+                              }
                               className="w-full px-2 py-2 border border-slate-300 rounded-lg text-xs text-right font-medium focus:ring-2 focus:ring-yellow-400 outline-none bg-white"
                             />
                             <div className="text-[11px] font-bold text-slate-600 mt-1">
-                              = {((row.quantity || 0) * (row.unitPrice || 0)).toLocaleString('vi-VN')} ₫
+                              ={' '}
+                              {((row.quantity || 0) * (row.unitPrice || 0)).toLocaleString('vi-VN')}{' '}
+                              ₫
                             </div>
                           </td>
 
@@ -450,10 +516,16 @@ const InventoryAdjustmentForm: React.FC = () => {
                   </tbody>
                   <tfoot className="bg-slate-50/80 font-medium border-t border-slate-200">
                     <tr>
-                      <td colSpan={5} className="px-4 py-3.5 text-right text-slate-600 text-xs font-bold uppercase tracking-wider">
+                      <td
+                        colSpan={5}
+                        className="px-4 py-3.5 text-right text-slate-600 text-xs font-bold uppercase tracking-wider"
+                      >
                         Tổng Giá Trị Điều Chỉnh Dự Kiến:
                       </td>
-                      <td colSpan={3} className="px-4 py-3.5 text-left text-blue-700 font-black text-base">
+                      <td
+                        colSpan={3}
+                        className="px-4 py-3.5 text-left text-blue-700 font-black text-base"
+                      >
                         {calculateTotal().toLocaleString('vi-VN')} ₫
                       </td>
                     </tr>

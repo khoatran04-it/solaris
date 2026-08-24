@@ -1,6 +1,6 @@
 import { PaginationParams } from './common';
 export interface SupplierTypeQueryParams extends PaginationParams {
-    isActive?: boolean;
+  isActive?: boolean;
 }
 //Supplier Type
 export interface SupplierType {

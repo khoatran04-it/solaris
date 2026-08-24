@@ -4,29 +4,34 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace backend.Configurations
 {
+    /// <summary>
+    /// Cấu hình Fluent API cho bảng trung gian Gán vai trò người dùng (IAUserRole).
+    /// </summary>
     public class IAUserRoleConfiguration : IEntityTypeConfiguration<IAUserRole>
     {
         public void Configure(EntityTypeBuilder<IAUserRole> builder)
         {
             builder.ToTable("IAUserRoles");
 
-            // 🔥 Khóa chính kết hợp (Composite Key): 1 User chỉ nhận 1 Role 1 lần
+            // Khóa chính phức hợp (Composite Key): Đảm bảo mỗi cặp User - Role là duy nhất
             builder.HasKey(x => new { x.UserId, x.RoleId });
 
-            builder.Property(x => x.AssignedAt).HasColumnType("datetime2");
+            builder.Property(x => x.AssignedAt)
+                .HasColumnType("datetime2");
 
-            // --- CONFIGURATION KHÓA NGOẠI ---
-            // 1. Nối với User
+            #region Cấu hình Khóa ngoại & Quan hệ (Foreign Keys)
+            // Quan hệ với bảng Người dùng (IAUser)
             builder.HasOne(x => x.User)
-                   .WithMany(u => u.UserRoles)
-                   .HasForeignKey(x => x.UserId)
-                   .OnDelete(DeleteBehavior.Cascade); // Xóa/Ẩn User thì xóa quyền của User đó
+                .WithMany(u => u.UserRoles)
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
 
-            // 2. Nối với Role
+            // Quan hệ với bảng Vai trò (IARole)
             builder.HasOne(x => x.Role)
-                   .WithMany(r => r.UserRoles)
-                   .HasForeignKey(x => x.RoleId)
-                   .OnDelete(DeleteBehavior.Cascade);
+                .WithMany(r => r.UserRoles)
+                .HasForeignKey(x => x.RoleId)
+                .OnDelete(DeleteBehavior.Cascade);
+            #endregion
         }
     }
 }

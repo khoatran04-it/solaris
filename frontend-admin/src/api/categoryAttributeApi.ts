@@ -1,33 +1,33 @@
 import axiosClient from './axiosClient';
 import { PagedResult } from '../types/common';
-import { 
-    CategoryAttribute, 
-    CategoryAttributePayload, 
-    CategoryAttributeQueryParams 
+import {
+  CategoryAttribute,
+  CategoryAttributePayload,
+  CategoryAttributeQueryParams,
 } from '../types/categoryAttribute';
 
 export const categoryAttributeApi = {
-    getAll: (params?: CategoryAttributeQueryParams): Promise<PagedResult<CategoryAttribute>> => {
-        return axiosClient.get('/CategoryAttributes', { params });
-    },
+  getAll: (params?: CategoryAttributeQueryParams): Promise<PagedResult<CategoryAttribute>> => {
+    return axiosClient.get('/CategoryAttributes', { params });
+  },
 
-    getAllList: (): Promise<CategoryAttribute[]> => {
-        return axiosClient.get('/CategoryAttributes/all');
-    },
+  getAllList: (): Promise<CategoryAttribute[]> => {
+    return axiosClient.get('/CategoryAttributes/all');
+  },
 
-    getById: (id: number): Promise<CategoryAttribute> => {
-        return axiosClient.get(`/CategoryAttributes/${id}`);
-    },
+  getById: (id: number): Promise<CategoryAttribute> => {
+    return axiosClient.get(`/CategoryAttributes/${id}`);
+  },
 
-    create: (data: CategoryAttributePayload): Promise<{ message: string; id: number }> => {
-        return axiosClient.post('/CategoryAttributes', data);
-    },
+  create: (data: CategoryAttributePayload): Promise<{ message: string; id: number }> => {
+    return axiosClient.post('/CategoryAttributes', data);
+  },
 
-    update: (id: number, data: CategoryAttributePayload): Promise<void> => {
-        return axiosClient.put(`/CategoryAttributes/${id}`, data);
-    },
+  update: (id: number, data: CategoryAttributePayload): Promise<void> => {
+    return axiosClient.put(`/CategoryAttributes/${id}`, data);
+  },
 
-    delete: (id: number): Promise<void> => {
-        return axiosClient.delete(`/CategoryAttributes/${id}`);
-    }
+  delete: (id: number): Promise<void> => {
+    return axiosClient.delete(`/CategoryAttributes/${id}`);
+  },
 };

@@ -49,7 +49,7 @@ const INITIAL_FORM_STATE: ReturnFormState = {
   customerId: '',
   warehouseId: '',
   returnDate: new Date().toLocaleDateString('en-CA'),
-  reason: ''
+  reason: '',
 };
 
 const createEmptyDetailRow = (): DetailRow => ({
@@ -58,7 +58,7 @@ const createEmptyDetailRow = (): DetailRow => ({
   batchId: '',
   uoMId: '',
   returnedQuantity: 1,
-  unitPrice: 0
+  unitPrice: 0,
 });
 
 const CustomerReturnForm: React.FC = () => {
@@ -68,7 +68,11 @@ const CustomerReturnForm: React.FC = () => {
   const { userInfo } = useAuthStore();
 
   const [loading, setLoading] = useState(false);
-  const [toast, setToast] = useState<{ show: boolean; type: 'success' | 'warning' | 'error'; message: string }>({
+  const [toast, setToast] = useState<{
+    show: boolean;
+    type: 'success' | 'warning' | 'error';
+    message: string;
+  }>({
     show: false,
     type: 'success',
     message: '',
@@ -76,24 +80,28 @@ const CustomerReturnForm: React.FC = () => {
 
   // --- STATES ---
   const [formData, setFormData] = useState<ReturnFormState>({
-      ...INITIAL_FORM_STATE,
-      orderId: orderIdParam ? Number(orderIdParam) : ''
+    ...INITIAL_FORM_STATE,
+    orderId: orderIdParam ? Number(orderIdParam) : '',
   });
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [details, setDetails] = useState<DetailRow[]>([createEmptyDetailRow()]);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   // --- DROPDOWN OPTIONS ---
-  const [orderOptions, setOrderOptions] = useState<{ value: number; label: string; order: Order }[]>([]);
+  const [orderOptions, setOrderOptions] = useState<
+    { value: number; label: string; order: Order }[]
+  >([]);
   const [customers, setCustomers] = useState<{ value: number; label: string }[]>([]);
   const [warehouses, setWarehouses] = useState<{ value: number; label: string }[]>([]);
   const [variants, setVariants] = useState<{ value: number; label: string; prices: any[] }[]>([]);
-  const [batches, setBatches] = useState<{ id: number; variantId: number; batchCode: string }[]>([]);
+  const [batches, setBatches] = useState<{ id: number; variantId: number; batchCode: string }[]>(
+    []
+  );
   const [uoms, setUoms] = useState<{ value: number; label: string }[]>([]);
 
   const showToast = (type: 'success' | 'warning' | 'error', message: string) => {
     setToast({ show: true, type, message });
-    setTimeout(() => setToast(prev => ({ ...prev, show: false })), 3000);
+    setTimeout(() => setToast((prev) => ({ ...prev, show: false })), 3000);
   };
 
   const formatCurrency = (val: number) => {
@@ -116,14 +124,22 @@ const CustomerReturnForm: React.FC = () => {
         const orderOpts = (orderRes.items || []).map((o: Order) => ({
           value: o.id,
           label: `${o.orderCode} - ${o.customerName} (${formatCurrency(o.totalAmount)} - ${OrderStatusLabels[o.status]})`,
-          order: o
+          order: o,
         }));
 
         setOrderOptions(orderOpts);
         setCustomers(custList.map((c: any) => ({ value: c.id, label: `${c.code} - ${c.name}` })));
         setWarehouses(whList.map((w: any) => ({ value: w.id, label: w.name })));
-        setVariants(varList.map((v: any) => ({ value: v.id, label: `${v.code} - ${v.name}`, prices: v.prices || [] })));
-        setBatches(batchList.map((b: any) => ({ id: b.id, variantId: b.variantId, batchCode: b.batchCode })));
+        setVariants(
+          varList.map((v: any) => ({
+            value: v.id,
+            label: `${v.code} - ${v.name}`,
+            prices: v.prices || [],
+          }))
+        );
+        setBatches(
+          batchList.map((b: any) => ({ id: b.id, variantId: b.variantId, batchCode: b.batchCode }))
+        );
         setUoms(uomList.map((u: any) => ({ value: u.id, label: u.name })));
       } catch (err) {
         showToast('error', 'Lỗi tải danh mục bổ trợ!');
@@ -139,40 +155,46 @@ const CustomerReturnForm: React.FC = () => {
       const ord = await orderApi.getById(id);
       if (ord) {
         setSelectedOrder(ord);
-        setFormData(prev => ({
-            ...prev,
-            orderId: ord.id,
-            customerId: ord.customerId,
-            warehouseId: ord.warehouseId || ''
+        setFormData((prev) => ({
+          ...prev,
+          orderId: ord.id,
+          customerId: ord.customerId,
+          warehouseId: ord.warehouseId || '',
         }));
 
         // 1. Ưu tiên cao nhất: Tự động trích xuất các Lô hàng (Batch) thực tế đã xuất kho theo thuật toán FEFO
         if (ord.issuedItems && ord.issuedItems.length > 0) {
-          const rows: DetailRow[] = ord.issuedItems.map(item => ({
+          const rows: DetailRow[] = ord.issuedItems.map((item) => ({
             id: crypto.randomUUID(),
             variantId: item.variantId,
             batchId: item.batchId, // Tự động điền chính xác Lô hàng đã xuất cho khách!
             uoMId: item.uoMId,
             returnedQuantity: item.quantityIssued,
-            unitPrice: item.unitPrice
+            unitPrice: item.unitPrice,
           }));
           setDetails(rows);
-          showToast('success', `Đã liên kết đơn hàng ${ord.orderCode} & tự động điền ${rows.length} mặt hàng theo đúng Lô hàng đã xuất kho!`);
+          showToast(
+            'success',
+            `Đã liên kết đơn hàng ${ord.orderCode} & tự động điền ${rows.length} mặt hàng theo đúng Lô hàng đã xuất kho!`
+          );
         } else if (ord.details && ord.details.length > 0) {
           // 2. Fallback nếu đơn chưa hoàn tất phiếu xuất: Lấy theo danh sách mặt hàng đặt
-          const rows: DetailRow[] = ord.details.map(d => {
-            const vBatches = batches.filter(b => b.variantId === d.variantId);
+          const rows: DetailRow[] = ord.details.map((d) => {
+            const vBatches = batches.filter((b) => b.variantId === d.variantId);
             return {
               id: crypto.randomUUID(),
               variantId: d.variantId,
               batchId: vBatches.length > 0 ? vBatches[0].id : '',
               uoMId: d.uoMId,
               returnedQuantity: d.issuedQuantity > 0 ? d.issuedQuantity : d.quantity,
-              unitPrice: d.unitPrice
+              unitPrice: d.unitPrice,
             };
           });
           setDetails(rows);
-          showToast('success', `Đã liên kết đơn hàng ${ord.orderCode} & tự động điền ${rows.length} mặt hàng!`);
+          showToast(
+            'success',
+            `Đã liên kết đơn hàng ${ord.orderCode} & tự động điền ${rows.length} mặt hàng!`
+          );
         } else {
           setDetails([createEmptyDetailRow()]);
         }
@@ -192,14 +214,14 @@ const CustomerReturnForm: React.FC = () => {
 
   // --- FORM HANDLERS ---
   const handleFieldChange = (field: keyof ReturnFormState, value: any) => {
-      setFormData(prev => ({ ...prev, [field]: value }));
-      if (errors[field]) {
-          setErrors(prev => {
-              const newErr = { ...prev };
-              delete newErr[field];
-              return newErr;
-          });
-      }
+    setFormData((prev) => ({ ...prev, [field]: value }));
+    if (errors[field]) {
+      setErrors((prev) => {
+        const newErr = { ...prev };
+        delete newErr[field];
+        return newErr;
+      });
+    }
   };
 
   const handleSelectOrder = (val: string | number) => {
@@ -213,48 +235,50 @@ const CustomerReturnForm: React.FC = () => {
   };
 
   const handleAddRow = () => {
-    setDetails(prev => [...prev, createEmptyDetailRow()]);
+    setDetails((prev) => [...prev, createEmptyDetailRow()]);
   };
 
   const handleRemoveRow = (id: string) => {
-      if (details.length > 1) {
-          setDetails(prev => prev.filter(row => row.id !== id));
-      }
+    if (details.length > 1) {
+      setDetails((prev) => prev.filter((row) => row.id !== id));
+    }
   };
 
   const handleDetailChange = (id: string, field: keyof DetailRow, value: any) => {
-      setDetails(prev => prev.map(row => {
-          if (row.id !== id) return row;
-          const updated = { ...row, [field]: value };
+    setDetails((prev) =>
+      prev.map((row) => {
+        if (row.id !== id) return row;
+        const updated = { ...row, [field]: value };
 
-          // Auto-fill UoM & Giá khi chọn SP
-          if (field === 'variantId' && value) {
-              const v = variants.find(item => item.value === Number(value));
-              if (v && v.prices && v.prices.length > 0) {
-                  const defPrice = v.prices.find((p: any) => p.isDefault) || v.prices[0];
-                  if (defPrice) {
-                      updated.uoMId = defPrice.uoMId;
-                      updated.unitPrice = defPrice.price;
-                  }
-              }
+        // Auto-fill UoM & Giá khi chọn SP
+        if (field === 'variantId' && value) {
+          const v = variants.find((item) => item.value === Number(value));
+          if (v && v.prices && v.prices.length > 0) {
+            const defPrice = v.prices.find((p: any) => p.isDefault) || v.prices[0];
+            if (defPrice) {
+              updated.uoMId = defPrice.uoMId;
+              updated.unitPrice = defPrice.price;
+            }
           }
-          return updated;
-      }));
+        }
+        return updated;
+      })
+    );
 
-      if (errors[`${field}_${id}`]) {
-          setErrors(prev => {
-              const newErr = { ...prev };
-              delete newErr[`${field}_${id}`];
-              return newErr;
-          });
-      }
+    if (errors[`${field}_${id}`]) {
+      setErrors((prev) => {
+        const newErr = { ...prev };
+        delete newErr[`${field}_${id}`];
+        return newErr;
+      });
+    }
   };
 
   // --- TÍNH TOÁN TỔNG TIỀN DỰ KIẾN HOÀN ---
   const totalEstimatedRefund = details.reduce((sum, d) => {
     const qty = Number(d.returnedQuantity) || 0;
     const price = Number(d.unitPrice) || 0;
-    return sum + (qty * price);
+    return sum + qty * price;
   }, 0);
 
   // --- VALIDATION & SUBMIT ---
@@ -293,13 +317,13 @@ const CustomerReturnForm: React.FC = () => {
         receivedById: userInfo?.id || 1,
         returnDate: `${formData.returnDate}T00:00:00Z`,
         reason: formData.reason.trim(),
-        details: details.map(d => ({
+        details: details.map((d) => ({
           variantId: Number(d.variantId),
           batchId: Number(d.batchId),
           uoMId: Number(d.uoMId),
           returnedQuantity: Number(d.returnedQuantity),
-          unitPrice: Number(d.unitPrice)
-        }))
+          unitPrice: Number(d.unitPrice),
+        })),
       };
 
       const res = await customerReturnApi.create(payload);
@@ -325,7 +349,6 @@ const CustomerReturnForm: React.FC = () => {
 
       <FormCard>
         <form onSubmit={handleSubmit} className="flex flex-col gap-8">
-          
           {/* ================= SECTION 1: LIÊN KẾT ĐƠN HÀNG GỐC ================= */}
           <FormSection title="1. Đơn Bán Hàng Gốc (Sales Order Reference)">
             <div className="flex flex-col gap-4">
@@ -349,13 +372,17 @@ const CustomerReturnForm: React.FC = () => {
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="font-black text-indigo-900 text-[15px]">{selectedOrder.orderCode}</span>
+                        <span className="font-black text-indigo-900 text-[15px]">
+                          {selectedOrder.orderCode}
+                        </span>
                         <span className="px-2 py-0.5 bg-indigo-100 text-indigo-700 text-xs font-bold rounded-md">
                           {OrderStatusLabels[selectedOrder.status]}
                         </span>
                       </div>
                       <div className="text-xs text-indigo-700/80 mt-0.5">
-                        Khách: <strong className="text-indigo-950">{selectedOrder.customerName}</strong> ({selectedOrder.customerPhone || 'Không có SĐT'})
+                        Khách:{' '}
+                        <strong className="text-indigo-950">{selectedOrder.customerName}</strong> (
+                        {selectedOrder.customerPhone || 'Không có SĐT'})
                       </div>
                     </div>
                   </div>
@@ -363,11 +390,17 @@ const CustomerReturnForm: React.FC = () => {
                   <div className="flex items-center gap-6 text-right">
                     <div>
                       <div className="text-[11px] font-bold text-slate-500 uppercase">Kho xuất</div>
-                      <div className="text-xs font-bold text-slate-800">{selectedOrder.warehouseName || 'Chưa gán kho'}</div>
+                      <div className="text-xs font-bold text-slate-800">
+                        {selectedOrder.warehouseName || 'Chưa gán kho'}
+                      </div>
                     </div>
                     <div>
-                      <div className="text-[11px] font-bold text-slate-500 uppercase">Tổng tiền đơn gốc</div>
-                      <div className="text-sm font-black text-emerald-600">{formatCurrency(selectedOrder.totalAmount)}</div>
+                      <div className="text-[11px] font-bold text-slate-500 uppercase">
+                        Tổng tiền đơn gốc
+                      </div>
+                      <div className="text-sm font-black text-emerald-600">
+                        {formatCurrency(selectedOrder.totalAmount)}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -434,10 +467,18 @@ const CustomerReturnForm: React.FC = () => {
                 <thead className="bg-slate-50 text-slate-500 font-bold text-xs uppercase tracking-wider border-b border-slate-200">
                   <tr>
                     <th className="px-4 py-3 text-center w-12">#</th>
-                    <th className="px-4 py-3 min-w-60">Sản phẩm <span className="text-red-500">*</span></th>
-                    <th className="px-4 py-3 min-w-50">Lô Hàng (Batch) <span className="text-red-500">*</span></th>
-                    <th className="px-4 py-3 min-w-30">ĐVT <span className="text-red-500">*</span></th>
-                    <th className="px-4 py-3 w-32 text-center bg-indigo-50/40">SL Trả <span className="text-red-500">*</span></th>
+                    <th className="px-4 py-3 min-w-60">
+                      Sản phẩm <span className="text-red-500">*</span>
+                    </th>
+                    <th className="px-4 py-3 min-w-50">
+                      Lô Hàng (Batch) <span className="text-red-500">*</span>
+                    </th>
+                    <th className="px-4 py-3 min-w-30">
+                      ĐVT <span className="text-red-500">*</span>
+                    </th>
+                    <th className="px-4 py-3 w-32 text-center bg-indigo-50/40">
+                      SL Trả <span className="text-red-500">*</span>
+                    </th>
                     <th className="px-4 py-3 w-36 text-right">Đơn giá</th>
                     <th className="px-4 py-3 w-36 text-right">Thành tiền</th>
                     <th className="px-4 py-3 w-16 text-center">Xóa</th>
@@ -445,76 +486,87 @@ const CustomerReturnForm: React.FC = () => {
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {details.map((row, idx) => {
-                    const rowBatches = batches.filter(b => b.variantId === Number(row.variantId));
-                    const rowTotal = (Number(row.returnedQuantity) || 0) * (Number(row.unitPrice) || 0);
+                    const rowBatches = batches.filter((b) => b.variantId === Number(row.variantId));
+                    const rowTotal =
+                      (Number(row.returnedQuantity) || 0) * (Number(row.unitPrice) || 0);
 
                     return (
                       <tr key={row.id} className="hover:bg-slate-50/50 transition-colors">
-                        <td className="px-4 py-2 text-center text-slate-400 font-medium">{idx + 1}</td>
-                        
+                        <td className="px-4 py-2 text-center text-slate-400 font-medium">
+                          {idx + 1}
+                        </td>
+
                         <td className="p-2">
                           <FormSelect
-                              label=""
-                              showSearch
-                              placeholder="Chọn sản phẩm..."
-                              options={variants}
-                              value={row.variantId}
-                              error={errors[`variantId_${row.id}`]}
-                              onSelect={(val) => {
-                                  handleDetailChange(row.id, 'variantId', val ? Number(val) : '');
-                                  handleDetailChange(row.id, 'batchId', '');
-                              }}
+                            label=""
+                            showSearch
+                            placeholder="Chọn sản phẩm..."
+                            options={variants}
+                            value={row.variantId}
+                            error={errors[`variantId_${row.id}`]}
+                            onSelect={(val) => {
+                              handleDetailChange(row.id, 'variantId', val ? Number(val) : '');
+                              handleDetailChange(row.id, 'batchId', '');
+                            }}
                           />
                         </td>
-                        
+
                         <td className="p-2">
                           <FormSelect
-                              label=""
-                              placeholder="-- Chọn Lô --"
-                              options={rowBatches.map(b => ({ value: b.id, label: b.batchCode }))}
-                              value={row.batchId}
-                              error={errors[`batchId_${row.id}`]}
-                              disabled={!row.variantId}
-                              onSelect={(val) => handleDetailChange(row.id, 'batchId', val ? Number(val) : '')}
+                            label=""
+                            placeholder="-- Chọn Lô --"
+                            options={rowBatches.map((b) => ({ value: b.id, label: b.batchCode }))}
+                            value={row.batchId}
+                            error={errors[`batchId_${row.id}`]}
+                            disabled={!row.variantId}
+                            onSelect={(val) =>
+                              handleDetailChange(row.id, 'batchId', val ? Number(val) : '')
+                            }
                           />
                         </td>
-                        
+
                         <td className="p-2">
                           <FormSelect
-                              label=""
-                              placeholder="ĐVT"
-                              options={uoms}
-                              value={row.uoMId}
-                              error={errors[`uoMId_${row.id}`]}
-                              onSelect={(val) => handleDetailChange(row.id, 'uoMId', val ? Number(val) : '')}
+                            label=""
+                            placeholder="ĐVT"
+                            options={uoms}
+                            value={row.uoMId}
+                            error={errors[`uoMId_${row.id}`]}
+                            onSelect={(val) =>
+                              handleDetailChange(row.id, 'uoMId', val ? Number(val) : '')
+                            }
                           />
                         </td>
-                        
+
                         <td className="p-2 bg-indigo-50/20 border-l border-indigo-100">
                           <FormInput
-                              label=""
-                              type="number"
-                              className="text-center font-bold text-indigo-700"
-                              value={row.returnedQuantity}
-                              error={errors[`quantity_${row.id}`]}
-                              onChange={(e) => handleDetailChange(row.id, 'returnedQuantity', Number(e.target.value))}
+                            label=""
+                            type="number"
+                            className="text-center font-bold text-indigo-700"
+                            value={row.returnedQuantity}
+                            error={errors[`quantity_${row.id}`]}
+                            onChange={(e) =>
+                              handleDetailChange(row.id, 'returnedQuantity', Number(e.target.value))
+                            }
                           />
                         </td>
-                        
+
                         <td className="p-2 text-right">
                           <FormInput
-                              label=""
-                              type="number"
-                              className="text-right font-medium text-slate-700"
-                              value={row.unitPrice}
-                              onChange={(e) => handleDetailChange(row.id, 'unitPrice', Number(e.target.value))}
+                            label=""
+                            type="number"
+                            className="text-right font-medium text-slate-700"
+                            value={row.unitPrice}
+                            onChange={(e) =>
+                              handleDetailChange(row.id, 'unitPrice', Number(e.target.value))
+                            }
                           />
                         </td>
-                        
+
                         <td className="px-4 py-2 text-right font-bold text-slate-800">
                           {formatCurrency(rowTotal)}
                         </td>
-                        
+
                         <td className="px-4 py-2 text-center">
                           <button
                             type="button"

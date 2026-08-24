@@ -1,13 +1,17 @@
-﻿using AutoMapper;
+using AutoMapper;
 using backend.Data;
 using backend.DTOs;
 using backend.DTOs.AuthDTOs;
+using backend.Helpers;
 using backend.Models;
 using backend.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
 namespace backend.Services
 {
+    /// <summary>
+    /// Dịch vụ xử lý nghiệp vụ quản lý tài khoản và hồ sơ nhân viên (IAM).
+    /// </summary>
     public class IAUserService : IIAUserService
     {
         private readonly SolarisDbContext _context;
@@ -19,6 +23,7 @@ namespace backend.Services
             _mapper = mapper;
         }
 
+        #region Truy vấn (Query)
         public async Task<IEnumerable<IAUserReadDto>> GetAllListAsync()
         {
             var items = await _context.IAUsers
@@ -33,38 +38,56 @@ namespace backend.Services
         }
 
         public async Task<PagedResult<IAUserReadDto>> GetPagedAsync(
-            string? search, int? roleId, int? warehouseId, bool? isActive, int pageIndex, int pageSize)
+            string? search,
+            int? roleId,
+            int? warehouseId,
+            bool? isActive,
+            int pageIndex,
+            int pageSize)
         {
             var query = _context.IAUsers
                 .Include(x => x.UserRoles)
                 .Include(x => x.UserWarehouses)
                 .Include(x => x.UserPermissions)
+                .AsNoTracking()
                 .AsQueryable();
 
+            #region Bộ lọc tìm kiếm
             if (!string.IsNullOrWhiteSpace(search))
             {
-                var searchLower = search.ToLower();
+                var searchLower = search.Trim().ToLower();
                 query = query.Where(x =>
                     x.Username.ToLower().Contains(searchLower) ||
                     x.FullName.ToLower().Contains(searchLower) ||
-                    x.PhoneNumber.Contains(searchLower));
+                    x.PhoneNumber.Contains(searchLower) ||
+                    x.CitizenId.Contains(searchLower) ||
+                    x.Email.ToLower().Contains(searchLower));
             }
 
-            if (isActive.HasValue) query = query.Where(x => x.IsActive == isActive.Value);
+            if (isActive.HasValue)
+            {
+                query = query.Where(x => x.IsActive == isActive.Value);
+            }
 
-            // 🔥 Lọc nhân viên theo Phòng ban (Role) và Kho (Warehouse)
+            // Lọc theo Vai trò (Role)
             if (roleId.HasValue)
+            {
                 query = query.Where(x => x.UserRoles.Any(ur => ur.RoleId == roleId.Value));
+            }
 
+            // Lọc theo Kho hàng được phân quyền (Warehouse)
             if (warehouseId.HasValue)
+            {
                 query = query.Where(x => x.UserWarehouses.Any(uw => uw.WarehouseId == warehouseId.Value));
+            }
+            #endregion
 
             var totalRecords = await query.CountAsync();
+
             var items = await query
                 .OrderByDescending(x => x.CreatedAt)
                 .Skip((pageIndex - 1) * pageSize)
                 .Take(pageSize)
-                .AsNoTracking()
                 .ToListAsync();
 
             return new PagedResult<IAUserReadDto>
@@ -86,53 +109,74 @@ namespace backend.Services
                 .AsNoTracking()
                 .FirstOrDefaultAsync(x => x.Id == id);
 
-            if (entity == null) throw new KeyNotFoundException("Không tìm thấy nhân viên.");
+            if (entity == null)
+            {
+                throw new KeyNotFoundException($"Không tìm thấy tài khoản nhân viên với ID = {id}.");
+            }
 
             return _mapper.Map<IAUserReadDto>(entity);
         }
+        #endregion
 
+        #region Thao tác Dữ liệu (Command)
         public async Task<int> CreateAsync(IAUserCreateDto dto)
         {
-            // Kiểm tra trùng lặp (Username, CCCD, Email, SĐT)
-            if (await _context.IAUsers.AnyAsync(x => x.Username == dto.Username || x.CitizenId == dto.CitizenId || x.Email == dto.Email || x.PhoneNumber == dto.PhoneNumber))
-                throw new Exception("Dữ liệu định danh (Username, CCCD, Email hoặc SĐT) đã bị trùng lặp trong hệ thống.");
+            // Kiểm tra trùng lặp thông tin định danh (Username, CCCD, Email, SĐT)
+            bool isDuplicate = await _context.IAUsers.AnyAsync(x =>
+                x.Username == dto.Username ||
+                x.CitizenId == dto.CitizenId ||
+                x.Email == dto.Email ||
+                x.PhoneNumber == dto.PhoneNumber);
 
-            using var transaction = await _context.Database.BeginTransactionAsync();
-            try
+            if (isDuplicate)
+            {
+                throw new InvalidOperationException("Thông tin định danh (Tên đăng nhập, CCCD, Email hoặc SĐT) đã tồn tại trong hệ thống.");
+            }
+
+            return await _context.ExecuteInTransactionAsync(async () =>
             {
                 var entity = _mapper.Map<IAUser>(dto);
 
-                // 🔥 Hash mật khẩu trước khi lưu
+                // Mã hóa mật khẩu bằng BCrypt
                 entity.PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password);
 
                 _context.IAUsers.Add(entity);
                 await _context.SaveChangesAsync();
 
-                // 1. Thêm Roles
-                if (dto.RoleIds.Any()) _context.IAUserRoles.AddRange(dto.RoleIds.Select(rId => new IAUserRole { UserId = entity.Id, RoleId = rId }));
+                // Gán danh sách vai trò ban đầu
+                if (dto.RoleIds.Any())
+                {
+                    _context.IAUserRoles.AddRange(
+                        dto.RoleIds.Select(rId => new IAUserRole { UserId = entity.Id, RoleId = rId }));
+                }
 
-                // 2. Thêm Kho
-                if (dto.WarehouseIds.Any()) _context.IAUserWarehouses.AddRange(dto.WarehouseIds.Select(wId => new IAUserWarehouse { UserId = entity.Id, WarehouseId = wId }));
+                // Gán danh sách kho phụ trách ban đầu
+                if (dto.WarehouseIds.Any())
+                {
+                    _context.IAUserWarehouses.AddRange(
+                        dto.WarehouseIds.Select(wId => new IAUserWarehouse { UserId = entity.Id, WarehouseId = wId }));
+                }
 
-                // 3. Thêm Ngoại lệ Phân quyền
-                if (dto.CustomPermissions.Any()) _context.IAUserPermissions.AddRange(dto.CustomPermissions.Select(p => new IAUserPermission { UserId = entity.Id, PermissionId = p.PermissionId, IsGranted = p.IsGranted }));
+                // Thiết lập các quyền ngoại lệ ban đầu
+                if (dto.CustomPermissions.Any())
+                {
+                    _context.IAUserPermissions.AddRange(
+                        dto.CustomPermissions.Select(p => new IAUserPermission
+                        {
+                            UserId = entity.Id,
+                            PermissionId = p.PermissionId,
+                            IsGranted = p.IsGranted
+                        }));
+                }
 
                 await _context.SaveChangesAsync();
-                await transaction.CommitAsync();
-
                 return entity.Id;
-            }
-            catch
-            {
-                await transaction.RollbackAsync();
-                throw;
-            }
+            });
         }
 
         public async Task<bool> UpdateAsync(int id, IAUserUpdateDto dto)
         {
-            using var transaction = await _context.Database.BeginTransactionAsync();
-            try
+            return await _context.ExecuteInTransactionAsync(async () =>
             {
                 var entity = await _context.IAUsers
                     .Include(x => x.UserRoles)
@@ -140,40 +184,77 @@ namespace backend.Services
                     .Include(x => x.UserPermissions)
                     .FirstOrDefaultAsync(x => x.Id == id);
 
-                if (entity == null) throw new KeyNotFoundException("Không tìm thấy nhân viên.");
+                if (entity == null)
+                {
+                    throw new KeyNotFoundException($"Không tìm thấy tài khoản nhân viên với ID = {id}.");
+                }
 
-                // Kiểm tra trùng CCCD, Email, SĐT (trừ bản thân nó)
-                if (await _context.IAUsers.AnyAsync(x => x.Id != id && (x.CitizenId == dto.CitizenId || x.Email == dto.Email || x.PhoneNumber == dto.PhoneNumber)))
-                    throw new Exception("Dữ liệu định danh (CCCD, Email hoặc SĐT) đã bị trùng lặp với nhân viên khác.");
+                // Kiểm tra trùng lặp thông tin định danh với các tài khoản khác
+                bool isDuplicate = await _context.IAUsers.AnyAsync(x =>
+                    x.Id != id && (
+                        x.CitizenId == dto.CitizenId ||
+                        x.Email == dto.Email ||
+                        x.PhoneNumber == dto.PhoneNumber));
+
+                if (isDuplicate)
+                {
+                    throw new InvalidOperationException("Thông tin định danh (CCCD, Email hoặc SĐT) đã bị trùng lặp với nhân viên khác.");
+                }
 
                 _mapper.Map(dto, entity);
 
-                // --- XÓA CŨ ---
-                if (entity.UserRoles.Any()) _context.IAUserRoles.RemoveRange(entity.UserRoles);
-                if (entity.UserWarehouses.Any()) _context.IAUserWarehouses.RemoveRange(entity.UserWarehouses);
-                if (entity.UserPermissions.Any()) _context.IAUserPermissions.RemoveRange(entity.UserPermissions);
+                #region Đồng bộ lại các quan hệ Nhiều - Nhiều
+                // 1. Đồng bộ Vai trò (Roles)
+                if (entity.UserRoles.Any())
+                {
+                    _context.IAUserRoles.RemoveRange(entity.UserRoles);
+                }
+                if (dto.RoleIds.Any())
+                {
+                    _context.IAUserRoles.AddRange(
+                        dto.RoleIds.Select(rId => new IAUserRole { UserId = id, RoleId = rId }));
+                }
 
-                // --- THÊM MỚI ---
-                if (dto.RoleIds.Any()) _context.IAUserRoles.AddRange(dto.RoleIds.Select(rId => new IAUserRole { UserId = id, RoleId = rId }));
-                if (dto.WarehouseIds.Any()) _context.IAUserWarehouses.AddRange(dto.WarehouseIds.Select(wId => new IAUserWarehouse { UserId = id, WarehouseId = wId }));
-                if (dto.CustomPermissions.Any()) _context.IAUserPermissions.AddRange(dto.CustomPermissions.Select(p => new IAUserPermission { UserId = id, PermissionId = p.PermissionId, IsGranted = p.IsGranted }));
+                // 2. Đồng bộ Kho hàng (Warehouses)
+                if (entity.UserWarehouses.Any())
+                {
+                    _context.IAUserWarehouses.RemoveRange(entity.UserWarehouses);
+                }
+                if (dto.WarehouseIds.Any())
+                {
+                    _context.IAUserWarehouses.AddRange(
+                        dto.WarehouseIds.Select(wId => new IAUserWarehouse { UserId = id, WarehouseId = wId }));
+                }
+
+                // 3. Đồng bộ Quyền ngoại lệ (Custom Permissions)
+                if (entity.UserPermissions.Any())
+                {
+                    _context.IAUserPermissions.RemoveRange(entity.UserPermissions);
+                }
+                if (dto.CustomPermissions.Any())
+                {
+                    _context.IAUserPermissions.AddRange(
+                        dto.CustomPermissions.Select(p => new IAUserPermission
+                        {
+                            UserId = id,
+                            PermissionId = p.PermissionId,
+                            IsGranted = p.IsGranted
+                        }));
+                }
+                #endregion
 
                 await _context.SaveChangesAsync();
-                await transaction.CommitAsync();
-
                 return true;
-            }
-            catch
-            {
-                await transaction.RollbackAsync();
-                throw;
-            }
+            });
         }
 
         public async Task<bool> ChangePasswordAsync(int id, IAUserChangePasswordDto dto)
         {
             var entity = await _context.IAUsers.FindAsync(id);
-            if (entity == null) throw new KeyNotFoundException("Không tìm thấy nhân viên.");
+            if (entity == null)
+            {
+                throw new KeyNotFoundException($"Không tìm thấy tài khoản nhân viên với ID = {id}.");
+            }
 
             entity.PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.NewPassword);
             await _context.SaveChangesAsync();
@@ -183,7 +264,12 @@ namespace backend.Services
         public async Task<bool> DeleteAsync(int id)
         {
             var entity = await _context.IAUsers.FindAsync(id);
-            if (entity == null) throw new KeyNotFoundException("Không tìm thấy nhân viên.");
+            if (entity == null)
+            {
+                throw new KeyNotFoundException($"Không tìm thấy tài khoản nhân viên với ID = {id}.");
+            }
+
+            // DbContext sẽ tự động chuyển thành Soft Delete (IsDeleted = true) trong SaveChangesAsync
             _context.IAUsers.Remove(entity);
             await _context.SaveChangesAsync();
             return true;
@@ -192,10 +278,15 @@ namespace backend.Services
         public async Task<bool> ToggleActiveAsync(int id)
         {
             var entity = await _context.IAUsers.FindAsync(id);
-            if (entity == null) throw new KeyNotFoundException("Không tìm thấy nhân viên.");
+            if (entity == null)
+            {
+                throw new KeyNotFoundException($"Không tìm thấy tài khoản nhân viên với ID = {id}.");
+            }
+
             entity.IsActive = !entity.IsActive;
             await _context.SaveChangesAsync();
-            return true;
+            return entity.IsActive;
         }
+        #endregion
     }
 }

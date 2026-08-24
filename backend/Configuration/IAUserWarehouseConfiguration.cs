@@ -4,26 +4,34 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace backend.Configurations
 {
+    /// <summary>
+    /// Cấu hình Fluent API cho bảng trung gian Phân quyền dữ liệu theo kho (IAUserWarehouse).
+    /// </summary>
     public class IAUserWarehouseConfiguration : IEntityTypeConfiguration<IAUserWarehouse>
     {
         public void Configure(EntityTypeBuilder<IAUserWarehouse> builder)
         {
             builder.ToTable("IAUserWarehouses");
 
-            // Tạo khóa chính kép (Composite Key)
+            // Khóa chính phức hợp: Mỗi người dùng chỉ được gán quyền cho một kho cụ thể một lần
             builder.HasKey(x => new { x.UserId, x.WarehouseId });
 
-            // Quan hệ với bảng IAUser
-            builder.HasOne(x => x.User)
-                   .WithMany(x => x.UserWarehouses)
-                   .HasForeignKey(x => x.UserId)
-                   .OnDelete(DeleteBehavior.Cascade); // Xóa nhân viên thì tự động xóa dòng phân quyền này
+            builder.Property(x => x.AssignedAt)
+                .HasColumnType("datetime2");
 
-            // Quan hệ với bảng Warehouse
+            #region Cấu hình Khóa ngoại & Quan hệ (Foreign Keys)
+            // Quan hệ với bảng Người dùng (IAUser)
+            builder.HasOne(x => x.User)
+                .WithMany(u => u.UserWarehouses)
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Quan hệ với bảng Kho hàng (Warehouse)
             builder.HasOne(x => x.Warehouse)
-                   .WithMany(x => x.UserWarehouses)
-                   .HasForeignKey(x => x.WarehouseId)
-                   .OnDelete(DeleteBehavior.Cascade); // Xóa kho thì tự động xóa dòng phân quyền này
+                .WithMany(w => w.UserWarehouses)
+                .HasForeignKey(x => x.WarehouseId)
+                .OnDelete(DeleteBehavior.Cascade);
+            #endregion
         }
     }
 }

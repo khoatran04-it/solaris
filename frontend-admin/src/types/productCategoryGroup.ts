@@ -1,25 +1,25 @@
 import { PaginationParams } from './common';
 
 export interface ProductCategoryGroupQueryParams extends PaginationParams {
-    names?: string;
-    isActive?: boolean;
+  names?: string;
+  isActive?: boolean;
 }
 
 export interface ProductCategoryGroup {
-    id: number;
-    code: string;
-    name: string;
-    description?: string;
-    imagePath?: string;
-    isActive: boolean;
-    createdAt: string;
-    updatedAt: string;
+  id: number;
+  code: string;
+  name: string;
+  description?: string;
+  imagePath?: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface ProductCategoryGroupPayload {
-    name: string;
-    code: string;
-    description?: string;
-    imagePath?: string;
-    isActive?: boolean;
+  name: string;
+  code: string;
+  description?: string;
+  imagePath?: string;
+  isActive?: boolean;
 }

@@ -3,33 +3,31 @@ using System.ComponentModel.DataAnnotations;
 namespace backend.DTOs.AuthDTOs
 {
     /// <summary>
-    /// Yêu cầu đăng nhập tài khoản nhân viên.
+    /// DTO yêu cầu đăng nhập hệ thống.
     /// </summary>
     public class LoginRequestDto
     {
-        /// <summary>Tên đăng nhập hệ thống</summary>
         [Required(ErrorMessage = "Vui lòng nhập tên đăng nhập.")]
         public required string Username { get; set; }
 
-        /// <summary>Mật khẩu đăng nhập</summary>
         [Required(ErrorMessage = "Vui lòng nhập mật khẩu.")]
         public required string Password { get; set; }
     }
 
     /// <summary>
-    /// Phản hồi kết quả đăng nhập thành công.
+    /// DTO kết quả phản hồi khi xác thực đăng nhập thành công.
     /// </summary>
     public class LoginResponseDto
     {
-        /// <summary>Chuỗi JWT Token dùng để xác thực các API tiếp theo</summary>
+        /// <summary>Chuỗi JWT Token để đính kèm vào Header Authorization của các yêu cầu API tiếp theo.</summary>
         public required string Token { get; set; }
 
-        /// <summary>Thông tin chi tiết của nhân viên và danh sách quyền hạn</summary>
+        /// <summary>Thông tin người dùng và tập quyền hạn phục vụ điều hướng trên giao diện (Client-side Routing/RBAC).</summary>
         public required IAUserAuthReadDto UserInfo { get; set; }
     }
 
     /// <summary>
-    /// Thông tin tóm tắt của nhân viên sau khi xác thực danh tính.
+    /// DTO thông tin tóm tắt và tập quyền đã phân giải của người dùng sau khi xác thực.
     /// </summary>
     public class IAUserAuthReadDto
     {
@@ -39,13 +37,13 @@ namespace backend.DTOs.AuthDTOs
         public string Email { get; set; } = string.Empty;
         public string? AvatarUrl { get; set; }
 
-        /// <summary>Danh sách mã các vai trò (Roles) nhân viên nắm giữ</summary>
+        /// <summary>Danh sách mã vai trò (Ví dụ: ["ADMIN", "WAREHOUSE_KEEPER"]).</summary>
         public List<string> Roles { get; set; } = new();
 
-        /// <summary>Danh sách ID các kho nhân viên được phân quyền thao tác (Data-level Authorization)</summary>
+        /// <summary>Danh sách ID kho được phép truy cập và thao tác dữ liệu (Data Scoping).</summary>
         public List<int> WarehouseIds { get; set; } = new();
 
-        /// <summary>Danh sách tất cả mã quyền thực tế (Sau khi tổng hợp Role và ngoại lệ UserPermission)</summary>
+        /// <summary>Tập hợp mã quyền hạn hiệu lực thực tế sau khi tính toán (Role Permissions + Custom Overrides).</summary>
         public List<string> Permissions { get; set; } = new();
     }
 }

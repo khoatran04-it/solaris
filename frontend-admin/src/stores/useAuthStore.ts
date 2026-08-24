@@ -16,7 +16,7 @@ interface AuthState {
   token: string | null;
   userInfo: UserInfo | null;
   isAuthenticated: boolean;
-  
+
   // Các hàm hành động (Actions)
   login: (token: string, userInfo: UserInfo) => void;
   logout: () => void;
@@ -41,7 +41,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     // Lưu vào ổ cứng trình duyệt để axiosClient và F5 web đọc được
     localStorage.setItem('token', token);
     localStorage.setItem('userInfo', JSON.stringify(userInfo));
-    
+
     // Cập nhật State trên RAM của React
     set({ token, userInfo, isAuthenticated: true });
   },
@@ -51,7 +51,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     // Quét sạch ổ cứng
     localStorage.removeItem('token');
     localStorage.removeItem('userInfo');
-    
+
     // Xóa State trên RAM
     set({ token: null, userInfo: null, isAuthenticated: false });
   },

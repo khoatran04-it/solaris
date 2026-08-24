@@ -39,8 +39,14 @@ const PurchaseOrderForm: React.FC = () => {
   const { userInfo } = useAuthStore();
 
   const [isLoading, setIsLoading] = useState(false);
-  const [toast, setToast] = useState<{ show: boolean; type: 'success' | 'warning' | 'error'; message: string }>({
-    show: false, type: 'success', message: ''
+  const [toast, setToast] = useState<{
+    show: boolean;
+    type: 'success' | 'warning' | 'error';
+    message: string;
+  }>({
+    show: false,
+    type: 'success',
+    message: '',
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -70,9 +76,9 @@ const PurchaseOrderForm: React.FC = () => {
         uomApi.getAllList(),
       ]);
 
-      setSuppliers(supplierRes.map(s => ({ value: s.id, label: `${s.code} - ${s.name}` })));
-      setAllVariants(variantRes.map(v => ({ value: v.id, label: `${v.code} - ${v.name}` })));
-      setUoms(uomRes.map(u => ({ value: u.id, label: u.name })));
+      setSuppliers(supplierRes.map((s) => ({ value: s.id, label: `${s.code} - ${s.name}` })));
+      setAllVariants(variantRes.map((v) => ({ value: v.id, label: `${v.code} - ${v.name}` })));
+      setUoms(uomRes.map((u) => ({ value: u.id, label: u.name })));
     } catch (error) {
       showToast('error', 'Không thể tải dữ liệu danh mục bổ trợ');
     }
@@ -105,7 +111,7 @@ const PurchaseOrderForm: React.FC = () => {
     setIsLoading(true);
     try {
       const data = await purchaseOrderApi.getById(Number(id));
-      
+
       if (data.status !== PurchaseOrderStatus.Draft) {
         showToast('warning', 'Chỉ được phép chỉnh sửa đơn hàng đang ở trạng thái Nháp!');
         setTimeout(() => navigate('/purchase-orders'), 1500);
@@ -114,12 +120,14 @@ const PurchaseOrderForm: React.FC = () => {
 
       setSupplierId(data.supplierId);
       setOrderDate(data.orderDate ? data.orderDate.split('T')[0] : '');
-      setExpectedDeliveryDate(data.expectedDeliveryDate ? data.expectedDeliveryDate.split('T')[0] : '');
+      setExpectedDeliveryDate(
+        data.expectedDeliveryDate ? data.expectedDeliveryDate.split('T')[0] : ''
+      );
       setNotes(data.note || '');
-      
+
       if (data.details && data.details.length > 0) {
         setDetails(
-          data.details.map(d => ({
+          data.details.map((d) => ({
             variantId: d.variantId,
             uoMId: d.uoMId,
             orderQuantity: d.orderQuantity,
@@ -146,7 +154,7 @@ const PurchaseOrderForm: React.FC = () => {
   // --- HELPERS ---
   const showToast = (type: 'success' | 'warning' | 'error', message: string) => {
     setToast({ show: true, type, message });
-    setTimeout(() => setToast(prev => ({ ...prev, show: false })), 3000);
+    setTimeout(() => setToast((prev) => ({ ...prev, show: false })), 3000);
   };
 
   const handleAddRow = () => {
@@ -165,7 +173,7 @@ const PurchaseOrderForm: React.FC = () => {
 
     // 🔥 SMART AUTO-FILL: Khi chọn Sản phẩm -> Tự động điền Giá nhập và ĐVT mua từ bảng giá của NCC
     if (field === 'variantId' && value && supplierProducts.length > 0) {
-      const sp = supplierProducts.find(p => p.variantId === Number(value));
+      const sp = supplierProducts.find((p) => p.variantId === Number(value));
       if (sp) {
         newDetails[index].unitPrice = sp.lastImportPrice || 0;
         newDetails[index].uoMId = sp.purchaseUoMId || newDetails[index].uoMId;
@@ -176,22 +184,29 @@ const PurchaseOrderForm: React.FC = () => {
     }
 
     setDetails(newDetails);
-    
+
     if (errors[`${field}_${index}`]) {
-      setErrors(prev => { const e = { ...prev }; delete e[`${field}_${index}`]; return e; });
+      setErrors((prev) => {
+        const e = { ...prev };
+        delete e[`${field}_${index}`];
+        return e;
+      });
     }
   };
 
   const calculateTotal = () => {
-    return details.reduce((sum, row) => sum + (Number(row.orderQuantity || 0) * Number(row.unitPrice || 0)), 0);
+    return details.reduce(
+      (sum, row) => sum + Number(row.orderQuantity || 0) * Number(row.unitPrice || 0),
+      0
+    );
   };
 
   // Tính toán danh sách Options Sản Phẩm hiển thị cho Dropdown
   const getVariantOptions = () => {
     if (onlySupplierProducts && supplierId && supplierProducts.length > 0) {
-      return supplierProducts.map(sp => ({
+      return supplierProducts.map((sp) => ({
         value: sp.variantId,
-        label: `${sp.variantCode || sp.variantSKU || `#${sp.variantId}`} - ${sp.variantName} (${sp.lastImportPrice.toLocaleString('vi-VN')} ₫/${sp.purchaseUoMName || 'ĐVT'})`
+        label: `${sp.variantCode || sp.variantSKU || `#${sp.variantId}`} - ${sp.variantName} (${sp.lastImportPrice.toLocaleString('vi-VN')} ₫/${sp.purchaseUoMName || 'ĐVT'})`,
       }));
     }
     return allVariants;
@@ -200,7 +215,7 @@ const PurchaseOrderForm: React.FC = () => {
   // Tìm thông tin MOQ của SP đang chọn
   const getSupplierProductInfo = (variantId: number | '') => {
     if (!variantId || !supplierProducts.length) return null;
-    return supplierProducts.find(sp => sp.variantId === Number(variantId));
+    return supplierProducts.find((sp) => sp.variantId === Number(variantId));
   };
 
   // --- VALIDATION & SUBMIT ---
@@ -209,7 +224,7 @@ const PurchaseOrderForm: React.FC = () => {
 
     if (!supplierId) newErrors.supplierId = 'Vui lòng chọn nhà cung cấp';
     if (!orderDate) newErrors.orderDate = 'Vui lòng chọn ngày đặt hàng';
-    
+
     if (details.length === 0) {
       newErrors.details = 'Cần ít nhất 1 mặt hàng trong đơn!';
     } else {
@@ -231,9 +246,11 @@ const PurchaseOrderForm: React.FC = () => {
 
     try {
       setIsLoading(true);
-      
+
       const safeOrderDate = `${orderDate}T00:00:00Z`;
-      const safeDeliveryDate = expectedDeliveryDate ? `${expectedDeliveryDate}T00:00:00Z` : undefined;
+      const safeDeliveryDate = expectedDeliveryDate
+        ? `${expectedDeliveryDate}T00:00:00Z`
+        : undefined;
 
       const payload: PurchaseOrderCreatePayload = {
         supplierId: Number(supplierId),
@@ -241,7 +258,7 @@ const PurchaseOrderForm: React.FC = () => {
         expectedDeliveryDate: safeDeliveryDate,
         note: notes.trim(),
         createdById: userInfo?.id || 1,
-        details: details.map(d => ({
+        details: details.map((d) => ({
           variantId: Number(d.variantId),
           uoMId: Number(d.uoMId),
           orderQuantity: Number(d.orderQuantity),
@@ -278,16 +295,15 @@ const PurchaseOrderForm: React.FC = () => {
 
       <FormCard>
         <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-          
           {/* --- SECTION 1: THÔNG TIN CHUNG --- */}
           <FormSection title="1. Thông Tin Chung">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <FormSelect
                 label="Nhà Cung Cấp"
                 value={supplierId}
-                onSelect={(val) => { 
-                  setSupplierId(val); 
-                  setErrors(prev => ({...prev, supplierId: ''}));
+                onSelect={(val) => {
+                  setSupplierId(val);
+                  setErrors((prev) => ({ ...prev, supplierId: '' }));
                 }}
                 options={suppliers}
                 error={errors.supplierId}
@@ -300,7 +316,10 @@ const PurchaseOrderForm: React.FC = () => {
                 label="Ngày Lập Đơn"
                 type="date"
                 value={orderDate}
-                onChange={(e) => { setOrderDate(e.target.value); setErrors(prev => ({...prev, orderDate: ''})) }}
+                onChange={(e) => {
+                  setOrderDate(e.target.value);
+                  setErrors((prev) => ({ ...prev, orderDate: '' }));
+                }}
                 error={errors.orderDate}
                 required
               />
@@ -324,21 +343,23 @@ const PurchaseOrderForm: React.FC = () => {
 
           {/* --- SECTION 2: CHI TIẾT HÀNG HÓA --- */}
           <FormSection title="2. Chi Tiết Đặt Hàng">
-            
             {/* Thanh điều khiển bộ lọc sản phẩm NCC */}
             {supplierId ? (
               <div className="mb-4 p-3 bg-slate-50 border border-slate-200 rounded-xl flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
                   <Filter size={16} className="text-yellow-600" />
                   <span className="text-xs font-bold text-slate-700">
-                    Bảng giá NCC: {loadingSupplierProducts ? 'Đang tải...' : `${supplierProducts.length} mặt hàng đã liên kết`}
+                    Bảng giá NCC:{' '}
+                    {loadingSupplierProducts
+                      ? 'Đang tải...'
+                      : `${supplierProducts.length} mặt hàng đã liên kết`}
                   </span>
                 </div>
 
                 {supplierProducts.length > 0 ? (
                   <label className="inline-flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-700">
-                    <input 
-                      type="checkbox" 
+                    <input
+                      type="checkbox"
                       checked={onlySupplierProducts}
                       onChange={(e) => setOnlySupplierProducts(e.target.checked)}
                       className="rounded text-yellow-500 focus:ring-yellow-400"
@@ -359,17 +380,29 @@ const PurchaseOrderForm: React.FC = () => {
                 {errors.details}
               </div>
             )}
-            
+
             <div className="border border-slate-200 rounded-xl overflow-hidden bg-white">
               <table className="w-full text-left border-collapse">
                 <thead className="bg-slate-50 border-b border-slate-200">
                   <tr>
-                    <th className="py-3 px-4 text-xs font-bold text-slate-500 uppercase w-[35%]">Sản Phẩm (Mã SKU) <span className="text-red-500">*</span></th>
-                    <th className="py-3 px-2 text-xs font-bold text-slate-500 uppercase w-[15%]">Đơn Vị <span className="text-red-500">*</span></th>
-                    <th className="py-3 px-2 text-xs font-bold text-slate-500 uppercase w-[15%]">Số Lượng <span className="text-red-500">*</span></th>
-                    <th className="py-3 px-2 text-xs font-bold text-slate-500 uppercase w-[15%]">Đơn Giá Nhập <span className="text-red-500">*</span></th>
-                    <th className="py-3 px-4 text-xs font-bold text-slate-500 uppercase w-[15%] text-right">Thành Tiền</th>
-                    <th className="py-3 px-2 text-xs font-bold text-slate-500 uppercase w-[5%] text-center">Xóa</th>
+                    <th className="py-3 px-4 text-xs font-bold text-slate-500 uppercase w-[35%]">
+                      Sản Phẩm (Mã SKU) <span className="text-red-500">*</span>
+                    </th>
+                    <th className="py-3 px-2 text-xs font-bold text-slate-500 uppercase w-[15%]">
+                      Đơn Vị <span className="text-red-500">*</span>
+                    </th>
+                    <th className="py-3 px-2 text-xs font-bold text-slate-500 uppercase w-[15%]">
+                      Số Lượng <span className="text-red-500">*</span>
+                    </th>
+                    <th className="py-3 px-2 text-xs font-bold text-slate-500 uppercase w-[15%]">
+                      Đơn Giá Nhập <span className="text-red-500">*</span>
+                    </th>
+                    <th className="py-3 px-4 text-xs font-bold text-slate-500 uppercase w-[15%] text-right">
+                      Thành Tiền
+                    </th>
+                    <th className="py-3 px-2 text-xs font-bold text-slate-500 uppercase w-[5%] text-center">
+                      Xóa
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -382,18 +415,21 @@ const PurchaseOrderForm: React.FC = () => {
                   ) : (
                     details.map((row, idx) => {
                       const spInfo = getSupplierProductInfo(row.variantId);
-                      const isBelowMoq = spInfo && row.orderQuantity > 0 && row.orderQuantity < spInfo.minimumOrderQuantity;
+                      const isBelowMoq =
+                        spInfo &&
+                        row.orderQuantity > 0 &&
+                        row.orderQuantity < spInfo.minimumOrderQuantity;
 
                       return (
                         <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
                           <td className="p-2">
-                            <FormSelect 
-                              label="" 
-                              options={getVariantOptions()} 
-                              value={row.variantId} 
-                              showSearch 
+                            <FormSelect
+                              label=""
+                              options={getVariantOptions()}
+                              value={row.variantId}
+                              showSearch
                               placeholder="Chọn SP..."
-                              onSelect={val => handleDetailChange(idx, 'variantId', val)}
+                              onSelect={(val) => handleDetailChange(idx, 'variantId', val)}
                               error={errors[`variantId_${idx}`]}
                             />
                             {spInfo ? (
@@ -410,22 +446,28 @@ const PurchaseOrderForm: React.FC = () => {
                             ) : null}
                           </td>
                           <td className="p-2">
-                            <FormSelect 
-                              label="" 
-                              options={uoms} 
-                              value={row.uoMId} 
+                            <FormSelect
+                              label=""
+                              options={uoms}
+                              value={row.uoMId}
                               placeholder="Chọn UoM"
-                              onSelect={val => handleDetailChange(idx, 'uoMId', val)}
+                              onSelect={(val) => handleDetailChange(idx, 'uoMId', val)}
                               error={errors[`uoMId_${idx}`]}
                             />
                           </td>
                           <td className="p-2">
-                            <FormInput 
-                              label="" 
-                              type="number" 
-                              value={row.orderQuantity} 
+                            <FormInput
+                              label=""
+                              type="number"
+                              value={row.orderQuantity}
                               placeholder="0"
-                              onChange={e => handleDetailChange(idx, 'orderQuantity', parseFloat(e.target.value) || 0)}
+                              onChange={(e) =>
+                                handleDetailChange(
+                                  idx,
+                                  'orderQuantity',
+                                  parseFloat(e.target.value) || 0
+                                )
+                              }
                               error={errors[`orderQuantity_${idx}`]}
                             />
                             {isBelowMoq ? (
@@ -435,18 +477,27 @@ const PurchaseOrderForm: React.FC = () => {
                             ) : null}
                           </td>
                           <td className="p-2">
-                            <FormInput 
-                              label="" 
-                              type="number" 
-                              value={row.unitPrice} 
+                            <FormInput
+                              label=""
+                              type="number"
+                              value={row.unitPrice}
                               placeholder="0"
-                              onChange={e => handleDetailChange(idx, 'unitPrice', parseFloat(e.target.value) || 0)}
+                              onChange={(e) =>
+                                handleDetailChange(
+                                  idx,
+                                  'unitPrice',
+                                  parseFloat(e.target.value) || 0
+                                )
+                              }
                               error={errors[`unitPrice_${idx}`]}
                             />
                           </td>
                           <td className="p-2 text-right">
                             <span className="font-bold text-slate-700 text-[14px]">
-                              {((row.orderQuantity || 0) * (row.unitPrice || 0)).toLocaleString('vi-VN')} ₫
+                              {((row.orderQuantity || 0) * (row.unitPrice || 0)).toLocaleString(
+                                'vi-VN'
+                              )}{' '}
+                              ₫
                             </span>
                           </td>
                           <td className="p-2 text-center">
@@ -467,7 +518,10 @@ const PurchaseOrderForm: React.FC = () => {
                 {details.length > 0 && (
                   <tfoot className="bg-slate-50/80 font-medium border-t border-slate-200">
                     <tr>
-                      <td colSpan={4} className="px-4 py-4 text-right text-slate-600 text-[13px] font-bold uppercase tracking-wider">
+                      <td
+                        colSpan={4}
+                        className="px-4 py-4 text-right text-slate-600 text-[13px] font-bold uppercase tracking-wider"
+                      >
                         Tổng Tiền Đơn Hàng:
                       </td>
                       <td className="px-4 py-4 text-right text-blue-700 font-black text-[18px]">
@@ -478,10 +532,10 @@ const PurchaseOrderForm: React.FC = () => {
                   </tfoot>
                 )}
               </table>
-              
+
               <div className="p-3 bg-slate-50/50 border-t border-slate-200 flex justify-center">
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   onClick={handleAddRow}
                   className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200/50 rounded-lg transition-colors cursor-pointer"
                 >
@@ -492,7 +546,11 @@ const PurchaseOrderForm: React.FC = () => {
           </FormSection>
 
           <div className="flex justify-end pt-4 border-t border-slate-100">
-            <SubmitButton loading={isLoading} isEditMode={isEditMode} icon={isEditMode ? Save : Plus} />
+            <SubmitButton
+              loading={isLoading}
+              isEditMode={isEditMode}
+              icon={isEditMode ? Save : Plus}
+            />
           </div>
         </form>
       </FormCard>

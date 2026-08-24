@@ -4,25 +4,25 @@ import { PaginationParams } from './common';
 // 1. ENUMS & UI CONSTANTS (Trạng thái Phiếu Nhập)
 // =========================================================
 export enum InventoryReceiptStatus {
-    Pending = 1,            // Chờ nhập kho (Phiếu vừa tạo, chờ xe tải tới)
-    Inspecting = 2,         // Đang kiểm đếm (Bốc hàng, cân đo, ghi nhận SL thực tế)
-    Completed = 3,          // Hoàn tất (Đã duyệt nhập kho, tồn kho đã được cộng)
-    Cancelled = 4,          // Đã hủy (Lập sai / Hàng bị từ chối toàn bộ)
+  Pending = 1, // Chờ nhập kho (Phiếu vừa tạo, chờ xe tải tới)
+  Inspecting = 2, // Đang kiểm đếm (Bốc hàng, cân đo, ghi nhận SL thực tế)
+  Completed = 3, // Hoàn tất (Đã duyệt nhập kho, tồn kho đã được cộng)
+  Cancelled = 4, // Đã hủy (Lập sai / Hàng bị từ chối toàn bộ)
 }
 
 // Dùng Object.keys để lấy key chuẩn số nguyên, chống lỗi Reverse Mapping
 export const InventoryReceiptStatusLabels: Record<InventoryReceiptStatus, string> = {
-    [InventoryReceiptStatus.Pending]: 'Chờ xử lý',
-    [InventoryReceiptStatus.Inspecting]: 'Đang kiểm đếm',
-    [InventoryReceiptStatus.Completed]: 'Hoàn tất',
-    [InventoryReceiptStatus.Cancelled]: 'Đã hủy',
+  [InventoryReceiptStatus.Pending]: 'Chờ xử lý',
+  [InventoryReceiptStatus.Inspecting]: 'Đang kiểm đếm',
+  [InventoryReceiptStatus.Completed]: 'Hoàn tất',
+  [InventoryReceiptStatus.Cancelled]: 'Đã hủy',
 };
 
 export const InventoryReceiptStatusColors: Record<InventoryReceiptStatus, string> = {
-    [InventoryReceiptStatus.Pending]: 'bg-slate-100 text-slate-600 border-slate-200',
-    [InventoryReceiptStatus.Inspecting]: 'bg-blue-100 text-blue-700 border-blue-200',
-    [InventoryReceiptStatus.Completed]: 'bg-green-100 text-green-800 border-green-200',
-    [InventoryReceiptStatus.Cancelled]: 'bg-rose-100 text-rose-700 border-rose-200',
+  [InventoryReceiptStatus.Pending]: 'bg-slate-100 text-slate-600 border-slate-200',
+  [InventoryReceiptStatus.Inspecting]: 'bg-blue-100 text-blue-700 border-blue-200',
+  [InventoryReceiptStatus.Completed]: 'bg-green-100 text-green-800 border-green-200',
+  [InventoryReceiptStatus.Cancelled]: 'bg-rose-100 text-rose-700 border-rose-200',
 };
 
 // =========================================================
@@ -31,48 +31,48 @@ export const InventoryReceiptStatusColors: Record<InventoryReceiptStatus, string
 
 // Chi tiết phiếu nhập
 export interface InventoryReceiptDetail {
-    id: number;
-    
-    variantId: number;
-    variantName: string;
-    variantCode: string; // Thêm mã SKU để UI dễ bề hiển thị
-    
-    batchId: number;
-    batchCode: string;
-    
-    uoMId: number;
-    uoMName: string;
-    
-    purchaseOrderDetailId?: number; // Biết được dòng nhập này từ dòng PO nào
-    
-    expectedQuantity: number;
-    acceptedQuantity: number;
-    rejectedQuantity: number;
-    rejectReason?: string;
+  id: number;
+
+  variantId: number;
+  variantName: string;
+  variantCode: string; // Thêm mã SKU để UI dễ bề hiển thị
+
+  batchId: number;
+  batchCode: string;
+
+  uoMId: number;
+  uoMName: string;
+
+  purchaseOrderDetailId?: number; // Biết được dòng nhập này từ dòng PO nào
+
+  expectedQuantity: number;
+  acceptedQuantity: number;
+  rejectedQuantity: number;
+  rejectReason?: string;
 }
 
 // Phiếu nhập kho (Header)
 export interface InventoryReceipt {
-    id: number;
-    receiptCode: string;
-    status: InventoryReceiptStatus;
-    receiptDate?: string; // Ngày giờ thực tế xe tải cập bến (ISO String)
-    note?: string;
-    cancellationReason?: string;
+  id: number;
+  receiptCode: string;
+  status: InventoryReceiptStatus;
+  receiptDate?: string; // Ngày giờ thực tế xe tải cập bến (ISO String)
+  note?: string;
+  cancellationReason?: string;
 
-    warehouseId: number;
-    warehouseName: string;
+  warehouseId: number;
+  warehouseName: string;
 
-    supplierId?: number;
-    supplierName?: string;
+  supplierId?: number;
+  supplierName?: string;
 
-    receivedById?: number;
-    receivedByName?: string;
+  receivedById?: number;
+  receivedByName?: string;
 
-    createdAt: string;
-    updatedAt: string;
+  createdAt: string;
+  updatedAt: string;
 
-    details: InventoryReceiptDetail[];
+  details: InventoryReceiptDetail[];
 }
 
 // =========================================================
@@ -80,42 +80,42 @@ export interface InventoryReceipt {
 // =========================================================
 
 export interface InventoryReceiptDetailPayload {
-    variantId: number;
-    batchId: number; // 🔥 LƯU Ý: Vì luồng của sếp bắt buộc BatchId, ta sẽ phải có UI tạo Lô hàng ngay trên màn hình Nhận hàng.
-    uoMId: number;
-    purchaseOrderDetailId?: number;
-    
-    expectedQuantity: number;
-    acceptedQuantity: number;
-    rejectedQuantity: number;
-    rejectReason?: string;
+  variantId: number;
+  batchId: number; // 🔥 LƯU Ý: Vì luồng của sếp bắt buộc BatchId, ta sẽ phải có UI tạo Lô hàng ngay trên màn hình Nhận hàng.
+  uoMId: number;
+  purchaseOrderDetailId?: number;
+
+  expectedQuantity: number;
+  acceptedQuantity: number;
+  rejectedQuantity: number;
+  rejectReason?: string;
 }
 
 export interface InventoryReceiptCreatePayload {
-    warehouseId: number;
-    supplierId?: number;
-    // Không cần gửi receivedById từ FE nếu Backend lấy từ Token của người đăng nhập (Giống CreatedById của PO).
-    // Trừ trường hợp Kế toán nhập giùm cho Thủ kho thì mới cần truyền mã Thủ kho lên.
-    receivedById?: number; 
-    
-    receiptDate?: string;
-    note?: string;
-    details: InventoryReceiptDetailPayload[];
+  warehouseId: number;
+  supplierId?: number;
+  // Không cần gửi receivedById từ FE nếu Backend lấy từ Token của người đăng nhập (Giống CreatedById của PO).
+  // Trừ trường hợp Kế toán nhập giùm cho Thủ kho thì mới cần truyền mã Thủ kho lên.
+  receivedById?: number;
+
+  receiptDate?: string;
+  note?: string;
+  details: InventoryReceiptDetailPayload[];
 }
 
 // Payload cập nhật trạng thái (Dùng cho API PATCH)
 export interface InventoryReceiptUpdateStatusPayload {
-    status: InventoryReceiptStatus;
-    cancellationReason?: string;
+  status: InventoryReceiptStatus;
+  cancellationReason?: string;
 }
 
 // =========================================================
 // 4. QUERY PARAMS (Dùng cho Bộ lọc)
 // =========================================================
 export interface InventoryReceiptQueryParams extends PaginationParams {
-    warehouseId?: number | string;
-    supplierId?: number | string;
-    status?: InventoryReceiptStatus;
-    startDate?: string;
-    endDate?: string;
+  warehouseId?: number | string;
+  supplierId?: number | string;
+  status?: InventoryReceiptStatus;
+  startDate?: string;
+  endDate?: string;
 }
