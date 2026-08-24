@@ -28,7 +28,10 @@ import { useAuthStore } from '../../stores/useAuthStore';
 import { InventoryReceiptCreatePayload } from '../../types/inventoryReceipt';
 
 // Types cho Dropdown
-interface SelectOption { value: number; label: string; }
+interface SelectOption {
+  value: number;
+  label: string;
+}
 
 interface DetailRow {
   id: string; // Sử dụng UUID để tránh trùng lặp key
@@ -49,23 +52,38 @@ const InventoryReceiptForm: React.FC = () => {
   const { userInfo } = useAuthStore();
 
   const [loading, setLoading] = useState(false);
-  const [toast, setToast] = useState<{ show: boolean, type: 'success' | 'warning' | 'error', message: string }>({ show: false, type: 'success', message: '' });
+  const [toast, setToast] = useState<{
+    show: boolean;
+    type: 'success' | 'warning' | 'error';
+    message: string;
+  }>({ show: false, type: 'success', message: '' });
 
   // --- DROPDOWN OPTIONS ---
   const [warehouses, setWarehouses] = useState<SelectOption[]>([]);
   const [suppliers, setSuppliers] = useState<SelectOption[]>([]);
   const [variants, setVariants] = useState<SelectOption[]>([]);
   const [uoms, setUoms] = useState<SelectOption[]>([]);
-  const [batches, setBatches] = useState<{ id: number; variantId: number; batchCode: string }[]>([]);
+  const [batches, setBatches] = useState<{ id: number; variantId: number; batchCode: string }[]>(
+    []
+  );
 
   // --- FORM STATES ---
   const [warehouseId, setWarehouseId] = useState<number | ''>('');
   const [supplierId, setSupplierId] = useState<number | ''>('');
   const [receiptDate, setReceiptDate] = useState(new Date().toLocaleDateString('en-CA'));
   const [notes, setNotes] = useState('');
-  
+
   const [details, setDetails] = useState<DetailRow[]>([
-    { id: crypto.randomUUID(), variantId: '', batchId: '', uoMId: '', expectedQuantity: 0, acceptedQuantity: 0, rejectedQuantity: 0, rejectReason: '' },
+    {
+      id: crypto.randomUUID(),
+      variantId: '',
+      batchId: '',
+      uoMId: '',
+      expectedQuantity: 0,
+      acceptedQuantity: 0,
+      rejectedQuantity: 0,
+      rejectReason: '',
+    },
   ]);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -80,7 +98,7 @@ const InventoryReceiptForm: React.FC = () => {
 
   const showToast = (type: 'success' | 'warning' | 'error', message: string) => {
     setToast({ show: true, type, message });
-    setTimeout(() => setToast(prev => ({ ...prev, show: false })), 3000);
+    setTimeout(() => setToast((prev) => ({ ...prev, show: false })), 3000);
   };
 
   // --- EFFECTS ---
@@ -90,14 +108,14 @@ const InventoryReceiptForm: React.FC = () => {
       const [whRes, supRes, varRes, uomRes] = await Promise.all([
         warehouseApi.getAllList().catch(() => []),
         supplierApi.getAllList().catch(() => []),
-        productVariantApi.getAllList().catch(() => []), 
+        productVariantApi.getAllList().catch(() => []),
         uomApi.getAllList().catch(() => []),
       ]);
 
       // Riêng API Lô hàng (Batch) gọi riêng để tránh sập
       let batchRes: any[] = [];
       try {
-        const bData = await productBatchApi.getAllList(); 
+        const bData = await productBatchApi.getAllList();
         batchRes = bData || [];
       } catch (e) {
         console.warn('API ProductBatch chưa sẵn sàng hoặc rỗng.');
@@ -107,7 +125,9 @@ const InventoryReceiptForm: React.FC = () => {
       setSuppliers(supRes.map((s: any) => ({ value: s.id, label: s.name })));
       setVariants(varRes.map((v: any) => ({ value: v.id, label: `${v.code} - ${v.name}` })));
       setUoms(uomRes.map((u: any) => ({ value: u.id, label: u.name })));
-      setBatches(batchRes.map(b => ({ id: b.id, variantId: b.variantId, batchCode: b.batchCode })));
+      setBatches(
+        batchRes.map((b) => ({ id: b.id, variantId: b.variantId, batchCode: b.batchCode }))
+      );
     } catch (error) {
       showToast('error', 'Lỗi hệ thống khi tải danh mục bổ trợ!');
     }
@@ -150,12 +170,19 @@ const InventoryReceiptForm: React.FC = () => {
 
   // --- HANDLERS ---
   const handleAddRow = () => {
-    setDetails([...details, { 
-      id: crypto.randomUUID(), 
-      variantId: '', batchId: '', uoMId: '', 
-      expectedQuantity: 0, acceptedQuantity: 0, rejectedQuantity: 0, 
-      rejectReason: '' 
-    }]);
+    setDetails([
+      ...details,
+      {
+        id: crypto.randomUUID(),
+        variantId: '',
+        batchId: '',
+        uoMId: '',
+        expectedQuantity: 0,
+        acceptedQuantity: 0,
+        rejectedQuantity: 0,
+        rejectReason: '',
+      },
+    ]);
   };
 
   const handleRemoveRow = (id: string) => {
@@ -165,20 +192,26 @@ const InventoryReceiptForm: React.FC = () => {
   };
 
   const handleDetailChange = (id: string, field: keyof DetailRow, value: any) => {
-    setDetails(prev => prev.map(d => {
-      if (d.id === id) {
-        const updated = { ...d, [field]: value };
-        
-        if (field === 'rejectedQuantity' && Number(value) === 0) {
-          updated.rejectReason = '';
+    setDetails((prev) =>
+      prev.map((d) => {
+        if (d.id === id) {
+          const updated = { ...d, [field]: value };
+
+          if (field === 'rejectedQuantity' && Number(value) === 0) {
+            updated.rejectReason = '';
+          }
+          return updated;
         }
-        return updated;
-      }
-      return d;
-    }));
-    
+        return d;
+      })
+    );
+
     if (errors[`${field}_${id}`]) {
-      setErrors(prev => { const newErr = { ...prev }; delete newErr[`${field}_${id}`]; return newErr; });
+      setErrors((prev) => {
+        const newErr = { ...prev };
+        delete newErr[`${field}_${id}`];
+        return newErr;
+      });
     }
   };
 
@@ -189,10 +222,12 @@ const InventoryReceiptForm: React.FC = () => {
       return;
     }
     setBatchModalRowId(rowId);
-    
+
     const todayStr = new Date().toLocaleDateString('en-CA').replace(/-/g, '');
-    const randomNum = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
-    
+    const randomNum = Math.floor(Math.random() * 1000)
+      .toString()
+      .padStart(3, '0');
+
     setNewBatch({
       batchCode: `L${todayStr}-${randomNum}`,
       manufactureDate: new Date().toLocaleDateString('en-CA'),
@@ -203,16 +238,19 @@ const InventoryReceiptForm: React.FC = () => {
 
   const handleSaveBatch = async () => {
     if (!supplierId) {
-        showToast('warning', 'KỶ LUẬT THÉP: Bắt buộc chọn Nhà Cung Cấp ở thông tin chung trước khi tạo Lô!');
-        return;
+      showToast(
+        'warning',
+        'KỶ LUẬT THÉP: Bắt buộc chọn Nhà Cung Cấp ở thông tin chung trước khi tạo Lô!'
+      );
+      return;
     }
 
     if (!newBatch.batchCode || !newBatch.manufactureDate || !newBatch.expiryDate) {
-        showToast('warning', 'Vui lòng nhập đầy đủ Mã Lô, Ngày SX và Hạn sử dụng!');
-        return;
+      showToast('warning', 'Vui lòng nhập đầy đủ Mã Lô, Ngày SX và Hạn sử dụng!');
+      return;
     }
 
-    const targetRow = details.find(d => d.id === batchModalRowId);
+    const targetRow = details.find((d) => d.id === batchModalRowId);
     if (!targetRow || !targetRow.variantId) return;
 
     try {
@@ -226,22 +264,22 @@ const InventoryReceiptForm: React.FC = () => {
         supplierId: Number(supplierId),
         manufactureDate: safeMfgDate,
         expiryDate: safeExpDate,
-        isActive: true
+        isActive: true,
       });
 
       if (res) {
         // 🔥 Ép kiểu về number để giải quyết triệt để lỗi TypeScript "Type number | undefined"
         const newBatchId = (res.id || res.Id) as number;
 
-        const newBatchObj = { 
-            id: newBatchId, 
-            variantId: targetRow.variantId as number, 
-            batchCode: newBatch.batchCode 
+        const newBatchObj = {
+          id: newBatchId,
+          variantId: targetRow.variantId as number,
+          batchCode: newBatch.batchCode,
         };
 
-        setBatches(prev => [...prev, newBatchObj]);
+        setBatches((prev) => [...prev, newBatchObj]);
         handleDetailChange(batchModalRowId, 'batchId', newBatchId);
-        
+
         setShowBatchModal(false);
         showToast('success', 'Tạo Lô thành công!');
       }
@@ -255,15 +293,16 @@ const InventoryReceiptForm: React.FC = () => {
     const newErrors: Record<string, string> = {};
     if (!warehouseId) newErrors.warehouseId = 'Vui lòng chọn Kho';
     if (!receiptDate) newErrors.receiptDate = 'Vui lòng chọn Ngày';
-    
+
     let hasItems = false;
     details.forEach((d) => {
       if (!d.variantId) newErrors[`variantId_${d.id}`] = 'Trống';
       if (!d.batchId) newErrors[`batchId_${d.id}`] = 'Trống';
       if (!d.uoMId) newErrors[`uoMId_${d.id}`] = 'Trống';
       if (Number(d.acceptedQuantity) < 0) newErrors[`acceptedQuantity_${d.id}`] = '>= 0';
-      if (Number(d.rejectedQuantity) > 0 && !d.rejectReason.trim()) newErrors[`rejectReason_${d.id}`] = 'Nhập lý do';
-      
+      if (Number(d.rejectedQuantity) > 0 && !d.rejectReason.trim())
+        newErrors[`rejectReason_${d.id}`] = 'Nhập lý do';
+
       if (Number(d.acceptedQuantity) > 0 || Number(d.rejectedQuantity) > 0) hasItems = true;
     });
 
@@ -289,7 +328,7 @@ const InventoryReceiptForm: React.FC = () => {
         receiptDate: safeReceiptDate,
         note: notes,
         details: details
-          .filter(d => (Number(d.acceptedQuantity) > 0 || Number(d.rejectedQuantity) > 0))
+          .filter((d) => Number(d.acceptedQuantity) > 0 || Number(d.rejectedQuantity) > 0)
           .map((d) => ({
             variantId: d.variantId as number,
             batchId: d.batchId as number,
@@ -361,8 +400,12 @@ const InventoryReceiptForm: React.FC = () => {
           </FormSection>
 
           <FormSection title="2. Chi Tiết Mặt Hàng">
-            {errors.details && <div className="mb-4 text-rose-600 font-bold bg-rose-50 p-3 rounded-lg border border-rose-200">{errors.details}</div>}
-            
+            {errors.details && (
+              <div className="mb-4 text-rose-600 font-bold bg-rose-50 p-3 rounded-lg border border-rose-200">
+                {errors.details}
+              </div>
+            )}
+
             <div className="overflow-x-auto border border-slate-200 rounded-xl bg-white shadow-sm mb-4">
               <table className="w-full text-sm text-left">
                 <thead className="bg-slate-50 border-b border-slate-200 font-bold text-slate-500 uppercase text-xs">
@@ -380,13 +423,17 @@ const InventoryReceiptForm: React.FC = () => {
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {details.map((row, index) => {
-                    const rowBatches = batches.filter(b => b.variantId === row.variantId);
+                    const rowBatches = batches.filter((b) => b.variantId === row.variantId);
                     return (
                       <tr key={row.id} className="hover:bg-slate-50/50">
                         <td className="px-4 py-2 text-slate-400 text-center">{index + 1}</td>
                         <td className="p-2">
                           <FormSelect
-                            label="" options={variants} value={row.variantId} showSearch placeholder="Chọn SP..."
+                            label=""
+                            options={variants}
+                            value={row.variantId}
+                            showSearch
+                            placeholder="Chọn SP..."
                             onSelect={(val) => {
                               handleDetailChange(row.id, 'variantId', val);
                               handleDetailChange(row.id, 'batchId', '');
@@ -397,7 +444,10 @@ const InventoryReceiptForm: React.FC = () => {
                         </td>
                         <td className="p-2">
                           <FormSelect
-                            label="" options={uoms} value={row.uoMId} placeholder="ĐVT"
+                            label=""
+                            options={uoms}
+                            value={row.uoMId}
+                            placeholder="ĐVT"
                             onSelect={(val) => handleDetailChange(row.id, 'uoMId', val)}
                             error={errors[`uoMId_${row.id}`]}
                           />
@@ -405,12 +455,17 @@ const InventoryReceiptForm: React.FC = () => {
                         <td className="p-2">
                           <div className="flex gap-1 items-center">
                             <div className="flex-1">
-                                <FormSelect
-                                    label="" options={rowBatches.map(b => ({ value: b.id, label: b.batchCode }))} 
-                                    value={row.batchId} placeholder="Lô..."
-                                    onSelect={(val) => handleDetailChange(row.id, 'batchId', val)}
-                                    error={errors[`batchId_${row.id}`]}
-                                />
+                              <FormSelect
+                                label=""
+                                options={rowBatches.map((b) => ({
+                                  value: b.id,
+                                  label: b.batchCode,
+                                }))}
+                                value={row.batchId}
+                                placeholder="Lô..."
+                                onSelect={(val) => handleDetailChange(row.id, 'batchId', val)}
+                                error={errors[`batchId_${row.id}`]}
+                              />
                             </div>
                             <button
                               type="button"
@@ -423,32 +478,48 @@ const InventoryReceiptForm: React.FC = () => {
                         </td>
                         <td className="p-2 bg-slate-50/50 border-l border-slate-100">
                           <FormInput
-                            label="" type="number" value={row.expectedQuantity}
-                            onChange={(e) => handleDetailChange(row.id, 'expectedQuantity', Number(e.target.value))}
+                            label=""
+                            type="number"
+                            value={row.expectedQuantity}
+                            onChange={(e) =>
+                              handleDetailChange(row.id, 'expectedQuantity', Number(e.target.value))
+                            }
                             className="text-center"
                             disabled={Boolean(row.purchaseOrderDetailId)}
                           />
                         </td>
                         <td className="p-2 bg-emerald-50/20 border-l border-emerald-100">
                           <FormInput
-                            label="" type="number" value={row.acceptedQuantity}
-                            onChange={(e) => handleDetailChange(row.id, 'acceptedQuantity', Number(e.target.value))}
+                            label=""
+                            type="number"
+                            value={row.acceptedQuantity}
+                            onChange={(e) =>
+                              handleDetailChange(row.id, 'acceptedQuantity', Number(e.target.value))
+                            }
                             className="text-center font-bold text-emerald-700"
                             error={errors[`acceptedQuantity_${row.id}`]}
                           />
                         </td>
                         <td className="p-2 bg-rose-50/20 border-l border-rose-100">
                           <FormInput
-                            label="" type="number" value={row.rejectedQuantity}
-                            onChange={(e) => handleDetailChange(row.id, 'rejectedQuantity', Number(e.target.value))}
+                            label=""
+                            type="number"
+                            value={row.rejectedQuantity}
+                            onChange={(e) =>
+                              handleDetailChange(row.id, 'rejectedQuantity', Number(e.target.value))
+                            }
                             className="text-center font-bold text-rose-700"
                           />
                         </td>
                         <td className="p-2 border-l border-slate-100">
                           <FormInput
-                            label="" type="text" placeholder="Lý do..."
+                            label=""
+                            type="text"
+                            placeholder="Lý do..."
                             value={row.rejectReason}
-                            onChange={(e) => handleDetailChange(row.id, 'rejectReason', e.target.value)}
+                            onChange={(e) =>
+                              handleDetailChange(row.id, 'rejectReason', e.target.value)
+                            }
                             disabled={Number(row.rejectedQuantity) === 0}
                             error={errors[`rejectReason_${row.id}`]}
                           />
@@ -499,11 +570,14 @@ const InventoryReceiptForm: React.FC = () => {
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
             <div className="flex justify-between items-center px-6 py-4 bg-indigo-50 border-b border-indigo-100">
               <h3 className="text-lg font-black text-indigo-800">Khai Báo Lô Hàng Mới</h3>
-              <button onClick={() => setShowBatchModal(false)} className="text-slate-400 hover:text-slate-600 bg-white rounded-full p-1 shadow-sm">
+              <button
+                onClick={() => setShowBatchModal(false)}
+                className="text-slate-400 hover:text-slate-600 bg-white rounded-full p-1 shadow-sm"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
-            
+
             <div className="p-6 space-y-4">
               <FormInput
                 label="Mã Lô (Batch Code) *"
@@ -526,12 +600,18 @@ const InventoryReceiptForm: React.FC = () => {
                 required
               />
             </div>
-            
+
             <div className="px-6 py-4 bg-slate-50 border-t flex justify-end gap-3">
-              <button onClick={() => setShowBatchModal(false)} className="px-5 py-2 text-sm font-bold text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-100 shadow-sm">
+              <button
+                onClick={() => setShowBatchModal(false)}
+                className="px-5 py-2 text-sm font-bold text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-100 shadow-sm"
+              >
                 Hủy Bỏ
               </button>
-              <button onClick={handleSaveBatch} className="flex items-center px-5 py-2 text-sm font-bold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 shadow-sm">
+              <button
+                onClick={handleSaveBatch}
+                className="flex items-center px-5 py-2 text-sm font-bold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 shadow-sm"
+              >
                 <Save className="w-4 h-4 mr-2" /> Lưu Lô Mới
               </button>
             </div>

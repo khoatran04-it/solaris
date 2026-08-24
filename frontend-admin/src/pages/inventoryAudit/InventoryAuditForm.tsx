@@ -19,7 +19,7 @@ import { useAuthStore } from '../../stores/useAuthStore';
 import {
   InventoryAuditCreatePayload,
   InventoryAuditType,
-  InventoryAuditTypeLabels
+  InventoryAuditTypeLabels,
 } from '../../types/inventoryAudit';
 
 const InventoryAuditForm: React.FC = () => {
@@ -27,7 +27,11 @@ const InventoryAuditForm: React.FC = () => {
   const { userInfo } = useAuthStore();
 
   const [loading, setLoading] = useState(false);
-  const [toast, setToast] = useState<{ show: boolean; type: 'success' | 'warning' | 'error'; message: string }>({
+  const [toast, setToast] = useState<{
+    show: boolean;
+    type: 'success' | 'warning' | 'error';
+    message: string;
+  }>({
     show: false,
     type: 'success',
     message: '',
@@ -41,7 +45,7 @@ const InventoryAuditForm: React.FC = () => {
 
   const showToast = (type: 'success' | 'warning' | 'error', message: string) => {
     setToast({ show: true, type, message });
-    setTimeout(() => setToast(prev => ({ ...prev, show: false })), 3000);
+    setTimeout(() => setToast((prev) => ({ ...prev, show: false })), 3000);
   };
 
   useEffect(() => {
@@ -73,7 +77,7 @@ const InventoryAuditForm: React.FC = () => {
         warehouseId: Number(warehouseId),
         auditType,
         auditorId: userInfo?.id || 1,
-        note: note.trim()
+        note: note.trim(),
       };
 
       const res = await inventoryAuditApi.create(payload);
@@ -111,9 +115,11 @@ const InventoryAuditForm: React.FC = () => {
               />
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Hình thức kiểm kê</label>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                  Hình thức kiểm kê
+                </label>
                 <div className="grid grid-cols-3 gap-2">
-                  {Object.keys(InventoryAuditTypeLabels).map(key => {
+                  {Object.keys(InventoryAuditTypeLabels).map((key) => {
                     const t = Number(key) as InventoryAuditType;
                     const isSelected = auditType === t;
                     return (
@@ -148,7 +154,10 @@ const InventoryAuditForm: React.FC = () => {
             <div className="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-xl flex gap-3 items-start text-xs text-amber-800 leading-relaxed">
               <AlertCircle className="w-5 h-5 shrink-0 text-amber-600 mt-0.5" />
               <div>
-                <span className="font-bold">Lưu ý quản trị:</span> Khi nhấn "Tạo đợt kiểm kê", hệ thống sẽ lưu lại toàn bộ số dư tồn kho khả dụng hiện tại làm mốc so sánh (System Quantity). Nhân viên đi đếm có thể sử dụng chế độ <strong>Đếm Mù (Blind Count)</strong> để ghi nhận số liệu khách quan nhất.
+                <span className="font-bold">Lưu ý quản trị:</span> Khi nhấn "Tạo đợt kiểm kê", hệ
+                thống sẽ lưu lại toàn bộ số dư tồn kho khả dụng hiện tại làm mốc so sánh (System
+                Quantity). Nhân viên đi đếm có thể sử dụng chế độ{' '}
+                <strong>Đếm Mù (Blind Count)</strong> để ghi nhận số liệu khách quan nhất.
               </div>
             </div>
           </FormSection>

@@ -97,8 +97,9 @@ namespace backend.Services
         #region Thao tác Dữ liệu (Command)
         public async Task<int> CreateAsync(IARoleCreateDto dto)
         {
-            // Kiểm tra trùng mã vai trò (Code)
-            bool isCodeExists = await _context.IARoles.AnyAsync(x => x.Code == dto.Code.Trim());
+            // Kiểm tra trùng mã vai trò (Code không phân biệt hoa thường)
+            var normalizedCode = dto.Code.Trim().ToUpper();
+            bool isCodeExists = await _context.IARoles.AnyAsync(x => x.Code.ToUpper() == normalizedCode);
             if (isCodeExists)
             {
                 throw new InvalidOperationException($"Mã vai trò '{dto.Code}' đã tồn tại trong hệ thống.");

@@ -9,195 +9,227 @@ import { CustomerTypePayload } from '../../types/customerType';
 // Shared UI Components
 import { Toast } from '../../components/commons/Toast';
 import {
-    PageContainer, FormCard, FormHeader, FormInput,
-    FormTextarea, SubmitButton, FormSection, FormSelect
+  PageContainer,
+  FormCard,
+  FormHeader,
+  FormInput,
+  FormTextarea,
+  SubmitButton,
+  FormSection,
+  FormSelect,
 } from '../../components/commons/FormUI';
 
 // Cấu hình giá trị khởi tạo
 const INITIAL_STATE: CustomerTypePayload = {
-    code: '',
-    name: '',
-    description: '',
-    isActive: true
+  code: '',
+  name: '',
+  description: '',
+  isActive: true,
 };
 
 const STATUS_OPTIONS = [
-    { label: 'Hoạt động', value: 1 },
-    { label: 'Tạm khóa', value: 0 }
+  { label: 'Hoạt động', value: 1 },
+  { label: 'Tạm khóa', value: 0 },
 ];
 
 const CustomerTypeForm: React.FC = () => {
-    const navigate = useNavigate();
-    const { id } = useParams();
-    const isEditMode = Boolean(id);
+  const navigate = useNavigate();
+  const { id } = useParams();
+  const isEditMode = Boolean(id);
 
-    // --- STATES ---
-    const [formData, setFormData] = useState<CustomerTypePayload>(INITIAL_STATE);
-    const [errors, setErrors] = useState<Partial<Record<keyof CustomerTypePayload, string>>>({});
-    const [existingCodes, setExistingCodes] = useState<string[]>([]);
-    const [originalCode, setOriginalCode] = useState('');
-    const [existingNames, setExistingNames] = useState<string[]>([]);
-    const [originalName, setOriginalName] = useState('');
-    const [loading, setLoading] = useState(false);
-    const [toast, setToast] = useState<{ show: boolean, type: 'success' | 'warning' | 'error', message: string }>({
-        show: false, type: 'success', message: ''
-    });
+  // --- STATES ---
+  const [formData, setFormData] = useState<CustomerTypePayload>(INITIAL_STATE);
+  const [errors, setErrors] = useState<Partial<Record<keyof CustomerTypePayload, string>>>({});
+  const [existingCodes, setExistingCodes] = useState<string[]>([]);
+  const [originalCode, setOriginalCode] = useState('');
+  const [existingNames, setExistingNames] = useState<string[]>([]);
+  const [originalName, setOriginalName] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [toast, setToast] = useState<{
+    show: boolean;
+    type: 'success' | 'warning' | 'error';
+    message: string;
+  }>({
+    show: false,
+    type: 'success',
+    message: '',
+  });
 
-    // --- HELPERS ---
-    const showToast = (type: 'success' | 'warning' | 'error', message: string) => {
-        setToast({ show: true, type, message });
-        setTimeout(() => setToast(prev => ({ ...prev, show: false })), 3000);
-    };
+  // --- HELPERS ---
+  const showToast = (type: 'success' | 'warning' | 'error', message: string) => {
+    setToast({ show: true, type, message });
+    setTimeout(() => setToast((prev) => ({ ...prev, show: false })), 3000);
+  };
 
-    const handleFieldChange = (field: keyof CustomerTypePayload, value: any) => {
-        setFormData(prev => ({ ...prev, [field]: value }));
-        if (errors[field]) {
-            setErrors(prev => {
-                const newErrors = { ...prev };
-                delete newErrors[field];
-                return newErrors;
-            });
+  const handleFieldChange = (field: keyof CustomerTypePayload, value: any) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+    if (errors[field]) {
+      setErrors((prev) => {
+        const newErrors = { ...prev };
+        delete newErrors[field];
+        return newErrors;
+      });
+    }
+  };
+
+  // --- EFFECTS ---
+  useEffect(() => {
+    customerTypeApi
+      .getAllList()
+      .then((res) => {
+        setExistingCodes(res.map((item) => item.code.toLowerCase()));
+        setExistingNames(res.map((item) => item.name.toLowerCase()));
+      })
+      .catch(() => console.error('Không tải được danh sách kiểm tra trùng lặp'));
+
+    if (isEditMode && id) {
+      customerTypeApi
+        .getById(Number(id))
+        .then((res) => {
+          setFormData({
+            code: res.code || '',
+            name: res.name || '',
+            description: res.description || '',
+            isActive: res.isActive,
+          });
+          setOriginalCode((res.code || '').toLowerCase());
+          setOriginalName((res.name || '').toLowerCase());
+        })
+        .catch(() => showToast('error', 'KHÔNG TÌM THẤY DỮ LIỆU'));
+    }
+  }, [id, isEditMode]);
+
+  // --- VALIDATION ---
+  const validateForm = () => {
+    const newErrors: Partial<Record<keyof CustomerTypePayload, string>> = {};
+    const trimmedCode = formData.code.trim().toLowerCase();
+    const trimmedName = formData.name.trim().toLowerCase();
+
+    // Kiểm tra Mã
+    if (!trimmedCode) {
+      newErrors.code = 'Vui lòng nhập mã định danh.';
+    } else if (trimmedCode.length < 2) {
+      newErrors.code = 'Mã phải chứa ít nhất 2 ký tự.';
+    } else {
+      const isDuplicate = existingCodes.includes(trimmedCode);
+      const isSelf = isEditMode && trimmedCode === originalCode;
+      if (isDuplicate && !isSelf) newErrors.code = 'Mã định danh đã tồn tại!';
+    }
+
+    // Kiểm tra Tên
+    if (!trimmedName) {
+      newErrors.name = 'Vui lòng nhập tên phân loại.';
+    } else if (trimmedName.length < 2) {
+      newErrors.name = 'Tên phải chứa ít nhất 2 ký tự.';
+    } else {
+      const isDuplicate = existingNames.includes(trimmedName);
+      const isSelf = isEditMode && trimmedName === originalName;
+      if (isDuplicate && !isSelf) newErrors.name = 'Tên phân loại đã tồn tại!';
+    }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  // --- SUBMIT ---
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!validateForm()) return showToast('warning', 'Vui lòng kiểm tra lại thông tin!');
+
+    setLoading(true);
+    try {
+      const cleanPayload: CustomerTypePayload = {
+        code: formData.code.trim().toUpperCase(),
+        name: formData.name.trim(),
+        description: formData.description?.trim() || '',
+        isActive: Boolean(formData.isActive),
+      };
+
+      if (isEditMode && id) {
+        await customerTypeApi.update(Number(id), cleanPayload);
+        showToast('success', 'CẬP NHẬT THÀNH CÔNG');
+      } else {
+        await customerTypeApi.create(cleanPayload);
+        showToast('success', 'THÊM MỚI THÀNH CÔNG');
+      }
+      setTimeout(() => navigate('/customer-types'), 1000);
+    } catch (error: any) {
+      showToast('error', error.response?.status === 400 ? 'DỮ LIỆU KHÔNG HỢP LỆ' : 'CÓ LỖI XẢY RA');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <PageContainer>
+      <Toast {...toast} />
+
+      <FormHeader
+        icon={Hexagon}
+        title={isEditMode ? 'Chỉnh Sửa Phân Loại Khách Hàng' : 'Thêm Phân Loại Khách Hàng'}
+        subtitle={
+          isEditMode
+            ? 'Cập nhật thông tin danh mục phân loại khách hàng'
+            : 'Thiết lập danh mục phân loại khách hàng mới cho hệ thống'
         }
-    };
+        onBack={() => navigate('/customer-types')}
+      />
 
-    // --- EFFECTS ---
-    useEffect(() => {
-        customerTypeApi.getAllList()
-            .then(res => {
-                setExistingCodes(res.map(item => item.code.toLowerCase()));
-                setExistingNames(res.map(item => item.name.toLowerCase()));
-            })
-            .catch(() => console.error("Không tải được danh sách kiểm tra trùng lặp"));
+      <FormCard>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-8">
+          <FormSection title="Thông Tin Phân Loại">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+              <FormInput
+                label="Mã phân loại"
+                required
+                placeholder="VD: HORECA, SI, LE..."
+                value={formData.code}
+                error={errors.code}
+                disabled={loading}
+                onChange={(e) => handleFieldChange('code', e.target.value)}
+              />
+              <FormInput
+                label="Tên phân loại"
+                required
+                placeholder="VD: Khách sỉ đại lý..."
+                value={formData.name}
+                error={errors.name}
+                disabled={loading}
+                onChange={(e) => handleFieldChange('name', e.target.value)}
+              />
 
-        if (isEditMode && id) {
-            customerTypeApi.getById(Number(id)).then(res => {
-                setFormData({
-                    code: res.code || '',
-                    name: res.name || '',
-                    description: res.description || '',
-                    isActive: res.isActive
-                });
-                setOriginalCode((res.code || '').toLowerCase());
-                setOriginalName((res.name || '').toLowerCase());
-            }).catch(() => showToast('error', 'KHÔNG TÌM THẤY DỮ LIỆU'));
-        }
-    }, [id, isEditMode]);
+              <FormSelect
+                label="Trạng thái phân loại"
+                required
+                value={formData.isActive ? 1 : 0}
+                options={STATUS_OPTIONS}
+                onSelect={(val) => handleFieldChange('isActive', val === 1)}
+              />
 
-    // --- VALIDATION ---
-    const validateForm = () => {
-        const newErrors: Partial<Record<keyof CustomerTypePayload, string>> = {};
-        const trimmedCode = formData.code.trim().toLowerCase();
-        const trimmedName = formData.name.trim().toLowerCase();
+              <div className="md:col-span-2">
+                <FormTextarea
+                  label="Ghi chú bổ sung"
+                  placeholder="Mô tả về phân loại khách hàng này..."
+                  value={formData.description}
+                  rows={3}
+                  disabled={loading}
+                  onChange={(e) => handleFieldChange('description', e.target.value)}
+                />
+              </div>
+            </div>
+          </FormSection>
 
-        // Kiểm tra Mã
-        if (!trimmedCode) {
-            newErrors.code = 'Vui lòng nhập mã định danh.';
-        } else if (trimmedCode.length < 2) {
-            newErrors.code = 'Mã phải chứa ít nhất 2 ký tự.';
-        } else {
-            const isDuplicate = existingCodes.includes(trimmedCode);
-            const isSelf = isEditMode && trimmedCode === originalCode;
-            if (isDuplicate && !isSelf) newErrors.code = 'Mã định danh đã tồn tại!';
-        }
-
-        // Kiểm tra Tên
-        if (!trimmedName) {
-            newErrors.name = 'Vui lòng nhập tên phân loại.';
-        } else if (trimmedName.length < 2) {
-            newErrors.name = 'Tên phải chứa ít nhất 2 ký tự.';
-        } else {
-            const isDuplicate = existingNames.includes(trimmedName);
-            const isSelf = isEditMode && trimmedName === originalName;
-            if (isDuplicate && !isSelf) newErrors.name = 'Tên phân loại đã tồn tại!';
-        }
-        setErrors(newErrors);
-        return Object.keys(newErrors).length === 0;
-    };
-
-    // --- SUBMIT ---    
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-
-        if (!validateForm()) return showToast('warning', 'Vui lòng kiểm tra lại thông tin!');
-
-        setLoading(true);
-        try {
-            const cleanPayload: CustomerTypePayload = {
-                code: formData.code.trim().toUpperCase(),
-                name: formData.name.trim(),
-                description: formData.description?.trim() || '',
-                isActive: Boolean(formData.isActive)
-            };
-
-            if (isEditMode && id) {
-                await customerTypeApi.update(Number(id), cleanPayload);
-                showToast('success', 'CẬP NHẬT THÀNH CÔNG');
-            } else {
-                await customerTypeApi.create(cleanPayload);
-                showToast('success', 'THÊM MỚI THÀNH CÔNG');
-            }
-            setTimeout(() => navigate('/customer-types'), 1000);
-        } catch (error: any) {
-            showToast('error', error.response?.status === 400 ? 'DỮ LIỆU KHÔNG HỢP LỆ' : 'CÓ LỖI XẢY RA');
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    return (
-        <PageContainer>
-            <Toast {...toast} />
-
-            <FormHeader
-                icon={Hexagon}
-                title={isEditMode ? 'Chỉnh Sửa Phân Loại Khách Hàng' : 'Thêm Phân Loại Khách Hàng'}
-                subtitle={isEditMode ? 'Cập nhật thông tin danh mục phân loại khách hàng' : 'Thiết lập danh mục phân loại khách hàng mới cho hệ thống'}
-                onBack={() => navigate('/customer-types')}
+          <div className="flex justify-end pt-6 border-t border-slate-100">
+            <SubmitButton
+              loading={loading}
+              isEditMode={isEditMode}
+              icon={isEditMode ? Save : Plus}
             />
-
-            <FormCard>
-                <form onSubmit={handleSubmit} className="flex flex-col gap-8">
-                    <FormSection title="Thông Tin Phân Loại">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
-                            <FormInput
-                                label="Mã phân loại" required placeholder="VD: HORECA, SI, LE..."
-                                value={formData.code} error={errors.code} disabled={loading}
-                                onChange={e => handleFieldChange('code', e.target.value)}
-                            />
-                            <FormInput
-                                label="Tên phân loại" required placeholder="VD: Khách sỉ đại lý..."
-                                value={formData.name} error={errors.name} disabled={loading}
-                                onChange={e => handleFieldChange('name', e.target.value)}
-                            />
-                            
-                            <FormSelect 
-                                label="Trạng thái phân loại" required 
-                                value={formData.isActive ? 1 : 0} 
-                                options={STATUS_OPTIONS}
-                                onSelect={val => handleFieldChange('isActive', val === 1)}
-                            />
-
-                            <div className="md:col-span-2">
-                                <FormTextarea
-                                    label="Ghi chú bổ sung" placeholder="Mô tả về phân loại khách hàng này..."
-                                    value={formData.description} rows={3} disabled={loading}
-                                    onChange={e => handleFieldChange('description', e.target.value)}
-                                />
-                            </div>
-                        </div>
-                    </FormSection>
-
-                    <div className="flex justify-end pt-6 border-t border-slate-100">
-                        <SubmitButton
-                            loading={loading}
-                            isEditMode={isEditMode}
-                            icon={isEditMode ? Save : Plus}
-                        />
-                    </div>
-                </form>
-            </FormCard>
-        </PageContainer>
-    );
+          </div>
+        </form>
+      </FormCard>
+    </PageContainer>
+  );
 };
 
 export default CustomerTypeForm;
