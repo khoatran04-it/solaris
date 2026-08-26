@@ -30,7 +30,8 @@ namespace backend.Tests.Common
             services.AddLogging();
             services.AddAutoMapper(cfg =>
             {
-                cfg.AddProfile<IAProfile>();
+                // Quét và tự động nạp toàn bộ Profiles trong Assembly backend
+                cfg.AddMaps(typeof(IAProfile).Assembly);
             });
 
             var serviceProvider = services.BuildServiceProvider();

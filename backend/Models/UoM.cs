@@ -7,27 +7,29 @@ namespace backend.Models
     {
         public int Id { get; set; }
 
-        /// <summary>Mã viết tắt của ĐVT (Ví dụ: KG, G, TON, BOX, PCS)</summary>
+        /// <summary>Mã viết tắt của ĐVT (Ví dụ: KG, G, TON, BOX, PCS).</summary>
         public required string Code { get; set; }
 
-        /// <summary>Tên hiển thị của ĐVT (Ví dụ: Kilogram, Thùng, Hộp, Cái)</summary>
+        /// <summary>Tên hiển thị của ĐVT (Ví dụ: Kilogram, Thùng, Hộp, Cái).</summary>
         public required string Name { get; set; }
 
-        /// <summary>Các tên gọi đồng nghĩa hoặc từ khóa tìm kiếm (Ví dụ: "ký, cân, kilogam")</summary>
+        /// <summary>Các tên gọi đồng nghĩa hoặc từ khóa tìm kiếm (Ví dụ: "ký, cân, kilogam").</summary>
         public string? Synonyms { get; set; }
 
         public bool IsActive { get; set; } = true;
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime? UpdatedAt { get; set; }
 
-        // --- SOFT DELETE ---
+        #region Soft Delete
         public bool IsDeleted { get; set; } = false;
         public DateTime? DeletedAt { get; set; }
+        #endregion
 
-        // --- FOREIGN KEY ---
-        /// <summary>Thuộc về Nhóm ĐVT nào</summary>
+        #region Khóa ngoại & Nhóm ĐVT (Category)
+        /// <summary>Thuộc về Nhóm ĐVT nào (có thể null nếu là ĐVT tự do/đặc thù).</summary>
         public int? CategoryId { get; set; }
         public virtual UoMCategory? Category { get; set; }
+        #endregion
     }
 }

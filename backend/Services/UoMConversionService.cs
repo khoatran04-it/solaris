@@ -2,6 +2,7 @@ using AutoMapper;
 using backend.Data;
 using backend.DTOs;
 using backend.DTOs.UoMConversionDTOs;
+using backend.Helpers;
 using backend.Models;
 using backend.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
@@ -23,10 +24,7 @@ namespace backend.Services
             _mapper = mapper;
         }
 
-        // ==========================================
-        // SECTION: READ OPERATIONS (QUERIES)
-        // ==========================================
-        #region Read Operations
+        #region Truy vấn (Query)
 
         /// <summary>
         /// Lấy toàn bộ danh sách quy tắc quy đổi kèm thông tin liên kết.
@@ -69,8 +67,10 @@ namespace backend.Services
                 .Include(x => x.FromUoM)
                 .Include(x => x.ToUoM)
                 .Include(x => x.Product)
+                .AsNoTracking()
                 .AsQueryable();
 
+            #region Bộ lọc tìm kiếm
             // 1. Filter: Tìm kiếm tổng hợp (Tên đơn vị hoặc thông tin Sản phẩm)
             if (!string.IsNullOrWhiteSpace(search))
             {
@@ -108,21 +108,19 @@ namespace backend.Services
                 var startDate = updatedAt.Value.Date;
                 query = query.Where(x => x.UpdatedAt >= startDate && x.UpdatedAt < startDate.AddDays(1));
             }
+            #endregion
 
             var totalRecords = await query.CountAsync();
 
             var items = await query
-               .OrderByDescending(x => x.Id)
+               .OrderByDescending(x => x.CreatedAt)
                .Skip((pageIndex - 1) * pageSize)
                .Take(pageSize)
-               .AsNoTracking()
                .ToListAsync();
-
-            var dtos = _mapper.Map<IEnumerable<UoMConversionReadDto>>(items);
 
             return new PagedResult<UoMConversionReadDto>
             {
-                Items = dtos,
+                Items = _mapper.Map<IEnumerable<UoMConversionReadDto>>(items),
                 TotalRecords = totalRecords,
                 TotalPages = (int)Math.Ceiling(totalRecords / (double)pageSize),
                 CurrentPage = pageIndex,
@@ -145,11 +143,7 @@ namespace backend.Services
 
         #endregion
 
-
-        // ==========================================
-        // SECTION: WRITE OPERATIONS (COMMANDS)
-        // ==========================================
-        #region Write Operations
+        #region Thao tác Dữ liệu (Command)
 
         /// <summary>
         /// Tạo quy tắc quy đổi mới với cơ chế kiểm tra logic chặt chẽ.
@@ -163,19 +157,20 @@ namespace backend.Services
             var isDuplicate = await _context.UoMConversions
                 .AnyAsync(c => c.FromUoMId == dto.FromUoMId &&
                                c.ToUoMId == dto.ToUoMId &&
-                               c.ProductId == dto.ProductId);
+                               c.ProductId == dto.ProductId &&
+                               !c.IsDeleted);
 
             if (isDuplicate)
-                throw new Exception("Quy tắc chuyển đổi này đã tồn tại trên hệ thống.");
+                throw new InvalidOperationException("Quy tắc chuyển đổi này đã tồn tại trên hệ thống.");
 
-            var newConversion = _mapper.Map<UoMConversion>(dto);
-            newConversion.IsActive = dto.IsActive;
-            newConversion.CreatedAt = DateTime.UtcNow;
-            newConversion.UpdatedAt = DateTime.UtcNow;
+            return await _context.ExecuteInTransactionAsync(async () =>
+            {
+                var newConversion = _mapper.Map<UoMConversion>(dto);
 
-            _context.UoMConversions.Add(newConversion);
-            await _context.SaveChangesAsync();
-            return newConversion.Id;
+                _context.UoMConversions.Add(newConversion);
+                await _context.SaveChangesAsync();
+                return newConversion.Id;
+            });
         }
 
         /// <summary>
@@ -183,56 +178,61 @@ namespace backend.Services
         /// </summary>
         public async Task<bool> UpdateAsync(int id, UoMConversionUpdateDto dto)
         {
-            var conversion = await _context.UoMConversions.FirstOrDefaultAsync(c => c.Id == id);
-            if (conversion == null) throw new KeyNotFoundException("Không tìm thấy dữ liệu quy đổi cần sửa.");
+            return await _context.ExecuteInTransactionAsync(async () =>
+            {
+                var conversion = await _context.UoMConversions.FirstOrDefaultAsync(c => c.Id == id);
+                if (conversion == null)
+                    throw new KeyNotFoundException($"Không tìm thấy quy tắc quy đổi với ID = {id}.");
 
-            await ValidateConversionLogic(dto.FromUoMId, dto.ToUoMId, dto.ProductId, dto.ConversionFactor);
+                await ValidateConversionLogic(dto.FromUoMId, dto.ToUoMId, dto.ProductId, dto.ConversionFactor);
 
-            // Kiểm tra trùng lặp (loại trừ bản chính nó)
-            var isDuplicate = await _context.UoMConversions
-                .AnyAsync(c => c.Id != id &&
-                               c.FromUoMId == dto.FromUoMId &&
-                               c.ToUoMId == dto.ToUoMId &&
-                               c.ProductId == dto.ProductId);
+                // Kiểm tra trùng lặp (loại trừ bản chính nó)
+                var isDuplicate = await _context.UoMConversions
+                    .AnyAsync(c => c.Id != id &&
+                                   c.FromUoMId == dto.FromUoMId &&
+                                   c.ToUoMId == dto.ToUoMId &&
+                                   c.ProductId == dto.ProductId &&
+                                   !c.IsDeleted);
 
-            if (isDuplicate)
-                throw new Exception("Cập nhật thất bại: Quy tắc này bị trùng với một thiết lập khác.");
+                if (isDuplicate)
+                    throw new InvalidOperationException("Cập nhật thất bại: Quy tắc này bị trùng với một thiết lập khác.");
 
-            _mapper.Map(dto, conversion);
-            conversion.IsActive = dto.IsActive;
-            conversion.UpdatedAt = DateTime.UtcNow;
+                _mapper.Map(dto, conversion);
+                conversion.UpdatedAt = DateTime.UtcNow;
 
-            await _context.SaveChangesAsync();
-            return true;
+                await _context.SaveChangesAsync();
+                return true;
+            });
         }
 
         public async Task<bool> DeleteAsync(int id)
         {
-            var conversion = await _context.UoMConversions.FindAsync(id);
-            if (conversion == null) throw new KeyNotFoundException("Không tìm thấy dữ liệu quy đổi để xóa.");
+            return await _context.ExecuteInTransactionAsync(async () =>
+            {
+                var conversion = await _context.UoMConversions.FindAsync(id);
+                if (conversion == null)
+                    throw new KeyNotFoundException($"Không tìm thấy quy tắc quy đổi với ID = {id}.");
 
-            _context.UoMConversions.Remove(conversion);
-            await _context.SaveChangesAsync();
-            return true;
+                _context.UoMConversions.Remove(conversion);
+                await _context.SaveChangesAsync();
+                return true;
+            });
         }
 
         public async Task<bool> ToggleActiveAsync(int id)
         {
             var conversion = await _context.UoMConversions.FindAsync(id);
-            if (conversion == null) throw new KeyNotFoundException("Không tìm thấy dữ liệu quy đổi.");
+            if (conversion == null)
+                throw new KeyNotFoundException($"Không tìm thấy quy tắc quy đổi với ID = {id}.");
 
             conversion.IsActive = !conversion.IsActive;
             conversion.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
-            return true;
+            return conversion.IsActive;
         }
 
         #endregion
 
-
-        // ==========================================
-        // SECTION: PRIVATE BUSINESS LOGIC HELPERS
-        // ==========================================
         #region Private Business Logic Helpers
 
         /// <summary>
@@ -242,26 +242,26 @@ namespace backend.Services
         {
             // Rule 1: Hệ số phải có ý nghĩa toán học
             if (factor <= 0)
-                throw new Exception("Hệ số quy đổi phải lớn hơn 0.");
+                throw new InvalidOperationException("Hệ số quy đổi phải lớn hơn 0.");
 
             // Rule 2: Chặn quy đổi vòng lặp (về chính nó)
             if (fromUoMId == toUoMId)
-                throw new Exception("Lỗi Vòng Lặp: Đơn vị đích không được trùng với đơn vị gốc.");
+                throw new InvalidOperationException("Lỗi Vòng Lặp: Đơn vị đích không được trùng với đơn vị gốc.");
 
             // Rule 3: Kiểm tra tính tồn tại của các thực thể liên kết
             if (productId.HasValue && !await _context.Products.AnyAsync(p => p.Id == productId.Value && !p.IsDeleted))
-                throw new Exception("Sản phẩm được chỉ định không tồn tại hoặc đã bị xóa.");
+                throw new InvalidOperationException("Sản phẩm được chỉ định không tồn tại hoặc đã bị xóa.");
 
-            var fromUoM = await _context.UoMs.FindAsync(fromUoMId);
-            var toUoM = await _context.UoMs.FindAsync(toUoMId);
+            var fromUoM = await _context.UoMs.FirstOrDefaultAsync(u => u.Id == fromUoMId && !u.IsDeleted);
+            var toUoM = await _context.UoMs.FirstOrDefaultAsync(u => u.Id == toUoMId && !u.IsDeleted);
 
             if (fromUoM == null || toUoM == null)
-                throw new Exception("Hệ thống đơn vị tính không hợp lệ hoặc đã bị xóa.");
+                throw new InvalidOperationException("Hệ thống đơn vị tính không hợp lệ hoặc đã bị xóa.");
 
             // Rule 4: Chặn quy đổi sai hệ quy chiếu (Ví dụ: Không thể đổi Lít sang Mét trừ phi đặc thù sản phẩm)
             // Nếu không có ProductId (Quy đổi chung hệ thống) thì bắt buộc phải cùng CategoryId
             if (!productId.HasValue && fromUoM.CategoryId != toUoM.CategoryId)
-                throw new Exception("Lỗi Logic: Không thể quy đổi tiêu chuẩn chéo giữa 2 nhóm đơn vị tính khác nhau.");
+                throw new InvalidOperationException("Lỗi Logic: Không thể quy đổi tiêu chuẩn chéo giữa 2 nhóm đơn vị tính khác nhau.");
         }
 
         #endregion

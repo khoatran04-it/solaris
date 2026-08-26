@@ -1,24 +1,22 @@
-using System.ComponentModel.DataAnnotations;
-
 namespace backend.DTOs.UoMDTOs
 {
     /// <summary>
-    /// DTO cập nhật thông tin Đơn vị tính.
+    /// DTO yêu cầu cập nhật thông tin Đơn vị tính.
     /// </summary>
     public class UoMUpdateDto
     {
-        [Required(ErrorMessage = "Mã ĐVT không được để trống.")]
-        [StringLength(20, ErrorMessage = "Mã ĐVT tối đa 20 ký tự.")]
+        /// <summary>Mã viết tắt của ĐVT (Ví dụ: KG, G, TON, BOX, PCS).</summary>
         public string Code { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "Tên ĐVT không được để trống.")]
-        [StringLength(50, ErrorMessage = "Tên ĐVT tối đa 50 ký tự.")]
+        /// <summary>Tên hiển thị đầy đủ của ĐVT (Ví dụ: Kilogram, Hộp, Thùng, Cái).</summary>
         public string Name { get; set; } = string.Empty;
 
+        /// <summary>Từ khóa tìm kiếm hoặc tên gọi đồng nghĩa (Ví dụ: "ký, cân, kilogam").</summary>
         public string? Synonyms { get; set; }
+
         public bool IsActive { get; set; } = true;
 
-        [Required(ErrorMessage = "Vui lòng chọn Nhóm ĐVT.")]
+        /// <summary>Mã định danh của Nhóm ĐVT trực thuộc.</summary>
         public int CategoryId { get; set; }
     }
 }
