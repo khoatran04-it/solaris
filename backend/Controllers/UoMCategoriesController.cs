@@ -2,7 +2,6 @@ using backend.DTOs;
 using backend.DTOs.UoMCategoryDTOs;
 using backend.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace backend.Controllers
@@ -14,6 +13,7 @@ namespace backend.Controllers
     [ApiController]
     [Route("api/[controller]")]
     [Authorize]
+    [Produces("application/json")]
     public class UoMCategoriesController : ControllerBase
     {
         private readonly IUoMCategoryService _service;
@@ -23,10 +23,7 @@ namespace backend.Controllers
             _service = service;
         }
 
-        // ==========================================
-        // SECTION: READ OPERATIONS (QUERIES)
-        // ==========================================
-        #region Read Operations
+        #region Truy vấn (Query Endpoints)
 
         /// <summary>
         /// Lấy danh sách nhóm đơn vị tính có phân trang và bộ lọc.
@@ -59,25 +56,21 @@ namespace backend.Controllers
         /// <summary>
         /// Lấy thông tin chi tiết của một nhóm đơn vị tính theo ID.
         /// </summary>
-        [HttpGet("{id}")]
+        [HttpGet("{id:int}")]
         [ProducesResponseType(typeof(UoMCategoryReadDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetById(int id)
         {
             var result = await _service.GetByIdAsync(id);
             if (result == null)
-                return NotFound(new { Message = "Không tìm thấy nhóm đơn vị tính yêu cầu." });
+                return NotFound(new { message = "Không tìm thấy nhóm đơn vị tính yêu cầu." });
 
             return Ok(result);
         }
 
         #endregion
 
-
-        // ==========================================
-        // SECTION: WRITE OPERATIONS (COMMANDS)
-        // ==========================================
-        #region Write Operations
+        #region Thao tác Dữ liệu (Command Endpoints)
 
         /// <summary>
         /// Thêm mới một nhóm đơn vị tính vào hệ thống.
@@ -95,15 +88,15 @@ namespace backend.Controllers
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Message = ex.Message });
+                return BadRequest(new { message = ex.Message });
             }
         }
 
         /// <summary>
         /// Cập nhật thông tin nhóm đơn vị tính hiện có.
         /// </summary>
-        [HttpPut("{id}")]
-        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [HttpPut("{id:int}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Update(int id, [FromBody] UoMCategoryUpdateDto dto)
@@ -111,23 +104,23 @@ namespace backend.Controllers
             try
             {
                 await _service.UpdateAsync(id, dto);
-                return NoContent();
+                return Ok(new { message = "Cập nhật nhóm ĐVT thành công." });
             }
             catch (KeyNotFoundException ex)
             {
-                return NotFound(new { Message = ex.Message });
+                return NotFound(new { message = ex.Message });
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Message = ex.Message });
+                return BadRequest(new { message = ex.Message });
             }
         }
 
         /// <summary>
         /// Xóa bỏ nhóm đơn vị tính khỏi hệ thống.
         /// </summary>
-        [HttpDelete("{id}")]
-        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [HttpDelete("{id:int}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Delete(int id)
@@ -135,31 +128,23 @@ namespace backend.Controllers
             try
             {
                 await _service.DeleteAsync(id);
-                return NoContent();
+                return Ok(new { message = "Xóa nhóm ĐVT thành công." });
             }
             catch (KeyNotFoundException ex)
             {
-                return NotFound(new { Message = ex.Message });
+                return NotFound(new { message = ex.Message });
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Message = ex.Message });
+                return BadRequest(new { message = ex.Message });
             }
         }
-
-        #endregion
-
-
-        // ==========================================
-        // SECTION: SPECIAL BUSINESS ACTIONS (PATCH / PUT)
-        // ==========================================
-        #region Business Logic Actions
 
         /// <summary>
         /// Đảo ngược trạng thái hoạt động (Kích hoạt/Khóa) của nhóm đơn vị.
         /// </summary>
-        [HttpPatch("{id}/toggle-active")]
-        [HttpPut("{id}/toggle-active")]
+        [HttpPatch("{id:int}/toggle-active")]
+        [HttpPut("{id:int}/toggle-active")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -168,15 +153,15 @@ namespace backend.Controllers
             try
             {
                 await _service.ToggleActiveAsync(id);
-                return Ok(new { Message = "Cập nhật trạng thái hoạt động thành công" });
+                return Ok(new { message = "Cập nhật trạng thái hoạt động thành công." });
             }
             catch (KeyNotFoundException ex)
             {
-                return NotFound(new { Message = ex.Message });
+                return NotFound(new { message = ex.Message });
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Message = ex.Message });
+                return BadRequest(new { message = ex.Message });
             }
         }
 

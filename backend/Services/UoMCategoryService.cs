@@ -2,6 +2,7 @@ using AutoMapper;
 using backend.Data;
 using backend.DTOs;
 using backend.DTOs.UoMCategoryDTOs;
+using backend.Helpers;
 using backend.Models;
 using backend.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
@@ -23,13 +24,10 @@ namespace backend.Services
             _mapper = mapper;
         }
 
-        // ==========================================
-        // SECTION: READ OPERATIONS (QUERIES)
-        // ==========================================
-        #region Read Operations
+        #region Truy vấn (Query)
 
         /// <summary>
-        /// Lấy toàn bộ danh sách nhóm đơn vị tính.
+        /// Lấy toàn bộ danh sách nhóm đơn vị tính (không phân trang).
         /// </summary>
         public async Task<IEnumerable<UoMCategoryReadDto>> GetAllListAsync(bool isActiveOnly = false)
         {
@@ -63,9 +61,10 @@ namespace backend.Services
         {
             var query = _context.UoMCategories
                 .Include(x => x.BaseUoM)
+                .AsNoTracking()
                 .AsQueryable();
 
-            // 1. Filter: Tìm kiếm theo mã hoặc tên danh mục
+            #region Bộ lọc tìm kiếm
             if (!string.IsNullOrWhiteSpace(search))
             {
                 var lowerSearch = search.Trim().ToLower();
@@ -74,13 +73,11 @@ namespace backend.Services
                     x.Name.ToLower().Contains(lowerSearch));
             }
 
-            // 2. Filter: Trạng thái hoạt động
             if (isActive.HasValue)
             {
                 query = query.Where(x => x.IsActive == isActive.Value);
             }
 
-            // 3. Filter: Theo ngày tạo (So sánh trọn ngày 24h)
             if (createdAt.HasValue)
             {
                 var startDate = createdAt.Value.Date;
@@ -88,28 +85,25 @@ namespace backend.Services
                 query = query.Where(x => x.CreatedAt >= startDate && x.CreatedAt < endDate);
             }
 
-            // 4. Filter: Theo ngày cập nhật
             if (updatedAt.HasValue)
             {
                 var startDate = updatedAt.Value.Date;
                 var endDate = startDate.AddDays(1);
                 query = query.Where(x => x.UpdatedAt >= startDate && x.UpdatedAt < endDate);
             }
+            #endregion
 
             var totalRecords = await query.CountAsync();
 
             var items = await query
-               .OrderByDescending(x => x.Id)
-               .Skip((pageIndex - 1) * pageSize)
-               .Take(pageSize)
-               .AsNoTracking()
-               .ToListAsync();
-
-            var dtos = _mapper.Map<IEnumerable<UoMCategoryReadDto>>(items);
+                .OrderByDescending(x => x.CreatedAt)
+                .Skip((pageIndex - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
 
             return new PagedResult<UoMCategoryReadDto>
             {
-                Items = dtos,
+                Items = _mapper.Map<IEnumerable<UoMCategoryReadDto>>(items),
                 TotalRecords = totalRecords,
                 TotalPages = (int)Math.Ceiling(totalRecords / (double)pageSize),
                 CurrentPage = pageIndex,
@@ -134,36 +128,32 @@ namespace backend.Services
 
         #endregion
 
-
-        // ==========================================
-        // SECTION: WRITE OPERATIONS (COMMANDS)
-        // ==========================================
-        #region Write Operations
+        #region Thao tác Dữ liệu (Command)
 
         /// <summary>
         /// Tạo mới danh mục nhóm đơn vị.
         /// </summary>
         public async Task<int> CreateAsync(UoMCategoryCreateDto dto)
         {
-            var trimmedCode = dto.Code.Trim();
+            var normalizedCode = dto.Code.Trim().ToUpper();
+            if (await _context.UoMCategories.AnyAsync(c => c.Code.ToUpper() == normalizedCode))
+                throw new InvalidOperationException($"Mã nhóm ĐVT '{dto.Code.Trim()}' đã tồn tại trong hệ thống.");
+
             var trimmedName = dto.Name.Trim();
+            if (await _context.UoMCategories.AnyAsync(c => c.Name.ToLower() == trimmedName.ToLower()))
+                throw new InvalidOperationException($"Tên nhóm ĐVT '{dto.Name.Trim()}' đã tồn tại trong hệ thống.");
 
-            if (await _context.UoMCategories.AnyAsync(c => c.Code == trimmedCode))
-                throw new Exception($"Mã nhóm ĐVT '{trimmedCode}' đã tồn tại.");
+            if (dto.BaseUoMId.HasValue && !await _context.UoMs.AnyAsync(u => u.Id == dto.BaseUoMId.Value && !u.IsDeleted))
+                throw new InvalidOperationException("Đơn vị tính cơ sở không tồn tại hoặc đã bị xóa.");
 
-            if (await _context.UoMCategories.AnyAsync(c => c.Name == trimmedName))
-                throw new Exception($"Tên nhóm ĐVT '{trimmedName}' đã tồn tại.");
+            return await _context.ExecuteInTransactionAsync(async () =>
+            {
+                var newCategory = _mapper.Map<UoMCategory>(dto);
 
-            var newCategory = _mapper.Map<UoMCategory>(dto);
-            newCategory.Code = trimmedCode;
-            newCategory.Name = trimmedName;
-            newCategory.IsActive = dto.IsActive;
-            newCategory.CreatedAt = DateTime.UtcNow;
-            newCategory.UpdatedAt = DateTime.UtcNow;
-
-            _context.UoMCategories.Add(newCategory);
-            await _context.SaveChangesAsync();
-            return newCategory.Id;
+                _context.UoMCategories.Add(newCategory);
+                await _context.SaveChangesAsync();
+                return newCategory.Id;
+            });
         }
 
         /// <summary>
@@ -171,27 +161,29 @@ namespace backend.Services
         /// </summary>
         public async Task<bool> UpdateAsync(int id, UoMCategoryUpdateDto dto)
         {
-            var category = await _context.UoMCategories.FirstOrDefaultAsync(c => c.Id == id);
-            if (category == null)
-                throw new KeyNotFoundException("Không tìm thấy nhóm ĐVT cần cập nhật.");
+            return await _context.ExecuteInTransactionAsync(async () =>
+            {
+                var category = await _context.UoMCategories.FirstOrDefaultAsync(c => c.Id == id);
+                if (category == null)
+                    throw new KeyNotFoundException($"Không tìm thấy nhóm ĐVT với ID = {id}.");
 
-            var trimmedCode = dto.Code.Trim();
-            var trimmedName = dto.Name.Trim();
+                var normalizedCode = dto.Code.Trim().ToUpper();
+                if (await _context.UoMCategories.AnyAsync(c => c.Id != id && c.Code.ToUpper() == normalizedCode))
+                    throw new InvalidOperationException($"Cập nhật thất bại: Mã nhóm ĐVT '{dto.Code.Trim()}' đã bị trùng lặp.");
 
-            if (await _context.UoMCategories.AnyAsync(c => c.Id != id && c.Code == trimmedCode))
-                throw new Exception($"Cập nhật thất bại: Mã nhóm ĐVT '{trimmedCode}' đã bị trùng lặp.");
+                var trimmedName = dto.Name.Trim();
+                if (await _context.UoMCategories.AnyAsync(c => c.Id != id && c.Name.ToLower() == trimmedName.ToLower()))
+                    throw new InvalidOperationException($"Cập nhật thất bại: Tên nhóm ĐVT '{dto.Name.Trim()}' đã bị trùng lặp.");
 
-            if (await _context.UoMCategories.AnyAsync(c => c.Id != id && c.Name == trimmedName))
-                throw new Exception($"Cập nhật thất bại: Tên nhóm ĐVT '{trimmedName}' đã bị trùng lặp.");
+                if (dto.BaseUoMId.HasValue && !await _context.UoMs.AnyAsync(u => u.Id == dto.BaseUoMId.Value && !u.IsDeleted))
+                    throw new InvalidOperationException("Đơn vị tính cơ sở không tồn tại hoặc đã bị xóa.");
 
-            _mapper.Map(dto, category);
-            category.Code = trimmedCode;
-            category.Name = trimmedName;
-            category.IsActive = dto.IsActive;
-            category.UpdatedAt = DateTime.UtcNow;
+                _mapper.Map(dto, category);
+                category.UpdatedAt = DateTime.UtcNow;
 
-            await _context.SaveChangesAsync();
-            return true;
+                await _context.SaveChangesAsync();
+                return true;
+            });
         }
 
         /// <summary>
@@ -199,17 +191,21 @@ namespace backend.Services
         /// </summary>
         public async Task<bool> DeleteAsync(int id)
         {
-            var category = await _context.UoMCategories.FindAsync(id);
-            if (category == null) throw new KeyNotFoundException("Không tìm thấy nhóm ĐVT để xóa.");
+            return await _context.ExecuteInTransactionAsync(async () =>
+            {
+                var category = await _context.UoMCategories.FindAsync(id);
+                if (category == null)
+                    throw new KeyNotFoundException($"Không tìm thấy nhóm ĐVT với ID = {id}.");
 
-            // DATA INTEGRITY SHIELD: Kiểm tra xem có ĐVT con nào thuộc nhóm này không
-            var hasUoMs = await _context.UoMs.AnyAsync(u => u.CategoryId == id && !u.IsDeleted);
-            if (hasUoMs)
-                throw new Exception("Không thể xóa nhóm này vì đang có các Đơn vị tính trực thuộc.");
+                // DATA INTEGRITY SHIELD: Kiểm tra xem có ĐVT con nào thuộc nhóm này không
+                var hasUoMs = await _context.UoMs.AnyAsync(u => u.CategoryId == id && !u.IsDeleted);
+                if (hasUoMs)
+                    throw new InvalidOperationException("Không thể xóa nhóm này vì đang có các Đơn vị tính trực thuộc.");
 
-            _context.UoMCategories.Remove(category);
-            await _context.SaveChangesAsync();
-            return true;
+                _context.UoMCategories.Remove(category);
+                await _context.SaveChangesAsync();
+                return true;
+            });
         }
 
         /// <summary>
@@ -218,12 +214,13 @@ namespace backend.Services
         public async Task<bool> ToggleActiveAsync(int id)
         {
             var category = await _context.UoMCategories.FindAsync(id);
-            if (category == null) throw new KeyNotFoundException("Không tìm thấy nhóm ĐVT.");
+            if (category == null)
+                throw new KeyNotFoundException($"Không tìm thấy nhóm ĐVT với ID = {id}.");
 
             category.IsActive = !category.IsActive;
             category.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
-            return true;
+            return category.IsActive;
         }
 
         #endregion
