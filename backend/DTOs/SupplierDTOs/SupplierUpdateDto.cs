@@ -1,50 +1,55 @@
-using System.ComponentModel.DataAnnotations;
-
 namespace backend.DTOs.SupplierDTOs
 {
     /// <summary>
-    /// DTO cập nhật thông tin Nhà cung cấp.
+    /// DTO yêu cầu cập nhật thông tin Hồ sơ Nhà cung cấp.
     /// </summary>
     public class SupplierUpdateDto
     {
-        [Required(ErrorMessage = "Mã nhà cung cấp không được để trống.")]
-        [StringLength(20, ErrorMessage = "Mã nhà cung cấp tối đa 20 ký tự.")]
+        #region Thông tin Định danh
+        /// <summary>Mã nhà cung cấp (Ví dụ: SUP-DALAT-001).</summary>
         public string Code { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "Tên nhà cung cấp không được để trống.")]
-        [StringLength(200, ErrorMessage = "Tên nhà cung cấp tối đa 200 ký tự.")]
+        /// <summary>Tên đơn vị / Tên công ty cung cấp.</summary>
         public string Name { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "Số điện thoại không được để trống.")]
-        [StringLength(20, ErrorMessage = "Số điện thoại tối đa 20 ký tự.")]
+        /// <summary>Đường dẫn logo hoặc ảnh đại diện của nhà cung cấp.</summary>
+        public string? LogoPath { get; set; }
+        #endregion
+
+        #region Thông tin Liên hệ
+        /// <summary>Số điện thoại liên hệ chính.</summary>
         public string Phone { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "Email không được để trống.")]
-        [EmailAddress(ErrorMessage = "Email không đúng định dạng.")]
-        [StringLength(100, ErrorMessage = "Email tối đa 100 ký tự.")]
+        /// <summary>Địa chỉ Email liên hệ chính.</summary>
         public string Email { get; set; } = string.Empty;
 
-        public string? LogoPath { get; set; }
+        /// <summary>Website chính thức của doanh nghiệp.</summary>
+        public string? Website { get; set; }
 
-        [StringLength(20, ErrorMessage = "Mã số thuế tối đa 20 ký tự.")]
+        /// <summary>Liên kết mạng xã hội hoặc Fanpage.</summary>
+        public string? SocialLink { get; set; }
+        #endregion
+
+        #region Thông tin Thuế & Thanh toán
+        /// <summary>Mã số thuế doanh nghiệp.</summary>
         public string? TaxCode { get; set; }
 
-        public string? Website { get; set; }
-        public string? SocialLink { get; set; }
-
-        [StringLength(50, ErrorMessage = "Số tài khoản ngân hàng tối đa 50 ký tự.")]
+        /// <summary>Số tài khoản ngân hàng giao dịch.</summary>
         public string? BankAccount { get; set; }
 
-        [StringLength(100, ErrorMessage = "Tên ngân hàng tối đa 100 ký tự.")]
+        /// <summary>Tên ngân hàng và chi nhánh.</summary>
         public string? BankName { get; set; }
+        #endregion
 
+        #region Phân loại & Hệ thống
+        /// <summary>Ghi chú đặc thù, đánh giá hoặc lưu ý nội bộ về nhà cung cấp này.</summary>
         public string? Note { get; set; }
 
-        /// <summary>Trạng thái hoạt động (true: Hoạt động, false: Tạm khóa)</summary>
+        /// <summary>Trạng thái hoạt động (true: Đang hợp tác, false: Tạm khóa/Ngừng giao dịch).</summary>
         public bool IsActive { get; set; } = true;
 
-        // --- FOREIGN KEY ---
-        /// <summary>ID Loại nhà cung cấp</summary>
+        /// <summary>Mã định danh Loại nhà cung cấp (Ví dụ: ID của Trang trại, Tổng kho...).</summary>
         public int? SupplierTypeId { get; set; }
+        #endregion
     }
 }

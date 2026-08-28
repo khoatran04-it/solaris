@@ -2,6 +2,7 @@ using backend.DTOs;
 using backend.DTOs.SupplierTypeDTOs;
 using backend.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace backend.Controllers
@@ -12,6 +13,7 @@ namespace backend.Controllers
     [Route("api/[controller]")]
     [ApiController]
     [Authorize]
+    [Produces("application/json")]
     public class SupplierTypesController : ControllerBase
     {
         private readonly ISupplierTypeService _service;
@@ -66,7 +68,7 @@ namespace backend.Controllers
             var data = await _service.GetByIdAsync(id);
             if (data == null)
             {
-                return NotFound(new { Message = "Không tìm thấy phân loại nhà cung cấp này." });
+                return NotFound(new { message = "Không tìm thấy phân loại nhà cung cấp này." });
             }
             return Ok(data);
         }
@@ -89,11 +91,16 @@ namespace backend.Controllers
             try
             {
                 int newId = await _service.CreateAsync(dto);
-                return CreatedAtAction(nameof(GetById), new { id = newId }, new { Message = "Thêm mới thành công", Id = newId });
+                var created = await _service.GetByIdAsync(newId);
+                return CreatedAtAction(nameof(GetById), new { id = newId }, created);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Message = ex.Message });
+                return BadRequest(new { message = ex.Message });
             }
         }
 
@@ -109,15 +116,19 @@ namespace backend.Controllers
             try
             {
                 await _service.UpdateAsync(id, dto);
-                return Ok(new { Message = "Cập nhật thành công" });
+                return Ok(new { message = "Cập nhật phân loại nhà cung cấp thành công." });
             }
             catch (KeyNotFoundException ex)
             {
-                return NotFound(new { Message = ex.Message });
+                return NotFound(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Message = ex.Message });
+                return BadRequest(new { message = ex.Message });
             }
         }
 
@@ -133,15 +144,19 @@ namespace backend.Controllers
             try
             {
                 await _service.DeleteAsync(id);
-                return Ok(new { Message = "Xóa thành công" });
+                return Ok(new { message = "Xóa phân loại nhà cung cấp thành công." });
             }
             catch (KeyNotFoundException ex)
             {
-                return NotFound(new { Message = ex.Message });
+                return NotFound(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Message = ex.Message });
+                return BadRequest(new { message = ex.Message });
             }
         }
 
@@ -151,20 +166,21 @@ namespace backend.Controllers
         [HttpPatch("{id}/toggle-active")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> ToggleActive(int id)
         {
             try
             {
                 await _service.ToggleActiveAsync(id);
-                return Ok(new { Message = "Đã thay đổi trạng thái loại nhà cung cấp." });
+                return Ok(new { message = "Đã thay đổi trạng thái loại nhà cung cấp." });
             }
             catch (KeyNotFoundException ex)
             {
-                return NotFound(new { Message = ex.Message });
+                return NotFound(new { message = ex.Message });
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Message = ex.Message });
+                return BadRequest(new { message = ex.Message });
             }
         }
 

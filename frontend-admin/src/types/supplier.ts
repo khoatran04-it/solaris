@@ -2,7 +2,7 @@ import { PaginationParams } from './common';
 import { SupplierAddress, SupplierAddressPayload } from './supplierAddress';
 
 export interface SupplierQueryParams extends PaginationParams {
-  supplierTypesId?: string;
+  supplierTypeIds?: string;
   isActive?: boolean;
 }
 

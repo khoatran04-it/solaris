@@ -2,6 +2,7 @@ using AutoMapper;
 using backend.Data;
 using backend.DTOs;
 using backend.DTOs.SupplierDTOs;
+using backend.Helpers;
 using backend.Models;
 using backend.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
@@ -9,8 +10,8 @@ using Microsoft.EntityFrameworkCore;
 namespace backend.Services
 {
     /// <summary>
-    /// Service quản lý thông tin Nhà cung cấp.
-    /// Xử lý các nghiệp vụ phức tạp về lọc dữ liệu, quản lý giao dịch (Transaction) 
+    /// Service quản lý thông tin Nhà cung cấp (Supplier).
+    /// Xử lý các nghiệp vụ phức tạp về lọc dữ liệu, quản lý giao dịch (Transaction Resilience) 
     /// và đảm bảo tính toàn vẹn dữ liệu chuỗi cung ứng.
     /// </summary>
     public class SupplierService : ISupplierService
@@ -24,9 +25,6 @@ namespace backend.Services
             _mapper = mapper;
         }
 
-        // ==========================================
-        // SECTION: READ OPERATIONS (QUERIES)
-        // ==========================================
         #region Read Operations
 
         /// <summary>
@@ -48,7 +46,7 @@ namespace backend.Services
         /// </summary>
         public async Task<PagedResult<SupplierReadDto>> GetPagedAsync(
             string? search,
-            string? supplierTypesId,
+            string? supplierTypeIds,
             bool? isActive,
             DateTime? createdAt,
             DateTime? updatedAt,
@@ -71,13 +69,14 @@ namespace backend.Services
                 );
             }
 
-            // 2. Filter: Lọc theo danh sách phân loại
-            if (!string.IsNullOrWhiteSpace(supplierTypesId))
+            // 2. Filter: Lọc theo danh sách phân loại (hỗ trợ nhiều loại cách nhau bởi dấu phẩy)
+            if (!string.IsNullOrWhiteSpace(supplierTypeIds))
             {
-                var typeIdList = supplierTypesId
+                var typeIdList = supplierTypeIds
                     .Split(',')
-                    .Where(idStr => int.TryParse(idStr.Trim(), out _))
-                    .Select(idStr => int.Parse(idStr.Trim()))
+                    .Select(idStr => int.TryParse(idStr.Trim(), out var val) ? val : (int?)null)
+                    .Where(id => id.HasValue)
+                    .Select(id => id!.Value)
                     .ToList();
 
                 if (typeIdList.Any())
@@ -150,32 +149,36 @@ namespace backend.Services
 
         #endregion
 
-
-        // ==========================================
-        // SECTION: WRITE OPERATIONS (COMMANDS)
-        // ==========================================
         #region Write Operations
 
         /// <summary>
-        /// Tạo mới nhà cung cấp kèm địa chỉ (nếu có). Sử dụng Transaction để đảm bảo tính toàn vẹn dữ liệu.
+        /// Tạo mới nhà cung cấp kèm địa chỉ (nếu có). Sử dụng ExecutionStrategy Transaction để đảm bảo tính toàn vẹn dữ liệu.
         /// </summary>
         public async Task<int> CreateAsync(SupplierCreateDto dto)
         {
+            var trimmedCode = dto.Code.Trim().ToUpper();
+            var trimmedPhone = dto.Phone.Trim();
+
             // Business Rule: Mã định danh và Số điện thoại không được trùng lặp
-            if (await _context.Suppliers.AnyAsync(s => s.Code == dto.Code.Trim()))
-                throw new Exception($"Mã nhà cung cấp '{dto.Code}' đã tồn tại trên hệ thống.");
+            if (await _context.Suppliers.AnyAsync(s => s.Code.ToUpper() == trimmedCode))
+                throw new InvalidOperationException($"Mã nhà cung cấp '{dto.Code}' đã tồn tại trên hệ thống.");
 
-            if (await _context.Suppliers.AnyAsync(s => s.Phone == dto.Phone.Trim()))
-                throw new Exception($"Số điện thoại '{dto.Phone}' đã được đăng ký bởi nhà cung cấp khác.");
+            if (await _context.Suppliers.AnyAsync(s => s.Phone == trimmedPhone))
+                throw new InvalidOperationException($"Số điện thoại '{dto.Phone}' đã được đăng ký bởi nhà cung cấp khác.");
 
-            using var transaction = await _context.Database.BeginTransactionAsync();
+            // Kiểm tra phân loại nhà cung cấp nếu có truyền
+            if (dto.SupplierTypeId.HasValue)
+            {
+                var typeExists = await _context.SupplierTypes.AnyAsync(t => t.Id == dto.SupplierTypeId.Value);
+                if (!typeExists)
+                    throw new InvalidOperationException("Phân loại nhà cung cấp được chọn không tồn tại.");
+            }
 
-            try
+            return await _context.ExecuteInTransactionAsync(async () =>
             {
                 var newSupplier = _mapper.Map<Supplier>(dto);
                 newSupplier.CreatedAt = DateTime.UtcNow;
                 newSupplier.UpdatedAt = DateTime.UtcNow;
-                newSupplier.IsActive = dto.IsActive;
 
                 // Xử lý địa chỉ ban đầu nếu có
                 if (newSupplier.Addresses != null && newSupplier.Addresses.Any())
@@ -196,14 +199,8 @@ namespace backend.Services
                 _context.Suppliers.Add(newSupplier);
                 await _context.SaveChangesAsync();
 
-                await transaction.CommitAsync();
                 return newSupplier.Id;
-            }
-            catch
-            {
-                await transaction.RollbackAsync();
-                throw;
-            }
+            });
         }
 
         /// <summary>
@@ -212,35 +209,36 @@ namespace backend.Services
         public async Task<bool> UpdateAsync(int id, SupplierUpdateDto dto)
         {
             var supplier = await _context.Suppliers.FirstOrDefaultAsync(s => s.Id == id);
-            if (supplier == null) throw new KeyNotFoundException("Không tìm thấy thông tin nhà cung cấp.");
+            if (supplier == null) 
+                throw new KeyNotFoundException("Không tìm thấy thông tin nhà cung cấp.");
+
+            var trimmedCode = dto.Code.Trim().ToUpper();
+            var trimmedPhone = dto.Phone.Trim();
 
             // Kiểm tra trùng lặp thông tin với các nhà cung cấp khác
-            bool isCodeDuplicate = await _context.Suppliers.AnyAsync(s => s.Id != id && s.Code == dto.Code.Trim());
+            bool isCodeDuplicate = await _context.Suppliers.AnyAsync(s => s.Id != id && s.Code.ToUpper() == trimmedCode);
             if (isCodeDuplicate)
-                throw new Exception($"Mã nhà cung cấp '{dto.Code}' đã được sử dụng bởi đơn vị khác.");
+                throw new InvalidOperationException($"Mã nhà cung cấp '{dto.Code}' đã được sử dụng bởi đơn vị khác.");
 
-            bool isPhoneDuplicate = await _context.Suppliers.AnyAsync(s => s.Id != id && s.Phone == dto.Phone.Trim());
+            bool isPhoneDuplicate = await _context.Suppliers.AnyAsync(s => s.Id != id && s.Phone == trimmedPhone);
             if (isPhoneDuplicate)
-                throw new Exception($"Số điện thoại '{dto.Phone}' đã được sử dụng bởi nhà cung cấp khác.");
+                throw new InvalidOperationException($"Số điện thoại '{dto.Phone}' đã được sử dụng bởi nhà cung cấp khác.");
 
-            using var transaction = await _context.Database.BeginTransactionAsync();
+            if (dto.SupplierTypeId.HasValue)
+            {
+                var typeExists = await _context.SupplierTypes.AnyAsync(t => t.Id == dto.SupplierTypeId.Value);
+                if (!typeExists)
+                    throw new InvalidOperationException("Phân loại nhà cung cấp được chọn không tồn tại.");
+            }
 
-            try
+            return await _context.ExecuteInTransactionAsync(async () =>
             {
                 _mapper.Map(dto, supplier);
                 supplier.UpdatedAt = DateTime.UtcNow;
-                supplier.IsActive = dto.IsActive;
 
                 await _context.SaveChangesAsync();
-
-                await transaction.CommitAsync();
                 return true;
-            }
-            catch
-            {
-                await transaction.RollbackAsync();
-                throw;
-            }
+            });
         }
 
         /// <summary>
@@ -251,22 +249,27 @@ namespace backend.Services
             var supplier = await _context.Suppliers
                 .Include(s => s.Batches)
                 .Include(s => s.PurchaseOrders)
+                .Include(s => s.Addresses)
+                .Include(s => s.SupplierProducts)
                 .FirstOrDefaultAsync(s => s.Id == id);
 
             if (supplier == null) 
                 throw new KeyNotFoundException("Không tìm thấy nhà cung cấp để xóa.");
 
-            // Kiểm tra ràng buộc bảo vệ toàn vẹn dữ liệu
+            // Safety Shield 1: Chặn xóa nếu đã có Đơn mua hàng (PO)
             if (supplier.PurchaseOrders.Any(p => !p.IsDeleted))
-                throw new Exception("Không thể xóa nhà cung cấp này vì đã có Đơn mua hàng (PO) liên kết.");
+                throw new InvalidOperationException("Không thể xóa nhà cung cấp này vì đã có Đơn mua hàng (PO) liên kết.");
 
+            // Safety Shield 2: Chặn xóa nếu đã có Lô hàng (Batch) trong kho
             if (supplier.Batches.Any(b => !b.IsDeleted))
-                throw new Exception("Không thể xóa nhà cung cấp này vì đã có Lô hàng (Batch) liên kết trong kho.");
+                throw new InvalidOperationException("Không thể xóa nhà cung cấp này vì đã có Lô hàng (Batch) liên kết trong kho.");
 
-            _context.Suppliers.Remove(supplier);
-            await _context.SaveChangesAsync();
-
-            return true;
+            return await _context.ExecuteInTransactionAsync(async () =>
+            {
+                _context.Suppliers.Remove(supplier);
+                await _context.SaveChangesAsync();
+                return true;
+            });
         }
 
         /// <summary>
@@ -275,13 +278,16 @@ namespace backend.Services
         public async Task<bool> ToggleActiveAsync(int id)
         {
             var supplier = await _context.Suppliers.FindAsync(id);
-            if (supplier == null) throw new KeyNotFoundException("Không tìm thấy nhà cung cấp.");
+            if (supplier == null) 
+                throw new KeyNotFoundException("Không tìm thấy nhà cung cấp.");
 
-            supplier.IsActive = !supplier.IsActive;
-            supplier.UpdatedAt = DateTime.UtcNow;
-            await _context.SaveChangesAsync();
-
-            return true;
+            return await _context.ExecuteInTransactionAsync(async () =>
+            {
+                supplier.IsActive = !supplier.IsActive;
+                supplier.UpdatedAt = DateTime.UtcNow;
+                await _context.SaveChangesAsync();
+                return true;
+            });
         }
 
         #endregion

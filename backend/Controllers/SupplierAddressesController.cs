@@ -13,6 +13,7 @@ namespace backend.Controllers
     [ApiController]
     [Route("api/[controller]")]
     [Authorize]
+    [Produces("application/json")]
     public class SupplierAddressesController : ControllerBase
     {
         private readonly ISupplierAddressService _service;
@@ -50,7 +51,7 @@ namespace backend.Controllers
         {
             var result = await _service.GetByIdAsync(id);
             if (result == null)
-                return NotFound(new { Message = "Không tìm thấy địa chỉ kho." });
+                return NotFound(new { message = "Không tìm thấy địa chỉ kho." });
 
             return Ok(result);
         }
@@ -79,9 +80,17 @@ namespace backend.Controllers
                 var createdAddress = await _service.GetByIdAsync(id);
                 return CreatedAtAction(nameof(GetById), new { id }, createdAddress);
             }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
             catch (Exception ex)
             {
-                return BadRequest(new { Message = ex.Message });
+                return BadRequest(new { message = ex.Message });
             }
         }
 
@@ -99,15 +108,19 @@ namespace backend.Controllers
             try
             {
                 await _service.UpdateAsync(id, dto);
-                return Ok(new { Message = "Cập nhật địa chỉ kho thành công." });
+                return Ok(new { message = "Cập nhật địa chỉ kho thành công." });
             }
             catch (KeyNotFoundException ex)
             {
-                return NotFound(new { Message = ex.Message });
+                return NotFound(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Message = ex.Message });
+                return BadRequest(new { message = ex.Message });
             }
         }
 
@@ -124,15 +137,19 @@ namespace backend.Controllers
             try
             {
                 await _service.DeleteAsync(id);
-                return Ok(new { Message = "Xóa địa chỉ kho thành công." });
+                return Ok(new { message = "Xóa địa chỉ kho thành công." });
             }
             catch (KeyNotFoundException ex)
             {
-                return NotFound(new { Message = ex.Message });
+                return NotFound(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Message = ex.Message });
+                return BadRequest(new { message = ex.Message });
             }
         }
 
@@ -158,15 +175,19 @@ namespace backend.Controllers
             try
             {
                 await _service.SetDefaultAsync(id, supplierId);
-                return Ok(new { Message = "Đã thay đổi địa chỉ mặc định." });
+                return Ok(new { message = "Đã thay đổi địa chỉ mặc định thành công." });
             }
             catch (KeyNotFoundException ex)
             {
-                return NotFound(new { Message = ex.Message });
+                return NotFound(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Message = ex.Message });
+                return BadRequest(new { message = ex.Message });
             }
         }
 

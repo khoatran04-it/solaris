@@ -2,12 +2,16 @@ using AutoMapper;
 using backend.Data;
 using backend.DTOs;
 using backend.DTOs.SupplierProductDTOs;
+using backend.Helpers;
 using backend.Models;
 using backend.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
 namespace backend.Services
 {
+    /// <summary>
+    /// Service quản lý Bảng giá và Danh mục Sản phẩm cung cấp bởi Nhà cung cấp (Supplier Product).
+    /// </summary>
     public class SupplierProductService : ISupplierProductService
     {
         private readonly SolarisDbContext _context;
@@ -19,6 +23,11 @@ namespace backend.Services
             _mapper = mapper;
         }
 
+        #region Read Operations
+
+        /// <summary>
+        /// Lấy toàn bộ danh sách liên kết sản phẩm - nhà cung cấp.
+        /// </summary>
         public async Task<IEnumerable<SupplierProductReadDto>> GetAllListAsync(bool isActiveOnly = false)
         {
             var query = _context.SupplierProducts
@@ -40,6 +49,9 @@ namespace backend.Services
             return _mapper.Map<IEnumerable<SupplierProductReadDto>>(items);
         }
 
+        /// <summary>
+        /// Lấy danh sách sản phẩm được cung cấp bởi một nhà cung cấp cụ thể.
+        /// </summary>
         public async Task<IEnumerable<SupplierProductReadDto>> GetBySupplierIdAsync(int supplierId, bool isActiveOnly = true)
         {
             var query = _context.SupplierProducts
@@ -62,6 +74,9 @@ namespace backend.Services
             return _mapper.Map<IEnumerable<SupplierProductReadDto>>(items);
         }
 
+        /// <summary>
+        /// Tìm kiếm và phân trang danh mục sản phẩm nhà cung cấp.
+        /// </summary>
         public async Task<PagedResult<SupplierProductReadDto>> GetPagedAsync(
             string? search,
             int? variantId,
@@ -137,6 +152,9 @@ namespace backend.Services
             };
         }
 
+        /// <summary>
+        /// Lấy chi tiết liên kết sản phẩm - nhà cung cấp theo ID.
+        /// </summary>
         public async Task<SupplierProductReadDto> GetByIdAsync(int id)
         {
             var entity = await _context.SupplierProducts
@@ -152,42 +170,53 @@ namespace backend.Services
             return _mapper.Map<SupplierProductReadDto>(entity);
         }
 
+        #endregion
+
+        #region Write Operations
+
+        /// <summary>
+        /// Tạo mới cấu hình giá nhập từ nhà cung cấp cho một biến thể sản phẩm.
+        /// </summary>
         public async Task<int> CreateAsync(SupplierProductCreateDto dto)
         {
             // Kiểm tra tồn tại Biến thể sản phẩm
             var variantExists = await _context.ProductVariants.AnyAsync(v => v.Id == dto.VariantId);
             if (!variantExists)
-                throw new Exception("Biến thể sản phẩm được chọn không tồn tại.");
+                throw new InvalidOperationException("Biến thể sản phẩm được chọn không tồn tại.");
 
             // Kiểm tra tồn tại Nhà cung cấp
             var supplierExists = await _context.Suppliers.AnyAsync(s => s.Id == dto.SupplierId);
             if (!supplierExists)
-                throw new Exception("Nhà cung cấp được chọn không tồn tại.");
+                throw new InvalidOperationException("Nhà cung cấp được chọn không tồn tại.");
 
             // Kiểm tra tồn tại ĐVT mua hàng
             var uomExists = await _context.UoMs.AnyAsync(u => u.Id == dto.PurchaseUoMId);
             if (!uomExists)
-                throw new Exception("Đơn vị tính mua hàng được chọn không tồn tại.");
+                throw new InvalidOperationException("Đơn vị tính mua hàng được chọn không tồn tại.");
 
             // Business Rule: 1 Sản phẩm - 1 NCC chỉ được phép có 1 dòng cấu hình giá
             var isDuplicate = await _context.SupplierProducts
                 .AnyAsync(x => x.VariantId == dto.VariantId && x.SupplierId == dto.SupplierId);
 
             if (isDuplicate)
-                throw new Exception("Nhà cung cấp này đã có cấu hình giá cho sản phẩm được chọn. Vui lòng cập nhật bản ghi hiện tại thay vì tạo mới.");
+                throw new InvalidOperationException("Nhà cung cấp này đã có cấu hình giá cho sản phẩm được chọn. Vui lòng cập nhật bản ghi hiện tại thay vì tạo mới.");
 
-            var entity = _mapper.Map<SupplierProduct>(dto);
-            entity.SupplierSKU = dto.SupplierSKU?.Trim();
-            entity.CreatedAt = DateTime.UtcNow;
-            entity.UpdatedAt = DateTime.UtcNow;
-            entity.IsActive = dto.IsActive;
+            return await _context.ExecuteInTransactionAsync(async () =>
+            {
+                var entity = _mapper.Map<SupplierProduct>(dto);
+                entity.CreatedAt = DateTime.UtcNow;
+                entity.UpdatedAt = DateTime.UtcNow;
 
-            _context.SupplierProducts.Add(entity);
-            await _context.SaveChangesAsync();
+                _context.SupplierProducts.Add(entity);
+                await _context.SaveChangesAsync();
 
-            return entity.Id;
+                return entity.Id;
+            });
         }
 
+        /// <summary>
+        /// Cập nhật cấu hình giá nhập từ nhà cung cấp.
+        /// </summary>
         public async Task<bool> UpdateAsync(int id, SupplierProductUpdateDto dto)
         {
             var entity = await _context.SupplierProducts.FindAsync(id);
@@ -197,60 +226,74 @@ namespace backend.Services
             // Kiểm tra tồn tại Biến thể sản phẩm
             var variantExists = await _context.ProductVariants.AnyAsync(v => v.Id == dto.VariantId);
             if (!variantExists)
-                throw new Exception("Biến thể sản phẩm được chọn không tồn tại.");
+                throw new InvalidOperationException("Biến thể sản phẩm được chọn không tồn tại.");
 
             // Kiểm tra tồn tại Nhà cung cấp
             var supplierExists = await _context.Suppliers.AnyAsync(s => s.Id == dto.SupplierId);
             if (!supplierExists)
-                throw new Exception("Nhà cung cấp được chọn không tồn tại.");
+                throw new InvalidOperationException("Nhà cung cấp được chọn không tồn tại.");
 
             // Kiểm tra tồn tại ĐVT mua hàng
             var uomExists = await _context.UoMs.AnyAsync(u => u.Id == dto.PurchaseUoMId);
             if (!uomExists)
-                throw new Exception("Đơn vị tính mua hàng được chọn không tồn tại.");
+                throw new InvalidOperationException("Đơn vị tính mua hàng được chọn không tồn tại.");
 
             // Bắt lỗi trùng lặp khi người dùng sửa Variant hoặc Supplier (ngoại trừ dòng hiện tại)
             var isDuplicate = await _context.SupplierProducts
                 .AnyAsync(x => x.Id != id && x.VariantId == dto.VariantId && x.SupplierId == dto.SupplierId);
 
             if (isDuplicate)
-                throw new Exception("Cập nhật thất bại: Cấu hình liên kết giữa Sản phẩm và Nhà cung cấp này đã tồn tại.");
+                throw new InvalidOperationException("Cập nhật thất bại: Cấu hình liên kết giữa Sản phẩm và Nhà cung cấp này đã tồn tại.");
 
-            _mapper.Map(dto, entity);
-            entity.SupplierSKU = dto.SupplierSKU?.Trim();
-            entity.UpdatedAt = DateTime.UtcNow;
-            entity.IsActive = dto.IsActive;
+            return await _context.ExecuteInTransactionAsync(async () =>
+            {
+                _mapper.Map(dto, entity);
+                entity.UpdatedAt = DateTime.UtcNow;
 
-            await _context.SaveChangesAsync();
-            return true;
+                await _context.SaveChangesAsync();
+                return true;
+            });
         }
 
+        /// <summary>
+        /// Xóa cấu hình giá nhập (Soft Delete).
+        /// </summary>
         public async Task<bool> DeleteAsync(int id)
         {
             var entity = await _context.SupplierProducts.FindAsync(id);
             if (entity == null)
                 throw new KeyNotFoundException("Không tìm thấy cấu hình giá nhập để xóa.");
 
-            // Soft Delete
-            entity.IsDeleted = true;
-            entity.DeletedAt = DateTime.UtcNow;
-            entity.UpdatedAt = DateTime.UtcNow;
+            return await _context.ExecuteInTransactionAsync(async () =>
+            {
+                entity.IsDeleted = true;
+                entity.DeletedAt = DateTime.UtcNow;
+                entity.UpdatedAt = DateTime.UtcNow;
 
-            await _context.SaveChangesAsync();
-            return true;
+                await _context.SaveChangesAsync();
+                return true;
+            });
         }
 
+        /// <summary>
+        /// Bật / Tắt trạng thái hoạt động của bảng giá nhập.
+        /// </summary>
         public async Task<bool> ToggleActiveAsync(int id)
         {
             var entity = await _context.SupplierProducts.FindAsync(id);
             if (entity == null)
                 throw new KeyNotFoundException("Không tìm thấy cấu hình giá nhập.");
 
-            entity.IsActive = !entity.IsActive;
-            entity.UpdatedAt = DateTime.UtcNow;
+            return await _context.ExecuteInTransactionAsync(async () =>
+            {
+                entity.IsActive = !entity.IsActive;
+                entity.UpdatedAt = DateTime.UtcNow;
 
-            await _context.SaveChangesAsync();
-            return true;
+                await _context.SaveChangesAsync();
+                return true;
+            });
         }
+
+        #endregion
     }
 }

@@ -2,6 +2,7 @@ using AutoMapper;
 using backend.Data;
 using backend.DTOs;
 using backend.DTOs.SupplierTypeDTOs;
+using backend.Helpers;
 using backend.Models;
 using backend.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
@@ -22,9 +23,6 @@ namespace backend.Services
             _mapper = mapper;
         }
 
-        // ==========================================
-        // SECTION: READ OPERATIONS (QUERIES)
-        // ==========================================
         #region Read Operations
 
         /// <summary>
@@ -57,7 +55,7 @@ namespace backend.Services
             // 1. Filter: Tìm kiếm theo mã hoặc tên
             if (!string.IsNullOrWhiteSpace(search))
             {
-                var lowerSearch = search.ToLower();
+                var lowerSearch = search.Trim().ToLower();
                 query = query.Where(x => 
                     x.Code.ToLower().Contains(lowerSearch) || 
                     x.Name.ToLower().Contains(lowerSearch)
@@ -130,9 +128,6 @@ namespace backend.Services
 
         #endregion
 
-        // ==========================================
-        // SECTION: WRITE OPERATIONS (COMMANDS)
-        // ==========================================
         #region Write Operations
 
         /// <summary>
@@ -140,19 +135,27 @@ namespace backend.Services
         /// </summary>
         public async Task<int> CreateAsync(SupplierTypeCreateDto dto)
         {
+            var trimmedCode = dto.Code.Trim().ToUpper();
+            var trimmedName = dto.Name.Trim();
+
             // Kiểm tra trùng mã code
-            if (await _context.SupplierTypes.AnyAsync(x => x.Code == dto.Code))
-                throw new Exception("Mã phân loại đã tồn tại.");
+            if (await _context.SupplierTypes.AnyAsync(x => x.Code.ToUpper() == trimmedCode))
+                throw new InvalidOperationException($"Mã phân loại '{dto.Code}' đã tồn tại.");
 
-            var entity = _mapper.Map<SupplierType>(dto);
-            entity.CreatedAt = DateTime.UtcNow;
-            entity.UpdatedAt = DateTime.UtcNow;
-            entity.IsActive = dto.IsActive;
+            if (await _context.SupplierTypes.AnyAsync(x => x.Name.ToLower() == trimmedName.ToLower()))
+                throw new InvalidOperationException($"Tên phân loại '{dto.Name}' đã tồn tại.");
 
-            _context.SupplierTypes.Add(entity);
-            await _context.SaveChangesAsync();
+            return await _context.ExecuteInTransactionAsync(async () =>
+            {
+                var entity = _mapper.Map<SupplierType>(dto);
+                entity.CreatedAt = DateTime.UtcNow;
+                entity.UpdatedAt = DateTime.UtcNow;
 
-            return entity.Id;
+                _context.SupplierTypes.Add(entity);
+                await _context.SaveChangesAsync();
+
+                return entity.Id;
+            });
         }
 
         /// <summary>
@@ -164,16 +167,24 @@ namespace backend.Services
             if (entity == null)
                 throw new KeyNotFoundException("Không tìm thấy phân loại cần sửa.");
 
+            var trimmedCode = dto.Code.Trim().ToUpper();
+            var trimmedName = dto.Name.Trim();
+
             // Kiểm tra trùng mã code với các bản ghi khác
-            if (await _context.SupplierTypes.AnyAsync(x => x.Id != id && x.Code == dto.Code))
-                throw new Exception("Cập nhật thất bại: Mã phân loại này đã bị trùng lặp với một dòng dữ liệu khác.");
+            if (await _context.SupplierTypes.AnyAsync(x => x.Id != id && x.Code.ToUpper() == trimmedCode))
+                throw new InvalidOperationException($"Mã phân loại '{dto.Code}' đã bị trùng lặp với bản ghi khác.");
 
-            _mapper.Map(dto, entity);
-            entity.UpdatedAt = DateTime.UtcNow;
-            entity.IsActive = dto.IsActive; // Đảm bảo trạng thái hoạt động chính xác từ DTO
-            await _context.SaveChangesAsync();
+            if (await _context.SupplierTypes.AnyAsync(x => x.Id != id && x.Name.ToLower() == trimmedName.ToLower()))
+                throw new InvalidOperationException($"Tên phân loại '{dto.Name}' đã bị trùng lặp với bản ghi khác.");
 
-            return true;
+            return await _context.ExecuteInTransactionAsync(async () =>
+            {
+                _mapper.Map(dto, entity);
+                entity.UpdatedAt = DateTime.UtcNow;
+                await _context.SaveChangesAsync();
+
+                return true;
+            });
         }
 
         /// <summary>
@@ -189,12 +200,14 @@ namespace backend.Services
                 throw new KeyNotFoundException("Không tìm thấy phân loại cần xóa.");
 
             if (entity.Suppliers.Any(s => !s.IsDeleted))
-                throw new Exception("Không thể xóa phân loại này vì đang có nhà cung cấp trực thuộc.");
+                throw new InvalidOperationException("Không thể xóa phân loại này vì đang có nhà cung cấp trực thuộc.");
 
-            _context.SupplierTypes.Remove(entity);
-            await _context.SaveChangesAsync();
-
-            return true;
+            return await _context.ExecuteInTransactionAsync(async () =>
+            {
+                _context.SupplierTypes.Remove(entity);
+                await _context.SaveChangesAsync();
+                return true;
+            });
         }
 
         /// <summary>
@@ -203,13 +216,16 @@ namespace backend.Services
         public async Task<bool> ToggleActiveAsync(int id)
         {
             var entity = await _context.SupplierTypes.FindAsync(id);
-            if (entity == null) throw new KeyNotFoundException("Không tìm thấy loại nhà cung cấp.");
+            if (entity == null) 
+                throw new KeyNotFoundException("Không tìm thấy loại nhà cung cấp.");
 
-            entity.IsActive = !entity.IsActive;
-            entity.UpdatedAt = DateTime.UtcNow;
-            await _context.SaveChangesAsync();
-
-            return true;
+            return await _context.ExecuteInTransactionAsync(async () =>
+            {
+                entity.IsActive = !entity.IsActive;
+                entity.UpdatedAt = DateTime.UtcNow;
+                await _context.SaveChangesAsync();
+                return true;
+            });
         }
 
         #endregion
