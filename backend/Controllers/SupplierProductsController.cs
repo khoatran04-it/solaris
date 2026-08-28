@@ -13,6 +13,7 @@ namespace backend.Controllers
     [Route("api/[controller]")]
     [ApiController]
     [Authorize]
+    [Produces("application/json")]
     public class SupplierProductsController : ControllerBase
     {
         private readonly ISupplierProductService _service;
@@ -22,6 +23,9 @@ namespace backend.Controllers
             _service = service;
         }
 
+        /// <summary>
+        /// Lấy toàn bộ danh sách mặt hàng cung cấp (thường dùng cho Dropdown).
+        /// </summary>
         [HttpGet("all")]
         [ProducesResponseType(typeof(IEnumerable<SupplierProductReadDto>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetAllList([FromQuery] bool? isActive = null)
@@ -30,6 +34,9 @@ namespace backend.Controllers
             return Ok(data);
         }
 
+        /// <summary>
+        /// Lấy danh sách sản phẩm theo một nhà cung cấp cụ thể.
+        /// </summary>
         [HttpGet("by-supplier/{supplierId}")]
         [ProducesResponseType(typeof(IEnumerable<SupplierProductReadDto>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetBySupplierId(int supplierId, [FromQuery] bool isActiveOnly = true)
@@ -38,6 +45,9 @@ namespace backend.Controllers
             return Ok(data);
         }
 
+        /// <summary>
+        /// Phân trang, tìm kiếm và lọc danh mục sản phẩm nhà cung cấp.
+        /// </summary>
         [HttpGet]
         [ProducesResponseType(typeof(PagedResult<SupplierProductReadDto>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetPaged(
@@ -54,6 +64,9 @@ namespace backend.Controllers
             return Ok(result);
         }
 
+        /// <summary>
+        /// Lấy chi tiết liên kết sản phẩm - nhà cung cấp theo ID.
+        /// </summary>
         [HttpGet("{id}")]
         [ProducesResponseType(typeof(SupplierProductReadDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -70,50 +83,63 @@ namespace backend.Controllers
             }
         }
 
+        /// <summary>
+        /// Tạo mới cấu hình giá nhập từ nhà cung cấp cho sản phẩm.
+        /// </summary>
         [HttpPost]
         [ProducesResponseType(typeof(SupplierProductReadDto), StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Create([FromBody] SupplierProductCreateDto dto)
         {
-            if (!ModelState.IsValid) return BadRequest(ModelState);
-
             try
             {
                 int newId = await _service.CreateAsync(dto);
                 var created = await _service.GetByIdAsync(newId);
                 return CreatedAtAction(nameof(GetById), new { id = newId }, created);
             }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
             catch (Exception ex)
             {
                 return BadRequest(new { message = ex.Message });
             }
         }
 
+        /// <summary>
+        /// Cập nhật cấu hình giá nhập sản phẩm của nhà cung cấp.
+        /// </summary>
         [HttpPut("{id}")]
-        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Update(int id, [FromBody] SupplierProductUpdateDto dto)
         {
-            if (!ModelState.IsValid) return BadRequest(ModelState);
-
             try
             {
                 await _service.UpdateAsync(id, dto);
-                return NoContent();
+                return Ok(new { message = "Cập nhật cấu hình giá nhập thành công." });
             }
             catch (KeyNotFoundException ex)
             {
                 return NotFound(new { message = ex.Message });
             }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
             catch (Exception ex)
             {
                 return BadRequest(new { message = ex.Message });
             }
         }
 
+        /// <summary>
+        /// Xóa cấu hình giá nhập (Soft Delete).
+        /// </summary>
         [HttpDelete("{id}")]
-        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Delete(int id)
@@ -121,7 +147,7 @@ namespace backend.Controllers
             try
             {
                 await _service.DeleteAsync(id);
-                return NoContent();
+                return Ok(new { message = "Xóa cấu hình giá nhập thành công." });
             }
             catch (KeyNotFoundException ex)
             {
@@ -133,8 +159,10 @@ namespace backend.Controllers
             }
         }
 
+        /// <summary>
+        /// Bật / Tắt trạng thái hoạt động của cấu hình giá nhập.
+        /// </summary>
         [HttpPatch("{id}/toggle-active")]
-        [HttpPut("{id}/toggle-active")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]

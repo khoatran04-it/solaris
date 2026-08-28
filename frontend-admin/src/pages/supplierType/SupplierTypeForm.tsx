@@ -113,24 +113,24 @@ const SupplierTypeForm: React.FC = () => {
 
     // Kiểm tra Mã
     if (!trimmedCode) {
-      newErrors.code = 'Vui lòng nhập mã định danh.';
-    } else if (trimmedCode.length < 3) {
-      newErrors.code = 'Mã phải chứa ít nhất 3 ký tự.';
+      newErrors.code = 'Mã phân loại không được để trống';
+    } else if (trimmedCode.length < 2) {
+      newErrors.code = 'Mã phân loại phải có ít nhất 2 ký tự';
     } else {
       const isDuplicate = existingCodes.includes(trimmedCode);
       const isSelf = isEditMode && trimmedCode === originalCode;
-      if (isDuplicate && !isSelf) newErrors.code = 'Mã định danh đã tồn tại!';
+      if (isDuplicate && !isSelf) newErrors.code = 'Mã phân loại này đã tồn tại';
     }
 
     // Kiểm tra Tên
     if (!trimmedName) {
-      newErrors.name = 'Vui lòng nhập tên phân loại.';
-    } else if (trimmedName.length < 3) {
-      newErrors.name = 'Tên phải chứa ít nhất 3 ký tự.';
+      newErrors.name = 'Tên phân loại không được để trống';
+    } else if (trimmedName.length < 2) {
+      newErrors.name = 'Tên phân loại phải có ít nhất 2 ký tự';
     } else {
       const isDuplicate = existingNames.includes(trimmedName);
       const isSelf = isEditMode && trimmedName === originalName;
-      if (isDuplicate && !isSelf) newErrors.name = 'Tên phân loại đã tồn tại!';
+      if (isDuplicate && !isSelf) newErrors.name = 'Tên phân loại này đã tồn tại';
     }
 
     setErrors(newErrors);
@@ -173,7 +173,7 @@ const SupplierTypeForm: React.FC = () => {
       <Toast {...toast} />
 
       <FormHeader
-        title={isEditMode ? 'Chỉnh Sửa Phân Loại' : 'Thêm Mới Phân Loại'}
+        title={isEditMode ? 'Chỉnh Sửa Loại Nhà Cung Cấp' : 'Thêm Mới Loại Nhà Cung Cấp'}
         subtitle={
           isEditMode
             ? 'Cập nhật thông tin danh mục nhà cung cấp'
@@ -190,7 +190,7 @@ const SupplierTypeForm: React.FC = () => {
               <FormInput
                 label="Mã định danh"
                 required
-                placeholder="VD: DOANHNGHIEP"
+                placeholder="VD: FARM, COOP, IMPORT"
                 value={formData.code}
                 error={errors.code}
                 disabled={loading}
@@ -200,7 +200,7 @@ const SupplierTypeForm: React.FC = () => {
               <FormInput
                 label="Tên phân loại"
                 required
-                placeholder="VD: Doanh nghiệp chế biến..."
+                placeholder="VD: Nhà vườn, Hợp tác xã, Nhập khẩu..."
                 value={formData.name}
                 error={errors.name}
                 disabled={loading}

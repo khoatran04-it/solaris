@@ -179,7 +179,7 @@ const SupplierProductList: React.FC = () => {
         onSearchChange={setSearchTerm}
         onAdd={handleOpenCreate}
         icon={Package}
-        searchPlaceholder="Tìm theo tên SP, mã SKU, tên NCC..."
+        searchPlaceholder="Tìm kiếm theo mã SKU, tên sản phẩm, tên NCC..."
       />
 
       <ListCard>
@@ -337,7 +337,7 @@ const SupplierProductList: React.FC = () => {
                           <button
                             onClick={() => handleOpenEdit(item)}
                             className="p-1.5 text-slate-400 hover:text-yellow-600 hover:bg-yellow-50 rounded-lg transition-colors cursor-pointer"
-                            title="Chỉnh sửa bảng giá"
+                            title="Chỉnh sửa"
                           >
                             <Edit3 size={17} strokeWidth={2.5} />
                           </button>
@@ -347,7 +347,7 @@ const SupplierProductList: React.FC = () => {
                               setIsDeleteModalOpen(true);
                             }}
                             className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
-                            title="Xóa khỏi bảng giá"
+                            title="Xóa"
                           >
                             <Trash2 size={17} strokeWidth={2.5} />
                           </button>

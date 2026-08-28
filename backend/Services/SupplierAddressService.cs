@@ -1,6 +1,7 @@
 using AutoMapper;
 using backend.Data;
 using backend.DTOs.SupplierAddressDTOs;
+using backend.Helpers;
 using backend.Models;
 using backend.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
@@ -8,7 +9,7 @@ using Microsoft.EntityFrameworkCore;
 namespace backend.Services
 {
     /// <summary>
-    /// Service quản lý địa chỉ của nhà cung cấp.
+    /// Service quản lý địa chỉ kho / giao nhận của nhà cung cấp.
     /// Đảm bảo luôn có ít nhất một địa chỉ mặc định cho mỗi nhà cung cấp.
     /// </summary>
     public class SupplierAddressService : ISupplierAddressService
@@ -22,9 +23,6 @@ namespace backend.Services
             _mapper = mapper;
         }
 
-        // ==========================================
-        // SECTION: READ OPERATIONS
-        // ==========================================
         #region Read Operations
 
         /// <summary>
@@ -59,10 +57,6 @@ namespace backend.Services
 
         #endregion
 
-
-        // ==========================================
-        // SECTION: WRITE OPERATIONS (WITH BUSINESS RULES)
-        // ==========================================
         #region Write Operations
 
         /// <summary>
@@ -71,34 +65,38 @@ namespace backend.Services
         public async Task<int> CreateAsync(int supplierId, SupplierAddressCreateDto dto)
         {
             var supplierExists = await _context.Suppliers.AnyAsync(s => s.Id == supplierId);
-            if (!supplierExists) throw new KeyNotFoundException("Không tìm thấy thông tin nhà cung cấp.");
+            if (!supplierExists) 
+                throw new KeyNotFoundException("Không tìm thấy thông tin nhà cung cấp.");
 
-            var entity = _mapper.Map<SupplierAddress>(dto);
-            entity.SupplierId = supplierId;
-            entity.CreatedAt = DateTime.UtcNow;
-            entity.UpdatedAt = DateTime.UtcNow;
-
-            // BUSINESS RULE: Xử lý Logic IsDefault
-            var existingAddresses = await _context.SupplierAddresses
-                .Where(a => a.SupplierId == supplierId)
-                .ToListAsync();
-
-            if (!existingAddresses.Any())
+            return await _context.ExecuteInTransactionAsync(async () =>
             {
-                // Nếu là địa chỉ đầu tiên, bắt buộc phải là mặc định
-                entity.IsDefault = true;
-            }
-            else if (dto.IsDefault)
-            {
-                // Nếu địa chỉ mới được set làm mặc định, hủy trạng thái mặc định của các địa chỉ cũ
-                var currentDefault = existingAddresses.FirstOrDefault(a => a.IsDefault);
-                if (currentDefault != null) currentDefault.IsDefault = false;
-            }
+                var entity = _mapper.Map<SupplierAddress>(dto);
+                entity.SupplierId = supplierId;
+                entity.CreatedAt = DateTime.UtcNow;
+                entity.UpdatedAt = DateTime.UtcNow;
 
-            _context.SupplierAddresses.Add(entity);
-            await _context.SaveChangesAsync();
+                // BUSINESS RULE: Xử lý Logic IsDefault
+                var existingAddresses = await _context.SupplierAddresses
+                    .Where(a => a.SupplierId == supplierId)
+                    .ToListAsync();
 
-            return entity.Id;
+                if (!existingAddresses.Any())
+                {
+                    // Nếu là địa chỉ đầu tiên, bắt buộc phải là mặc định
+                    entity.IsDefault = true;
+                }
+                else if (dto.IsDefault)
+                {
+                    // Nếu địa chỉ mới được set làm mặc định, hủy trạng thái mặc định của các địa chỉ cũ
+                    var currentDefault = existingAddresses.FirstOrDefault(a => a.IsDefault);
+                    if (currentDefault != null) currentDefault.IsDefault = false;
+                }
+
+                _context.SupplierAddresses.Add(entity);
+                await _context.SaveChangesAsync();
+
+                return entity.Id;
+            });
         }
 
         /// <summary>
@@ -107,43 +105,47 @@ namespace backend.Services
         public async Task<bool> UpdateAsync(int id, SupplierAddressUpdateDto dto)
         {
             var entity = await _context.SupplierAddresses.FindAsync(id);
-            if (entity == null) throw new KeyNotFoundException("Không tìm thấy địa chỉ.");
+            if (entity == null) 
+                throw new KeyNotFoundException("Không tìm thấy địa chỉ.");
 
-            // BUSINESS RULE: Luân chuyển quyền mặc định
-            if (dto.IsDefault && !entity.IsDefault)
+            return await _context.ExecuteInTransactionAsync(async () =>
             {
-                // Chuyển địa chỉ này thành mặc định -> Tìm và tắt Default cũ
-                var currentDefault = await _context.SupplierAddresses
-                    .Where(a => a.SupplierId == entity.SupplierId && a.IsDefault && a.Id != id)
-                    .FirstOrDefaultAsync();
-
-                if (currentDefault != null) currentDefault.IsDefault = false;
-            }
-            else if (!dto.IsDefault && entity.IsDefault)
-            {
-                // Cố tình tắt Default của địa chỉ đang là mặc định
-                var otherAddresses = await _context.SupplierAddresses
-                   .Where(a => a.SupplierId == entity.SupplierId && a.Id != id)
-                   .OrderBy(a => a.CreatedAt)
-                   .ToListAsync();
-
-                if (!otherAddresses.Any())
+                // BUSINESS RULE: Luân chuyển quyền mặc định
+                if (dto.IsDefault && !entity.IsDefault)
                 {
-                    // Nếu không còn địa chỉ nào khác, không cho phép tắt mặc định
-                    dto.IsDefault = true;
+                    // Chuyển địa chỉ này thành mặc định -> Tìm và tắt Default cũ
+                    var currentDefault = await _context.SupplierAddresses
+                        .Where(a => a.SupplierId == entity.SupplierId && a.IsDefault && a.Id != id)
+                        .FirstOrDefaultAsync();
+
+                    if (currentDefault != null) currentDefault.IsDefault = false;
                 }
-                else
+                else if (!dto.IsDefault && entity.IsDefault)
                 {
-                    // Nếu có địa chỉ khác, chọn địa chỉ cũ nhất làm mặc định thay thế
-                    otherAddresses.First().IsDefault = true;
+                    // Cố tình tắt Default của địa chỉ đang là mặc định
+                    var otherAddresses = await _context.SupplierAddresses
+                       .Where(a => a.SupplierId == entity.SupplierId && a.Id != id)
+                       .OrderBy(a => a.CreatedAt)
+                       .ToListAsync();
+
+                    if (!otherAddresses.Any())
+                    {
+                        // Nếu không còn địa chỉ nào khác, không cho phép tắt mặc định
+                        dto.IsDefault = true;
+                    }
+                    else
+                    {
+                        // Nếu có địa chỉ khác, chọn địa chỉ cũ nhất làm mặc định thay thế
+                        otherAddresses.First().IsDefault = true;
+                    }
                 }
-            }
 
-            _mapper.Map(dto, entity);
-            entity.UpdatedAt = DateTime.UtcNow;
-            await _context.SaveChangesAsync();
+                _mapper.Map(dto, entity);
+                entity.UpdatedAt = DateTime.UtcNow;
+                await _context.SaveChangesAsync();
 
-            return true;
+                return true;
+            });
         }
 
         /// <summary>
@@ -152,28 +154,32 @@ namespace backend.Services
         public async Task<bool> DeleteAsync(int id)
         {
             var entity = await _context.SupplierAddresses.FindAsync(id);
-            if (entity == null) throw new KeyNotFoundException("Không tìm thấy địa chỉ.");
+            if (entity == null) 
+                throw new KeyNotFoundException("Không tìm thấy địa chỉ.");
 
-            // SAFETY LOGIC: Tránh trường hợp nhà cung cấp không có địa chỉ mặc định sau khi xóa
-            if (entity.IsDefault)
+            return await _context.ExecuteInTransactionAsync(async () =>
             {
-                var nextAddress = await _context.SupplierAddresses
-                    .Where(a => a.SupplierId == entity.SupplierId && a.Id != id)
-                    .OrderBy(a => a.CreatedAt)
-                    .FirstOrDefaultAsync();
-
-                if (nextAddress != null)
+                // SAFETY LOGIC: Tránh trường hợp nhà cung cấp không có địa chỉ mặc định sau khi xóa
+                if (entity.IsDefault)
                 {
-                    nextAddress.IsDefault = true;
+                    var nextAddress = await _context.SupplierAddresses
+                        .Where(a => a.SupplierId == entity.SupplierId && a.Id != id)
+                        .OrderBy(a => a.CreatedAt)
+                        .FirstOrDefaultAsync();
+
+                    if (nextAddress != null)
+                    {
+                        nextAddress.IsDefault = true;
+                    }
+
+                    entity.IsDefault = false;
                 }
 
-                entity.IsDefault = false;
-            }
+                _context.SupplierAddresses.Remove(entity);
+                await _context.SaveChangesAsync();
 
-            _context.SupplierAddresses.Remove(entity);
-            await _context.SaveChangesAsync();
-
-            return true;
+                return true;
+            });
         }
 
         /// <summary>
@@ -187,20 +193,23 @@ namespace backend.Services
 
             if (entity.IsDefault) return true;
 
-            // Tắt Default hiện tại của nhà cung cấp này
-            var currentDefault = await _context.SupplierAddresses
-                .Where(a => a.SupplierId == supplierId && a.IsDefault)
-                .FirstOrDefaultAsync();
-
-            if (currentDefault != null)
+            return await _context.ExecuteInTransactionAsync(async () =>
             {
-                currentDefault.IsDefault = false;
-            }
+                // Tắt Default hiện tại của nhà cung cấp này
+                var currentDefault = await _context.SupplierAddresses
+                    .Where(a => a.SupplierId == supplierId && a.IsDefault)
+                    .FirstOrDefaultAsync();
 
-            entity.IsDefault = true;
-            entity.UpdatedAt = DateTime.UtcNow;
-            await _context.SaveChangesAsync();
-            return true;
+                if (currentDefault != null)
+                {
+                    currentDefault.IsDefault = false;
+                }
+
+                entity.IsDefault = true;
+                entity.UpdatedAt = DateTime.UtcNow;
+                await _context.SaveChangesAsync();
+                return true;
+            });
         }
 
         #endregion

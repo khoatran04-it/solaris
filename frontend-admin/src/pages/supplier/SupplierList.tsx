@@ -93,7 +93,7 @@ const SupplierList: React.FC = () => {
         search: debouncedSearch,
         pageIndex: currentPage,
         pageSize: pageSize,
-        supplierTypesId: typeFilter.length > 0 ? typeFilter.join(',') : undefined,
+        supplierTypeIds: typeFilter.length > 0 ? typeFilter.join(',') : undefined,
         isActive: isActiveParam,
         createdAt: createdAtFilter ? createdAtFilter.toLocaleDateString('en-CA') : undefined,
         updatedAt: updatedAtFilter ? updatedAtFilter.toLocaleDateString('en-CA') : undefined,
@@ -154,7 +154,7 @@ const SupplierList: React.FC = () => {
         onSearchChange={setSearchTerm}
         onAdd={() => navigate('/suppliers/create')}
         icon={Hexagon}
-        searchPlaceholder="Tìm theo mã, tên, số điện thoại..."
+        searchPlaceholder="Tìm kiếm theo mã, tên, số điện thoại..."
       />
 
       <ListCard>

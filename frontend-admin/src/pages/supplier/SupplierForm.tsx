@@ -161,29 +161,29 @@ const SupplierForm: React.FC = () => {
     const trimmedPhone = formData.phone.trim().toLowerCase();
 
     // 1. Kiểm tra Thông tin cơ bản
-    if (!trimmedCode) newErrors.code = 'Vui lòng nhập mã NCC.';
+    if (!trimmedCode) newErrors.code = 'Mã nhà cung cấp không được để trống';
     else if (existingCodes.includes(trimmedCode) && (!isEditMode || trimmedCode !== originalCode)) {
-      newErrors.code = 'Mã NCC đã tồn tại!';
+      newErrors.code = 'Mã nhà cung cấp này đã tồn tại';
     }
 
-    if (!formData.name.trim()) newErrors.name = 'Vui lòng nhập tên nhà cung cấp.';
+    if (!formData.name.trim()) newErrors.name = 'Tên nhà cung cấp không được để trống';
 
-    if (!trimmedPhone) newErrors.phone = 'Vui lòng nhập số điện thoại.';
+    if (!trimmedPhone) newErrors.phone = 'Số điện thoại không được để trống';
     else if (
       existingPhones.includes(trimmedPhone) &&
       (!isEditMode || trimmedPhone !== originalPhone)
     ) {
-      newErrors.phone = 'Số điện thoại này đã được đăng ký!';
+      newErrors.phone = 'Số điện thoại này đã tồn tại';
     }
 
     if (!formData.email?.trim()) {
-      newErrors.email = 'Vui lòng nhập Email công ty.';
+      newErrors.email = 'Email không được để trống';
     } else {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(formData.email.trim())) newErrors.email = 'Email không hợp lệ.';
+      if (!emailRegex.test(formData.email.trim())) newErrors.email = 'Email không đúng định dạng';
     }
 
-    if (!formData.supplierTypeId) newErrors.supplierTypeId = 'Vui lòng chọn loại nhà cung cấp.';
+    if (!formData.supplierTypeId) newErrors.supplierTypeId = 'Vui lòng chọn loại nhà cung cấp';
 
     // 2. Kiểm tra Địa chỉ (Chỉ khi Tạo mới)
     if (!isEditMode && formData.addresses && formData.addresses.length > 0) {
@@ -191,14 +191,14 @@ const SupplierForm: React.FC = () => {
       // Nếu có gõ bất kỳ trường nào, bắt buộc phải nhập đủ
       if (addr.contactName || addr.contactPhone || addr.province || addr.streetAddress) {
         if (!addr.contactName.trim())
-          newErrors.address_contactName = 'Vui lòng nhập người liên hệ.';
+          newErrors.address_contactName = 'Người liên hệ không được để trống';
         if (!addr.contactPhone.trim())
-          newErrors.address_contactPhone = 'Vui lòng nhập SĐT liên hệ kho.';
-        if (!addr.province.trim()) newErrors.address_province = 'Thiếu thông tin Tỉnh/Thành.';
-        if (!addr.district.trim()) newErrors.address_district = 'Thiếu Quận/Huyện.';
-        if (!addr.ward.trim()) newErrors.address_ward = 'Thiếu Phường/Xã.';
+          newErrors.address_contactPhone = 'Số điện thoại liên hệ không được để trống';
+        if (!addr.province.trim()) newErrors.address_province = 'Tỉnh/Thành phố không được để trống';
+        if (!addr.district.trim()) newErrors.address_district = 'Quận/Huyện không được để trống';
+        if (!addr.ward.trim()) newErrors.address_ward = 'Phường/Xã không được để trống';
         if (!addr.streetAddress.trim())
-          newErrors.address_streetAddress = 'Vui lòng nhập số nhà, tên đường.';
+          newErrors.address_streetAddress = 'Địa chỉ chi tiết không được để trống';
       }
     }
 
@@ -255,7 +255,7 @@ const SupplierForm: React.FC = () => {
       <Toast {...toast} />
 
       <FormHeader
-        title={isEditMode ? 'Chỉnh Sửa Nhà Cung Cấp' : 'Tạo Hồ Sơ Nhà Cung Cấp'}
+        title={isEditMode ? 'Chỉnh Sửa Nhà Cung Cấp' : 'Thêm Mới Nhà Cung Cấp'}
         subtitle={
           isEditMode ? 'Cập nhật thông tin đối tác' : 'Thêm mới đối tác cung ứng vào hệ thống'
         }
