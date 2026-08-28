@@ -1,17 +1,23 @@
-using System.ComponentModel.DataAnnotations;
-
 namespace backend.DTOs.CategoryAttributeDTOs
 {
+    /// <summary>
+    /// DTO yêu cầu cập nhật Cấu hình Thuộc tính cho Danh mục (EAV Template).
+    /// </summary>
     public class CategoryAttributeUpdateDto
     {
-        [Required(ErrorMessage = "Danh mục sản phẩm không được để trống.")]
-        [Range(1, int.MaxValue, ErrorMessage = "Danh mục không hợp lệ.")]
+        #region Liên kết dữ liệu (Foreign Keys)
+        /// <summary>Mã định danh Danh mục sản phẩm.</summary>
         public int CategoryId { get; set; }
 
-        [Required(ErrorMessage = "Thuộc tính không được để trống.")]
-        [Range(1, int.MaxValue, ErrorMessage = "Thuộc tính không hợp lệ.")]
+        /// <summary>Mã định danh của Thuộc tính từ Từ điển hệ thống (AttributeDefinition).</summary>
         public int? AttributeDefinitionId { get; set; }
+        #endregion
 
+        #region Cấu hình Template
+        /// <summary>
+        /// Cờ đánh dấu thuộc tính này có bắt buộc hay không.
+        /// </summary>
         public bool IsRequired { get; set; } = false;
+        #endregion
     }
 }

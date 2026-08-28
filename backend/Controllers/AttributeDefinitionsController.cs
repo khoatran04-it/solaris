@@ -8,11 +8,12 @@ using Microsoft.AspNetCore.Mvc;
 namespace backend.Controllers
 {
     /// <summary>
-    /// API Quản lý Định nghĩa Thuộc tính động (EAV Attribute Definitions).
+    /// API Endpoints quản lý Từ điển Thuộc tính động (EAV Attribute Definitions).
     /// </summary>
     [Route("api/[controller]")]
     [ApiController]
     [Authorize]
+    [Produces("application/json")]
     public class AttributeDefinitionsController : ControllerBase
     {
         private readonly IAttributeDefinitionService _service;
@@ -22,6 +23,11 @@ namespace backend.Controllers
             _service = service;
         }
 
+        #region Truy vấn (Query)
+
+        /// <summary>
+        /// Lấy danh sách toàn bộ từ điển thuộc tính (phục vụ Dropdown / Select).
+        /// </summary>
         [HttpGet("all")]
         [ProducesResponseType(typeof(IEnumerable<AttributeDefinitionReadDto>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetAllList([FromQuery] bool? isActive = null)
@@ -30,6 +36,9 @@ namespace backend.Controllers
             return Ok(data);
         }
 
+        /// <summary>
+        /// Lấy danh sách từ điển thuộc tính có phân trang, lọc và tìm kiếm.
+        /// </summary>
         [HttpGet]
         [ProducesResponseType(typeof(PagedResult<AttributeDefinitionReadDto>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetPaged(
@@ -45,6 +54,9 @@ namespace backend.Controllers
             return Ok(result);
         }
 
+        /// <summary>
+        /// Lấy thông tin chi tiết một định nghĩa thuộc tính theo ID.
+        /// </summary>
         [HttpGet("{id}")]
         [ProducesResponseType(typeof(AttributeDefinitionReadDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -57,12 +69,19 @@ namespace backend.Controllers
             }
             catch (KeyNotFoundException ex)
             {
-                return NotFound(new { Message = ex.Message });
+                return NotFound(new { message = ex.Message });
             }
         }
 
+        #endregion
+
+        #region Thao tác Dữ liệu (Command)
+
+        /// <summary>
+        /// Tạo mới một định nghĩa thuộc tính vào từ điển hệ thống.
+        /// </summary>
         [HttpPost]
-        [ProducesResponseType(typeof(AttributeDefinitionReadDto), StatusCodes.Status201Created)]
+        [ProducesResponseType(typeof(object), StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Create([FromBody] AttributeDefinitionCreateDto dto)
         {
@@ -72,14 +91,21 @@ namespace backend.Controllers
                 var created = await _service.GetByIdAsync(newId);
                 return CreatedAtAction(nameof(GetById), new { id = newId }, created);
             }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
             catch (Exception ex)
             {
-                return BadRequest(new { Message = ex.Message });
+                return BadRequest(new { message = ex.Message });
             }
         }
 
+        /// <summary>
+        /// Cập nhật thông tin định nghĩa thuộc tính.
+        /// </summary>
         [HttpPut("{id}")]
-        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Update(int id, [FromBody] AttributeDefinitionUpdateDto dto)
@@ -87,20 +113,27 @@ namespace backend.Controllers
             try
             {
                 await _service.UpdateAsync(id, dto);
-                return NoContent();
+                return Ok(new { message = "Cập nhật từ điển thuộc tính thành công." });
             }
             catch (KeyNotFoundException ex)
             {
-                return NotFound(new { Message = ex.Message });
+                return NotFound(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Message = ex.Message });
+                return BadRequest(new { message = ex.Message });
             }
         }
 
+        /// <summary>
+        /// Xóa bỏ một định nghĩa thuộc tính khỏi từ điển (Hỗ trợ Soft Delete).
+        /// </summary>
         [HttpDelete("{id}")]
-        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Delete(int id)
@@ -108,18 +141,25 @@ namespace backend.Controllers
             try
             {
                 await _service.DeleteAsync(id);
-                return NoContent();
+                return Ok(new { message = "Xóa từ điển thuộc tính thành công." });
             }
             catch (KeyNotFoundException ex)
             {
-                return NotFound(new { Message = ex.Message });
+                return NotFound(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Message = ex.Message });
+                return BadRequest(new { message = ex.Message });
             }
         }
 
+        /// <summary>
+        /// Thay đổi trạng thái Hoạt động / Khóa của định nghĩa thuộc tính.
+        /// </summary>
         [HttpPatch("{id}/toggle-active")]
         [HttpPut("{id}/toggle-active")]
         [ProducesResponseType(StatusCodes.Status200OK)]
@@ -130,16 +170,18 @@ namespace backend.Controllers
             try
             {
                 await _service.ToggleActiveAsync(id);
-                return Ok(new { Message = "Thay đổi trạng thái thành công" });
+                return Ok(new { message = "Đã thay đổi trạng thái từ điển thuộc tính." });
             }
             catch (KeyNotFoundException ex)
             {
-                return NotFound(new { Message = ex.Message });
+                return NotFound(new { message = ex.Message });
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Message = ex.Message });
+                return BadRequest(new { message = ex.Message });
             }
         }
+
+        #endregion
     }
 }

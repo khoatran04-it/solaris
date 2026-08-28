@@ -1,29 +1,34 @@
-using System.ComponentModel.DataAnnotations;
-
 namespace backend.DTOs.ProductCategoryDTOs
 {
     /// <summary>
-    /// DTO tạo mới Danh Mục Sản Phẩm (Product Category).
+    /// DTO yêu cầu tạo mới Danh Mục Sản Phẩm (Product Category).
     /// </summary>
     public class ProductCategoryCreateDto
     {
-        [Required(ErrorMessage = "Mã danh mục không được để trống.")]
-        [StringLength(20, ErrorMessage = "Mã danh mục tối đa 20 ký tự.")]
+        #region Thông tin Định danh
+        /// <summary>Mã danh mục (Ví dụ: LEAFY_VEG, FRUITS, ROOT_VEG).</summary>
         public string Code { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "Tên danh mục không được để trống.")]
-        [StringLength(100, ErrorMessage = "Tên danh mục tối đa 100 ký tự.")]
+        /// <summary>Tên hiển thị danh mục (Ví dụ: Rau ăn lá, Trái cây nhập khẩu).</summary>
         public string Name { get; set; } = string.Empty;
+        #endregion
 
-        [StringLength(500, ErrorMessage = "Mô tả tối đa 500 ký tự.")]
-        public string? Description { get; set; }
-
-        [StringLength(500, ErrorMessage = "Đường dẫn ảnh tối đa 500 ký tự.")]
+        #region Thông tin Chi tiết
+        /// <summary>Đường dẫn ảnh đại diện của danh mục.</summary>
         public string? ImagePath { get; set; }
 
-        public int? CategoryGroupId { get; set; }
+        /// <summary>Mô tả chi tiết về danh mục sản phẩm.</summary>
+        public string? Description { get; set; }
+        #endregion
 
-        /// <summary>Trạng thái hoạt động (mặc định: true)</summary>
+        #region Liên kết dữ liệu (Foreign Keys)
+        /// <summary>Mã định danh Nhóm ngành hàng lớn (Category Group) mà danh mục này trực thuộc.</summary>
+        public int? CategoryGroupId { get; set; }
+        #endregion
+
+        #region Trạng thái & Hệ thống
+        /// <summary>Trạng thái hoạt động (true: Đang hiển thị/sử dụng, false: Tạm ẩn).</summary>
         public bool IsActive { get; set; } = true;
+        #endregion
     }
 }

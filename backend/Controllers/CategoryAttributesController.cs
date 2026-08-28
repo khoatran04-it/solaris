@@ -8,11 +8,12 @@ using Microsoft.AspNetCore.Mvc;
 namespace backend.Controllers
 {
     /// <summary>
-    /// API Quản lý Gán mẫu thuộc tính vào Danh mục sản phẩm (Category Attribute Templates).
+    /// API Endpoints quản lý Cấu hình Thuộc tính cho Danh mục sản phẩm (Category Attribute Templates).
     /// </summary>
     [Route("api/[controller]")]
     [ApiController]
     [Authorize]
+    [Produces("application/json")]
     public class CategoryAttributesController : ControllerBase
     {
         private readonly ICategoryAttributeService _service;
@@ -22,6 +23,11 @@ namespace backend.Controllers
             _service = service;
         }
 
+        #region Truy vấn (Query)
+
+        /// <summary>
+        /// Lấy toàn bộ danh sách cấu hình thuộc tính của các danh mục.
+        /// </summary>
         [HttpGet("all")]
         [ProducesResponseType(typeof(IEnumerable<CategoryAttributeReadDto>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetAllList()
@@ -30,6 +36,9 @@ namespace backend.Controllers
             return Ok(data);
         }
 
+        /// <summary>
+        /// Lấy danh sách cấu hình thuộc tính có hỗ trợ phân trang, tìm kiếm và bộ lọc dữ liệu.
+        /// </summary>
         [HttpGet]
         [ProducesResponseType(typeof(PagedResult<CategoryAttributeReadDto>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetPaged(
@@ -43,6 +52,9 @@ namespace backend.Controllers
             return Ok(result);
         }
 
+        /// <summary>
+        /// Lấy thông tin chi tiết của một bản ghi cấu hình thuộc tính theo ID.
+        /// </summary>
         [HttpGet("{id}")]
         [ProducesResponseType(typeof(CategoryAttributeReadDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -55,12 +67,19 @@ namespace backend.Controllers
             }
             catch (KeyNotFoundException ex)
             {
-                return NotFound(new { Message = ex.Message });
+                return NotFound(new { message = ex.Message });
             }
         }
 
+        #endregion
+
+        #region Thao tác Dữ liệu (Command)
+
+        /// <summary>
+        /// Thiết lập gán một thuộc tính từ Từ điển hệ thống vào một Danh mục sản phẩm.
+        /// </summary>
         [HttpPost]
-        [ProducesResponseType(typeof(CategoryAttributeReadDto), StatusCodes.Status201Created)]
+        [ProducesResponseType(typeof(object), StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Create([FromBody] CategoryAttributeCreateDto dto)
         {
@@ -70,14 +89,21 @@ namespace backend.Controllers
                 var created = await _service.GetByIdAsync(newId);
                 return CreatedAtAction(nameof(GetById), new { id = newId }, created);
             }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
             catch (Exception ex)
             {
-                return BadRequest(new { Message = ex.Message });
+                return BadRequest(new { message = ex.Message });
             }
         }
 
+        /// <summary>
+        /// Cập nhật cấu hình thuộc tính của danh mục.
+        /// </summary>
         [HttpPut("{id}")]
-        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Update(int id, [FromBody] CategoryAttributeUpdateDto dto)
@@ -85,20 +111,27 @@ namespace backend.Controllers
             try
             {
                 await _service.UpdateAsync(id, dto);
-                return NoContent();
+                return Ok(new { message = "Cập nhật cấu hình thuộc tính danh mục thành công." });
             }
             catch (KeyNotFoundException ex)
             {
-                return NotFound(new { Message = ex.Message });
+                return NotFound(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Message = ex.Message });
+                return BadRequest(new { message = ex.Message });
             }
         }
 
+        /// <summary>
+        /// Xóa bỏ cấu hình: Hủy gán thuộc tính khỏi danh mục sản phẩm.
+        /// </summary>
         [HttpDelete("{id}")]
-        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Delete(int id)
@@ -106,16 +139,22 @@ namespace backend.Controllers
             try
             {
                 await _service.DeleteAsync(id);
-                return NoContent();
+                return Ok(new { message = "Xóa cấu hình thuộc tính danh mục thành công." });
             }
             catch (KeyNotFoundException ex)
             {
-                return NotFound(new { Message = ex.Message });
+                return NotFound(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Message = ex.Message });
+                return BadRequest(new { message = ex.Message });
             }
         }
+
+        #endregion
     }
 }
