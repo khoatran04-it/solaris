@@ -13,6 +13,7 @@ namespace backend.Controllers
     [Route("api/[controller]")]
     [ApiController]
     [Authorize]
+    [Produces("application/json")]
     public class ProductCategoriesController : ControllerBase
     {
         private readonly IProductCategoryService _service;
@@ -22,10 +23,7 @@ namespace backend.Controllers
             _service = service;
         }
 
-        // ==========================================
-        // SECTION: READ ENDPOINTS (GET)
-        // ==========================================
-        #region Read Operations
+        #region Truy vấn (Query)
 
         /// <summary>
         /// Lấy danh sách rút gọn toàn bộ loại sản phẩm (dùng cho Dropdown/Lookup).
@@ -58,7 +56,7 @@ namespace backend.Controllers
         }
 
         /// <summary>
-        /// Lấy thông tin chi tiết 1 loại sản phẩm theo ID.
+        /// Lấy thông tin chi tiết một danh mục sản phẩm theo ID.
         /// </summary>
         [HttpGet("{id}")]
         [ProducesResponseType(typeof(ProductCategoryReadDto), StatusCodes.Status200OK)]
@@ -68,24 +66,20 @@ namespace backend.Controllers
             var data = await _service.GetByIdAsync(id);
             if (data == null)
             {
-                return NotFound(new { Message = "Không tìm thấy danh mục sản phẩm." });
+                return NotFound(new { message = "Không tìm thấy danh mục sản phẩm này." });
             }
             return Ok(data);
         }
 
         #endregion
 
-
-        // ==========================================
-        // SECTION: WRITE ENDPOINTS (POST, PUT, DELETE)
-        // ==========================================
-        #region Write Operations
+        #region Thao tác Dữ liệu (Command)
 
         /// <summary>
         /// Tạo mới một danh mục sản phẩm.
         /// </summary>
         [HttpPost]
-        [ProducesResponseType(typeof(ProductCategoryReadDto), StatusCodes.Status201Created)]
+        [ProducesResponseType(typeof(object), StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Create([FromBody] ProductCategoryCreateDto dto)
         {
@@ -95,9 +89,13 @@ namespace backend.Controllers
                 var created = await _service.GetByIdAsync(newId);
                 return CreatedAtAction(nameof(GetById), new { id = newId }, created);
             }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
             catch (Exception ex)
             {
-                return BadRequest(new { Message = ex.Message });
+                return BadRequest(new { message = ex.Message });
             }
         }
 
@@ -105,7 +103,7 @@ namespace backend.Controllers
         /// Cập nhật thông tin danh mục sản phẩm.
         /// </summary>
         [HttpPut("{id}")]
-        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Update(int id, [FromBody] ProductCategoryUpdateDto dto)
@@ -113,15 +111,19 @@ namespace backend.Controllers
             try
             {
                 await _service.UpdateAsync(id, dto);
-                return NoContent();
+                return Ok(new { message = "Cập nhật danh mục sản phẩm thành công." });
             }
             catch (KeyNotFoundException ex)
             {
-                return NotFound(new { Message = ex.Message });
+                return NotFound(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Message = ex.Message });
+                return BadRequest(new { message = ex.Message });
             }
         }
 
@@ -129,7 +131,7 @@ namespace backend.Controllers
         /// Xóa bỏ một danh mục sản phẩm (Hỗ trợ Soft Delete).
         /// </summary>
         [HttpDelete("{id}")]
-        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Delete(int id)
@@ -137,25 +139,21 @@ namespace backend.Controllers
             try
             {
                 await _service.DeleteAsync(id);
-                return NoContent();
+                return Ok(new { message = "Xóa danh mục sản phẩm thành công." });
             }
             catch (KeyNotFoundException ex)
             {
-                return NotFound(new { Message = ex.Message });
+                return NotFound(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Message = ex.Message });
+                return BadRequest(new { message = ex.Message });
             }
         }
-
-        #endregion
-
-
-        // ==========================================
-        // SECTION: BUSINESS LOGIC ACTIONS (PATCH / PUT)
-        // ==========================================
-        #region Business Actions
 
         /// <summary>
         /// Thay đổi trạng thái Hoạt động / Khóa của danh mục sản phẩm.
@@ -170,15 +168,15 @@ namespace backend.Controllers
             try
             {
                 await _service.ToggleActiveAsync(id);
-                return Ok(new { Message = "Đã cập nhật trạng thái hoạt động" });
+                return Ok(new { message = "Đã thay đổi trạng thái hoạt động của danh mục sản phẩm." });
             }
             catch (KeyNotFoundException ex)
             {
-                return NotFound(new { Message = ex.Message });
+                return NotFound(new { message = ex.Message });
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Message = ex.Message });
+                return BadRequest(new { message = ex.Message });
             }
         }
 

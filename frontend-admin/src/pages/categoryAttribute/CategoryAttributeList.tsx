@@ -134,7 +134,7 @@ const CategoryAttributeList: React.FC = () => {
         onSearchChange={setSearchTerm}
         onAdd={() => navigate('/category-attributes/create')}
         icon={Settings2}
-        searchPlaceholder="Tìm theo tên danh mục hoặc thuộc tính..."
+        searchPlaceholder="Tìm kiếm theo tên danh mục, thuộc tính..."
       />
 
       <ListCard>
@@ -230,7 +230,7 @@ const CategoryAttributeList: React.FC = () => {
                         <button
                           onClick={() => navigate(`/category-attributes/edit/${item.id}`)}
                           className="p-1.5 text-slate-400 hover:text-yellow-600 hover:bg-yellow-50 rounded-lg transition-colors"
-                          title="Chỉnh sửa cấu hình"
+                          title="Chỉnh sửa"
                         >
                           <Edit3 size={17} strokeWidth={2.5} />
                         </button>
@@ -240,7 +240,7 @@ const CategoryAttributeList: React.FC = () => {
                             setIsModalOpen(true);
                           }}
                           className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                          title="Gỡ thuộc tính khỏi danh mục"
+                          title="Xóa"
                         >
                           <Trash2 size={17} strokeWidth={2.5} />
                         </button>

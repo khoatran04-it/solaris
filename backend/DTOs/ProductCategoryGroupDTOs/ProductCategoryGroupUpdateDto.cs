@@ -1,27 +1,29 @@
-using System.ComponentModel.DataAnnotations;
-
 namespace backend.DTOs.ProductCategoryGroupDTOs
 {
     /// <summary>
-    /// DTO cập nhật Nhóm Ngành Hàng (Product Category Group).
+    /// DTO yêu cầu cập nhật thông tin Nhóm Ngành Hàng lớn (Product Category Group).
     /// </summary>
     public class ProductCategoryGroupUpdateDto
     {
-        [Required(ErrorMessage = "Mã nhóm ngành hàng không được để trống.")]
-        [StringLength(20, ErrorMessage = "Mã nhóm ngành hàng tối đa 20 ký tự.")]
+        #region Thông tin Định danh
+        /// <summary>Mã nhóm ngành hàng (Ví dụ: FRESH_PRODUCE, DRY_FOOD).</summary>
         public string Code { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "Tên nhóm ngành hàng không được để trống.")]
-        [StringLength(200, ErrorMessage = "Tên nhóm ngành hàng tối đa 200 ký tự.")]
+        /// <summary>Tên hiển thị nhóm ngành hàng (Ví dụ: Nông sản tươi, Thực phẩm khô).</summary>
         public string Name { get; set; } = string.Empty;
+        #endregion
 
-        [StringLength(1000, ErrorMessage = "Mô tả tối đa 1000 ký tự.")]
-        public string? Description { get; set; }
-
-        [StringLength(1000, ErrorMessage = "Đường dẫn ảnh tối đa 1000 ký tự.")]
+        #region Thông tin Chi tiết
+        /// <summary>Đường dẫn ảnh đại diện hoặc Banner của nhóm ngành hàng.</summary>
         public string? ImagePath { get; set; }
 
-        /// <summary>Trạng thái hoạt động</summary>
+        /// <summary>Mô tả chi tiết về nhóm ngành hàng.</summary>
+        public string? Description { get; set; }
+        #endregion
+
+        #region Trạng thái & Hệ thống
+        /// <summary>Trạng thái hoạt động (true: Đang hiển thị/sử dụng, false: Tạm ẩn).</summary>
         public bool IsActive { get; set; } = true;
+        #endregion
     }
 }

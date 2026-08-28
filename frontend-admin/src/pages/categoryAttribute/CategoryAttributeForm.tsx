@@ -109,11 +109,11 @@ const CategoryAttributeForm: React.FC = () => {
     const newErrors: Record<string, string> = {};
 
     if (!formData.categoryId || formData.categoryId === 0) {
-      newErrors.categoryId = 'Vui lòng chọn Danh mục sản phẩm.';
+      newErrors.categoryId = 'Vui lòng chọn danh mục sản phẩm.';
     }
 
     if (!formData.attributeDefinitionId || formData.attributeDefinitionId === 0) {
-      newErrors.attributeDefinitionId = 'Vui lòng chọn Thuộc tính cần gắn.';
+      newErrors.attributeDefinitionId = 'Vui lòng chọn thuộc tính cần gắn.';
     }
 
     setErrors(newErrors);

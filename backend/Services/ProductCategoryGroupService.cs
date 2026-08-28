@@ -2,6 +2,7 @@ using AutoMapper;
 using backend.Data;
 using backend.DTOs;
 using backend.DTOs.ProductCategoryGroupDTOs;
+using backend.Helpers;
 using backend.Models;
 using backend.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
@@ -10,6 +11,7 @@ namespace backend.Services
 {
     /// <summary>
     /// Service quản lý Nhóm Ngành Hàng (Product Category Groups).
+    /// Đảm bảo tính toàn vẹn dữ liệu, kiểm tra tính duy nhất (case-insensitive) và hỗ trợ giao dịch kiên cường (Execution Strategy).
     /// </summary>
     public class ProductCategoryGroupService : IProductCategoryGroupService
     {
@@ -22,14 +24,12 @@ namespace backend.Services
             _mapper = mapper;
         }
 
-        // ==========================================
-        // SECTION: READ OPERATIONS (QUERIES)
-        // ==========================================
-        #region Read Operations
+        #region Truy vấn (Query)
 
         /// <summary>
-        /// Lấy toàn bộ danh sách nhóm loại sản phẩm (không phân trang)
+        /// Lấy toàn bộ danh sách nhóm ngành hàng (không phân trang, thường dùng cho giao diện Dropdown/Select).
         /// </summary>
+        /// <param name="isActiveOnly">Lọc chỉ lấy các nhóm ngành hàng đang ở trạng thái hoạt động.</param>
         public async Task<IEnumerable<ProductCategoryGroupReadDto>> GetAllListAsync(bool isActiveOnly = false)
         {
             var query = _context.ProductCategoryGroups.AsNoTracking().AsQueryable();
@@ -39,16 +39,23 @@ namespace backend.Services
                 query = query.Where(x => x.IsActive);
             }
 
-            var types = await query
+            var groups = await query
                 .OrderBy(x => x.Name)
                 .ToListAsync();
 
-            return _mapper.Map<IEnumerable<ProductCategoryGroupReadDto>>(types);
+            return _mapper.Map<IEnumerable<ProductCategoryGroupReadDto>>(groups);
         }
 
         /// <summary>
-        /// Lấy danh sách phân loại nhóm sản phẩm có phân trang và tìm kiếm
+        /// Lấy danh sách nhóm ngành hàng có hỗ trợ phân trang, tìm kiếm và bộ lọc dữ liệu.
         /// </summary>
+        /// <param name="search">Từ khóa tìm kiếm theo mã hoặc tên nhóm ngành hàng.</param>
+        /// <param name="names">Lọc theo một danh sách tên cụ thể (phân cách bằng dấu phẩy).</param>
+        /// <param name="isActive">Lọc theo trạng thái hoạt động.</param>
+        /// <param name="createdAt">Lọc theo ngày tạo.</param>
+        /// <param name="updatedAt">Lọc theo ngày cập nhật thông tin cuối cùng.</param>
+        /// <param name="pageIndex">Chỉ số trang hiện tại (bắt đầu từ 1).</param>
+        /// <param name="pageSize">Số lượng bản ghi hiển thị trên mỗi trang.</param>
         public async Task<PagedResult<ProductCategoryGroupReadDto>> GetPagedAsync(
             string? search,
             string? names,
@@ -73,8 +80,15 @@ namespace backend.Services
             // 2. Filter: Tìm kiếm theo danh sách tên cụ thể
             if (!string.IsNullOrWhiteSpace(names))
             {
-                var nameList = names.Split(',').Select(n => n.Trim().ToLower()).ToList();
-                query = query.Where(x => nameList.Contains(x.Name.ToLower()));
+                var nameList = names.Split(',')
+                    .Select(n => n.Trim().ToLower())
+                    .Where(n => !string.IsNullOrEmpty(n))
+                    .ToList();
+
+                if (nameList.Any())
+                {
+                    query = query.Where(x => nameList.Contains(x.Name.ToLower()));
+                }
             }
 
             if (isActive.HasValue)
@@ -120,111 +134,130 @@ namespace backend.Services
         }
 
         /// <summary>
-        /// Lấy chi tiết phân loại theo ID
+        /// Lấy thông tin chi tiết của một nhóm ngành hàng theo ID.
         /// </summary>
+        /// <param name="id">Mã định danh của nhóm ngành hàng.</param>
         public async Task<ProductCategoryGroupReadDto?> GetByIdAsync(int id)
         {
-            var type = await _context.ProductCategoryGroups.FindAsync(id);
-            if (type == null) return null;
+            var group = await _context.ProductCategoryGroups
+                .AsNoTracking()
+                .FirstOrDefaultAsync(x => x.Id == id);
 
-            return _mapper.Map<ProductCategoryGroupReadDto>(type);
+            if (group == null) return null;
+
+            return _mapper.Map<ProductCategoryGroupReadDto>(group);
         }
 
         #endregion
 
-
-        // ==========================================
-        // SECTION: WRITE OPERATIONS (COMMANDS)
-        // ==========================================
-        #region Write Operations
+        #region Thao tác Dữ liệu (Command)
 
         /// <summary>
-        /// Tạo mới nhóm loại sản phẩm
+        /// Tạo mới một nhóm ngành hàng vào hệ thống (sử dụng Transaction Resilience).
         /// </summary>
+        /// <param name="dto">Dữ liệu tạo mới nhóm ngành hàng.</param>
+        /// <returns>ID của nhóm ngành hàng vừa được tạo.</returns>
+        /// <exception cref="InvalidOperationException">Ném ra khi mã nhóm ngành hàng đã tồn tại.</exception>
         public async Task<int> CreateAsync(ProductCategoryGroupCreateDto dto)
         {
-            var trimmedCode = dto.Code.Trim();
+            var upperCode = dto.Code.Trim().ToUpper();
 
-            if (await _context.ProductCategoryGroups.AnyAsync(x => x.Code == trimmedCode))
-                throw new Exception($"Mã nhóm ngành hàng '{trimmedCode}' đã tồn tại.");
+            if (await _context.ProductCategoryGroups.AnyAsync(x => x.Code.ToUpper() == upperCode))
+                throw new InvalidOperationException($"Mã nhóm ngành hàng '{dto.Code}' đã tồn tại trên hệ thống.");
 
-            var entity = _mapper.Map<ProductCategoryGroup>(dto);
-            entity.Code = trimmedCode;
-            entity.Name = dto.Name.Trim();
-            entity.Description = dto.Description?.Trim();
-            entity.ImagePath = dto.ImagePath?.Trim();
-            entity.IsActive = dto.IsActive;
-            entity.CreatedAt = DateTime.UtcNow;
-            entity.UpdatedAt = DateTime.UtcNow;
+            return await _context.ExecuteInTransactionAsync(async () =>
+            {
+                var entity = _mapper.Map<ProductCategoryGroup>(dto);
+                entity.Code = upperCode;
+                entity.Name = dto.Name.Trim();
+                entity.Description = dto.Description?.Trim();
+                entity.ImagePath = dto.ImagePath?.Trim();
+                entity.CreatedAt = DateTime.UtcNow;
+                entity.UpdatedAt = DateTime.UtcNow;
 
-            _context.ProductCategoryGroups.Add(entity);
-            await _context.SaveChangesAsync();
+                _context.ProductCategoryGroups.Add(entity);
+                await _context.SaveChangesAsync();
 
-            return entity.Id;
+                return entity.Id;
+            });
         }
 
         /// <summary>
-        /// Cập nhật thông tin nhóm loại sản phẩm
+        /// Cập nhật thông tin của một nhóm ngành hàng (sử dụng Transaction Resilience).
         /// </summary>
+        /// <param name="id">Mã định danh của nhóm ngành hàng cần cập nhật.</param>
+        /// <param name="dto">Dữ liệu cập nhật mới.</param>
+        /// <exception cref="KeyNotFoundException">Ném ra khi không tìm thấy nhóm ngành hàng.</exception>
+        /// <exception cref="InvalidOperationException">Ném ra khi mã nhóm ngành hàng mới bị trùng với bản ghi khác.</exception>
         public async Task<bool> UpdateAsync(int id, ProductCategoryGroupUpdateDto dto)
         {
             var entity = await _context.ProductCategoryGroups.FindAsync(id);
             if (entity == null)
-                throw new KeyNotFoundException("Không tìm thấy nhóm ngành hàng cần sửa.");
+                throw new KeyNotFoundException("Không tìm thấy nhóm ngành hàng cần cập nhật.");
 
-            var trimmedCode = dto.Code.Trim();
+            var upperCode = dto.Code.Trim().ToUpper();
 
-            if (await _context.ProductCategoryGroups.AnyAsync(x => x.Id != id && x.Code == trimmedCode))
-                throw new Exception($"Cập nhật thất bại: Mã nhóm ngành hàng '{trimmedCode}' đã bị trùng lặp.");
+            if (await _context.ProductCategoryGroups.AnyAsync(x => x.Id != id && x.Code.ToUpper() == upperCode))
+                throw new InvalidOperationException($"Mã nhóm ngành hàng '{dto.Code}' đã bị trùng lặp với bản ghi khác.");
 
-            _mapper.Map(dto, entity);
-            entity.Code = trimmedCode;
-            entity.Name = dto.Name.Trim();
-            entity.Description = dto.Description?.Trim();
-            entity.ImagePath = dto.ImagePath?.Trim();
-            entity.IsActive = dto.IsActive;
-            entity.UpdatedAt = DateTime.UtcNow;
+            return await _context.ExecuteInTransactionAsync(async () =>
+            {
+                _mapper.Map(dto, entity);
+                entity.Code = upperCode;
+                entity.Name = dto.Name.Trim();
+                entity.Description = dto.Description?.Trim();
+                entity.ImagePath = dto.ImagePath?.Trim();
+                entity.UpdatedAt = DateTime.UtcNow;
 
-            await _context.SaveChangesAsync();
-
-            return true;
+                await _context.SaveChangesAsync();
+                return true;
+            });
         }
 
         /// <summary>
-        /// Xóa phân nhóm loại sản phẩm (Có kiểm tra danh mục con)
+        /// Xóa mềm một nhóm ngành hàng (có kiểm tra ràng buộc danh mục con trực thuộc).
         /// </summary>
+        /// <param name="id">Mã định danh của nhóm ngành hàng cần xóa.</param>
+        /// <exception cref="KeyNotFoundException">Ném ra khi không tìm thấy nhóm ngành hàng.</exception>
+        /// <exception cref="InvalidOperationException">Ném ra khi nhóm ngành hàng đang chứa danh mục con.</exception>
         public async Task<bool> DeleteAsync(int id)
         {
             var entity = await _context.ProductCategoryGroups.FindAsync(id);
             if (entity == null)
                 throw new KeyNotFoundException("Không tìm thấy nhóm ngành hàng cần xóa.");
 
-            // Kiểm tra ràng buộc toàn vẹn dữ liệu
+            // Safety Shield: Kiểm tra ràng buộc toàn vẹn dữ liệu
             bool hasCategories = await _context.ProductCategories.AnyAsync(c => c.CategoryGroupId == id && !c.IsDeleted);
             if (hasCategories)
-                throw new Exception("Không thể xóa nhóm ngành hàng này vì đang chứa các danh mục hàng hóa con.");
+                throw new InvalidOperationException("Không thể xóa nhóm ngành hàng này vì đang chứa các danh mục hàng hóa trực thuộc.");
 
-            _context.ProductCategoryGroups.Remove(entity);
-            await _context.SaveChangesAsync();
-
-            return true;
+            return await _context.ExecuteInTransactionAsync(async () =>
+            {
+                _context.ProductCategoryGroups.Remove(entity);
+                await _context.SaveChangesAsync();
+                return true;
+            });
         }
 
         /// <summary>
-        /// Đổi trạng thái Hoạt động / Khóa của nhóm ngành hàng
+        /// Bật/Tắt trạng thái hoạt động (Đang hoạt động / Tạm khóa) của nhóm ngành hàng.
         /// </summary>
+        /// <param name="id">Mã định danh của nhóm ngành hàng cần đổi trạng thái.</param>
+        /// <exception cref="KeyNotFoundException">Ném ra khi không tìm thấy nhóm ngành hàng.</exception>
         public async Task<bool> ToggleActiveAsync(int id)
         {
             var entity = await _context.ProductCategoryGroups.FindAsync(id);
             if (entity == null)
                 throw new KeyNotFoundException("Không tìm thấy nhóm ngành hàng.");
 
-            entity.IsActive = !entity.IsActive;
-            entity.UpdatedAt = DateTime.UtcNow;
+            return await _context.ExecuteInTransactionAsync(async () =>
+            {
+                entity.IsActive = !entity.IsActive;
+                entity.UpdatedAt = DateTime.UtcNow;
 
-            await _context.SaveChangesAsync();
-
-            return true;
+                await _context.SaveChangesAsync();
+                return true;
+            });
         }
 
         #endregion

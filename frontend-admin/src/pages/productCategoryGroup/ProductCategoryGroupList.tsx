@@ -138,7 +138,7 @@ const ProductCategoryGroupList: React.FC = () => {
         onSearchChange={setSearchTerm}
         onAdd={() => navigate('/product-category-groups/create')}
         icon={Layers}
-        searchPlaceholder="Tìm theo tên, mã nhóm..."
+        searchPlaceholder="Tìm kiếm theo mã, tên nhóm..."
       />
 
       <ListCard>

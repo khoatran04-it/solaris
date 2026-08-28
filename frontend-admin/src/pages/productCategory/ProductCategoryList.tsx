@@ -152,7 +152,7 @@ const ProductCategoryList: React.FC = () => {
         onSearchChange={setSearchTerm}
         onAdd={() => navigate('/product-categories/create')}
         icon={FolderTree}
-        searchPlaceholder="Tìm theo tên, mã danh mục..."
+        searchPlaceholder="Tìm kiếm theo mã, tên danh mục..."
       />
 
       <ListCard>
