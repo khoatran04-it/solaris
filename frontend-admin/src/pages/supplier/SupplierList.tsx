@@ -154,7 +154,7 @@ const SupplierList: React.FC = () => {
         onSearchChange={setSearchTerm}
         onAdd={() => navigate('/suppliers/create')}
         icon={Hexagon}
-        searchPlaceholder="Tìm theo mã, tên, số điện thoại..."
+        searchPlaceholder="Tìm kiếm theo mã, tên, số điện thoại..."
       />
 
       <ListCard>

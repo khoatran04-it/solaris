@@ -137,7 +137,7 @@ const SupplierTypeList: React.FC = () => {
         onSearchChange={setSearchTerm}
         onAdd={() => navigate('/supplier-types/create')}
         icon={Hexagon}
-        searchPlaceholder="Tìm kiếm mã, tên phân loại..."
+        searchPlaceholder="Tìm kiếm theo mã, tên phân loại..."
       />
 
       <ListCard>
