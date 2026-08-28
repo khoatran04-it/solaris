@@ -176,7 +176,7 @@ const AttributeDefinitionList: React.FC = () => {
         onSearchChange={setSearchTerm}
         onAdd={() => navigate('/attributes/create')}
         icon={BookType}
-        searchPlaceholder="Tìm theo tên thuộc tính..."
+        searchPlaceholder="Tìm kiếm theo tên thuộc tính..."
       />
 
       <ListCard>

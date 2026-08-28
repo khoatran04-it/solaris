@@ -116,7 +116,7 @@ const AttributeDefinitionForm: React.FC = () => {
       existingNames.includes(trimmedName) &&
       (!isEditMode || trimmedName !== originalName)
     ) {
-      newErrors.name = 'Tên thuộc tính này đã tồn tại trong hệ thống!';
+      newErrors.name = 'Tên thuộc tính này đã tồn tại!';
     }
 
     if (!formData.dataType) {
