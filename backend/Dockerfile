@@ -24,6 +24,14 @@ RUN dotnet publish "backend.csproj" -c Release -o /app/publish /p:UseAppHost=fal
 FROM mcr.microsoft.com/dotnet/aspnet:8.0-alpine AS final
 WORKDIR /app
 
+# Cài đặt ICU libraries để hỗ trợ đầy đủ Globalization (en-US, vi-VN, ...) trên Alpine Linux
+RUN apk add --no-cache icu-libs icu-data-full tzdata
+
+# Tắt Invariant Globalization để hỗ trợ định dạng văn hóa / văn bản quốc tế
+ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false
+ENV LC_ALL=en_US.UTF-8
+ENV LANG=en_US.UTF-8
+
 # Expose HTTP port 8080 (Azure Container Apps / Docker default standard)
 EXPOSE 8080
 ENV ASPNETCORE_URLS=http://+:8080
