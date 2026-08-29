@@ -317,38 +317,38 @@ namespace backend.Services
                     throw new InvalidOperationException("Không thể xóa kho hàng này vì vẫn còn tồn kho sản phẩm.");
 
                 // 2. SAFETY SHIELD: Chặn xóa nếu có Phiếu nhập kho
-                var hasReceipts = await _context.InventoryReceipts.AnyAsync(ir => ir.WarehouseId == id);
+                var hasReceipts = await _context.InventoryReceipts.AnyAsync(ir => !ir.IsDeleted && ir.WarehouseId == id);
                 if (hasReceipts)
                     throw new InvalidOperationException("Không thể xóa kho hàng vì đã phát sinh dữ liệu phiếu nhập kho.");
 
                 // 3. SAFETY SHIELD: Chặn xóa nếu có Phiếu xuất kho
-                var hasIssues = await _context.InventoryIssues.AnyAsync(ii => ii.WarehouseId == id);
+                var hasIssues = await _context.InventoryIssues.AnyAsync(ii => !ii.IsDeleted && ii.WarehouseId == id);
                 if (hasIssues)
                     throw new InvalidOperationException("Không thể xóa kho hàng vì đã phát sinh dữ liệu phiếu xuất kho.");
 
                 // 4. SAFETY SHIELD: Chặn xóa nếu có Phiếu chuyển kho
                 var hasTransfers = await _context.InventoryTransfers
-                    .AnyAsync(it => it.FromWarehouseId == id || it.ToWarehouseId == id);
+                    .AnyAsync(it => !it.IsDeleted && (it.FromWarehouseId == id || it.ToWarehouseId == id));
                 if (hasTransfers)
                     throw new InvalidOperationException("Không thể xóa kho hàng vì đã phát sinh dữ liệu phiếu chuyển kho.");
 
                 // 5. SAFETY SHIELD: Chặn xóa nếu có Phiếu kiểm kê
-                var hasAudits = await _context.InventoryAudits.AnyAsync(ia => ia.WarehouseId == id);
+                var hasAudits = await _context.InventoryAudits.AnyAsync(ia => !ia.IsDeleted && ia.WarehouseId == id);
                 if (hasAudits)
                     throw new InvalidOperationException("Không thể xóa kho hàng vì đã phát sinh dữ liệu phiếu kiểm kê.");
 
                 // 6. SAFETY SHIELD: Chặn xóa nếu có Phiếu điều chỉnh
-                var hasAdjustments = await _context.InventoryAdjustments.AnyAsync(ia => ia.WarehouseId == id);
+                var hasAdjustments = await _context.InventoryAdjustments.AnyAsync(ia => !ia.IsDeleted && ia.WarehouseId == id);
                 if (hasAdjustments)
                     throw new InvalidOperationException("Không thể xóa kho hàng vì đã phát sinh dữ liệu phiếu điều chỉnh tồn kho.");
 
                 // 7. SAFETY SHIELD: Chặn xóa nếu có Đơn hàng
-                var hasOrders = await _context.Orders.AnyAsync(o => o.WarehouseId == id);
+                var hasOrders = await _context.Orders.AnyAsync(o => !o.IsDeleted && o.WarehouseId == id);
                 if (hasOrders)
                     throw new InvalidOperationException("Không thể xóa kho hàng vì đã phát sinh đơn hàng bán xuất từ kho này.");
 
                 // 8. SAFETY SHIELD: Chặn xóa nếu có Đơn trả hàng
-                var hasReturns = await _context.CustomerReturns.AnyAsync(cr => cr.WarehouseId == id);
+                var hasReturns = await _context.CustomerReturns.AnyAsync(cr => !cr.IsDeleted && cr.WarehouseId == id);
                 if (hasReturns)
                     throw new InvalidOperationException("Không thể xóa kho hàng vì đã phát sinh đơn trả hàng nhập vào kho này.");
 
