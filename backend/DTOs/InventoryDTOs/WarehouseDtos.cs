@@ -1,96 +1,91 @@
-using System.ComponentModel.DataAnnotations;
+using System;
 
 namespace backend.DTOs.InventoryDTOs
 {
-    // DTO dùng cho Read (Get List, Get Detail)
+    #region DTO Truy vấn (Read)
+    /// <summary>
+    /// DTO hiển thị chi tiết thông tin Kho hàng.
+    /// Dữ liệu địa chỉ được "làm phẳng" (Flatten) trực tiếp vào DTO này để Frontend dễ dàng bind data lên bảng.
+    /// </summary>
     public class WarehouseReadDto
     {
         public int Id { get; set; }
+
         public string Code { get; set; } = string.Empty;
         public string Name { get; set; } = string.Empty;
         public string? WarehouseType { get; set; }
-        public bool IsActive { get; set; }
-        public DateTime CreatedAt { get; set; }
-        public DateTime UpdatedAt { get; set; }
 
-        // Thông tin Trưởng kho
         public int? ManagerId { get; set; }
-        public string? ManagerName { get; set; } // Map từ IAUser.FullName
+        /// <summary>Tên đầy đủ của Quản lý kho (Được ánh xạ từ IAUser.FullName).</summary>
+        public string? ManagerName { get; set; }
 
-        // Thông tin Địa chỉ (Gộp chung vào đây cho FE dễ đọc)
+        // --- Địa chỉ (Flattened) ---
         public int AddressId { get; set; }
         public string Province { get; set; } = string.Empty;
         public string District { get; set; } = string.Empty;
         public string Ward { get; set; } = string.Empty;
         public string StreetAddress { get; set; } = string.Empty;
-        public string FullAddress { get; set; } = string.Empty; // Cột tính toán
+        /// <summary>Địa chỉ đầy đủ đã được ghép nối.</summary>
+        public string FullAddress { get; set; } = string.Empty;
         public double Latitude { get; set; }
         public double Longitude { get; set; }
-    }
 
-    // DTO phụ để chứa Address khi tạo/sửa
+        // --- Trạng thái ---
+        public bool IsActive { get; set; }
+        public DateTime CreatedAt { get; set; }
+        public DateTime? UpdatedAt { get; set; }
+    }
+    #endregion
+
+    #region DTO Phụ trợ (Payload)
+    /// <summary>
+    /// DTO phụ trợ (Nested Payload) chứa dữ liệu địa chỉ khi thực hiện thao tác Tạo mới hoặc Cập nhật.
+    /// </summary>
     public class WarehouseAddressPayload
     {
-        [Required(ErrorMessage = "Tỉnh/Thành phố không được để trống.")]
-        [StringLength(100, ErrorMessage = "Tỉnh/Thành phố tối đa 100 ký tự.")]
         public string Province { get; set; } = string.Empty;
-
-        [Required(ErrorMessage = "Quận/Huyện không được để trống.")]
-        [StringLength(100, ErrorMessage = "Quận/Huyện tối đa 100 ký tự.")]
         public string District { get; set; } = string.Empty;
-
-        [Required(ErrorMessage = "Phường/Xã không được để trống.")]
-        [StringLength(100, ErrorMessage = "Phường/Xã tối đa 100 ký tự.")]
         public string Ward { get; set; } = string.Empty;
-
-        [Required(ErrorMessage = "Địa chỉ chi tiết không được để trống.")]
-        [StringLength(255, ErrorMessage = "Địa chỉ chi tiết tối đa 255 ký tự.")]
         public string StreetAddress { get; set; } = string.Empty;
-
-        [Range(-90.0, 90.0, ErrorMessage = "Vĩ độ (Latitude) phải nằm trong khoảng [-90, 90].")]
         public double Latitude { get; set; }
-
-        [Range(-180.0, 180.0, ErrorMessage = "Kinh độ (Longitude) phải nằm trong khoảng [-180, 180].")]
         public double Longitude { get; set; }
     }
+    #endregion
 
-    // DTO dùng khi Create
+    #region DTO Thêm mới (Create)
+    /// <summary>
+    /// DTO yêu cầu Tạo mới Kho hàng.
+    /// Bắt buộc khởi tạo kèm theo một bộ dữ liệu địa chỉ vật lý đầy đủ.
+    /// </summary>
     public class WarehouseCreateDto
     {
-        [Required(ErrorMessage = "Mã kho không được để trống.")]
-        [StringLength(50, ErrorMessage = "Mã kho tối đa 50 ký tự.")]
         public string Code { get; set; } = string.Empty;
-
-        [Required(ErrorMessage = "Tên kho hàng không được để trống.")]
-        [StringLength(200, ErrorMessage = "Tên kho tối đa 200 ký tự.")]
         public string Name { get; set; } = string.Empty;
-
-        [StringLength(50, ErrorMessage = "Loại kho tối đa 50 ký tự.")]
         public string? WarehouseType { get; set; }
 
         public int? ManagerId { get; set; }
         public bool IsActive { get; set; } = true;
 
-        // Bắt buộc phải có thông tin địa chỉ khi tạo Kho
-        [Required(ErrorMessage = "Thông tin địa chỉ kho không được để trống.")]
+        /// <summary>Khối dữ liệu địa lý bắt buộc đi kèm khi tạo kho.</summary>
         public required WarehouseAddressPayload Address { get; set; }
     }
+    #endregion
 
-    // DTO dùng khi Update
+    #region DTO Cập nhật (Update)
+    /// <summary>
+    /// DTO yêu cầu Cập nhật thông tin Kho hàng.
+    /// Lưu ý: Thuộc tính "Code" (Mã kho) không xuất hiện ở đây để ngăn chặn việc thay đổi mã định danh.
+    /// </summary>
     public class WarehouseUpdateDto
     {
-        [Required(ErrorMessage = "Tên kho hàng không được để trống.")]
-        [StringLength(200, ErrorMessage = "Tên kho tối đa 200 ký tự.")]
         public string Name { get; set; } = string.Empty;
-
-        [StringLength(50, ErrorMessage = "Loại kho tối đa 50 ký tự.")]
         public string? WarehouseType { get; set; }
 
         public int? ManagerId { get; set; }
         public bool IsActive { get; set; }
 
-        // Có thể cập nhật lại địa chỉ
-        [Required(ErrorMessage = "Thông tin địa chỉ kho không được để trống.")]
+        /// <summary>Thông tin địa chỉ cập nhật để ghi đè lên bản ghi cũ.</summary>
         public required WarehouseAddressPayload Address { get; set; }
     }
+    #endregion
 }

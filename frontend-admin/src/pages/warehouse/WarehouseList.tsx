@@ -144,7 +144,7 @@ const WarehouseList: React.FC = () => {
         onSearchChange={setSearchTerm}
         onAdd={() => navigate('/warehouses/create')}
         icon={WarehouseIcon}
-        searchPlaceholder="Tìm theo tên kho, mã kho..."
+        searchPlaceholder="Tìm kiếm theo mã, tên kho..."
       />
 
       <ListCard>
@@ -283,8 +283,8 @@ const WarehouseList: React.FC = () => {
                         <div className="flex justify-center gap-1.5 opacity-40 group-hover:opacity-100 transition-all duration-300">
                           <button
                             onClick={() => navigate(`/warehouses/edit/${item.id}`)}
-                            className="p-1.5 text-slate-400 hover:text-yellow-600 hover:bg-yellow-50 rounded-lg transition-colors"
-                            title="Chỉnh sửa thông tin kho"
+                            className="p-1.5 text-slate-400 hover:text-yellow-600 hover:bg-yellow-50 rounded-lg transition-colors cursor-pointer"
+                            title="Chỉnh sửa"
                           >
                             <Edit3 size={17} strokeWidth={2.5} />
                           </button>
@@ -293,8 +293,8 @@ const WarehouseList: React.FC = () => {
                               setDeletingRecord(item);
                               setIsModalOpen(true);
                             }}
-                            className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                            title="Xóa kho hàng"
+                            className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                            title="Xóa"
                           >
                             <Trash2 size={17} strokeWidth={2.5} />
                           </button>
