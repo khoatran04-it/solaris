@@ -139,7 +139,7 @@ const CustomerGroupList: React.FC = () => {
         onSearchChange={setSearchTerm}
         onAdd={() => navigate('/customer-groups/create')}
         icon={Hexagon}
-        searchPlaceholder="Tìm theo mã, tên nhóm..."
+        searchPlaceholder="Tìm kiếm theo mã, tên nhóm..."
       />
 
       <ListCard>
