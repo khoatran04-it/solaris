@@ -138,7 +138,7 @@ const CustomerTierList: React.FC = () => {
         searchTerm={searchTerm}
         onSearchChange={setSearchTerm}
         onAdd={() => navigate('/customer-tiers/create')}
-        searchPlaceholder="Tìm theo mã, tên..."
+        searchPlaceholder="Tìm kiếm theo mã, tên bậc hạng..."
       />
 
       <ListCard>

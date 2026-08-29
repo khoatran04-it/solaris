@@ -1,6 +1,7 @@
 using AutoMapper;
 using backend.Data;
 using backend.DTOs.CustomerAddressDTOs;
+using backend.Helpers;
 using backend.Models;
 using backend.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
@@ -47,14 +48,16 @@ namespace backend.Services
         /// </summary>
         public async Task<CustomerAddressReadDto?> GetByIdAsync(int id)
         {
-            var address = await _context.CustomerAddresses.FindAsync(id);
+            var address = await _context.CustomerAddresses
+                .AsNoTracking()
+                .FirstOrDefaultAsync(a => a.Id == id);
+
             if (address == null) return null;
 
             return _mapper.Map<CustomerAddressReadDto>(address);
         }
 
         #endregion
-
 
         // ==========================================
         // SECTION: WRITE OPERATIONS (COMMANDS)
@@ -66,41 +69,49 @@ namespace backend.Services
         /// </summary>
         public async Task<int> CreateAsync(int customerId, CustomerAddressCreateDto dto)
         {
-            var customerExists = await _context.Customers.AnyAsync(c => c.Id == customerId);
-            if (!customerExists) throw new KeyNotFoundException("Không tìm thấy khách hàng.");
-
-            var entity = _mapper.Map<CustomerAddress>(dto);
-            entity.CustomerId = customerId;
-            entity.ReceiverName = dto.ReceiverName.Trim();
-            entity.Phone = dto.Phone.Trim();
-            entity.Province = dto.Province.Trim();
-            entity.District = dto.District.Trim();
-            entity.Ward = dto.Ward.Trim();
-            entity.StreetAddress = dto.StreetAddress.Trim();
-            entity.CreatedAt = DateTime.UtcNow;
-            entity.UpdatedAt = DateTime.UtcNow;
-
-            // Logic: Kiểm tra danh sách hiện tại để xử lý cờ IsDefault
-            var existingAddresses = await _context.CustomerAddresses
-                .Where(a => a.CustomerId == customerId)
-                .ToListAsync();
-
-            if (!existingAddresses.Any())
+            return await _context.ExecuteInTransactionAsync(async () =>
             {
-                // Quy tắc 1: Địa chỉ đầu tiên khởi tạo BẮT BUỘC là mặc định
-                entity.IsDefault = true;
-            }
-            else if (dto.IsDefault)
-            {
-                // Quy tắc 2: Nếu đặt địa chỉ mới làm mặc định, hủy trạng thái của địa chỉ cũ
-                var currentDefault = existingAddresses.FirstOrDefault(a => a.IsDefault);
-                if (currentDefault != null) currentDefault.IsDefault = false;
-            }
+                var customerExists = await _context.Customers.AnyAsync(c => c.Id == customerId);
+                if (!customerExists) throw new KeyNotFoundException("Không tìm thấy khách hàng.");
 
-            _context.CustomerAddresses.Add(entity);
-            await _context.SaveChangesAsync();
+                var entity = _mapper.Map<CustomerAddress>(dto);
+                entity.CustomerId = customerId;
+                entity.ReceiverName = dto.ReceiverName.Trim();
+                entity.Phone = dto.Phone.Trim();
+                entity.Province = dto.Province.Trim();
+                entity.District = dto.District.Trim();
+                entity.Ward = dto.Ward.Trim();
+                entity.StreetAddress = dto.StreetAddress.Trim();
+                entity.Latitude = dto.Latitude;
+                entity.Longitude = dto.Longitude;
+                entity.CreatedAt = DateTime.UtcNow;
+                entity.UpdatedAt = DateTime.UtcNow;
 
-            return entity.Id;
+                // Logic: Kiểm tra danh sách hiện tại để xử lý cờ IsDefault
+                var existingAddresses = await _context.CustomerAddresses
+                    .Where(a => a.CustomerId == customerId)
+                    .ToListAsync();
+
+                if (!existingAddresses.Any())
+                {
+                    // Quy tắc 1: Địa chỉ đầu tiên khởi tạo BẮT BUỘC là mặc định
+                    entity.IsDefault = true;
+                }
+                else if (dto.IsDefault)
+                {
+                    // Quy tắc 2: Nếu đặt địa chỉ mới làm mặc định, hủy trạng thái của địa chỉ cũ
+                    foreach (var addr in existingAddresses.Where(a => a.IsDefault))
+                    {
+                        addr.IsDefault = false;
+                        addr.UpdatedAt = DateTime.UtcNow;
+                    }
+                }
+
+                _context.CustomerAddresses.Add(entity);
+                await _context.SaveChangesAsync();
+
+                return entity.Id;
+            });
         }
 
         /// <summary>
@@ -108,47 +119,58 @@ namespace backend.Services
         /// </summary>
         public async Task<bool> UpdateAsync(int id, CustomerAddressUpdateDto dto)
         {
-            var entity = await _context.CustomerAddresses.FindAsync(id);
-            if (entity == null) throw new KeyNotFoundException("Không tìm thấy địa chỉ.");
-
-            // Xử lý Business Case: Thay đổi trạng thái mặc định
-            if (dto.IsDefault && !entity.IsDefault)
+            return await _context.ExecuteInTransactionAsync(async () =>
             {
-                var currentDefault = await _context.CustomerAddresses
-                    .Where(a => a.CustomerId == entity.CustomerId && a.IsDefault && a.Id != id)
-                    .FirstOrDefaultAsync();
+                var entity = await _context.CustomerAddresses.FindAsync(id);
+                if (entity == null) throw new KeyNotFoundException("Không tìm thấy địa chỉ.");
 
-                if (currentDefault != null) currentDefault.IsDefault = false;
-            }
-            else if (!dto.IsDefault && entity.IsDefault)
-            {
-                var otherAddresses = await _context.CustomerAddresses
-                   .Where(a => a.CustomerId == entity.CustomerId && a.Id != id)
-                   .OrderBy(a => a.CreatedAt)
-                   .ToListAsync();
-
-                if (!otherAddresses.Any())
+                // Xử lý Business Case: Thay đổi trạng thái mặc định
+                if (dto.IsDefault && !entity.IsDefault)
                 {
-                    dto.IsDefault = true;
+                    var currentDefaults = await _context.CustomerAddresses
+                        .Where(a => a.CustomerId == entity.CustomerId && a.IsDefault && a.Id != id)
+                        .ToListAsync();
+
+                    foreach (var addr in currentDefaults)
+                    {
+                        addr.IsDefault = false;
+                        addr.UpdatedAt = DateTime.UtcNow;
+                    }
                 }
-                else
+                else if (!dto.IsDefault && entity.IsDefault)
                 {
-                    otherAddresses.First().IsDefault = true;
+                    var otherAddresses = await _context.CustomerAddresses
+                       .Where(a => a.CustomerId == entity.CustomerId && a.Id != id)
+                       .OrderBy(a => a.CreatedAt)
+                       .ToListAsync();
+
+                    if (!otherAddresses.Any())
+                    {
+                        dto.IsDefault = true;
+                    }
+                    else
+                    {
+                        var newDefault = otherAddresses.First();
+                        newDefault.IsDefault = true;
+                        newDefault.UpdatedAt = DateTime.UtcNow;
+                    }
                 }
-            }
 
-            _mapper.Map(dto, entity);
-            entity.ReceiverName = dto.ReceiverName.Trim();
-            entity.Phone = dto.Phone.Trim();
-            entity.Province = dto.Province.Trim();
-            entity.District = dto.District.Trim();
-            entity.Ward = dto.Ward.Trim();
-            entity.StreetAddress = dto.StreetAddress.Trim();
-            entity.UpdatedAt = DateTime.UtcNow;
+                _mapper.Map(dto, entity);
+                entity.ReceiverName = dto.ReceiverName.Trim();
+                entity.Phone = dto.Phone.Trim();
+                entity.Province = dto.Province.Trim();
+                entity.District = dto.District.Trim();
+                entity.Ward = dto.Ward.Trim();
+                entity.StreetAddress = dto.StreetAddress.Trim();
+                entity.Latitude = dto.Latitude;
+                entity.Longitude = dto.Longitude;
+                entity.UpdatedAt = DateTime.UtcNow;
 
-            await _context.SaveChangesAsync();
+                await _context.SaveChangesAsync();
 
-            return true;
+                return true;
+            });
         }
 
         /// <summary>
@@ -156,29 +178,33 @@ namespace backend.Services
         /// </summary>
         public async Task<bool> DeleteAsync(int id)
         {
-            var entity = await _context.CustomerAddresses.FindAsync(id);
-            if (entity == null) throw new KeyNotFoundException("Không tìm thấy địa chỉ.");
-
-            // Bảo vệ luồng dữ liệu: Luân chuyển Default trước khi xóa thực tế
-            if (entity.IsDefault)
+            return await _context.ExecuteInTransactionAsync(async () =>
             {
-                var nextAddress = await _context.CustomerAddresses
-                    .Where(a => a.CustomerId == entity.CustomerId && a.Id != id)
-                    .OrderBy(a => a.CreatedAt)
-                    .FirstOrDefaultAsync();
+                var entity = await _context.CustomerAddresses.FindAsync(id);
+                if (entity == null) throw new KeyNotFoundException("Không tìm thấy địa chỉ.");
 
-                if (nextAddress != null)
+                // Bảo vệ luồng dữ liệu: Luân chuyển Default trước khi xóa thực tế
+                if (entity.IsDefault)
                 {
-                    nextAddress.IsDefault = true;
+                    var nextAddress = await _context.CustomerAddresses
+                        .Where(a => a.CustomerId == entity.CustomerId && a.Id != id)
+                        .OrderBy(a => a.CreatedAt)
+                        .FirstOrDefaultAsync();
+
+                    if (nextAddress != null)
+                    {
+                        nextAddress.IsDefault = true;
+                        nextAddress.UpdatedAt = DateTime.UtcNow;
+                    }
+
+                    entity.IsDefault = false;
                 }
 
-                entity.IsDefault = false;
-            }
+                _context.CustomerAddresses.Remove(entity);
+                await _context.SaveChangesAsync();
 
-            _context.CustomerAddresses.Remove(entity);
-            await _context.SaveChangesAsync();
-
-            return true;
+                return true;
+            });
         }
 
         /// <summary>
@@ -186,23 +212,30 @@ namespace backend.Services
         /// </summary>
         public async Task<bool> SetDefaultAsync(int id, int customerId)
         {
-            var entity = await _context.CustomerAddresses.FindAsync(id);
-            if (entity == null || entity.CustomerId != customerId)
-                throw new KeyNotFoundException("Địa chỉ không tồn tại hoặc không thuộc quyền sở hữu của khách hàng.");
+            return await _context.ExecuteInTransactionAsync(async () =>
+            {
+                var entity = await _context.CustomerAddresses.FindAsync(id);
+                if (entity == null || entity.CustomerId != customerId)
+                    throw new KeyNotFoundException("Địa chỉ không tồn tại hoặc không thuộc quyền sở hữu của khách hàng.");
 
-            if (entity.IsDefault) return true;
+                if (entity.IsDefault) return true;
 
-            var currentDefault = await _context.CustomerAddresses
-                .Where(a => a.CustomerId == customerId && a.IsDefault)
-                .FirstOrDefaultAsync();
+                var currentDefaults = await _context.CustomerAddresses
+                    .Where(a => a.CustomerId == customerId && a.IsDefault)
+                    .ToListAsync();
 
-            if (currentDefault != null) currentDefault.IsDefault = false;
+                foreach (var addr in currentDefaults)
+                {
+                    addr.IsDefault = false;
+                    addr.UpdatedAt = DateTime.UtcNow;
+                }
 
-            entity.IsDefault = true;
-            entity.UpdatedAt = DateTime.UtcNow;
-            await _context.SaveChangesAsync();
+                entity.IsDefault = true;
+                entity.UpdatedAt = DateTime.UtcNow;
+                await _context.SaveChangesAsync();
 
-            return true;
+                return true;
+            });
         }
 
         #endregion

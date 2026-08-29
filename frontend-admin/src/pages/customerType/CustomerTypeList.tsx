@@ -139,7 +139,7 @@ const CustomerTypeList: React.FC = () => {
         searchTerm={searchTerm}
         onSearchChange={setSearchTerm}
         onAdd={() => navigate('/customer-types/create')}
-        searchPlaceholder="Tìm theo mã, tên..."
+        searchPlaceholder="Tìm kiếm theo mã, tên phân loại..."
       />
 
       <ListCard>

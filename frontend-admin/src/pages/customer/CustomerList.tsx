@@ -182,7 +182,7 @@ const CustomerList: React.FC = () => {
         onSearchChange={setSearchTerm}
         onAdd={() => navigate('/customers/create')}
         icon={Users}
-        searchPlaceholder="Tìm theo tên, mã KH, SĐT..."
+        searchPlaceholder="Tìm kiếm theo mã, tên, số điện thoại..."
       />
 
       <ListCard>

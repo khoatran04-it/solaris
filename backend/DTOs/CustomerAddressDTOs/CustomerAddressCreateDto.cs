@@ -1,40 +1,49 @@
-using System.ComponentModel.DataAnnotations;
-
 namespace backend.DTOs.CustomerAddressDTOs
 {
     /// <summary>
-    /// DTO tạo mới Địa chỉ khách hàng.
+    /// DTO yêu cầu tạo mới Địa chỉ giao hàng của Khách hàng.
+    /// Có thể đính kèm tọa độ GPS để hỗ trợ thuật toán chọn kho giao hàng gần nhất.
     /// </summary>
     public class CustomerAddressCreateDto
     {
+        #region Liên kết đối tượng
+        /// <summary>Mã định danh của khách hàng sở hữu địa chỉ này.</summary>
         public int CustomerId { get; set; }
+        #endregion
 
-        [Required(ErrorMessage = "Tên người nhận không được để trống.")]
-        [StringLength(100, ErrorMessage = "Tên người nhận tối đa 100 ký tự.")]
+        #region Thông tin Người nhận
+        /// <summary>Tên người nhận hàng thực tế tại địa chỉ này.</summary>
         public string ReceiverName { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "Số điện thoại nhận hàng không được để trống.")]
-        [StringLength(20, ErrorMessage = "Số điện thoại tối đa 20 ký tự.")]
+        /// <summary>Số điện thoại liên hệ cho Shipper (Có thể khác số điện thoại đăng nhập của khách).</summary>
         public string Phone { get; set; } = string.Empty;
+        #endregion
 
-        [Required(ErrorMessage = "Tỉnh/Thành phố không được để trống.")]
-        [StringLength(100, ErrorMessage = "Tỉnh/Thành phố tối đa 100 ký tự.")]
+        #region Cấu trúc Hành chính & Địa chỉ
+        /// <summary>Tỉnh / Thành phố.</summary>
         public string Province { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "Quận/Huyện không được để trống.")]
-        [StringLength(100, ErrorMessage = "Quận/Huyện tối đa 100 ký tự.")]
+        /// <summary>Quận / Huyện.</summary>
         public string District { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "Phường/Xã không được để trống.")]
-        [StringLength(100, ErrorMessage = "Phường/Xã tối đa 100 ký tự.")]
+        /// <summary>Phường / Xã.</summary>
         public string Ward { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "Địa chỉ chi tiết không được để trống.")]
-        [StringLength(200, ErrorMessage = "Địa chỉ chi tiết tối đa 200 ký tự.")]
+        /// <summary>Địa chỉ chi tiết (Số nhà, Tên đường, Tòa nhà...).</summary>
         public string StreetAddress { get; set; } = string.Empty;
+        #endregion
 
+        #region Tọa độ Địa lý (Smart Order Routing)
+        /// <summary>Vĩ độ GPS (Latitude) trên bản đồ.</summary>
         public double Latitude { get; set; }
+
+        /// <summary>Kinh độ GPS (Longitude) trên bản đồ.</summary>
         public double Longitude { get; set; }
+        #endregion
+
+        #region Trạng thái
+        /// <summary>Cờ đánh dấu thiết lập làm địa chỉ mặc định khi thanh toán đơn hàng.</summary>
         public bool IsDefault { get; set; } = false;
+        #endregion
     }
 }

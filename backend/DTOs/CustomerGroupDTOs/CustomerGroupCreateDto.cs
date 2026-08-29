@@ -1,24 +1,27 @@
-using System.ComponentModel.DataAnnotations;
-
 namespace backend.DTOs.CustomerGroupDTOs
 {
     /// <summary>
-    /// DTO tạo mới Nhóm Khách Hàng.
+    /// DTO yêu cầu tạo mới Nhóm Khách Hàng (Customer Group / Marketing Tag).
+    /// Hỗ trợ phân loại, gắn thẻ (tag) khách hàng phục vụ cho các chiến dịch tiếp thị và phân khúc.
     /// </summary>
     public class CustomerGroupCreateDto
     {
-        [Required(ErrorMessage = "Mã nhóm khách hàng không được để trống.")]
-        [StringLength(20, ErrorMessage = "Mã nhóm tối đa 20 ký tự.")]
+        #region Thông tin Định danh
+        /// <summary>Mã nhóm khách hàng (Ví dụ: GRP-VIP, GRP-WHOLESALE, GRP-PROMO-HUNTER).</summary>
         public string Code { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "Tên nhóm khách hàng không được để trống.")]
-        [StringLength(200, ErrorMessage = "Tên nhóm tối đa 200 ký tự.")]
+        /// <summary>Tên hiển thị của nhóm khách hàng (Ví dụ: Khách VIP, Khách săn sale, Đối tác chiến lược).</summary>
         public string Name { get; set; } = string.Empty;
+        #endregion
 
-        [StringLength(1000, ErrorMessage = "Mô tả tối đa 1000 ký tự.")]
+        #region Thông tin Chi tiết
+        /// <summary>Mô tả chi tiết về tiêu chí hoặc mục đích tạo nhóm này.</summary>
         public string? Description { get; set; }
+        #endregion
 
-        /// <summary>Trạng thái hoạt động (mặc định: true)</summary>
+        #region Trạng thái & Hệ thống
+        /// <summary>Trạng thái hoạt động (true: Đang sử dụng nhóm này, false: Tạm khóa/Ẩn đi).</summary>
         public bool IsActive { get; set; } = true;
+        #endregion
     }
 }

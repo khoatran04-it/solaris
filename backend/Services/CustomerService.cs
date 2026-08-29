@@ -2,6 +2,7 @@ using AutoMapper;
 using backend.Data;
 using backend.DTOs;
 using backend.DTOs.CustomerDTOs;
+using backend.Helpers;
 using backend.Models;
 using backend.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
@@ -21,6 +22,11 @@ namespace backend.Services
             _context = context;
             _mapper = mapper;
         }
+
+        // ==========================================
+        // SECTION: READ OPERATIONS (QUERIES)
+        // ==========================================
+        #region Read Operations
 
         public async Task<IEnumerable<CustomerReadDto>> GetAllListAsync()
         {
@@ -122,7 +128,7 @@ namespace backend.Services
             {
                 var startDate = updatedAt.Value.Date;
                 var endDate = startDate.AddDays(1);
-                query = query.Where(x => x.UpdatedAt >= startDate && x.UpdatedAt < endDate);
+                query = query.Where(x => x.UpdatedAt.HasValue && x.UpdatedAt.Value >= startDate && x.UpdatedAt.Value < endDate);
             }
 
             var totalRecords = await query.CountAsync();
@@ -156,7 +162,6 @@ namespace backend.Services
                 .Include(c => c.GroupLinks)
                     .ThenInclude(gl => gl.CustomerGroup)
                 .AsNoTracking()
-                .AsSplitQuery()
                 .FirstOrDefaultAsync(c => c.Id == id);
 
             if (customer == null) return null;
@@ -164,29 +169,39 @@ namespace backend.Services
             return _mapper.Map<CustomerReadDto>(customer);
         }
 
+        #endregion
+
+        // ==========================================
+        // SECTION: WRITE OPERATIONS (COMMANDS)
+        // ==========================================
+        #region Write Operations
+
         public async Task<int> CreateAsync(CustomerCreateDto dto)
         {
-            var trimmedCode = dto.Code.Trim();
-            var trimmedPhone = dto.PhoneNumber.Trim();
-
-            if (await _context.Customers.AnyAsync(c => c.Code == trimmedCode))
-                throw new Exception($"Mã khách hàng '{trimmedCode}' đã tồn tại.");
-
-            if (await _context.Customers.AnyAsync(c => c.PhoneNumber == trimmedPhone))
-                throw new Exception($"Số điện thoại '{trimmedPhone}' đã được đăng ký cho khách hàng khác.");
-
-            using var transaction = await _context.Database.BeginTransactionAsync();
-
-            try
+            return await _context.ExecuteInTransactionAsync(async () =>
             {
+                var trimmedCode = dto.Code.Trim();
+                var trimmedPhone = dto.PhoneNumber.Trim();
+
+                if (await _context.Customers.AnyAsync(c => c.Code.ToLower() == trimmedCode.ToLower()))
+                    throw new InvalidOperationException($"Mã khách hàng '{trimmedCode}' đã tồn tại.");
+
+                if (await _context.Customers.AnyAsync(c => c.PhoneNumber == trimmedPhone))
+                    throw new InvalidOperationException($"Số điện thoại '{trimmedPhone}' đã được đăng ký cho khách hàng khác.");
+
                 var newCustomer = _mapper.Map<Customer>(dto);
-                newCustomer.Code = trimmedCode;
+                newCustomer.Code = trimmedCode.ToUpper();
                 newCustomer.Name = dto.Name.Trim();
                 newCustomer.PhoneNumber = trimmedPhone;
                 newCustomer.Email = dto.Email?.Trim();
                 newCustomer.TaxCode = dto.TaxCode?.Trim();
+                newCustomer.AvatarPath = dto.AvatarPath?.Trim();
+                newCustomer.Birthday = dto.Birthday;
+                newCustomer.Gender = dto.Gender;
                 newCustomer.Note = dto.Note?.Trim();
                 newCustomer.IsActive = dto.IsActive;
+                newCustomer.CustomerTypeId = dto.CustomerTypeId;
+                newCustomer.CustomerTierId = dto.CustomerTierId;
                 newCustomer.CreatedAt = DateTime.UtcNow;
                 newCustomer.UpdatedAt = DateTime.UtcNow;
 
@@ -216,6 +231,14 @@ namespace backend.Services
                         {
                             var addrEntity = _mapper.Map<CustomerAddress>(addrDto);
                             addrEntity.CustomerId = newCustomer.Id;
+                            addrEntity.ReceiverName = addrDto.ReceiverName.Trim();
+                            addrEntity.Phone = addrDto.Phone.Trim();
+                            addrEntity.Province = addrDto.Province.Trim();
+                            addrEntity.District = addrDto.District.Trim();
+                            addrEntity.Ward = addrDto.Ward.Trim();
+                            addrEntity.StreetAddress = addrDto.StreetAddress.Trim();
+                            addrEntity.Latitude = addrDto.Latitude;
+                            addrEntity.Longitude = addrDto.Longitude;
                             addrEntity.IsDefault = isFirst || addrDto.IsDefault;
                             addrEntity.CreatedAt = DateTime.UtcNow;
                             addrEntity.UpdatedAt = DateTime.UtcNow;
@@ -226,100 +249,125 @@ namespace backend.Services
                 }
 
                 await _context.SaveChangesAsync();
-                await transaction.CommitAsync();
                 return newCustomer.Id;
-            }
-            catch (Exception ex)
-            {
-                await transaction.RollbackAsync();
-                throw new Exception(ex.Message);
-            }
+            });
         }
 
         public async Task<bool> UpdateAsync(int id, CustomerUpdateDto dto)
         {
-            var customer = await _context.Customers
-                .Include(c => c.GroupLinks)
-                .FirstOrDefaultAsync(c => c.Id == id);
-
-            if (customer == null) throw new KeyNotFoundException("Không tìm thấy khách hàng.");
-
-            var trimmedCode = dto.Code.Trim();
-            var trimmedPhone = dto.PhoneNumber.Trim();
-
-            if (await _context.Customers.AnyAsync(c => c.Id != id && c.Code == trimmedCode))
-                throw new Exception($"Cập nhật thất bại: Mã khách hàng '{trimmedCode}' đã tồn tại.");
-
-            if (await _context.Customers.AnyAsync(c => c.Id != id && c.PhoneNumber == trimmedPhone))
-                throw new Exception($"Cập nhật thất bại: Số điện thoại '{trimmedPhone}' đã được đăng ký bởi khách hàng khác.");
-
-            using var transaction = await _context.Database.BeginTransactionAsync();
-
-            try
+            return await _context.ExecuteInTransactionAsync(async () =>
             {
+                var customer = await _context.Customers
+                    .Include(c => c.GroupLinks)
+                    .FirstOrDefaultAsync(c => c.Id == id);
+
+                if (customer == null) throw new KeyNotFoundException("Không tìm thấy khách hàng.");
+
+                var trimmedCode = dto.Code.Trim();
+                var trimmedPhone = dto.PhoneNumber.Trim();
+
+                if (await _context.Customers.AnyAsync(c => c.Id != id && c.Code.ToLower() == trimmedCode.ToLower()))
+                    throw new InvalidOperationException($"Cập nhật thất bại: Mã khách hàng '{trimmedCode}' đã tồn tại.");
+
+                if (await _context.Customers.AnyAsync(c => c.Id != id && c.PhoneNumber == trimmedPhone))
+                    throw new InvalidOperationException($"Cập nhật thất bại: Số điện thoại '{trimmedPhone}' đã được đăng ký bởi khách hàng khác.");
+
                 _mapper.Map(dto, customer);
-                customer.Code = trimmedCode;
+                customer.Code = trimmedCode.ToUpper();
                 customer.Name = dto.Name.Trim();
                 customer.PhoneNumber = trimmedPhone;
                 customer.Email = dto.Email?.Trim();
                 customer.TaxCode = dto.TaxCode?.Trim();
+                customer.AvatarPath = dto.AvatarPath?.Trim();
+                customer.Birthday = dto.Birthday;
+                customer.Gender = dto.Gender;
                 customer.Note = dto.Note?.Trim();
                 customer.IsActive = dto.IsActive;
+                customer.CustomerTypeId = dto.CustomerTypeId;
+                customer.CustomerTierId = dto.CustomerTierId;
                 customer.UpdatedAt = DateTime.UtcNow;
 
-                _context.CustomerGroupLinks.RemoveRange(customer.GroupLinks);
+                // Quản lý liên kết Nhóm khách hàng (Xử lý an toàn với Soft Delete và Composite Key)
+                var allExistingLinks = await _context.CustomerGroupLinks
+                    .IgnoreQueryFilters()
+                    .Where(gl => gl.CustomerId == customer.Id)
+                    .ToListAsync();
 
-                if (dto.GroupIds != null && dto.GroupIds.Any())
+                var newGroupIds = (dto.GroupIds ?? new List<int>()).Distinct().ToList();
+
+                // 1. Soft delete những nhóm cũ không còn trong danh sách mới
+                foreach (var link in allExistingLinks.Where(l => !l.IsDeleted && !newGroupIds.Contains(l.CustomerGroupId)))
                 {
-                    var newLinks = dto.GroupIds.Distinct().Select(groupId => new CustomerGroupLink
+                    _context.CustomerGroupLinks.Remove(link);
+                }
+
+                // 2. Kích hoạt lại (nếu đã soft delete) hoặc thêm mới liên kết
+                foreach (var groupId in newGroupIds)
+                {
+                    var existing = allExistingLinks.FirstOrDefault(l => l.CustomerGroupId == groupId);
+                    if (existing != null)
                     {
-                        CustomerId = customer.Id,
-                        CustomerGroupId = groupId,
-                        AssignedAt = DateTime.UtcNow
-                    });
-                    await _context.CustomerGroupLinks.AddRangeAsync(newLinks);
+                        if (existing.IsDeleted)
+                        {
+                            existing.IsDeleted = false;
+                            existing.DeletedAt = null;
+                            existing.AssignedAt = DateTime.UtcNow;
+                        }
+                    }
+                    else
+                    {
+                        var newLink = new CustomerGroupLink
+                        {
+                            CustomerId = customer.Id,
+                            CustomerGroupId = groupId,
+                            AssignedAt = DateTime.UtcNow
+                        };
+                        _context.CustomerGroupLinks.Add(newLink);
+                    }
                 }
 
                 await _context.SaveChangesAsync();
-                await transaction.CommitAsync();
                 return true;
-            }
-            catch (Exception ex)
-            {
-                await transaction.RollbackAsync();
-                throw new Exception(ex.Message);
-            }
+            });
         }
 
         public async Task<bool> DeleteAsync(int id)
         {
-            var customer = await _context.Customers.FindAsync(id);
-            if (customer == null) throw new KeyNotFoundException("Không tìm thấy khách hàng.");
+            return await _context.ExecuteInTransactionAsync(async () =>
+            {
+                var customer = await _context.Customers.FindAsync(id);
+                if (customer == null) throw new KeyNotFoundException("Không tìm thấy khách hàng.");
 
-            // Kiểm tra ràng buộc dữ liệu toàn vẹn
-            bool hasOrders = await _context.Orders.AnyAsync(o => o.CustomerId == id && !o.IsDeleted);
-            if (hasOrders)
-                throw new Exception("Không thể xóa khách hàng này vì đã có lịch sử Đơn Hàng trong hệ thống.");
+                // Kiểm tra ràng buộc dữ liệu toàn vẹn
+                bool hasOrders = await _context.Orders.AnyAsync(o => o.CustomerId == id && !o.IsDeleted);
+                if (hasOrders)
+                    throw new InvalidOperationException("Không thể xóa khách hàng này vì đã có lịch sử Đơn Hàng trong hệ thống.");
 
-            bool hasReturns = await _context.CustomerReturns.AnyAsync(cr => cr.CustomerId == id && !cr.IsDeleted);
-            if (hasReturns)
-                throw new Exception("Không thể xóa khách hàng này vì đã có lịch sử Phiếu Trả Hàng trong hệ thống.");
+                bool hasReturns = await _context.CustomerReturns.AnyAsync(cr => cr.CustomerId == id && !cr.IsDeleted);
+                if (hasReturns)
+                    throw new InvalidOperationException("Không thể xóa khách hàng này vì đã có lịch sử Phiếu Trả Hàng trong hệ thống.");
 
-            _context.Customers.Remove(customer); // Soft Delete
-            await _context.SaveChangesAsync();
-            return true;
+                _context.Customers.Remove(customer); // Soft Delete
+                await _context.SaveChangesAsync();
+                return true;
+            });
         }
 
         public async Task<bool> ToggleActiveAsync(int id)
         {
-            var customer = await _context.Customers.FindAsync(id);
-            if (customer == null) throw new KeyNotFoundException("Không tìm thấy khách hàng.");
+            return await _context.ExecuteInTransactionAsync(async () =>
+            {
+                var customer = await _context.Customers.FindAsync(id);
+                if (customer == null) throw new KeyNotFoundException("Không tìm thấy khách hàng.");
 
-            customer.IsActive = !customer.IsActive;
-            customer.UpdatedAt = DateTime.UtcNow;
+                customer.IsActive = !customer.IsActive;
+                customer.UpdatedAt = DateTime.UtcNow;
 
-            await _context.SaveChangesAsync();
-            return true;
+                await _context.SaveChangesAsync();
+                return true;
+            });
         }
+
+        #endregion
     }
 }

@@ -4,20 +4,37 @@ using backend.Models;
 
 namespace backend.Profiles
 {
+    /// <summary>
+    /// Cấu hình ánh xạ dữ liệu (AutoMapper Profile) cho Phân loại khách hàng (Customer Type).
+    /// </summary>
     public class CustomerTypeProfile : Profile
     {
-        public CustomerTypeProfile() 
+        public CustomerTypeProfile()
         {
-            // GET
+            #region Entity -> Read DTO (Truy vấn)
+            // Ánh xạ dữ liệu từ Database ra DTO để trả về cho Client
             CreateMap<CustomerType, CustomerTypeReadDto>();
+            #endregion
 
-            // POST
+            #region Create DTO -> Entity (Thêm mới)
             CreateMap<CustomerTypeCreateDto, CustomerType>()
-                .ForMember(dest => dest.IsActive, opt => opt.MapFrom(src => src.IsActive));
+                .ForMember(dest => dest.Id, opt => opt.Ignore())
+                .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
+                .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
+                .ForMember(dest => dest.IsDeleted, opt => opt.Ignore())
+                .ForMember(dest => dest.DeletedAt, opt => opt.Ignore())
+                .ForMember(dest => dest.Customers, opt => opt.Ignore());
+            #endregion
 
-            // PUT
+            #region Update DTO -> Entity (Cập nhật)
             CreateMap<CustomerTypeUpdateDto, CustomerType>()
-                .ForMember(dest => dest.IsActive, opt => opt.MapFrom(src => src.IsActive));
+                .ForMember(dest => dest.Id, opt => opt.Ignore())
+                .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
+                .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
+                .ForMember(dest => dest.IsDeleted, opt => opt.Ignore())
+                .ForMember(dest => dest.DeletedAt, opt => opt.Ignore())
+                .ForMember(dest => dest.Customers, opt => opt.Ignore());
+            #endregion
         }
     }
 }

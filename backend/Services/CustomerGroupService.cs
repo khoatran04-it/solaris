@@ -2,6 +2,7 @@ using AutoMapper;
 using backend.Data;
 using backend.DTOs;
 using backend.DTOs.CustomerGroupDTOs;
+using backend.Helpers;
 using backend.Models;
 using backend.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
@@ -96,7 +97,7 @@ namespace backend.Services
             {
                 var startDate = updatedAt.Value.Date;
                 var endDate = startDate.AddDays(1);
-                query = query.Where(x => x.UpdatedAt >= startDate && x.UpdatedAt < endDate);
+                query = query.Where(x => x.UpdatedAt.HasValue && x.UpdatedAt.Value >= startDate && x.UpdatedAt.Value < endDate);
             }
 
             var totalRecords = await query.CountAsync();
@@ -125,14 +126,16 @@ namespace backend.Services
         /// </summary>
         public async Task<CustomerGroupReadDto?> GetByIdAsync(int id)
         {
-            var group = await _context.CustomerGroups.FindAsync(id);
+            var group = await _context.CustomerGroups
+                .AsNoTracking()
+                .FirstOrDefaultAsync(x => x.Id == id);
+
             if (group == null) return null;
 
             return _mapper.Map<CustomerGroupReadDto>(group);
         }
 
         #endregion
-
 
         // ==========================================
         // SECTION: WRITE OPERATIONS (COMMANDS)
@@ -144,23 +147,26 @@ namespace backend.Services
         /// </summary>
         public async Task<int> CreateAsync(CustomerGroupCreateDto dto)
         {
-            var trimmedCode = dto.Code.Trim();
+            return await _context.ExecuteInTransactionAsync(async () =>
+            {
+                var trimmedCode = dto.Code.Trim();
 
-            if (await _context.CustomerGroups.AnyAsync(x => x.Code == trimmedCode))
-                throw new Exception($"Mã nhóm khách hàng '{trimmedCode}' đã tồn tại trên hệ thống.");
+                if (await _context.CustomerGroups.AnyAsync(x => x.Code.ToLower() == trimmedCode.ToLower()))
+                    throw new InvalidOperationException($"Mã nhóm khách hàng '{trimmedCode}' đã tồn tại trên hệ thống.");
 
-            var entity = _mapper.Map<CustomerGroup>(dto);
-            entity.Code = trimmedCode;
-            entity.Name = dto.Name.Trim();
-            entity.Description = dto.Description?.Trim();
-            entity.IsActive = dto.IsActive;
-            entity.CreatedAt = DateTime.UtcNow;
-            entity.UpdatedAt = DateTime.UtcNow;
+                var entity = _mapper.Map<CustomerGroup>(dto);
+                entity.Code = trimmedCode.ToUpper();
+                entity.Name = dto.Name.Trim();
+                entity.Description = dto.Description?.Trim();
+                entity.IsActive = dto.IsActive;
+                entity.CreatedAt = DateTime.UtcNow;
+                entity.UpdatedAt = DateTime.UtcNow;
 
-            _context.CustomerGroups.Add(entity);
-            await _context.SaveChangesAsync();
+                _context.CustomerGroups.Add(entity);
+                await _context.SaveChangesAsync();
 
-            return entity.Id;
+                return entity.Id;
+            });
         }
 
         /// <summary>
@@ -168,25 +174,28 @@ namespace backend.Services
         /// </summary>
         public async Task<bool> UpdateAsync(int id, CustomerGroupUpdateDto dto)
         {
-            var entity = await _context.CustomerGroups.FindAsync(id);
-            if (entity == null)
-                throw new KeyNotFoundException("Không tìm thấy nhóm khách hàng cần sửa.");
+            return await _context.ExecuteInTransactionAsync(async () =>
+            {
+                var entity = await _context.CustomerGroups.FindAsync(id);
+                if (entity == null)
+                    throw new KeyNotFoundException("Không tìm thấy nhóm khách hàng cần sửa.");
 
-            var trimmedCode = dto.Code.Trim();
+                var trimmedCode = dto.Code.Trim();
 
-            if (await _context.CustomerGroups.AnyAsync(x => x.Id != id && x.Code == trimmedCode))
-                throw new Exception($"Cập nhật thất bại: Mã nhóm '{trimmedCode}' đã bị trùng lặp với dữ liệu khác.");
+                if (await _context.CustomerGroups.AnyAsync(x => x.Id != id && x.Code.ToLower() == trimmedCode.ToLower()))
+                    throw new InvalidOperationException($"Cập nhật thất bại: Mã nhóm '{trimmedCode}' đã bị trùng lặp với dữ liệu khác.");
 
-            _mapper.Map(dto, entity);
-            entity.Code = trimmedCode;
-            entity.Name = dto.Name.Trim();
-            entity.Description = dto.Description?.Trim();
-            entity.IsActive = dto.IsActive;
-            entity.UpdatedAt = DateTime.UtcNow;
+                _mapper.Map(dto, entity);
+                entity.Code = trimmedCode.ToUpper();
+                entity.Name = dto.Name.Trim();
+                entity.Description = dto.Description?.Trim();
+                entity.IsActive = dto.IsActive;
+                entity.UpdatedAt = DateTime.UtcNow;
 
-            await _context.SaveChangesAsync();
+                await _context.SaveChangesAsync();
 
-            return true;
+                return true;
+            });
         }
 
         /// <summary>
@@ -194,23 +203,27 @@ namespace backend.Services
         /// </summary>
         public async Task<bool> DeleteAsync(int id)
         {
-            var entity = await _context.CustomerGroups.FindAsync(id);
-            if (entity == null)
-                throw new KeyNotFoundException("Không tìm thấy nhóm khách hàng cần xóa.");
-
-            // Kiểm tra xem có khách hàng nào đang trong nhóm này không
-            bool hasMembers = await _context.CustomerGroupLinks.AnyAsync(l => l.CustomerGroupId == id && !l.IsDeleted);
-            if (hasMembers)
+            return await _context.ExecuteInTransactionAsync(async () =>
             {
+                var entity = await _context.CustomerGroups.FindAsync(id);
+                if (entity == null)
+                    throw new KeyNotFoundException("Không tìm thấy nhóm khách hàng cần xóa.");
+
                 // Tự động gỡ bỏ các liên kết khách hàng của nhóm khi xóa nhóm (Soft Delete links)
-                var links = await _context.CustomerGroupLinks.Where(l => l.CustomerGroupId == id).ToListAsync();
-                _context.CustomerGroupLinks.RemoveRange(links);
-            }
+                var links = await _context.CustomerGroupLinks
+                    .Where(l => l.CustomerGroupId == id)
+                    .ToListAsync();
 
-            _context.CustomerGroups.Remove(entity);
-            await _context.SaveChangesAsync();
+                if (links.Any())
+                {
+                    _context.CustomerGroupLinks.RemoveRange(links);
+                }
 
-            return true;
+                _context.CustomerGroups.Remove(entity);
+                await _context.SaveChangesAsync();
+
+                return true;
+            });
         }
 
         /// <summary>
@@ -218,16 +231,19 @@ namespace backend.Services
         /// </summary>
         public async Task<bool> ToggleActiveAsync(int id)
         {
-            var entity = await _context.CustomerGroups.FindAsync(id);
-            if (entity == null)
-                throw new KeyNotFoundException("Không tìm thấy nhóm khách hàng.");
+            return await _context.ExecuteInTransactionAsync(async () =>
+            {
+                var entity = await _context.CustomerGroups.FindAsync(id);
+                if (entity == null)
+                    throw new KeyNotFoundException("Không tìm thấy nhóm khách hàng.");
 
-            entity.IsActive = !entity.IsActive;
-            entity.UpdatedAt = DateTime.UtcNow;
+                entity.IsActive = !entity.IsActive;
+                entity.UpdatedAt = DateTime.UtcNow;
 
-            await _context.SaveChangesAsync();
+                await _context.SaveChangesAsync();
 
-            return true;
+                return true;
+            });
         }
 
         #endregion

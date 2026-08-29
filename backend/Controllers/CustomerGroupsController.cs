@@ -14,6 +14,7 @@ namespace backend.Controllers
     [ApiController]
     [Route("api/[controller]")]
     [Authorize]
+    [Produces("application/json")]
     public class CustomerGroupsController : ControllerBase
     {
         private readonly ICustomerGroupService _service;
@@ -68,13 +69,12 @@ namespace backend.Controllers
             var data = await _service.GetByIdAsync(id);
             if (data == null)
             {
-                return NotFound(new { Message = "Không tìm thấy nhóm khách hàng này trên hệ thống." });
+                return NotFound(new { message = "Không tìm thấy nhóm khách hàng này trên hệ thống." });
             }
             return Ok(data);
         }
 
         #endregion
-
 
         // ==========================================
         // SECTION: WRITE OPERATIONS (POST / PUT / DELETE)
@@ -95,9 +95,13 @@ namespace backend.Controllers
                 var created = await _service.GetByIdAsync(newId);
                 return CreatedAtAction(nameof(GetById), new { id = newId }, created);
             }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
             catch (Exception ex)
             {
-                return BadRequest(new { Message = ex.Message });
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = "Đã xảy ra lỗi hệ thống.", detail = ex.Message });
             }
         }
 
@@ -117,11 +121,15 @@ namespace backend.Controllers
             }
             catch (KeyNotFoundException ex)
             {
-                return NotFound(new { Message = ex.Message });
+                return NotFound(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Message = ex.Message });
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = "Đã xảy ra lỗi hệ thống.", detail = ex.Message });
             }
         }
 
@@ -131,7 +139,6 @@ namespace backend.Controllers
         [HttpDelete("{id}")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Delete(int id)
         {
             try
@@ -141,44 +148,34 @@ namespace backend.Controllers
             }
             catch (KeyNotFoundException ex)
             {
-                return NotFound(new { Message = ex.Message });
+                return NotFound(new { message = ex.Message });
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Message = ex.Message });
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = "Đã xảy ra lỗi hệ thống.", detail = ex.Message });
             }
         }
-
-        #endregion
-
-
-        // ==========================================
-        // SECTION: SPECIAL BUSINESS ACTIONS
-        // ==========================================
-        #region Business Actions
 
         /// <summary>
         /// Thay đổi nhanh trạng thái hoạt động (Kích hoạt/Khóa) của một nhóm khách hàng.
         /// </summary>
         [HttpPatch("{id}/toggle-active")]
-        [HttpPut("{id}/toggle-active")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> ToggleActive(int id)
         {
             try
             {
                 await _service.ToggleActiveAsync(id);
-                return Ok(new { Message = "Đã cập nhật trạng thái hoạt động" });
+                return Ok(new { message = "Đã cập nhật trạng thái hoạt động thành công." });
             }
             catch (KeyNotFoundException ex)
             {
-                return NotFound(new { Message = ex.Message });
+                return NotFound(new { message = ex.Message });
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Message = ex.Message });
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = "Đã xảy ra lỗi hệ thống.", detail = ex.Message });
             }
         }
 
