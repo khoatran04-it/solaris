@@ -1,28 +1,39 @@
-using System.ComponentModel.DataAnnotations;
+using System;
 
 namespace backend.DTOs.PromotionCampaignDTOs
 {
+    /// <summary>
+    /// DTO yêu cầu cập nhật thông tin Chiến Dịch Khuyến Mãi (Promotion Campaign).
+    /// </summary>
     public class PromotionCampaignUpdateDto
     {
-        [Required(ErrorMessage = "Tên chiến dịch không được để trống.")]
-        [StringLength(255, ErrorMessage = "Tên chiến dịch tối đa 255 ký tự.")]
+        #region Thông tin Định danh & Nội dung
+        /// <summary>Tên chiến dịch khuyến mãi (Ví dụ: Flash Sale Cuối Tuần, Siêu Sale Giữa Tháng).</summary>
         public string Name { get; set; } = string.Empty;
 
-        [StringLength(1000, ErrorMessage = "Mô tả tối đa 1000 ký tự.")]
+        /// <summary>Mô tả chi tiết và thể lệ của chương trình khuyến mãi.</summary>
         public string? Description { get; set; }
+        #endregion
 
+        #region Cấu hình Giảm giá (Discount Logic)
+        /// <summary>Cờ xác định loại giảm giá (true: Giảm theo phần trăm %, false: Giảm trừ trực tiếp tiền mặt VNĐ).</summary>
         public bool IsPercentage { get; set; }
 
-        [Required(ErrorMessage = "Giá trị giảm giá không được để trống.")]
-        [Range(0.01, double.MaxValue, ErrorMessage = "Mức giảm giá phải lớn hơn 0.")]
+        /// <summary>Giá trị giảm (Ví dụ: Nhập 20 nếu giảm 20%, hoặc 50000 nếu giảm 50.000đ).</summary>
         public decimal DiscountValue { get; set; }
+        #endregion
 
-        [Required(ErrorMessage = "Ngày bắt đầu không được để trống.")]
+        #region Thời gian Hiệu lực
+        /// <summary>Thời điểm bắt đầu áp dụng khuyến mãi.</summary>
         public DateTime StartDate { get; set; }
 
-        [Required(ErrorMessage = "Ngày kết thúc không được để trống.")]
+        /// <summary>Thời điểm kết thúc chiến dịch.</summary>
         public DateTime EndDate { get; set; }
+        #endregion
 
+        #region Trạng thái
+        /// <summary>Trạng thái hoạt động (true: Kích hoạt chiến dịch, false: Tạm ngưng/Dừng khẩn cấp).</summary>
         public bool IsActive { get; set; } = true;
+        #endregion
     }
 }

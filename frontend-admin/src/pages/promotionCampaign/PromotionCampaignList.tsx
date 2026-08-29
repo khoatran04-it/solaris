@@ -161,7 +161,7 @@ const PromotionCampaignList: React.FC = () => {
         onSearchChange={setSearchTerm}
         onAdd={() => navigate('/promotions/create')}
         icon={Megaphone}
-        searchPlaceholder="Tìm theo tên chiến dịch..."
+        searchPlaceholder="Tìm kiếm theo tên chiến dịch..."
       />
 
       <ListCard>

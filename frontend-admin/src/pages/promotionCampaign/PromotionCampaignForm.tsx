@@ -226,6 +226,7 @@ const PromotionCampaignForm: React.FC = () => {
                   <FormInput
                     label="Tên chiến dịch"
                     required
+                    placeholder="Nhập tên chiến dịch khuyến mãi..."
                     value={formData.name}
                     onChange={(e) => handleFieldChange('name', e.target.value)}
                   />
@@ -239,6 +240,7 @@ const PromotionCampaignForm: React.FC = () => {
                     label={formData.isPercentage ? 'Mức giảm (%)' : 'Mức giảm (VNĐ)'}
                     type="number"
                     required
+                    placeholder="Nhập giá trị giảm..."
                     value={formData.discountValue}
                     onChange={(e) =>
                       handleFieldChange('discountValue', parseFloat(e.target.value) || 0)
@@ -261,6 +263,7 @@ const PromotionCampaignForm: React.FC = () => {
                 <div className="mt-6">
                   <FormTextarea
                     label="Mô tả chiến dịch"
+                    placeholder="Mô tả chi tiết và thể lệ chương trình khuyến mãi..."
                     value={formData.description || ''}
                     onChange={(e: any) => handleFieldChange('description', e.target.value)}
                   />
