@@ -1,57 +1,77 @@
-using System.ComponentModel.DataAnnotations;
-
 namespace backend.DTOs.ProductVariantDTOs
 {
+    /// <summary>
+    /// DTO đầu vào cấu hình Giá bán theo từng Đơn vị tính cho Biến thể.
+    /// </summary>
     public class VariantPriceInputDto
     {
-        [Required(ErrorMessage = "Đơn vị tính không được để trống.")]
-        [Range(1, int.MaxValue, ErrorMessage = "Đơn vị tính không hợp lệ.")]
+        #region Thông tin Cấu hình Giá
+        /// <summary>Mã định danh Đơn vị tính (Ví dụ: Kg, Thùng).</summary>
         public int UoMId { get; set; }
 
-        [Required(ErrorMessage = "Giá bán không được để trống.")]
-        [Range(0, double.MaxValue, ErrorMessage = "Giá bán phải lớn hơn hoặc bằng 0.")]
+        /// <summary>Đơn giá bán ra tương ứng với Đơn vị tính (VNĐ).</summary>
         public decimal Price { get; set; }
 
+        /// <summary>Đánh dấu đây có phải là ĐVT và mức giá bán mặc định hay không.</summary>
         public bool IsDefault { get; set; }
+        #endregion
     }
 
+    /// <summary>
+    /// DTO đầu vào cấu hình Giá trị thuộc tính động (EAV) cho Biến thể.
+    /// </summary>
     public class AttributeInputDto
     {
-        [Required(ErrorMessage = "Thuộc tính không được để trống.")]
-        [Range(1, int.MaxValue, ErrorMessage = "Thuộc tính không hợp lệ.")]
+        #region Thông tin Thuộc tính
+        /// <summary>Mã định danh của Thuộc tính từ Từ điển hệ thống (Ví dụ: Độ Brix, Xuất xứ).</summary>
         public int AttributeDefinitionId { get; set; }
 
-        [Required(ErrorMessage = "Giá trị thuộc tính không được để trống.")]
-        [StringLength(200, ErrorMessage = "Giá trị thuộc tính tối đa 200 ký tự.")]
+        /// <summary>Giá trị thực tế của thuộc tính (Ví dụ: "12", "Đà Lạt").</summary>
         public string AttributeValue { get; set; } = string.Empty;
+        #endregion
     }
 
+    /// <summary>
+    /// DTO yêu cầu tạo mới Biến Thể Sản Phẩm (SKU - Stock Keeping Unit).
+    /// Hỗ trợ tạo mới Biến thể kèm theo cấu hình Giá (Prices) và Thuộc tính (Attributes) trong cùng một request.
+    /// </summary>
     public class ProductVariantCreateDto
     {
-        [Required(ErrorMessage = "Mã SKU không được để trống.")]
-        [StringLength(50, ErrorMessage = "Mã SKU tối đa 50 ký tự.")]
+        #region Thông tin Định danh
+        /// <summary>Mã SKU biến thể dùng để quản lý kho (Ví dụ: SKU-ENVY-S-1KG).</summary>
         public string Code { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "Tên biến thể không được để trống.")]
-        [StringLength(200, ErrorMessage = "Tên biến thể tối đa 200 ký tự.")]
+        /// <summary>Tên hiển thị chi tiết của biến thể (Ví dụ: Táo Envy Size Nhỏ 1kg).</summary>
         public string Name { get; set; } = string.Empty;
+        #endregion
 
-        [StringLength(1000, ErrorMessage = "Mô tả tối đa 1000 ký tự.")]
-        public string? Description { get; set; }
-
-        [StringLength(500, ErrorMessage = "Đường dẫn ảnh tối đa 500 ký tự.")]
+        #region Thông tin Chi tiết & Quy cách
+        /// <summary>Đường dẫn ảnh chụp thực tế chi tiết của biến thể này.</summary>
         public string? ImagePath { get; set; }
 
-        [Range(0, int.MaxValue, ErrorMessage = "Mức tồn an toàn phải >= 0.")]
+        /// <summary>Mô tả chi tiết về quy cách đóng gói, ngoại hình của riêng biến thể này.</summary>
+        public string? Description { get; set; }
+
+        /// <summary>Mức tồn kho an toàn tối thiểu (Safety Stock - tự động cảnh báo khi tồn xuống dưới mức này).</summary>
         public int InventoryGuideline { get; set; }
+        #endregion
 
-        [Required(ErrorMessage = "Sản phẩm gốc không được để trống.")]
-        [Range(1, int.MaxValue, ErrorMessage = "Sản phẩm gốc không hợp lệ.")]
+        #region Liên kết dữ liệu (Foreign Keys)
+        /// <summary>Mã định danh Sản phẩm cha (Product Master) mà biến thể này trực thuộc.</summary>
         public int ProductId { get; set; }
+        #endregion
 
-        public bool IsActive { get; set; } = true;
-
+        #region Dữ liệu Mở rộng (Cấu hình đồng thời)
+        /// <summary>Danh sách các giá trị thuộc tính động (EAV) thiết lập cho biến thể này.</summary>
         public List<AttributeInputDto> Attributes { get; set; } = new();
+
+        /// <summary>Danh sách bảng giá bán theo các Đơn vị tính khác nhau của biến thể này.</summary>
         public List<VariantPriceInputDto> Prices { get; set; } = new();
+        #endregion
+
+        #region Trạng thái & Hệ thống
+        /// <summary>Trạng thái hoạt động (true: Đang cho phép kinh doanh/nhập xuất, false: Tạm khóa).</summary>
+        public bool IsActive { get; set; } = true;
+        #endregion
     }
 }

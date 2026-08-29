@@ -13,6 +13,7 @@ namespace backend.Controllers
     [Route("api/[controller]")]
     [ApiController]
     [Authorize]
+    [Produces("application/json")]
     public class ProductsController : ControllerBase
     {
         private readonly IProductService _service;
@@ -72,7 +73,7 @@ namespace backend.Controllers
             }
             catch (KeyNotFoundException ex)
             {
-                return NotFound(new { Message = ex.Message });
+                return NotFound(new { message = ex.Message });
             }
         }
 
@@ -91,16 +92,19 @@ namespace backend.Controllers
             }
             catch (KeyNotFoundException ex)
             {
-                return NotFound(new { Message = ex.Message });
+                return NotFound(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Message = "Lỗi khi lấy cấu hình thuộc tính: " + ex.Message });
+                return BadRequest(new { message = "Lỗi khi lấy cấu hình thuộc tính: " + ex.Message });
             }
         }
 
         #endregion
-
 
         // ==========================================
         // SECTION: WRITE OPERATIONS (POST, PUT, DELETE)
@@ -121,9 +125,13 @@ namespace backend.Controllers
                 var created = await _service.GetByIdAsync(newId);
                 return CreatedAtAction(nameof(GetById), new { id = newId }, created);
             }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
             catch (Exception ex)
             {
-                return BadRequest(new { Message = ex.Message });
+                return BadRequest(new { message = ex.Message });
             }
         }
 
@@ -131,7 +139,7 @@ namespace backend.Controllers
         /// Cập nhật thông tin sản phẩm gốc.
         /// </summary>
         [HttpPut("{id}")]
-        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Update(int id, [FromBody] ProductUpdateDto dto)
@@ -139,15 +147,19 @@ namespace backend.Controllers
             try
             {
                 await _service.UpdateAsync(id, dto);
-                return NoContent();
+                return Ok(new { message = "Cập nhật sản phẩm thành công" });
             }
             catch (KeyNotFoundException ex)
             {
-                return NotFound(new { Message = ex.Message });
+                return NotFound(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Message = ex.Message });
+                return BadRequest(new { message = ex.Message });
             }
         }
 
@@ -155,7 +167,7 @@ namespace backend.Controllers
         /// Xóa mềm một sản phẩm gốc.
         /// </summary>
         [HttpDelete("{id}")]
-        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Delete(int id)
@@ -163,20 +175,23 @@ namespace backend.Controllers
             try
             {
                 await _service.DeleteAsync(id);
-                return NoContent();
+                return Ok(new { message = "Xóa sản phẩm thành công" });
             }
             catch (KeyNotFoundException ex)
             {
-                return NotFound(new { Message = ex.Message });
+                return NotFound(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Message = ex.Message });
+                return BadRequest(new { message = ex.Message });
             }
         }
 
         #endregion
-
 
         // ==========================================
         // SECTION: SPECIAL BUSINESS ACTIONS (PATCH / PUT)
@@ -196,15 +211,19 @@ namespace backend.Controllers
             try
             {
                 await _service.ToggleActiveAsync(id);
-                return Ok(new { Message = "Thay đổi trạng thái thành công" });
+                return Ok(new { message = "Thay đổi trạng thái thành công" });
             }
             catch (KeyNotFoundException ex)
             {
-                return NotFound(new { Message = ex.Message });
+                return NotFound(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Message = ex.Message });
+                return BadRequest(new { message = ex.Message });
             }
         }
 
