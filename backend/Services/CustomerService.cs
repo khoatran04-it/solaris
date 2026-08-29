@@ -162,7 +162,6 @@ namespace backend.Services
                 .Include(c => c.GroupLinks)
                     .ThenInclude(gl => gl.CustomerGroup)
                 .AsNoTracking()
-                .AsSplitQuery()
                 .FirstOrDefaultAsync(c => c.Id == id);
 
             if (customer == null) return null;
@@ -288,17 +287,43 @@ namespace backend.Services
                 customer.CustomerTierId = dto.CustomerTierId;
                 customer.UpdatedAt = DateTime.UtcNow;
 
-                _context.CustomerGroupLinks.RemoveRange(customer.GroupLinks);
+                // Quản lý liên kết Nhóm khách hàng (Xử lý an toàn với Soft Delete và Composite Key)
+                var allExistingLinks = await _context.CustomerGroupLinks
+                    .IgnoreQueryFilters()
+                    .Where(gl => gl.CustomerId == customer.Id)
+                    .ToListAsync();
 
-                if (dto.GroupIds != null && dto.GroupIds.Any())
+                var newGroupIds = (dto.GroupIds ?? new List<int>()).Distinct().ToList();
+
+                // 1. Soft delete những nhóm cũ không còn trong danh sách mới
+                foreach (var link in allExistingLinks.Where(l => !l.IsDeleted && !newGroupIds.Contains(l.CustomerGroupId)))
                 {
-                    var newLinks = dto.GroupIds.Distinct().Select(groupId => new CustomerGroupLink
+                    _context.CustomerGroupLinks.Remove(link);
+                }
+
+                // 2. Kích hoạt lại (nếu đã soft delete) hoặc thêm mới liên kết
+                foreach (var groupId in newGroupIds)
+                {
+                    var existing = allExistingLinks.FirstOrDefault(l => l.CustomerGroupId == groupId);
+                    if (existing != null)
                     {
-                        CustomerId = customer.Id,
-                        CustomerGroupId = groupId,
-                        AssignedAt = DateTime.UtcNow
-                    });
-                    await _context.CustomerGroupLinks.AddRangeAsync(newLinks);
+                        if (existing.IsDeleted)
+                        {
+                            existing.IsDeleted = false;
+                            existing.DeletedAt = null;
+                            existing.AssignedAt = DateTime.UtcNow;
+                        }
+                    }
+                    else
+                    {
+                        var newLink = new CustomerGroupLink
+                        {
+                            CustomerId = customer.Id,
+                            CustomerGroupId = groupId,
+                            AssignedAt = DateTime.UtcNow
+                        };
+                        _context.CustomerGroupLinks.Add(newLink);
+                    }
                 }
 
                 await _context.SaveChangesAsync();

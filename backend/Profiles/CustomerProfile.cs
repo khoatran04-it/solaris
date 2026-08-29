@@ -28,7 +28,7 @@ namespace backend.Profiles
                 .ForMember(dest => dest.Groups, opt =>
                     opt.MapFrom(src => src.GroupLinks != null
                         ? src.GroupLinks
-                            .Where(gl => gl.CustomerGroup != null)
+                            .Where(gl => !gl.IsDeleted && gl.CustomerGroup != null)
                             .Select(gl => gl.CustomerGroup!.Name)
                             .ToList()
                         : new List<string>()))
@@ -36,12 +36,14 @@ namespace backend.Profiles
                 // 4. Flatten danh sách ID NHÓM (Dùng khi gọi API GetById để bind dữ liệu vào Multi-Select form Edit)
                 .ForMember(dest => dest.GroupIds, opt =>
                     opt.MapFrom(src => src.GroupLinks != null
-                        ? src.GroupLinks.Select(gl => gl.CustomerGroupId).ToList()
+                        ? src.GroupLinks.Where(gl => !gl.IsDeleted).Select(gl => gl.CustomerGroupId).ToList()
                         : new List<int>()))
 
                 // 5. Ánh xạ Sổ địa chỉ (AutoMapper sẽ tự động gọi tiếp CustomerAddressProfile)
                 .ForMember(dest => dest.Addresses, opt =>
-                    opt.MapFrom(src => src.Addresses));
+                    opt.MapFrom(src => src.Addresses != null
+                        ? src.Addresses.Where(a => !a.IsDeleted).ToList()
+                        : new List<CustomerAddress>()));
             #endregion
 
             #region Create DTO -> Entity (Thêm mới)
