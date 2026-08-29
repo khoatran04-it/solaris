@@ -175,12 +175,13 @@ builder.Services.AddHttpClient<IGeminiChatService, GeminiChatService>();
 var app = builder.Build();
 
 // 4. Middlewares
+// 🔥 BẮT BUỘC: UseCors phải đứng đầu tiên để trả header CORS cho cả Preflight OPTIONS và Exception Responses
+app.UseCors("AllowViteApp");
+
 app.UseMiddleware<ExceptionMiddleware>();
 
 app.UseSwagger();
 app.UseSwaggerUI();
-
-app.UseCors("AllowViteApp");
 
 // 🔥 BẮT BUỘC: Authentication (Xác thực ai là ai) phải nằm trước Authorization (Xác thực có quyền gì)
 app.UseAuthentication();
