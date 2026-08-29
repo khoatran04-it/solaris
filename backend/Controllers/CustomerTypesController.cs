@@ -13,6 +13,7 @@ namespace backend.Controllers
     [ApiController]
     [Route("api/[controller]")]
     [Authorize]
+    [Produces("application/json")]
     public class CustomerTypesController : ControllerBase
     {
         private readonly ICustomerTypeService _service;
@@ -67,13 +68,12 @@ namespace backend.Controllers
             var data = await _service.GetByIdAsync(id);
             if (data == null)
             {
-                return NotFound(new { Message = "Không tìm thấy phân loại khách hàng yêu cầu." });
+                return NotFound(new { message = "Không tìm thấy phân loại khách hàng yêu cầu." });
             }
             return Ok(data);
         }
 
         #endregion
-
 
         // ==========================================
         // SECTION: WRITE OPERATIONS (POST / PUT / DELETE)
@@ -94,9 +94,13 @@ namespace backend.Controllers
                 var created = await _service.GetByIdAsync(newId);
                 return CreatedAtAction(nameof(GetById), new { id = newId }, created);
             }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
             catch (Exception ex)
             {
-                return BadRequest(new { Message = ex.Message });
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = "Đã xảy ra lỗi hệ thống.", detail = ex.Message });
             }
         }
 
@@ -116,11 +120,15 @@ namespace backend.Controllers
             }
             catch (KeyNotFoundException ex)
             {
-                return NotFound(new { Message = ex.Message });
+                return NotFound(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Message = ex.Message });
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = "Đã xảy ra lỗi hệ thống.", detail = ex.Message });
             }
         }
 
@@ -140,11 +148,15 @@ namespace backend.Controllers
             }
             catch (KeyNotFoundException ex)
             {
-                return NotFound(new { Message = ex.Message });
+                return NotFound(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Message = ex.Message });
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = "Đã xảy ra lỗi hệ thống.", detail = ex.Message });
             }
         }
 
@@ -154,21 +166,20 @@ namespace backend.Controllers
         [HttpPatch("{id}/toggle-active")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> ToggleActive(int id)
         {
             try
             {
                 await _service.ToggleActiveAsync(id);
-                return Ok(new { Message = "Đã thay đổi trạng thái phân loại khách hàng thành công." });
+                return Ok(new { message = "Đã thay đổi trạng thái phân loại khách hàng thành công." });
             }
             catch (KeyNotFoundException ex)
             {
-                return NotFound(new { Message = ex.Message });
+                return NotFound(new { message = ex.Message });
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Message = ex.Message });
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = "Đã xảy ra lỗi hệ thống.", detail = ex.Message });
             }
         }
 

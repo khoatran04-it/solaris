@@ -13,6 +13,7 @@ namespace backend.Controllers
     [ApiController]
     [Route("api/[controller]")]
     [Authorize]
+    [Produces("application/json")]
     public class CustomerAddressesController : ControllerBase
     {
         private readonly ICustomerAddressService _service;
@@ -47,12 +48,11 @@ namespace backend.Controllers
         public async Task<IActionResult> GetById(int id)
         {
             var data = await _service.GetByIdAsync(id);
-            if (data == null) return NotFound(new { Message = "Không tìm thấy địa chỉ yêu cầu." });
+            if (data == null) return NotFound(new { message = "Không tìm thấy địa chỉ yêu cầu." });
             return Ok(data);
         }
 
         #endregion
-
 
         // ==========================================
         // SECTION: WRITE OPERATIONS (POST / PUT / DELETE)
@@ -76,11 +76,15 @@ namespace backend.Controllers
             }
             catch (KeyNotFoundException ex)
             {
-                return NotFound(new { Message = ex.Message });
+                return NotFound(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Message = ex.Message });
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = "Đã xảy ra lỗi hệ thống.", detail = ex.Message });
             }
         }
 
@@ -100,11 +104,15 @@ namespace backend.Controllers
             }
             catch (KeyNotFoundException ex)
             {
-                return NotFound(new { Message = ex.Message });
+                return NotFound(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Message = ex.Message });
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = "Đã xảy ra lỗi hệ thống.", detail = ex.Message });
             }
         }
 
@@ -114,7 +122,6 @@ namespace backend.Controllers
         [HttpDelete("{id}")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Delete(int id)
         {
             try
@@ -124,16 +131,15 @@ namespace backend.Controllers
             }
             catch (KeyNotFoundException ex)
             {
-                return NotFound(new { Message = ex.Message });
+                return NotFound(new { message = ex.Message });
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Message = ex.Message });
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = "Đã xảy ra lỗi hệ thống.", detail = ex.Message });
             }
         }
 
         #endregion
-
 
         // ==========================================
         // SECTION: BUSINESS LOGIC ACTIONS (PATCH)
@@ -152,15 +158,19 @@ namespace backend.Controllers
             try
             {
                 await _service.SetDefaultAsync(id, request.CustomerId);
-                return Ok(new { Message = "Đã cập nhật địa chỉ mặc định" });
+                return Ok(new { message = "Đã cập nhật địa chỉ mặc định thành công." });
             }
             catch (KeyNotFoundException ex)
             {
-                return NotFound(new { Message = ex.Message });
+                return NotFound(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Message = ex.Message });
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = "Đã xảy ra lỗi hệ thống.", detail = ex.Message });
             }
         }
 

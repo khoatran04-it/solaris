@@ -2,6 +2,7 @@ using AutoMapper;
 using backend.Data;
 using backend.DTOs;
 using backend.DTOs.CustomerTierDTOs;
+using backend.Helpers;
 using backend.Models;
 using backend.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
@@ -89,7 +90,7 @@ namespace backend.Services
             {
                 var startDate = updatedAt.Value.Date;
                 var endDate = startDate.AddDays(1);
-                query = query.Where(x => x.UpdatedAt >= startDate && x.UpdatedAt < endDate);
+                query = query.Where(x => x.UpdatedAt.HasValue && x.UpdatedAt.Value >= startDate && x.UpdatedAt.Value < endDate);
             }
 
             var totalRecords = await query.CountAsync();
@@ -118,14 +119,16 @@ namespace backend.Services
         /// </summary>
         public async Task<CustomerTierReadDto?> GetByIdAsync(int id)
         {
-            var tier = await _context.CustomerTiers.FindAsync(id);
+            var tier = await _context.CustomerTiers
+                .AsNoTracking()
+                .FirstOrDefaultAsync(x => x.Id == id);
+
             if (tier == null) return null;
 
             return _mapper.Map<CustomerTierReadDto>(tier);
         }
 
         #endregion
-
 
         // ==========================================
         // SECTION: WRITE OPERATIONS (COMMANDS)
@@ -137,18 +140,27 @@ namespace backend.Services
         /// </summary>
         public async Task<int> CreateAsync(CustomerTierCreateDto dto)
         {
-            if (await _context.CustomerTiers.AnyAsync(x => x.Code == dto.Code.Trim()))
-                throw new Exception($"Mã bậc hạng '{dto.Code}' đã tồn tại trên hệ thống.");
+            return await _context.ExecuteInTransactionAsync(async () =>
+            {
+                var trimmedCode = dto.Code.Trim();
 
-            var entity = _mapper.Map<CustomerTier>(dto);
-            entity.CreatedAt = DateTime.UtcNow;
-            entity.UpdatedAt = DateTime.UtcNow;
-            entity.IsActive = dto.IsActive;
+                if (await _context.CustomerTiers.AnyAsync(x => x.Code.ToLower() == trimmedCode.ToLower()))
+                    throw new InvalidOperationException($"Mã bậc hạng '{trimmedCode}' đã tồn tại trên hệ thống.");
 
-            _context.CustomerTiers.Add(entity);
-            await _context.SaveChangesAsync();
+                var entity = _mapper.Map<CustomerTier>(dto);
+                entity.Code = trimmedCode.ToUpper();
+                entity.Name = dto.Name.Trim();
+                entity.DiscountPercent = dto.DiscountPercent;
+                entity.MinSpending = dto.MinSpending;
+                entity.CreatedAt = DateTime.UtcNow;
+                entity.UpdatedAt = DateTime.UtcNow;
+                entity.IsActive = dto.IsActive;
 
-            return entity.Id;
+                _context.CustomerTiers.Add(entity);
+                await _context.SaveChangesAsync();
+
+                return entity.Id;
+            });
         }
 
         /// <summary>
@@ -156,20 +168,29 @@ namespace backend.Services
         /// </summary>
         public async Task<bool> UpdateAsync(int id, CustomerTierUpdateDto dto)
         {
-            var entity = await _context.CustomerTiers.FindAsync(id);
-            if (entity == null)
-                throw new KeyNotFoundException("Không tìm thấy bậc hạng cần sửa.");
+            return await _context.ExecuteInTransactionAsync(async () =>
+            {
+                var entity = await _context.CustomerTiers.FindAsync(id);
+                if (entity == null)
+                    throw new KeyNotFoundException("Không tìm thấy bậc hạng cần sửa.");
 
-            if (await _context.CustomerTiers.AnyAsync(x => x.Id != id && x.Code == dto.Code.Trim()))
-                throw new Exception($"Cập nhật thất bại: Mã bậc hạng '{dto.Code}' đã được sử dụng bởi bậc hạng khác.");
+                var trimmedCode = dto.Code.Trim();
 
-            _mapper.Map(dto, entity);
-            entity.UpdatedAt = DateTime.UtcNow;
-            entity.IsActive = dto.IsActive;
+                if (await _context.CustomerTiers.AnyAsync(x => x.Id != id && x.Code.ToLower() == trimmedCode.ToLower()))
+                    throw new InvalidOperationException($"Cập nhật thất bại: Mã bậc hạng '{trimmedCode}' đã được sử dụng bởi bậc hạng khác.");
 
-            await _context.SaveChangesAsync();
+                _mapper.Map(dto, entity);
+                entity.Code = trimmedCode.ToUpper();
+                entity.Name = dto.Name.Trim();
+                entity.DiscountPercent = dto.DiscountPercent;
+                entity.MinSpending = dto.MinSpending;
+                entity.UpdatedAt = DateTime.UtcNow;
+                entity.IsActive = dto.IsActive;
 
-            return true;
+                await _context.SaveChangesAsync();
+
+                return true;
+            });
         }
 
         /// <summary>
@@ -177,20 +198,23 @@ namespace backend.Services
         /// </summary>
         public async Task<bool> DeleteAsync(int id)
         {
-            var entity = await _context.CustomerTiers
-                .Include(x => x.Customers)
-                .FirstOrDefaultAsync(x => x.Id == id);
+            return await _context.ExecuteInTransactionAsync(async () =>
+            {
+                var entity = await _context.CustomerTiers
+                    .Include(x => x.Customers)
+                    .FirstOrDefaultAsync(x => x.Id == id);
 
-            if (entity == null)
-                throw new KeyNotFoundException("Không tìm thấy bậc hạng cần xóa.");
+                if (entity == null)
+                    throw new KeyNotFoundException("Không tìm thấy bậc hạng cần xóa.");
 
-            if (entity.Customers.Any(c => !c.IsDeleted))
-                throw new Exception("Không thể xóa bậc hạng này vì đang có Khách hàng thuộc hạng này.");
+                if (entity.Customers.Any(c => !c.IsDeleted))
+                    throw new InvalidOperationException("Không thể xóa bậc hạng này vì đang có Khách hàng thuộc hạng này.");
 
-            _context.CustomerTiers.Remove(entity);
-            await _context.SaveChangesAsync();
+                _context.CustomerTiers.Remove(entity);
+                await _context.SaveChangesAsync();
 
-            return true;
+                return true;
+            });
         }
 
         /// <summary>
@@ -198,15 +222,18 @@ namespace backend.Services
         /// </summary>
         public async Task<bool> ToggleActiveAsync(int id)
         {
-            var entity = await _context.CustomerTiers.FindAsync(id);
-            if (entity == null)
-                throw new KeyNotFoundException("Không tìm thấy bậc hạng khách hàng.");
+            return await _context.ExecuteInTransactionAsync(async () =>
+            {
+                var entity = await _context.CustomerTiers.FindAsync(id);
+                if (entity == null)
+                    throw new KeyNotFoundException("Không tìm thấy bậc hạng khách hàng.");
 
-            entity.IsActive = !entity.IsActive;
-            entity.UpdatedAt = DateTime.UtcNow;
-            await _context.SaveChangesAsync();
+                entity.IsActive = !entity.IsActive;
+                entity.UpdatedAt = DateTime.UtcNow;
+                await _context.SaveChangesAsync();
 
-            return true;
+                return true;
+            });
         }
 
         #endregion

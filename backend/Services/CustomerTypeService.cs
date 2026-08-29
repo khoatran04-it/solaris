@@ -2,6 +2,7 @@ using AutoMapper;
 using backend.Data;
 using backend.DTOs;
 using backend.DTOs.CustomerTypeDTOs;
+using backend.Helpers;
 using backend.Models;
 using backend.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
@@ -88,7 +89,7 @@ namespace backend.Services
             {
                 var startDate = updatedAt.Value.Date;
                 var endDate = startDate.AddDays(1);
-                query = query.Where(x => x.UpdatedAt >= startDate && x.UpdatedAt < endDate);
+                query = query.Where(x => x.UpdatedAt.HasValue && x.UpdatedAt.Value >= startDate && x.UpdatedAt.Value < endDate);
             }
 
             var totalRecords = await query.CountAsync();
@@ -117,14 +118,16 @@ namespace backend.Services
         /// </summary>
         public async Task<CustomerTypeReadDto?> GetByIdAsync(int id)
         {
-            var type = await _context.CustomerTypes.FindAsync(id);
+            var type = await _context.CustomerTypes
+                .AsNoTracking()
+                .FirstOrDefaultAsync(x => x.Id == id);
+
             if (type == null) return null;
 
             return _mapper.Map<CustomerTypeReadDto>(type);
         }
 
         #endregion
-
 
         // ==========================================
         // SECTION: WRITE OPERATIONS (COMMANDS)
@@ -136,18 +139,26 @@ namespace backend.Services
         /// </summary>
         public async Task<int> CreateAsync(CustomerTypeCreateDto dto)
         {
-            if (await _context.CustomerTypes.AnyAsync(x => x.Code == dto.Code.Trim()))
-                throw new Exception($"Mã phân loại '{dto.Code}' đã tồn tại trên hệ thống.");
+            return await _context.ExecuteInTransactionAsync(async () =>
+            {
+                var trimmedCode = dto.Code.Trim();
 
-            var entity = _mapper.Map<CustomerType>(dto);
-            entity.CreatedAt = DateTime.UtcNow;
-            entity.UpdatedAt = DateTime.UtcNow;
-            entity.IsActive = dto.IsActive;
+                if (await _context.CustomerTypes.AnyAsync(x => x.Code.ToLower() == trimmedCode.ToLower()))
+                    throw new InvalidOperationException($"Mã phân loại '{trimmedCode}' đã tồn tại trên hệ thống.");
 
-            _context.CustomerTypes.Add(entity);
-            await _context.SaveChangesAsync();
+                var entity = _mapper.Map<CustomerType>(dto);
+                entity.Code = trimmedCode.ToUpper();
+                entity.Name = dto.Name.Trim();
+                entity.Description = dto.Description?.Trim();
+                entity.CreatedAt = DateTime.UtcNow;
+                entity.UpdatedAt = DateTime.UtcNow;
+                entity.IsActive = dto.IsActive;
 
-            return entity.Id;
+                _context.CustomerTypes.Add(entity);
+                await _context.SaveChangesAsync();
+
+                return entity.Id;
+            });
         }
 
         /// <summary>
@@ -155,20 +166,28 @@ namespace backend.Services
         /// </summary>
         public async Task<bool> UpdateAsync(int id, CustomerTypeUpdateDto dto)
         {
-            var entity = await _context.CustomerTypes.FindAsync(id);
-            if (entity == null)
-                throw new KeyNotFoundException("Không tìm thấy phân loại cần sửa.");
+            return await _context.ExecuteInTransactionAsync(async () =>
+            {
+                var entity = await _context.CustomerTypes.FindAsync(id);
+                if (entity == null)
+                    throw new KeyNotFoundException("Không tìm thấy phân loại cần sửa.");
 
-            if (await _context.CustomerTypes.AnyAsync(x => x.Id != id && x.Code == dto.Code.Trim()))
-                throw new Exception($"Cập nhật thất bại: Mã phân loại '{dto.Code}' đã được sử dụng bởi phân loại khác.");
+                var trimmedCode = dto.Code.Trim();
 
-            _mapper.Map(dto, entity);
-            entity.UpdatedAt = DateTime.UtcNow;
-            entity.IsActive = dto.IsActive;
+                if (await _context.CustomerTypes.AnyAsync(x => x.Id != id && x.Code.ToLower() == trimmedCode.ToLower()))
+                    throw new InvalidOperationException($"Cập nhật thất bại: Mã phân loại '{trimmedCode}' đã được sử dụng bởi phân loại khác.");
 
-            await _context.SaveChangesAsync();
+                _mapper.Map(dto, entity);
+                entity.Code = trimmedCode.ToUpper();
+                entity.Name = dto.Name.Trim();
+                entity.Description = dto.Description?.Trim();
+                entity.UpdatedAt = DateTime.UtcNow;
+                entity.IsActive = dto.IsActive;
 
-            return true;
+                await _context.SaveChangesAsync();
+
+                return true;
+            });
         }
 
         /// <summary>
@@ -176,20 +195,23 @@ namespace backend.Services
         /// </summary>
         public async Task<bool> DeleteAsync(int id)
         {
-            var entity = await _context.CustomerTypes
-                .Include(x => x.Customers)
-                .FirstOrDefaultAsync(x => x.Id == id);
+            return await _context.ExecuteInTransactionAsync(async () =>
+            {
+                var entity = await _context.CustomerTypes
+                    .Include(x => x.Customers)
+                    .FirstOrDefaultAsync(x => x.Id == id);
 
-            if (entity == null)
-                throw new KeyNotFoundException("Không tìm thấy phân loại cần xóa.");
+                if (entity == null)
+                    throw new KeyNotFoundException("Không tìm thấy phân loại cần xóa.");
 
-            if (entity.Customers.Any(c => !c.IsDeleted))
-                throw new Exception("Không thể xóa phân loại này vì đang có Khách hàng liên kết.");
+                if (entity.Customers.Any(c => !c.IsDeleted))
+                    throw new InvalidOperationException("Không thể xóa phân loại này vì đang có Khách hàng liên kết.");
 
-            _context.CustomerTypes.Remove(entity);
-            await _context.SaveChangesAsync();
+                _context.CustomerTypes.Remove(entity);
+                await _context.SaveChangesAsync();
 
-            return true;
+                return true;
+            });
         }
 
         /// <summary>
@@ -197,15 +219,18 @@ namespace backend.Services
         /// </summary>
         public async Task<bool> ToggleActiveAsync(int id)
         {
-            var entity = await _context.CustomerTypes.FindAsync(id);
-            if (entity == null)
-                throw new KeyNotFoundException("Không tìm thấy phân loại khách hàng.");
+            return await _context.ExecuteInTransactionAsync(async () =>
+            {
+                var entity = await _context.CustomerTypes.FindAsync(id);
+                if (entity == null)
+                    throw new KeyNotFoundException("Không tìm thấy phân loại khách hàng.");
 
-            entity.IsActive = !entity.IsActive;
-            entity.UpdatedAt = DateTime.UtcNow;
-            await _context.SaveChangesAsync();
+                entity.IsActive = !entity.IsActive;
+                entity.UpdatedAt = DateTime.UtcNow;
+                await _context.SaveChangesAsync();
 
-            return true;
+                return true;
+            });
         }
 
         #endregion

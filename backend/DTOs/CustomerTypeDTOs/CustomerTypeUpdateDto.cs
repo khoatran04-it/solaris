@@ -1,24 +1,26 @@
-using System.ComponentModel.DataAnnotations;
-
 namespace backend.DTOs.CustomerTypeDTOs
 {
     /// <summary>
-    /// DTO cập nhật Phân loại khách hàng.
+    /// DTO yêu cầu cập nhật thông tin Phân loại Khách hàng.
     /// </summary>
     public class CustomerTypeUpdateDto
     {
-        [Required(ErrorMessage = "Mã phân loại không được để trống.")]
-        [StringLength(20, ErrorMessage = "Mã phân loại tối đa 20 ký tự.")]
+        #region Thông tin Định danh
+        /// <summary>Mã phân loại khách hàng (Ví dụ: SI, LE, HORECA).</summary>
         public string Code { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "Tên phân loại không được để trống.")]
-        [StringLength(200, ErrorMessage = "Tên phân loại tối đa 200 ký tự.")]
+        /// <summary>Tên hiển thị của phân loại (Ví dụ: Khách sỉ, Khách lẻ, Đại lý cấp 1).</summary>
         public string Name { get; set; } = string.Empty;
+        #endregion
 
-        [StringLength(1000, ErrorMessage = "Mô tả tối đa 1000 ký tự.")]
+        #region Thông tin Chi tiết
+        /// <summary>Mô tả chi tiết về đặc điểm hoặc điều kiện để được xếp vào phân loại này.</summary>
         public string? Description { get; set; }
+        #endregion
 
-        /// <summary>Trạng thái hoạt động (true: Hoạt động, false: Tạm khóa)</summary>
+        #region Trạng thái & Hệ thống
+        /// <summary>Trạng thái hoạt động (true: Đang sử dụng, false: Tạm ngưng áp dụng).</summary>
         public bool IsActive { get; set; } = true;
+        #endregion
     }
 }
