@@ -1,3 +1,4 @@
+using AutoMapper;
 using backend.Data;
 using backend.DTOs;
 using backend.DTOs.ShopDTOs;
@@ -7,15 +8,21 @@ using Microsoft.EntityFrameworkCore;
 
 namespace backend.Services
 {
+    /// <summary>
+    /// Service cung cấp dữ liệu Cửa hàng (Shop B2C/B2B Front-end).
+    /// </summary>
     public class ShopProductService : IShopProductService
     {
         private readonly SolarisDbContext _context;
+        private readonly IMapper _mapper;
 
-        public ShopProductService(SolarisDbContext context)
+        public ShopProductService(SolarisDbContext context, IMapper mapper)
         {
             _context = context;
+            _mapper = mapper;
         }
 
+        /// <inheritdoc />
         public async Task<PagedResult<ShopProductCardDto>> GetProductsAsync(ShopProductFilterParams filter)
         {
             var now = DateTime.UtcNow;
@@ -238,6 +245,7 @@ namespace backend.Services
             };
         }
 
+        /// <inheritdoc />
         public async Task<ShopProductDetailDto?> GetProductBySlugAsync(string slug)
         {
             var now = DateTime.UtcNow;
@@ -286,23 +294,16 @@ namespace backend.Services
                 }
             }
 
-            // Danh sách khuyến mãi đang áp dụng
-            var activePromos = activeVariants
+            // Danh sách khuyến mãi đang áp dụng (Ánh xạ qua AutoMapper)
+            var activePromoEntities = activeVariants
                 .SelectMany(v => v.PromotionVariants)
                 .Select(pv => pv.PromotionCampaign)
                 .Where(pc => pc != null && pc.IsActive && !pc.IsDeleted && pc.StartDate <= now && pc.EndDate >= now)
                 .GroupBy(pc => pc!.Id)
                 .Select(g => g.First()!)
-                .Select(pc => new ShopPromotionBadgeDto
-                {
-                    Id = pc.Id,
-                    Name = pc.Name,
-                    Slug = pc.Slug ?? pc.Id.ToString(),
-                    IsPercentage = pc.IsPercentage,
-                    DiscountValue = pc.DiscountValue,
-                    EndDate = pc.EndDate
-                })
                 .ToList();
+
+            var activePromos = _mapper.Map<List<ShopPromotionBadgeDto>>(activePromoEntities);
 
             // Map biến thể
             var variantDtos = new List<ShopProductVariantDto>();
@@ -386,6 +387,7 @@ namespace backend.Services
             };
         }
 
+        /// <inheritdoc />
         public async Task<List<ShopCategoryTreeDto>> GetCategoryTreeAsync()
         {
             var groups = await _context.ProductCategoryGroups
@@ -394,23 +396,10 @@ namespace backend.Services
                 .Where(g => g.IsActive && !g.IsDeleted)
                 .ToListAsync();
 
-            return groups.Select(g => new ShopCategoryTreeDto
-            {
-                GroupId = g.Id,
-                GroupName = g.Name,
-                GroupSlug = g.Slug ?? g.Id.ToString(),
-                GroupImage = g.ImagePath,
-                Categories = g.Categories.Select(c => new ShopCategoryItemDto
-                {
-                    CategoryId = c.Id,
-                    CategoryName = c.Name,
-                    CategorySlug = c.Slug ?? c.Id.ToString(),
-                    CategoryImage = c.ImagePath,
-                    ProductCount = c.Products.Count
-                }).ToList()
-            }).ToList();
+            return _mapper.Map<List<ShopCategoryTreeDto>>(groups);
         }
 
+        /// <inheritdoc />
         public async Task<List<ShopProductCardDto>> GetFeaturedProductsAsync(int limit = 8)
         {
             var result = await GetProductsAsync(new ShopProductFilterParams
@@ -421,6 +410,7 @@ namespace backend.Services
             return result.Items.Take(limit).ToList();
         }
 
+        /// <inheritdoc />
         public async Task<List<ShopProductCardDto>> GetNewArrivalsAsync(int limit = 8)
         {
             var result = await GetProductsAsync(new ShopProductFilterParams
@@ -431,26 +421,19 @@ namespace backend.Services
             return result.Items.Take(limit).ToList();
         }
 
+        /// <inheritdoc />
         public async Task<List<ShopPromotionBadgeDto>> GetActivePromotionsAsync()
         {
             var now = DateTime.UtcNow;
             var promos = await _context.PromotionCampaigns
                 .Where(p => p.IsActive && !p.IsDeleted && p.StartDate <= now && p.EndDate >= now)
                 .OrderByDescending(p => p.DiscountValue)
-                .Select(p => new ShopPromotionBadgeDto
-                {
-                    Id = p.Id,
-                    Name = p.Name,
-                    Slug = p.Slug ?? p.Id.ToString(),
-                    IsPercentage = p.IsPercentage,
-                    DiscountValue = p.DiscountValue,
-                    EndDate = p.EndDate
-                })
                 .ToListAsync();
 
-            return promos;
+            return _mapper.Map<List<ShopPromotionBadgeDto>>(promos);
         }
 
+        /// <inheritdoc />
         public async Task<ShopPromotionDetailDto?> GetPromotionBySlugAsync(string slug)
         {
             var now = DateTime.UtcNow;
@@ -472,21 +455,13 @@ namespace backend.Services
             var allCards = await GetProductsAsync(new ShopProductFilterParams { PageSize = 100 });
             var promoProducts = allCards.Items.Where(item => productIds.Contains(item.Id)).ToList();
 
-            return new ShopPromotionDetailDto
-            {
-                Id = promo.Id,
-                Name = promo.Name,
-                Slug = promo.Slug ?? promo.Id.ToString(),
-                Description = promo.Description,
-                BannerImagePath = promo.BannerImagePath,
-                IsPercentage = promo.IsPercentage,
-                DiscountValue = promo.DiscountValue,
-                StartDate = promo.StartDate,
-                EndDate = promo.EndDate,
-                Products = promoProducts
-            };
+            var detailDto = _mapper.Map<ShopPromotionDetailDto>(promo);
+            detailDto.Products = promoProducts;
+
+            return detailDto;
         }
 
+        /// <inheritdoc />
         public async Task<List<string>> GetAvailableOriginsAsync()
         {
             var origins = await _context.ProductAttributes
@@ -502,6 +477,7 @@ namespace backend.Services
             return origins;
         }
 
+        /// <inheritdoc />
         public async Task<List<string>> GetAvailableCertificationsAsync()
         {
             var certs = await _context.ProductAttributes

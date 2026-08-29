@@ -2,6 +2,7 @@ using AutoMapper;
 using backend.Data;
 using backend.DTOs;
 using backend.DTOs.ProductDTOs;
+using backend.Helpers;
 using backend.Models;
 using backend.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
@@ -10,6 +11,7 @@ namespace backend.Services
 {
     /// <summary>
     /// Service quản lý Sản Phẩm Gốc (Product Master).
+    /// Chịu trách nhiệm xử lý nghiệp vụ cho dòng sản phẩm chung trước khi phân rã thành các Biến thể (SKU) chi tiết.
     /// </summary>
     public class ProductService : IProductService
     {
@@ -27,9 +29,7 @@ namespace backend.Services
         // ==========================================
         #region Read Operations
 
-        /// <summary>
-        /// Lấy toàn bộ danh sách sản phẩm không phân trang.
-        /// </summary>
+        /// <inheritdoc />
         public async Task<IEnumerable<ProductReadDto>> GetAllListAsync(bool isActiveOnly = false)
         {
             var query = _context.Products
@@ -50,9 +50,7 @@ namespace backend.Services
             return _mapper.Map<IEnumerable<ProductReadDto>>(items);
         }
 
-        /// <summary>
-        /// Lấy danh sách sản phẩm có phân trang, tìm kiếm và bộ lọc đa luồng.
-        /// </summary>
+        /// <inheritdoc />
         public async Task<PagedResult<ProductReadDto>> GetPagedAsync(
             string? search,
             string? categoryId,
@@ -148,6 +146,7 @@ namespace backend.Services
             };
         }
 
+        /// <inheritdoc />
         public async Task<ProductReadDto> GetByIdAsync(int id)
         {
             var entity = await _context.Products
@@ -164,111 +163,127 @@ namespace backend.Services
 
         #endregion
 
-
         // ==========================================
         // SECTION: WRITE OPERATIONS (COMMANDS)
         // ==========================================
         #region Write Operations
 
+        /// <inheritdoc />
         public async Task<int> CreateAsync(ProductCreateDto dto)
         {
-            var trimmedCode = dto.Code.Trim();
+            return await _context.ExecuteInTransactionAsync(async () =>
+            {
+                var trimmedCode = dto.Code.Trim();
 
-            // 1. Kiểm tra trùng mã Code
-            if (await _context.Products.AnyAsync(x => x.Code == trimmedCode))
-                throw new Exception($"Mã sản phẩm '{trimmedCode}' đã tồn tại trong hệ thống.");
+                // 1. Kiểm tra trùng mã Code (không phân biệt hoa thường)
+                if (await _context.Products.AnyAsync(x => x.Code.ToLower() == trimmedCode.ToLower()))
+                    throw new InvalidOperationException($"Mã sản phẩm '{trimmedCode}' đã tồn tại trong hệ thống.");
 
-            // 2. Kiểm tra tính hợp lệ của BaseUoMId
-            if (!await _context.UoMs.AnyAsync(u => u.Id == dto.BaseUoMId && !u.IsDeleted))
-                throw new Exception("Đơn vị tính cơ sở không tồn tại.");
+                // 2. Kiểm tra tính hợp lệ của BaseUoMId
+                if (!await _context.UoMs.AnyAsync(u => u.Id == dto.BaseUoMId && !u.IsDeleted))
+                    throw new InvalidOperationException("Đơn vị tính cơ sở không tồn tại hoặc đã bị xóa.");
 
-            // 3. Kiểm tra CategoryId nếu có
-            if (dto.CategoryId.HasValue && !await _context.ProductCategories.AnyAsync(c => c.Id == dto.CategoryId.Value && !c.IsDeleted))
-                throw new Exception("Danh mục sản phẩm không tồn tại.");
+                // 3. Kiểm tra CategoryId nếu có
+                if (dto.CategoryId.HasValue && !await _context.ProductCategories.AnyAsync(c => c.Id == dto.CategoryId.Value && !c.IsDeleted))
+                    throw new InvalidOperationException("Danh mục sản phẩm không tồn tại hoặc đã bị xóa.");
 
-            var entity = _mapper.Map<Product>(dto);
-            entity.Code = trimmedCode;
-            entity.Name = dto.Name.Trim();
-            entity.Description = dto.Description?.Trim();
-            entity.ImagePath = dto.ImagePath?.Trim();
-            entity.IsActive = dto.IsActive;
-            entity.CreatedAt = DateTime.UtcNow;
-            entity.UpdatedAt = DateTime.UtcNow;
+                var entity = _mapper.Map<Product>(dto);
+                entity.Code = trimmedCode;
+                entity.Name = dto.Name.Trim();
+                entity.Description = dto.Description?.Trim();
+                entity.ImagePath = dto.ImagePath?.Trim();
+                entity.IsActive = dto.IsActive;
+                entity.CreatedAt = DateTime.UtcNow;
+                entity.UpdatedAt = DateTime.UtcNow;
 
-            _context.Products.Add(entity);
-            await _context.SaveChangesAsync();
+                _context.Products.Add(entity);
+                await _context.SaveChangesAsync();
 
-            return entity.Id;
+                return entity.Id;
+            });
         }
 
+        /// <inheritdoc />
         public async Task<bool> UpdateAsync(int id, ProductUpdateDto dto)
         {
-            var entity = await _context.Products.FindAsync(id);
-            if (entity == null)
-                throw new KeyNotFoundException("Không tìm thấy sản phẩm cần sửa.");
+            return await _context.ExecuteInTransactionAsync(async () =>
+            {
+                var entity = await _context.Products.FindAsync(id);
+                if (entity == null)
+                    throw new KeyNotFoundException("Không tìm thấy sản phẩm cần sửa.");
 
-            var trimmedCode = dto.Code.Trim();
+                var trimmedCode = dto.Code.Trim();
 
-            // 1. Kiểm tra mã trùng (ngoại trừ chính nó)
-            if (await _context.Products.AnyAsync(x => x.Id != id && x.Code == trimmedCode))
-                throw new Exception($"Cập nhật thất bại: Mã sản phẩm '{trimmedCode}' đã bị trùng lặp.");
+                // 1. Kiểm tra mã trùng (ngoại trừ chính nó)
+                if (await _context.Products.AnyAsync(x => x.Id != id && x.Code.ToLower() == trimmedCode.ToLower()))
+                    throw new InvalidOperationException($"Cập nhật thất bại: Mã sản phẩm '{trimmedCode}' đã bị trùng lặp.");
 
-            // 2. Kiểm tra tính hợp lệ của BaseUoMId
-            if (!await _context.UoMs.AnyAsync(u => u.Id == dto.BaseUoMId && !u.IsDeleted))
-                throw new Exception("Đơn vị tính cơ sở không tồn tại.");
+                // 2. Kiểm tra tính hợp lệ của BaseUoMId
+                if (!await _context.UoMs.AnyAsync(u => u.Id == dto.BaseUoMId && !u.IsDeleted))
+                    throw new InvalidOperationException("Đơn vị tính cơ sở không tồn tại hoặc đã bị xóa.");
 
-            // 3. Kiểm tra CategoryId nếu có
-            if (dto.CategoryId.HasValue && !await _context.ProductCategories.AnyAsync(c => c.Id == dto.CategoryId.Value && !c.IsDeleted))
-                throw new Exception("Danh mục sản phẩm không tồn tại.");
+                // 3. Kiểm tra CategoryId nếu có
+                if (dto.CategoryId.HasValue && !await _context.ProductCategories.AnyAsync(c => c.Id == dto.CategoryId.Value && !c.IsDeleted))
+                    throw new InvalidOperationException("Danh mục sản phẩm không tồn tại hoặc đã bị xóa.");
 
-            _mapper.Map(dto, entity);
-            entity.Code = trimmedCode;
-            entity.Name = dto.Name.Trim();
-            entity.Description = dto.Description?.Trim();
-            entity.ImagePath = dto.ImagePath?.Trim();
-            entity.IsActive = dto.IsActive;
-            entity.UpdatedAt = DateTime.UtcNow;
+                _mapper.Map(dto, entity);
+                entity.Code = trimmedCode;
+                entity.Name = dto.Name.Trim();
+                entity.Description = dto.Description?.Trim();
+                entity.ImagePath = dto.ImagePath?.Trim();
+                entity.IsActive = dto.IsActive;
+                entity.UpdatedAt = DateTime.UtcNow;
 
-            await _context.SaveChangesAsync();
+                await _context.SaveChangesAsync();
 
-            return true;
+                return true;
+            });
         }
 
+        /// <inheritdoc />
         public async Task<bool> DeleteAsync(int id)
         {
-            var entity = await _context.Products.FindAsync(id);
-            if (entity == null)
-                throw new KeyNotFoundException("Không tìm thấy sản phẩm để xóa.");
+            return await _context.ExecuteInTransactionAsync(async () =>
+            {
+                var entity = await _context.Products.FindAsync(id);
+                if (entity == null)
+                    throw new KeyNotFoundException("Không tìm thấy sản phẩm để xóa.");
 
-            // 1. SAFETY SHIELD: Chặn xóa nếu đang có biến thể SKU trực thuộc
-            var hasVariants = await _context.ProductVariants.AnyAsync(v => v.ProductId == id && !v.IsDeleted);
-            if (hasVariants)
-                throw new Exception("Không thể xóa sản phẩm này vì đang có các biến thể (SKU) trực thuộc.");
+                // 1. SAFETY SHIELD: Chặn xóa nếu đang có biến thể SKU trực thuộc
+                var hasVariants = await _context.ProductVariants.AnyAsync(v => v.ProductId == id && !v.IsDeleted);
+                if (hasVariants)
+                    throw new InvalidOperationException("Không thể xóa sản phẩm này vì đang có các biến thể (SKU) trực thuộc.");
 
-            // 2. SAFETY SHIELD: Chặn xóa nếu đang có quy tắc quy đổi đặc thù
-            var hasConversions = await _context.UoMConversions.AnyAsync(c => c.ProductId == id && !c.IsDeleted);
-            if (hasConversions)
-                throw new Exception("Không thể xóa sản phẩm này vì đang có quy tắc quy đổi đơn vị liên kết.");
+                // 2. SAFETY SHIELD: Chặn xóa nếu đang có quy tắc quy đổi đặc thù
+                var hasConversions = await _context.UoMConversions.AnyAsync(c => c.ProductId == id && !c.IsDeleted);
+                if (hasConversions)
+                    throw new InvalidOperationException("Không thể xóa sản phẩm này vì đang có quy tắc quy đổi đơn vị liên kết.");
 
-            _context.Products.Remove(entity);
-            await _context.SaveChangesAsync();
+                _context.Products.Remove(entity);
+                await _context.SaveChangesAsync();
 
-            return true;
+                return true;
+            });
         }
 
+        /// <inheritdoc />
         public async Task<bool> ToggleActiveAsync(int id)
         {
-            var entity = await _context.Products.FindAsync(id);
-            if (entity == null)
-                throw new KeyNotFoundException("Không tìm thấy sản phẩm.");
+            return await _context.ExecuteInTransactionAsync(async () =>
+            {
+                var entity = await _context.Products.FindAsync(id);
+                if (entity == null)
+                    throw new KeyNotFoundException("Không tìm thấy sản phẩm.");
 
-            entity.IsActive = !entity.IsActive;
-            entity.UpdatedAt = DateTime.UtcNow;
-            await _context.SaveChangesAsync();
+                entity.IsActive = !entity.IsActive;
+                entity.UpdatedAt = DateTime.UtcNow;
+                await _context.SaveChangesAsync();
 
-            return true;
+                return true;
+            });
         }
 
+        /// <inheritdoc />
         public async Task<IEnumerable<dynamic>> GetDynamicAttributesConfigAsync(int productId)
         {
             var product = await _context.Products.FindAsync(productId);

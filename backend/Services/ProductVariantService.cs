@@ -2,12 +2,17 @@ using AutoMapper;
 using backend.Data;
 using backend.DTOs;
 using backend.DTOs.ProductVariantDTOs;
+using backend.Helpers;
 using backend.Models;
 using backend.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
 namespace backend.Services
 {
+    /// <summary>
+    /// Service quản lý Biến Thể Sản Phẩm (SKU - Stock Keeping Unit).
+    /// Chịu trách nhiệm xử lý nghiệp vụ cho các đơn vị hàng hóa vật lý cụ thể, bao gồm việc thiết lập Giá bán theo ĐVT và các Thuộc tính động (EAV).
+    /// </summary>
     public class ProductVariantService : IProductVariantService
     {
         private readonly SolarisDbContext _context;
@@ -22,7 +27,9 @@ namespace backend.Services
         // ==========================================================
         // 1. CÁC HÀM GET & XỬ LÝ LOGIC KHUYẾN MÃI
         // ==========================================================
+        #region Read Operations
 
+        /// <inheritdoc />
         public async Task<IEnumerable<ProductVariantReadDto>> GetAllListAsync(bool isActiveOnly = false)
         {
             var query = _context.ProductVariants
@@ -50,6 +57,7 @@ namespace backend.Services
             return dtos;
         }
 
+        /// <inheritdoc />
         public async Task<PagedResult<ProductVariantReadDto>> GetPagedAsync(
             string? search, string? productId, bool? isActive, DateTime? createdAt, DateTime? updatedAt, int pageIndex, int pageSize)
         {
@@ -113,6 +121,7 @@ namespace backend.Services
             };
         }
 
+        /// <inheritdoc />
         public async Task<ProductVariantReadDto> GetByIdAsync(int id)
         {
             var entity = await _context.ProductVariants
@@ -135,24 +144,27 @@ namespace backend.Services
             return dto;
         }
 
+        #endregion
+
         // ==========================================================
         // 2. CÁC HÀM TẠO VÀ CẬP NHẬT (XỬ LÝ TRANSACTION)
         // ==========================================================
+        #region Write Operations
 
+        /// <inheritdoc />
         public async Task<int> CreateAsync(ProductVariantCreateDto dto)
         {
-            var trimmedCode = dto.Code.Trim();
-
-            if (await _context.ProductVariants.AnyAsync(x => x.Code == trimmedCode))
-                throw new Exception($"Mã SKU '{trimmedCode}' của biến thể này đã tồn tại trong hệ thống.");
-
-            // Kiểm tra ProductId hợp lệ
-            if (!await _context.Products.AnyAsync(p => p.Id == dto.ProductId && !p.IsDeleted))
-                throw new Exception("Sản phẩm gốc không tồn tại.");
-
-            using var transaction = await _context.Database.BeginTransactionAsync();
-            try
+            return await _context.ExecuteInTransactionAsync(async () =>
             {
+                var trimmedCode = dto.Code.Trim();
+
+                if (await _context.ProductVariants.AnyAsync(x => x.Code.ToLower() == trimmedCode.ToLower()))
+                    throw new InvalidOperationException($"Mã SKU '{trimmedCode}' của biến thể này đã tồn tại trong hệ thống.");
+
+                // Kiểm tra ProductId hợp lệ
+                if (!await _context.Products.AnyAsync(p => p.Id == dto.ProductId && !p.IsDeleted))
+                    throw new InvalidOperationException("Sản phẩm gốc không tồn tại hoặc đã bị xóa.");
+
                 var entity = _mapper.Map<ProductVariant>(dto);
                 entity.Code = trimmedCode;
                 entity.Name = dto.Name.Trim();
@@ -165,20 +177,14 @@ namespace backend.Services
                 _context.ProductVariants.Add(entity);
                 await _context.SaveChangesAsync();
 
-                await transaction.CommitAsync();
                 return entity.Id;
-            }
-            catch
-            {
-                await transaction.RollbackAsync();
-                throw;
-            }
+            });
         }
 
+        /// <inheritdoc />
         public async Task<bool> UpdateAsync(int id, ProductVariantUpdateDto dto)
         {
-            using var transaction = await _context.Database.BeginTransactionAsync();
-            try
+            return await _context.ExecuteInTransactionAsync(async () =>
             {
                 var entity = await _context.ProductVariants
                     .Include(x => x.Attributes)
@@ -188,12 +194,12 @@ namespace backend.Services
                 if (entity == null) throw new KeyNotFoundException("Không tìm thấy biến thể sản phẩm cần sửa.");
 
                 var trimmedCode = dto.Code.Trim();
-                if (await _context.ProductVariants.AnyAsync(x => x.Id != id && x.Code == trimmedCode))
-                    throw new Exception($"Cập nhật thất bại: Mã SKU '{trimmedCode}' này đã bị trùng với một biến thể khác.");
+                if (await _context.ProductVariants.AnyAsync(x => x.Id != id && x.Code.ToLower() == trimmedCode.ToLower()))
+                    throw new InvalidOperationException($"Cập nhật thất bại: Mã SKU '{trimmedCode}' này đã bị trùng với một biến thể khác.");
 
                 // Kiểm tra ProductId hợp lệ
                 if (!await _context.Products.AnyAsync(p => p.Id == dto.ProductId && !p.IsDeleted))
-                    throw new Exception("Sản phẩm gốc không tồn tại.");
+                    throw new InvalidOperationException("Sản phẩm gốc không tồn tại hoặc đã bị xóa.");
 
                 // 1. Map các trường cơ bản (AutoMapper đã Ignore Attributes và Prices)
                 _mapper.Map(dto, entity);
@@ -243,75 +249,76 @@ namespace backend.Services
                 }
 
                 await _context.SaveChangesAsync();
-                await transaction.CommitAsync();
 
                 return true;
-            }
-            catch
-            {
-                await transaction.RollbackAsync();
-                throw;
-            }
+            });
         }
 
-        // ==========================================================
-        // 3. CÁC HÀM XÓA & STATE
-        // ==========================================================
-
+        /// <inheritdoc />
         public async Task<bool> DeleteAsync(int id)
         {
-            var entity = await _context.ProductVariants.FindAsync(id);
-            if (entity == null) throw new KeyNotFoundException("Không tìm thấy biến thể để xóa.");
+            return await _context.ExecuteInTransactionAsync(async () =>
+            {
+                var entity = await _context.ProductVariants.FindAsync(id);
+                if (entity == null) throw new KeyNotFoundException("Không tìm thấy biến thể để xóa.");
 
-            // 1. SAFETY SHIELD: Chặn xóa nếu có Lô hàng
-            var hasBatches = await _context.ProductBatches.AnyAsync(b => b.VariantId == id && !b.IsDeleted);
-            if (hasBatches)
-                throw new Exception("Không thể xóa biến thể này vì đang có các lô hàng liên kết.");
+                // 1. SAFETY SHIELD: Chặn xóa nếu có Lô hàng
+                var hasBatches = await _context.ProductBatches.AnyAsync(b => b.VariantId == id && !b.IsDeleted);
+                if (hasBatches)
+                    throw new InvalidOperationException("Không thể xóa biến thể này vì đang có các lô hàng liên kết.");
 
-            // 2. SAFETY SHIELD: Chặn xóa nếu có Bảng giá Nhà cung cấp
-            var hasSupplierProducts = await _context.SupplierProducts.AnyAsync(sp => sp.VariantId == id && !sp.IsDeleted);
-            if (hasSupplierProducts)
-                throw new Exception("Không thể xóa biến thể này vì đang có bảng giá nhà cung cấp liên kết.");
+                // 2. SAFETY SHIELD: Chặn xóa nếu có Bảng giá Nhà cung cấp
+                var hasSupplierProducts = await _context.SupplierProducts.AnyAsync(sp => sp.VariantId == id && !sp.IsDeleted);
+                if (hasSupplierProducts)
+                    throw new InvalidOperationException("Không thể xóa biến thể này vì đang có bảng giá nhà cung cấp liên kết.");
 
-            // 3. SAFETY SHIELD: Chặn xóa nếu có trong Đơn mua hàng (PO)
-            var hasPO = await _context.PurchaseOrderDetails.AnyAsync(pod => pod.VariantId == id);
-            if (hasPO)
-                throw new Exception("Không thể xóa biến thể này vì đã phát sinh trong đơn mua hàng (PO).");
+                // 3. SAFETY SHIELD: Chặn xóa nếu có trong Đơn mua hàng (PO)
+                var hasPO = await _context.PurchaseOrderDetails.AnyAsync(pod => pod.VariantId == id);
+                if (hasPO)
+                    throw new InvalidOperationException("Không thể xóa biến thể này vì đã phát sinh trong đơn mua hàng (PO).");
 
-            // 4. SAFETY SHIELD: Chặn xóa nếu có trong Đơn bán hàng (SO)
-            var hasSO = await _context.OrderDetails.AnyAsync(od => od.VariantId == id);
-            if (hasSO)
-                throw new Exception("Không thể xóa biến thể này vì đã phát sinh trong đơn bán hàng.");
+                // 4. SAFETY SHIELD: Chặn xóa nếu có trong Đơn bán hàng (SO)
+                var hasSO = await _context.OrderDetails.AnyAsync(od => od.VariantId == id);
+                if (hasSO)
+                    throw new InvalidOperationException("Không thể xóa biến thể này vì đã phát sinh trong đơn bán hàng.");
 
-            // 5. SAFETY SHIELD: Chặn xóa nếu có trong Phiếu nhập kho
-            var hasIR = await _context.InventoryReceiptDetails.AnyAsync(ird => ird.VariantId == id);
-            if (hasIR)
-                throw new Exception("Không thể xóa biến thể này vì đã phát sinh trong phiếu nhập kho.");
+                // 5. SAFETY SHIELD: Chặn xóa nếu có trong Phiếu nhập kho
+                var hasIR = await _context.InventoryReceiptDetails.AnyAsync(ird => ird.VariantId == id);
+                if (hasIR)
+                    throw new InvalidOperationException("Không thể xóa biến thể này vì đã phát sinh trong phiếu nhập kho.");
 
-            // 6. SAFETY SHIELD: Chặn xóa nếu có trong Phiếu xuất kho
-            var hasII = await _context.InventoryIssueDetails.AnyAsync(iid => iid.VariantId == id);
-            if (hasII)
-                throw new Exception("Không thể xóa biến thể này vì đã phát sinh trong phiếu xuất kho.");
+                // 6. SAFETY SHIELD: Chặn xóa nếu có trong Phiếu xuất kho
+                var hasII = await _context.InventoryIssueDetails.AnyAsync(iid => iid.VariantId == id);
+                if (hasII)
+                    throw new InvalidOperationException("Không thể xóa biến thể này vì đã phát sinh trong phiếu xuất kho.");
 
-            _context.ProductVariants.Remove(entity);
-            await _context.SaveChangesAsync();
-            return true;
+                _context.ProductVariants.Remove(entity);
+                await _context.SaveChangesAsync();
+                return true;
+            });
         }
 
+        /// <inheritdoc />
         public async Task<bool> ToggleActiveAsync(int id)
         {
-            var entity = await _context.ProductVariants.FindAsync(id);
-            if (entity == null) throw new KeyNotFoundException("Không tìm thấy biến thể sản phẩm.");
+            return await _context.ExecuteInTransactionAsync(async () =>
+            {
+                var entity = await _context.ProductVariants.FindAsync(id);
+                if (entity == null) throw new KeyNotFoundException("Không tìm thấy biến thể sản phẩm.");
 
-            entity.IsActive = !entity.IsActive;
-            entity.UpdatedAt = DateTime.UtcNow;
-            await _context.SaveChangesAsync();
-            return true;
+                entity.IsActive = !entity.IsActive;
+                entity.UpdatedAt = DateTime.UtcNow;
+                await _context.SaveChangesAsync();
+                return true;
+            });
         }
 
+        #endregion
+
         // ==========================================================
-        // 4. PRIVATE HELPERS
+        // 3. PRIVATE HELPERS
         // ==========================================================
+        #region Private Helpers
 
         /// <summary>
         /// Duyệt qua từng Quy cách bán (Prices) của biến thể, tính toán xem giá trị 
@@ -370,5 +377,7 @@ namespace backend.Services
                 }
             }
         }
+
+        #endregion
     }
 }

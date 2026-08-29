@@ -1,13 +1,18 @@
-﻿using AutoMapper;
+using AutoMapper;
 using backend.Data;
 using backend.DTOs;
 using backend.DTOs.ProductBatchDTOs;
+using backend.Helpers;
 using backend.Models;
 using backend.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
 namespace backend.Services
 {
+    /// <summary>
+    /// Service quản lý Lô Hàng Nông Sản (Product Batches / Lots).
+    /// Quản lý thông tin ngày sản xuất, hạn sử dụng, nhà cung cấp và biến thể sản phẩm theo từng lô nhập.
+    /// </summary>
     public class ProductBatchService : IProductBatchService
     {
         private readonly SolarisDbContext _context;
@@ -19,11 +24,14 @@ namespace backend.Services
             _mapper = mapper;
         }
 
+        #region Read Operations
+
+        /// <inheritdoc />
         public async Task<IEnumerable<ProductBatchReadDto>> GetAllListAsync()
         {
             var items = await _context.ProductBatches
-                .Include(x => x.Variant) // Móc tên Biến thể
-                .Include(x => x.Supplier) // Móc tên Nhà cung cấp
+                .Include(x => x.Variant)
+                .Include(x => x.Supplier)
                 .AsNoTracking()
                 .OrderByDescending(x => x.CreatedAt)
                 .ToListAsync();
@@ -31,6 +39,7 @@ namespace backend.Services
             return _mapper.Map<IEnumerable<ProductBatchReadDto>>(items);
         }
 
+        /// <inheritdoc />
         public async Task<PagedResult<ProductBatchReadDto>> GetPagedAsync(
             string? search,
             int? variantId,
@@ -49,7 +58,7 @@ namespace backend.Services
             // 1. Filter: Tìm kiếm theo Mã lô
             if (!string.IsNullOrWhiteSpace(search))
             {
-                var lowerSearch = search.ToLower();
+                var lowerSearch = search.Trim().ToLower();
                 query = query.Where(x => x.BatchCode.ToLower().Contains(lowerSearch));
             }
 
@@ -101,6 +110,7 @@ namespace backend.Services
             };
         }
 
+        /// <inheritdoc />
         public async Task<ProductBatchReadDto> GetByIdAsync(int id)
         {
             var entity = await _context.ProductBatches
@@ -115,66 +125,125 @@ namespace backend.Services
             return _mapper.Map<ProductBatchReadDto>(entity);
         }
 
+        #endregion
+
+        #region Write Operations
+
+        /// <inheritdoc />
         public async Task<int> CreateAsync(ProductBatchCreateDto dto)
         {
-            // 🔥 Business Rule: Validate NSX & HSD
-            if (dto.ExpiryDate <= dto.ManufactureDate)
-                throw new Exception("Hạn sử dụng phải lớn hơn Ngày sản xuất.");
+            return await _context.ExecuteInTransactionAsync(async () =>
+            {
+                var trimmedCode = dto.BatchCode.Trim();
 
-            // 🔥 Bắt lỗi trùng Mã Lô
-            if (await _context.ProductBatches.AnyAsync(x => x.BatchCode.ToLower() == dto.BatchCode.ToLower()))
-                throw new Exception($"Mã lô hàng '{dto.BatchCode}' đã tồn tại trong hệ thống.");
+                // 1. Business Rule: Validate NSX & HSD
+                if (dto.ExpiryDate <= dto.ManufactureDate)
+                    throw new InvalidOperationException("Hạn sử dụng phải lớn hơn Ngày sản xuất.");
 
-            var entity = _mapper.Map<ProductBatch>(dto);
+                // 2. Bắt lỗi trùng Mã Lô (không phân biệt hoa thường)
+                if (await _context.ProductBatches.AnyAsync(x => x.BatchCode.ToLower() == trimmedCode.ToLower()))
+                    throw new InvalidOperationException($"Mã lô hàng '{trimmedCode}' đã tồn tại trong hệ thống.");
 
-            _context.ProductBatches.Add(entity);
-            await _context.SaveChangesAsync();
+                // 3. Kiểm tra tính hợp lệ của VariantId
+                if (!await _context.ProductVariants.AnyAsync(v => v.Id == dto.VariantId && !v.IsDeleted))
+                    throw new InvalidOperationException("Biến thể sản phẩm không tồn tại hoặc đã bị xóa.");
 
-            return entity.Id;
+                // 4. Kiểm tra tính hợp lệ của SupplierId nếu có
+                if (dto.SupplierId > 0 && !await _context.Suppliers.AnyAsync(s => s.Id == dto.SupplierId && !s.IsDeleted))
+                    throw new InvalidOperationException("Nhà cung cấp không tồn tại hoặc đã bị xóa.");
+
+                var entity = _mapper.Map<ProductBatch>(dto);
+                entity.BatchCode = trimmedCode;
+                entity.CreatedAt = DateTime.UtcNow;
+                entity.UpdatedAt = DateTime.UtcNow;
+
+                _context.ProductBatches.Add(entity);
+                await _context.SaveChangesAsync();
+
+                return entity.Id;
+            });
         }
 
+        /// <inheritdoc />
         public async Task<bool> UpdateAsync(int id, ProductBatchUpdateDto dto)
         {
-            var entity = await _context.ProductBatches.FindAsync(id);
-            if (entity == null)
-                throw new KeyNotFoundException("Không tìm thấy lô hàng cần sửa.");
+            return await _context.ExecuteInTransactionAsync(async () =>
+            {
+                var entity = await _context.ProductBatches.FindAsync(id);
+                if (entity == null)
+                    throw new KeyNotFoundException("Không tìm thấy lô hàng cần sửa.");
 
-            // 🔥 Business Rule: Validate NSX & HSD
-            if (dto.ExpiryDate <= dto.ManufactureDate)
-                throw new Exception("Hạn sử dụng phải lớn hơn Ngày sản xuất.");
+                var trimmedCode = dto.BatchCode.Trim();
 
-            // Kiểm tra trùng Mã lô (Trừ bản thân nó)
-            if (await _context.ProductBatches.AnyAsync(x => x.Id != id && x.BatchCode.ToLower() == dto.BatchCode.ToLower()))
-                throw new Exception($"Cập nhật thất bại: Mã lô '{dto.BatchCode}' đã bị trùng lặp.");
+                // 1. Business Rule: Validate NSX & HSD
+                if (dto.ExpiryDate <= dto.ManufactureDate)
+                    throw new InvalidOperationException("Hạn sử dụng phải lớn hơn Ngày sản xuất.");
 
-            _mapper.Map(dto, entity);
-            await _context.SaveChangesAsync();
+                // 2. Kiểm tra trùng Mã lô (Trừ bản thân nó)
+                if (await _context.ProductBatches.AnyAsync(x => x.Id != id && x.BatchCode.ToLower() == trimmedCode.ToLower()))
+                    throw new InvalidOperationException($"Cập nhật thất bại: Mã lô '{trimmedCode}' đã bị trùng lặp.");
 
-            return true;
+                // 3. Kiểm tra tính hợp lệ của VariantId
+                if (!await _context.ProductVariants.AnyAsync(v => v.Id == dto.VariantId && !v.IsDeleted))
+                    throw new InvalidOperationException("Biến thể sản phẩm không tồn tại hoặc đã bị xóa.");
+
+                // 4. Kiểm tra tính hợp lệ của SupplierId nếu có
+                if (dto.SupplierId > 0 && !await _context.Suppliers.AnyAsync(s => s.Id == dto.SupplierId && !s.IsDeleted))
+                    throw new InvalidOperationException("Nhà cung cấp không tồn tại hoặc đã bị xóa.");
+
+                _mapper.Map(dto, entity);
+                entity.BatchCode = trimmedCode;
+                entity.UpdatedAt = DateTime.UtcNow;
+
+                await _context.SaveChangesAsync();
+
+                return true;
+            });
         }
 
+        /// <inheritdoc />
         public async Task<bool> DeleteAsync(int id)
         {
-            var entity = await _context.ProductBatches.FindAsync(id);
-            if (entity == null)
-                throw new KeyNotFoundException("Không tìm thấy lô hàng để xóa.");
+            return await _context.ExecuteInTransactionAsync(async () =>
+            {
+                var entity = await _context.ProductBatches.FindAsync(id);
+                if (entity == null)
+                    throw new KeyNotFoundException("Không tìm thấy lô hàng để xóa.");
 
-            _context.ProductBatches.Remove(entity);
-            await _context.SaveChangesAsync();
+                // 1. SAFETY SHIELD: Chặn xóa nếu lô hàng đang có tồn kho
+                var hasInventory = await _context.WarehouseInventories.AnyAsync(wi => wi.BatchId == id && wi.QuantityAvailable > 0);
+                if (hasInventory)
+                    throw new InvalidOperationException("Không thể xóa lô hàng này vì đang có tồn kho khả dụng trong kho.");
 
-            return true;
+                // 2. SAFETY SHIELD: Chặn xóa nếu đã phát sinh trong phiếu nhập kho
+                var hasReceipt = await _context.InventoryReceiptDetails.AnyAsync(ird => ird.BatchId == id);
+                if (hasReceipt)
+                    throw new InvalidOperationException("Không thể xóa lô hàng này vì đã phát sinh trong lịch sử phiếu nhập kho.");
+
+                _context.ProductBatches.Remove(entity);
+                await _context.SaveChangesAsync();
+
+                return true;
+            });
         }
 
+        /// <inheritdoc />
         public async Task<bool> ToggleActiveAsync(int id)
         {
-            var entity = await _context.ProductBatches.FindAsync(id);
-            if (entity == null)
-                throw new KeyNotFoundException("Không tìm thấy lô hàng.");
+            return await _context.ExecuteInTransactionAsync(async () =>
+            {
+                var entity = await _context.ProductBatches.FindAsync(id);
+                if (entity == null)
+                    throw new KeyNotFoundException("Không tìm thấy lô hàng.");
 
-            entity.IsActive = !entity.IsActive;
-            await _context.SaveChangesAsync();
+                entity.IsActive = !entity.IsActive;
+                entity.UpdatedAt = DateTime.UtcNow;
+                await _context.SaveChangesAsync();
 
-            return true;
+                return true;
+            });
         }
+
+        #endregion
     }
 }
