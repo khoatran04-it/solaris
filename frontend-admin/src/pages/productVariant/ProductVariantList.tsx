@@ -148,7 +148,7 @@ const ProductVariantList: React.FC = () => {
         onSearchChange={setSearchTerm}
         onAdd={() => navigate('/product-variants/create')}
         icon={Box}
-        searchPlaceholder="Tìm theo tên biến thể, mã SKU..."
+        searchPlaceholder="Tìm kiếm theo mã SKU, tên biến thể..."
       />
 
       <ListCard>

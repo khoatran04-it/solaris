@@ -167,7 +167,7 @@ const ProductList: React.FC = () => {
         onSearchChange={setSearchTerm}
         onAdd={() => navigate('/products/create')}
         icon={Package}
-        searchPlaceholder="Tìm theo tên, mã SKU sản phẩm..."
+        searchPlaceholder="Tìm kiếm theo mã, tên sản phẩm..."
       />
 
       <ListCard>
