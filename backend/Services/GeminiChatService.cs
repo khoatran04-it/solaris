@@ -605,7 +605,7 @@ NGUYÊN TẮC PHỤC VỤ CỦA BẠN:
                 }
             };
 
-            string[] candidateModels = new[] { model, "gemini-3.5-flash-lite", "gemini-3.7-flash", "gemini-2.5-flash-lite", "gemini-flash-latest" };
+            string[] candidateModels = new[] { model, "gemini-3.5-flash-lite", "gemini-3.6-flash", "gemini-3.7-flash" };
 
             foreach (var currentModel in candidateModels.Distinct())
             {
