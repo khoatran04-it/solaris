@@ -2,13 +2,21 @@ using AutoMapper;
 using backend.Data;
 using backend.DTOs;
 using backend.DTOs.InventoryAdjustmentDTOs;
+using backend.Helpers;
 using backend.Models;
 using backend.Models.Enums;
 using backend.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace backend.Services
 {
+    /// <summary>
+    /// Service Quản lý Phiếu Điều Chỉnh & Xuất Hủy Tồn Kho (Inventory Adjustments & Write-Offs).
+    /// </summary>
     public class InventoryAdjustmentService : IInventoryAdjustmentService
     {
         private readonly SolarisDbContext _context;
@@ -20,6 +28,8 @@ namespace backend.Services
             _mapper = mapper;
         }
 
+        #region Truy vấn & Phân quyền (Query & RBAC)
+        /// <inheritdoc />
         public async Task<PagedResult<InventoryAdjustmentReadDto>> GetPagedAsync(
             string? search,
             int? warehouseId,
@@ -52,14 +62,30 @@ namespace backend.Services
                                          (a.Note != null && a.Note.ToLower().Contains(s)));
             }
 
-            if (warehouseId.HasValue) query = query.Where(a => a.WarehouseId == warehouseId.Value);
-            if (status.HasValue && Enum.IsDefined(typeof(InventoryAdjustmentStatus), status.Value))
-                query = query.Where(a => a.Status == (InventoryAdjustmentStatus)status.Value);
-            if (reason.HasValue && Enum.IsDefined(typeof(InventoryAdjustmentReason), reason.Value))
-                query = query.Where(a => a.Reason == (InventoryAdjustmentReason)reason.Value);
+            if (warehouseId.HasValue && warehouseId.Value > 0)
+            {
+                query = query.Where(a => a.WarehouseId == warehouseId.Value);
+            }
 
-            if (startDate.HasValue) query = query.Where(a => a.AdjustmentDate >= startDate.Value.Date);
-            if (endDate.HasValue) query = query.Where(a => a.AdjustmentDate < endDate.Value.Date.AddDays(1));
+            if (status.HasValue && Enum.IsDefined(typeof(InventoryAdjustmentStatus), status.Value))
+            {
+                query = query.Where(a => a.Status == (InventoryAdjustmentStatus)status.Value);
+            }
+
+            if (reason.HasValue && Enum.IsDefined(typeof(InventoryAdjustmentReason), reason.Value))
+            {
+                query = query.Where(a => a.Reason == (InventoryAdjustmentReason)reason.Value);
+            }
+
+            if (startDate.HasValue)
+            {
+                query = query.Where(a => a.AdjustmentDate >= startDate.Value.Date);
+            }
+
+            if (endDate.HasValue)
+            {
+                query = query.Where(a => a.AdjustmentDate < endDate.Value.Date.AddDays(1));
+            }
 
             var totalRecords = await query.CountAsync();
 
@@ -80,6 +106,7 @@ namespace backend.Services
             };
         }
 
+        /// <inheritdoc />
         public async Task<InventoryAdjustmentReadDto> GetByIdAsync(int id, List<int>? allowedWarehouseIds = null)
         {
             var query = _context.InventoryAdjustments
@@ -99,22 +126,24 @@ namespace backend.Services
             }
 
             var entity = await query.FirstOrDefaultAsync(a => a.Id == id);
-            if (entity == null) throw new KeyNotFoundException("Không tìm thấy Phiếu điều chỉnh tồn kho.");
+            if (entity == null)
+                throw new KeyNotFoundException("Không tìm thấy Phiếu điều chỉnh tồn kho hoặc bạn không có quyền truy cập kho này.");
 
             return _mapper.Map<InventoryAdjustmentReadDto>(entity);
         }
+        #endregion
 
+        #region Khởi tạo & Quy trình Xử lý (Command & Workflow)
+        /// <inheritdoc />
         public async Task<int> CreateAsync(InventoryAdjustmentCreateDto dto)
         {
             if (dto.Details == null || !dto.Details.Any())
-                throw new ArgumentException("Phiếu điều chỉnh phải có ít nhất 1 dòng chi tiết.");
+                throw new InvalidOperationException("Phiếu điều chỉnh phải có ít nhất 1 dòng chi tiết.");
 
-            // 1. Kiểm tra kho hàng tồn tại
             var warehouseExists = await _context.Warehouses.AnyAsync(w => w.Id == dto.WarehouseId);
             if (!warehouseExists)
-                throw new ArgumentException($"Kho hàng với ID {dto.WarehouseId} không tồn tại.");
+                throw new KeyNotFoundException($"Kho hàng với ID {dto.WarehouseId} không tồn tại.");
 
-            // 2. Xác thực người lập phiếu an toàn
             int creatorId = dto.CreatedById ?? 1;
             var userExists = await _context.IAUsers.AnyAsync(u => u.Id == creatorId);
             if (!userExists)
@@ -123,7 +152,6 @@ namespace backend.Services
                 if (firstUser != null) creatorId = firstUser.Id;
             }
 
-            // 3. Sinh mã điều chỉnh duy nhất chống trùng
             var adjustmentCode = $"ADJ-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString()[..6].ToUpper()}";
 
             var adjustment = new InventoryAdjustment
@@ -146,7 +174,10 @@ namespace backend.Services
             foreach (var item in dto.Details)
             {
                 if (item.Quantity <= 0)
-                    throw new ArgumentException("Số lượng điều chỉnh của từng mặt hàng phải lớn hơn 0.");
+                    throw new InvalidOperationException("Số lượng điều chỉnh của từng mặt hàng phải lớn hơn 0.");
+
+                if (item.UnitPrice < 0)
+                    throw new InvalidOperationException("Đơn giá không được là số âm.");
 
                 var lineAmount = item.Quantity * item.UnitPrice;
                 totalAmount += lineAmount;
@@ -166,26 +197,30 @@ namespace backend.Services
 
             adjustment.TotalVarianceAmount = totalAmount;
 
-            _context.InventoryAdjustments.Add(adjustment);
-            await _context.SaveChangesAsync();
+            await _context.ExecuteInTransactionAsync(async () =>
+            {
+                _context.InventoryAdjustments.Add(adjustment);
+                await _context.SaveChangesAsync();
+            });
 
             return adjustment.Id;
         }
 
+        /// <inheritdoc />
         public async Task<bool> ApproveAdjustmentAsync(int id, int approvedById)
         {
-            using var transaction = await _context.Database.BeginTransactionAsync();
-            try
+            return await _context.ExecuteInTransactionAsync(async () =>
             {
                 var adj = await _context.InventoryAdjustments
                     .Include(a => a.Details)
                     .FirstOrDefaultAsync(a => a.Id == id);
 
-                if (adj == null) throw new KeyNotFoundException("Không tìm thấy Phiếu điều chỉnh tồn kho.");
+                if (adj == null)
+                    throw new KeyNotFoundException("Không tìm thấy Phiếu điều chỉnh tồn kho.");
+
                 if (adj.Status != InventoryAdjustmentStatus.Draft)
                     throw new InvalidOperationException("Chỉ có thể duyệt phiếu điều chỉnh ở trạng thái Nháp.");
 
-                // Kiểm tra người duyệt an toàn
                 var approverExists = await _context.IAUsers.AnyAsync(u => u.Id == approvedById);
                 if (!approverExists)
                 {
@@ -267,44 +302,55 @@ namespace backend.Services
                 }
 
                 await _context.SaveChangesAsync();
-                await transaction.CommitAsync();
                 return true;
-            }
-            catch
-            {
-                await transaction.RollbackAsync();
-                throw;
-            }
+            });
         }
+        #endregion
 
+        #region Hủy bỏ & Dọn dẹp (Cancellation & Soft Delete)
+        /// <inheritdoc />
         public async Task<bool> CancelAsync(int id, string reason)
         {
-            var adj = await _context.InventoryAdjustments.FindAsync(id);
-            if (adj == null) throw new KeyNotFoundException("Không tìm thấy Phiếu điều chỉnh tồn kho.");
-            if (adj.Status == InventoryAdjustmentStatus.Approved)
-                throw new InvalidOperationException("Không thể hủy Phiếu điều chỉnh đã được duyệt.");
+            return await _context.ExecuteInTransactionAsync(async () =>
+            {
+                var adj = await _context.InventoryAdjustments.FindAsync(id);
+                if (adj == null)
+                    throw new KeyNotFoundException("Không tìm thấy Phiếu điều chỉnh tồn kho.");
 
-            adj.Status = InventoryAdjustmentStatus.Cancelled;
-            adj.Note = string.IsNullOrWhiteSpace(adj.Note) ? $"Hủy phiếu: {reason}" : $"{adj.Note} | Hủy phiếu: {reason}";
-            adj.UpdatedAt = DateTime.UtcNow;
+                if (adj.Status == InventoryAdjustmentStatus.Approved)
+                    throw new InvalidOperationException("Không thể hủy Phiếu điều chỉnh đã được duyệt.");
 
-            await _context.SaveChangesAsync();
-            return true;
+                adj.Status = InventoryAdjustmentStatus.Cancelled;
+                adj.Note = string.IsNullOrWhiteSpace(adj.Note)
+                    ? $"Hủy phiếu: {reason}"
+                    : $"{adj.Note} | Hủy phiếu: {reason}";
+                adj.UpdatedAt = DateTime.UtcNow;
+
+                await _context.SaveChangesAsync();
+                return true;
+            });
         }
 
+        /// <inheritdoc />
         public async Task<bool> DeleteAsync(int id)
         {
-            var adj = await _context.InventoryAdjustments.FindAsync(id);
-            if (adj == null) throw new KeyNotFoundException("Không tìm thấy Phiếu điều chỉnh tồn kho.");
-            if (adj.Status == InventoryAdjustmentStatus.Approved)
-                throw new InvalidOperationException("Không thể xóa Phiếu điều chỉnh đã được duyệt và cập nhật vào sổ cái tồn kho.");
+            return await _context.ExecuteInTransactionAsync(async () =>
+            {
+                var adj = await _context.InventoryAdjustments.FindAsync(id);
+                if (adj == null)
+                    throw new KeyNotFoundException("Không tìm thấy Phiếu điều chỉnh tồn kho.");
 
-            adj.IsDeleted = true;
-            adj.DeletedAt = DateTime.UtcNow;
-            adj.UpdatedAt = DateTime.UtcNow;
+                if (adj.Status == InventoryAdjustmentStatus.Approved)
+                    throw new InvalidOperationException("Không thể xóa Phiếu điều chỉnh đã được duyệt và cập nhật vào sổ cái tồn kho.");
 
-            await _context.SaveChangesAsync();
-            return true;
+                adj.IsDeleted = true;
+                adj.DeletedAt = DateTime.UtcNow;
+                adj.UpdatedAt = DateTime.UtcNow;
+
+                await _context.SaveChangesAsync();
+                return true;
+            });
         }
+        #endregion
     }
 }

@@ -1,94 +1,149 @@
 using backend.Models.Enums;
+using System;
+using System.Collections.Generic;
 
 namespace backend.Models
 {
     /// <summary>
-    /// Thực thể Phiếu Điều Chỉnh & Xuất Hủy Tồn Kho.
-    /// Xử lý hao hụt tự nhiên, hư hỏng, dập nát, hết hạn, mất cắp hoặc cân bằng số liệu sau kiểm kê.
+    /// Thực thể Phiếu Điều Chỉnh & Xuất Hủy Tồn Kho (Inventory Adjustment / Write-off).
+    /// Đóng vai trò là chứng từ "Bù trừ và Hợp thức hóa".
+    /// Xử lý các tình huống thực tế: Hao hụt tự nhiên, hư hỏng, dập nát, quá hạn sử dụng, mất cắp, 
+    /// hoặc tự động sinh ra để cân bằng số liệu sau một đợt Kiểm kê (Audit).
     /// </summary>
     public class InventoryAdjustment : ISoftDelete
     {
         public int Id { get; set; }
 
-        /// <summary>Mã chứng từ điều chỉnh (Ví dụ: ADJ-20260817-001)</summary>
+        #region Thông tin Định danh & Trạng thái
+        /// <summary>Mã chứng từ điều chỉnh (Ví dụ: ADJ-20260817-001).</summary>
         public string AdjustmentCode { get; set; } = string.Empty;
 
-        /// <summary>ID Kho xảy ra biến động</summary>
+        /// <summary>
+        /// Trạng thái quy trình (Draft: Nháp, Approved: Đã duyệt/Đã ghi sổ, Cancelled: Đã hủy).
+        /// Nghiệp vụ cốt lõi: Chỉ khi trạng thái là Approved, Core Engine (IInventoryService) 
+        /// mới được phép can thiệp để Tăng/Giảm số dư trên hệ thống và ghi Log Sổ cái.
+        /// </summary>
+        public InventoryAdjustmentStatus Status { get; set; } = InventoryAdjustmentStatus.Draft;
+
+        /// <summary>
+        /// Lý do tổng quan của đợt điều chỉnh (Surplus: Thừa kiểm kê, Shrinkage: Hao hụt tự nhiên, 
+        /// Spoilage: Hư hỏng/Thối rữa, Expired: Hết HSD, Theft: Mất cắp).
+        /// Phục vụ cho Báo cáo phân tích nguyên nhân thất thoát.
+        /// </summary>
+        public InventoryAdjustmentReason Reason { get; set; } = InventoryAdjustmentReason.Surplus;
+        #endregion
+
+        #region Địa điểm & Đối soát
+        /// <summary>Kho hàng nơi xảy ra sự cố chênh lệch/hao hụt.</summary>
         public int WarehouseId { get; set; }
         public virtual Warehouse? Warehouse { get; set; }
 
-        /// <summary>ID Đợt kiểm kê gốc (nếu sinh tự động từ kiểm kê)</summary>
+        /// <summary>
+        /// ID Đợt kiểm kê gốc. 
+        /// Nghiệp vụ: Nếu phiếu điều chỉnh này được sinh ra TỰ ĐỘNG từ màn hình Chốt sổ Kiểm kê (InventoryAudit), 
+        /// trường này bắt buộc phải có giá trị để Kế toán truy vết nguồn gốc bút toán.
+        /// </summary>
         public int? AuditId { get; set; }
         public virtual InventoryAudit? Audit { get; set; }
+        #endregion
 
-        /// <summary>Trạng thái phiếu: Nháp, Đã duyệt, Đã hủy</summary>
-        public InventoryAdjustmentStatus Status { get; set; } = InventoryAdjustmentStatus.Draft;
-
-        /// <summary>Lý do điều chỉnh (Hao hụt, Mất mát, Hư hỏng, Quá hạn, Thừa kiểm kê...)</summary>
-        public InventoryAdjustmentReason Reason { get; set; } = InventoryAdjustmentReason.Surplus;
-
-        /// <summary>Người lập phiếu</summary>
+        #region Nhân sự & Thời gian
+        /// <summary>Nhân viên kho phát hiện sự cố và lập phiếu đề xuất điều chỉnh.</summary>
         public int CreatedById { get; set; }
         public virtual IAUser? CreatedBy { get; set; }
 
-        /// <summary>Người phê duyệt và thực hiện cập nhật sổ cái</summary>
+        /// <summary>Ngày lập chứng từ đề xuất.</summary>
+        public DateTime AdjustmentDate { get; set; }
+
+        /// <summary>Quản lý kho / Kế toán trưởng phê duyệt và chịu trách nhiệm về khoản thất thoát này.</summary>
         public int? ApprovedById { get; set; }
         public virtual IAUser? ApprovedBy { get; set; }
 
-        /// <summary>Ngày lập chứng từ</summary>
-        public DateTime AdjustmentDate { get; set; }
-
-        /// <summary>Ngày phê duyệt và áp dụng vào tồn kho</summary>
+        /// <summary>Ngày chính thức phê duyệt và hệ thống thực thi cập nhật sổ cái.</summary>
         public DateTime? ApprovedDate { get; set; }
+        #endregion
 
-        /// <summary>Tổng giá trị chênh lệch (VND)</summary>
+        #region Tài chính & Ghi chú
+        /// <summary>
+        /// Tổng giá trị tiền tệ của đợt điều chỉnh (VND).
+        /// Rất quan trọng để Kế toán đưa vào hạch toán chi phí (Giá vốn hàng bán / Chi phí bất thường).
+        /// </summary>
         public decimal TotalVarianceAmount { get; set; }
 
-        /// <summary>Ghi chú & Biên bản giải trình</summary>
+        /// <summary>Biên bản giải trình chi tiết đính kèm (Ví dụ: "Kho bị dột do mưa bão đêm 16/08 làm ướt 5 thùng cà chua").</summary>
         public string? Note { get; set; }
+        #endregion
 
-        // --- ISoftDelete & AUDIT FIELDS ---
+        #region Hệ thống & Soft Delete
         public bool IsDeleted { get; set; } = false;
-        public DateTime? DeletedAt { get; set; }
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
-        /// <summary>Danh sách chi tiết các mặt hàng điều chỉnh</summary>
+        public DateTime? DeletedAt { get; set; }
+
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+        public DateTime? UpdatedAt { get; set; }
+        #endregion
+
+        #region Liên kết Chi tiết
+        /// <summary>Danh sách chi tiết các mặt hàng cần điều chỉnh tăng/giảm hoặc xuất hủy.</summary>
         public virtual ICollection<InventoryAdjustmentDetail> Details { get; set; } = new List<InventoryAdjustmentDetail>();
+        #endregion
     }
 
     /// <summary>
-    /// Dòng chi tiết mặt hàng trong Phiếu điều chỉnh tồn kho.
+    /// Thực thể Chi tiết Phiếu Điều Chỉnh (Inventory Adjustment Detail).
     /// </summary>
     public class InventoryAdjustmentDetail
     {
         public int Id { get; set; }
 
-        public int AdjustmentId { get; set; }
-        public virtual InventoryAdjustment? Adjustment { get; set; }
-
+        #region Hàng hóa & Nguồn gốc (Traceability)
         public int VariantId { get; set; }
         public virtual ProductVariant? Variant { get; set; }
 
+        /// <summary>
+        /// KỶ LUẬT THÉP: Ngay cả khi vứt bỏ hàng hỏng, hệ thống vẫn bắt buộc phải ghi nhận chính xác 
+        /// đó là hàng của Lô (Batch) nào để trừ đúng tồn kho và đánh giá chất lượng của Nhà cung cấp lô đó.
+        /// </summary>
         public int BatchId { get; set; }
         public virtual ProductBatch? Batch { get; set; }
 
         public int UoMId { get; set; }
         public virtual UoM? UoM { get; set; }
+        #endregion
 
-        /// <summary>Loại điều chỉnh (Tăng khả dụng, Giảm khả dụng, Chuyển sang hàng hỏng, Xuất hủy hàng hỏng)</summary>
+        #region Loại Điều chỉnh & Khối lượng
+        /// <summary>
+        /// NGHIỆP VỤ LÕI: Phân loại hành động điều chỉnh.
+        /// - IncreaseAvailable: Cộng thêm vào Hàng khả dụng (Do dư kiểm kê).
+        /// - DecreaseAvailable: Trừ thẳng Hàng khả dụng (Do hao hụt, mất cắp).
+        /// - MoveToDamaged: Chuyển từ Xanh (Available) sang Đỏ (Damaged) - Hàng dập nát chờ quản lý ra quyết định.
+        /// - WriteOffDamaged: Xuất hủy vĩnh viễn Hàng Đỏ (Damaged) ra khỏi kho đem đi tiêu hủy.
+        /// </summary>
         public InventoryAdjustmentType AdjustmentType { get; set; } = InventoryAdjustmentType.DecreaseAvailable;
 
-        /// <summary>Số lượng biến động (luôn là số dương)</summary>
+        /// <summary>
+        /// Số lượng biến động. 
+        /// Nguyên tắc kế toán: Luôn là SỐ DƯƠNG tuyệt đối (Absolute value). 
+        /// Việc nó là Tăng hay Giảm sẽ do trường [AdjustmentType] quyết định.
+        /// </summary>
         public decimal Quantity { get; set; }
+        #endregion
 
-        /// <summary>Đơn giá vốn tại thời điểm điều chỉnh</summary>
+        #region Tài chính & Giải trình
+        /// <summary>Đơn giá vốn của mặt hàng tại thời điểm điều chỉnh.</summary>
         public decimal UnitPrice { get; set; }
 
-        /// <summary>Thành tiền = Quantity * UnitPrice</summary>
+        /// <summary>Thành tiền chênh lệch (Quantity * UnitPrice) phục vụ báo cáo Kế toán.</summary>
         public decimal TotalAmount { get; set; }
 
-        /// <summary>Diễn giải chi tiết lý do</summary>
+        /// <summary>Diễn giải chi tiết lý do cho từng mặt hàng (Ví dụ: "Dập nát đáy thùng").</summary>
         public string? ReasonDetail { get; set; }
+        #endregion
+
+        #region Đối soát Chứng từ
+        public int AdjustmentId { get; set; }
+        public virtual InventoryAdjustment? Adjustment { get; set; }
+        #endregion
     }
 }
