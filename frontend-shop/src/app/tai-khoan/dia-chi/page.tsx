@@ -7,6 +7,7 @@ import { MapPin, User, Package, RotateCcw, Plus, Trash2 } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import shopCustomerApi from '@/api/shopCustomerApi';
 import { ShopAddress, ShopAddressPayload } from '@/types/customer';
+import GhnAddressSelect from '@/components/address/GhnAddressSelect';
 
 export default function DiaChiPage() {
     const router = useRouter();
@@ -188,37 +189,16 @@ export default function DiaChiPage() {
                                     />
                                 </div>
 
-                                <div className="space-y-1">
-                                    <label className="text-xs font-semibold text-slate-700">Tỉnh / Thành phố *</label>
-                                    <input
-                                        type="text"
-                                        value={province}
-                                        onChange={(e) => setProvince(e.target.value)}
-                                        className="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-xl"
-                                        required
-                                    />
-                                </div>
-
-                                <div className="space-y-1">
-                                    <label className="text-xs font-semibold text-slate-700">Quận / Huyện *</label>
-                                    <input
-                                        type="text"
-                                        placeholder="Quận 1..."
-                                        value={district}
-                                        onChange={(e) => setDistrict(e.target.value)}
-                                        className="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-xl"
-                                        required
-                                    />
-                                </div>
-
-                                <div className="space-y-1">
-                                    <label className="text-xs font-semibold text-slate-700">Phường / Xã</label>
-                                    <input
-                                        type="text"
-                                        placeholder="Phường Bến Nghé..."
-                                        value={ward}
-                                        onChange={(e) => setWard(e.target.value)}
-                                        className="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-xl"
+                                <div className="sm:col-span-2">
+                                    <GhnAddressSelect
+                                        province={province}
+                                        district={district}
+                                        ward={ward}
+                                        onChange={(p) => {
+                                            setProvince(p.province);
+                                            setDistrict(p.district);
+                                            setWard(p.ward);
+                                        }}
                                     />
                                 </div>
 

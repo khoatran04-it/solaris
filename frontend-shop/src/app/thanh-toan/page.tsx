@@ -157,6 +157,42 @@ export default function ThanhToanPage() {
         }
     }, [isAuthenticated]);
 
+    // Khi đổi địa chỉ đã lưu -> Đồng bộ sang GHN District & Ward để tính phí ship chuẩn xác
+    useEffect(() => {
+        if (!useNewAddress && selectedAddressId && addresses.length > 0 && provinces.length > 0) {
+            const addr = addresses.find(a => a.id === selectedAddressId);
+            if (addr) {
+                const prov = provinces.find(p => 
+                    p.provinceName.toLowerCase().includes(addr.province.toLowerCase()) || 
+                    addr.province.toLowerCase().includes(p.provinceName.toLowerCase())
+                );
+                if (prov) {
+                    setSelectedProvinceId(prov.provinceID);
+                    shopShippingApi.getDistricts(prov.provinceID).then(distList => {
+                        setDistricts(distList);
+                        const dist = distList.find(d => 
+                            d.districtName.toLowerCase().includes(addr.district.toLowerCase()) || 
+                            addr.district.toLowerCase().includes(d.districtName.toLowerCase())
+                        ) || distList[0];
+                        if (dist) {
+                            setSelectedDistrictId(dist.districtID);
+                            shopShippingApi.getWards(dist.districtID).then(wardList => {
+                                setWards(wardList);
+                                const ward = wardList.find(w => 
+                                    w.wardName.toLowerCase().includes(addr.ward.toLowerCase()) || 
+                                    addr.ward.toLowerCase().includes(w.wardName.toLowerCase())
+                                ) || wardList[0];
+                                if (ward) {
+                                    setSelectedWardCode(ward.wardCode);
+                                }
+                            });
+                        }
+                    });
+                }
+            }
+        }
+    }, [selectedAddressId, useNewAddress, addresses, provinces]);
+
     const handleCheckout = async (e: React.FormEvent) => {
         e.preventDefault();
         setErrorMessage('');

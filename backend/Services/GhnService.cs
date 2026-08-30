@@ -23,7 +23,7 @@ namespace backend.Services
             _context = context;
 
             var ghnSection = _config.GetSection("GhnSettings");
-            string baseUrl = ghnSection["BaseUrl"] ?? "https://dev-online-gateway.ghn.vn/shiip/public-api/";
+            string baseUrl = ghnSection["BaseUrl"] ?? "https://online-gateway.ghn.vn/shiip/public-api/";
             string token = ghnSection["Token"] ?? "61e09ddf-9e61-11f1-ba4f-c6d6173e4bee";
 
             _httpClient.BaseAddress = new Uri(baseUrl);

@@ -5,6 +5,7 @@ import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import WarehouseForm from '../../../pages/warehouse/WarehouseForm';
 import { warehouseApi } from '../../../api/warehouseApi';
 import { userApi } from '../../../api/userApi';
+import { shippingApi } from '../../../api/shippingApi';
 
 // Mock APIs
 vi.mock('../../../api/warehouseApi', () => ({
@@ -19,6 +20,23 @@ vi.mock('../../../api/warehouseApi', () => ({
 vi.mock('../../../api/userApi', () => ({
   userApi: {
     getAllList: vi.fn(),
+  },
+}));
+
+vi.mock('../../../api/shippingApi', () => ({
+  shippingApi: {
+    getProvinces: vi.fn().mockResolvedValue([
+      { provinceID: 201, provinceName: 'Hồ Chí Minh', code: 'HCM' },
+      { provinceID: 203, provinceName: 'Đà Nẵng', code: 'DN' },
+    ]),
+    getDistricts: vi.fn().mockResolvedValue([
+      { districtID: 1442, provinceID: 203, districtName: 'Hải Châu', code: 'HC' },
+    ]),
+    getWards: vi.fn().mockResolvedValue([
+      { wardCode: '20101', districtID: 1442, wardName: 'Hòa Cường Bắc' },
+    ]),
+    calculateFee: vi.fn(),
+    createGhnOrder: vi.fn(),
   },
 }));
 
@@ -70,6 +88,16 @@ describe('Module 08 - WarehouseForm Component', () => {
     vi.clearAllMocks();
     (userApi.getAllList as any).mockResolvedValue(mockUsers);
     (warehouseApi.getAllList as any).mockResolvedValue(mockExistingWarehouses);
+    (shippingApi.getProvinces as any).mockResolvedValue([
+      { provinceID: 201, provinceName: 'Hồ Chí Minh', code: 'HCM' },
+      { provinceID: 203, provinceName: 'Đà Nẵng', code: 'DN' },
+    ]);
+    (shippingApi.getDistricts as any).mockResolvedValue([
+      { districtID: 1442, provinceID: 203, districtName: 'Hải Châu', code: 'HC' },
+    ]);
+    (shippingApi.getWards as any).mockResolvedValue([
+      { wardCode: '20101', districtID: 1442, wardName: 'Hòa Cường Bắc' },
+    ]);
   });
 
   // #region TC01: RENDER FORM TẠO MỚI
@@ -88,9 +116,9 @@ describe('Module 08 - WarehouseForm Component', () => {
 
     expect(screen.getByPlaceholderText('VD: HUB-HCM-01')).toBeInTheDocument();
     expect(screen.getByPlaceholderText('VD: Kho Tổng Miền Nam')).toBeInTheDocument();
-    expect(screen.getByPlaceholderText('VD: TP. Hồ Chí Minh')).toBeInTheDocument();
-    expect(screen.getByPlaceholderText('VD: Quận Bình Tân')).toBeInTheDocument();
-    expect(screen.getByPlaceholderText('VD: Phường An Lạc')).toBeInTheDocument();
+    expect(screen.getByText('Tỉnh / Thành Phố')).toBeInTheDocument();
+    expect(screen.getByText('Quận / Huyện')).toBeInTheDocument();
+    expect(screen.getByText('Phường / Xã')).toBeInTheDocument();
     expect(screen.getByPlaceholderText('VD: 123 Đường Số 7, KCN Tân Tạo')).toBeInTheDocument();
   });
   // #endregion
@@ -128,16 +156,32 @@ describe('Module 08 - WarehouseForm Component', () => {
     });
     fireEvent.click(screen.getByText('Kho Tổng (Master Hub)'));
 
-    // 2. Nhập thông tin địa chỉ
-    fireEvent.change(screen.getByPlaceholderText('VD: TP. Hồ Chí Minh'), {
-      target: { value: 'Đà Nẵng' },
+    // 2. Chọn thông tin địa chỉ từ Dropdown GHN
+    const provinceSelect = screen.getByText('Chọn Tỉnh / Thành...');
+    fireEvent.click(provinceSelect);
+    await waitFor(() => {
+      expect(screen.getByText('Đà Nẵng')).toBeInTheDocument();
     });
-    fireEvent.change(screen.getByPlaceholderText('VD: Quận Bình Tân'), {
-      target: { value: 'Hải Châu' },
+    fireEvent.click(screen.getByText('Đà Nẵng'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Chọn Quận / Huyện...')).toBeInTheDocument();
     });
-    fireEvent.change(screen.getByPlaceholderText('VD: Phường An Lạc'), {
-      target: { value: 'Hòa Cường Bắc' },
+    fireEvent.click(screen.getByText('Chọn Quận / Huyện...'));
+    await waitFor(() => {
+      expect(screen.getByText('Hải Châu')).toBeInTheDocument();
     });
+    fireEvent.click(screen.getByText('Hải Châu'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Chọn Phường / Xã...')).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByText('Chọn Phường / Xã...'));
+    await waitFor(() => {
+      expect(screen.getByText('Hòa Cường Bắc')).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByText('Hòa Cường Bắc'));
+
     fireEvent.change(screen.getByPlaceholderText('VD: 123 Đường Số 7, KCN Tân Tạo'), {
       target: { value: 'Số 99 Đường 2 Tháng 9' },
     });

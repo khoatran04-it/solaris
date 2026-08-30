@@ -6,7 +6,7 @@ const shopPaymentApi = {
         axiosClient.post<VnPayPaymentResponse>('/payment/vnpay/create-url', payload),
 
     getVnPayCallback: (queryString: string) =>
-        axiosClient.get<VnPayCallbackResult>(`/payment/vnpay/callback?${queryString}`),
+        axiosClient.get<VnPayCallbackResult>(`/payment/vnpay/callback?${queryString.replace(/^\?/, '')}`),
 };
 
 export default shopPaymentApi;

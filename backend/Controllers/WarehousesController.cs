@@ -12,7 +12,6 @@ namespace backend.Controllers
     /// </summary>
     [ApiController]
     [Route("api/warehouses")]
-    [Route("api/[controller]")]
     [Authorize]
     [Produces("application/json")]
     public class WarehousesController : ControllerBase
