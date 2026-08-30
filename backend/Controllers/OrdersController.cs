@@ -17,7 +17,6 @@ namespace backend.Controllers
     /// xem trước kết quả định tuyến kho (Smart Routing Preview), cập nhật trạng thái đơn, và hủy đơn hàng.
     /// </summary>
     [ApiController]
-    [Route("api/[controller]")]
     [Route("api/orders")]
     [Produces("application/json")]
     [Authorize]

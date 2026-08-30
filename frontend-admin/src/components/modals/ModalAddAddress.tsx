@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { X, MapPin, Save } from 'lucide-react';
 import { FormInput } from '../commons/FormUI';
+import { GhnAddressSelect } from '../commons/GhnAddressSelect';
 import { CustomerAddressPayload } from '../../types/customerAddress';
 
 interface ModalAddAddressProps {
@@ -145,32 +146,19 @@ export const ModalAddAddress: React.FC<ModalAddAddressProps> = ({
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <FormInput
-                label="Tỉnh/Thành phố"
-                required
-                placeholder="Hồ Chí Minh"
-                value={formData.province}
-                error={errors.province}
+              <GhnAddressSelect
+                province={formData.province}
+                district={formData.district || ''}
+                ward={formData.ward || ''}
+                onProvinceChange={(p) => handleFieldChange('province', p)}
+                onDistrictChange={(d) => handleFieldChange('district', d)}
+                onWardChange={(w) => handleFieldChange('ward', w)}
+                errors={{
+                  province: errors.province,
+                  district: errors.district,
+                  ward: errors.ward,
+                }}
                 disabled={isSubmitting}
-                onChange={(e) => handleFieldChange('province', e.target.value)}
-              />
-              <FormInput
-                label="Quận/Huyện"
-                required
-                placeholder="Quận 1"
-                value={formData.district}
-                error={errors.district}
-                disabled={isSubmitting}
-                onChange={(e) => handleFieldChange('district', e.target.value)}
-              />
-              <FormInput
-                label="Phường/Xã"
-                required
-                placeholder="Bến Nghé"
-                value={formData.ward}
-                error={errors.ward}
-                disabled={isSubmitting}
-                onChange={(e) => handleFieldChange('ward', e.target.value)}
               />
             </div>
 

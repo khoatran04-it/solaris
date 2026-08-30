@@ -17,7 +17,6 @@ namespace backend.Controllers
     /// Hỗ trợ phân quyền dữ liệu theo danh sách kho được gán cho nhân viên (Data-Level Authorization).
     /// </summary>
     [Route("api/inventories")]
-    [Route("api/[controller]")]
     [ApiController]
     [Authorize]
     [Produces("application/json")]

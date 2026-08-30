@@ -21,6 +21,7 @@ import {
   FormTextarea,
   SubmitButton,
 } from '../../components/commons/FormUI';
+import { GhnAddressSelect } from '../../components/commons/GhnAddressSelect';
 import CustomDatePicker from '../../components/commons/CustomDatePicker'; // Component Custom của bạn
 
 // 1. Cấu hình giá trị khởi tạo
@@ -455,26 +456,19 @@ const CustomerForm: React.FC = () => {
                       onChange={(e) => handleAddressChange('phone', e.target.value)}
                     />
                   </div>
-                  <FormInput
-                    label="Tỉnh/Thành"
-                    placeholder="Hồ Chí Minh"
-                    value={formData.addresses![0].province}
-                    error={errors.address_province}
-                    onChange={(e) => handleAddressChange('province', e.target.value)}
-                  />
-                  <FormInput
-                    label="Quận/Huyện"
-                    placeholder="Quận 1"
-                    value={formData.addresses![0].district}
-                    error={errors.address_district}
-                    onChange={(e) => handleAddressChange('district', e.target.value)}
-                  />
-                  <FormInput
-                    label="Phường/Xã"
-                    placeholder="Phường Bến Nghé"
-                    value={formData.addresses![0].ward}
-                    error={errors.address_ward}
-                    onChange={(e) => handleAddressChange('ward', e.target.value)}
+                  <GhnAddressSelect
+                    province={formData.addresses![0].province}
+                    district={formData.addresses![0].district}
+                    ward={formData.addresses![0].ward}
+                    onProvinceChange={(p) => handleAddressChange('province', p)}
+                    onDistrictChange={(d) => handleAddressChange('district', d)}
+                    onWardChange={(w) => handleAddressChange('ward', w)}
+                    errors={{
+                      province: errors.address_province,
+                      district: errors.address_district,
+                      ward: errors.address_ward,
+                    }}
+                    required={false}
                   />
                   <div className="lg:col-span-4">
                     <FormInput

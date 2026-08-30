@@ -18,6 +18,7 @@ import {
   FormSelect,
   SubmitButton,
 } from '../../components/commons/FormUI';
+import { GhnAddressSelect } from '../../components/commons/GhnAddressSelect';
 
 // 1. Cấu hình giá trị khởi tạo
 const INITIAL_STATE: WarehousePayload = {
@@ -287,32 +288,19 @@ const WarehouseForm: React.FC = () => {
           {/* ================= SECTION 2: ĐỊA CHỈ & TỌA ĐỘ VẬT LÝ ================= */}
           <FormSection title="Địa Chỉ Vật Lý & Tọa Độ GPS">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <FormInput
-                label="Tỉnh / Thành Phố"
-                required
-                placeholder="VD: TP. Hồ Chí Minh"
-                value={formData.address.province}
-                error={errors.address_province}
+              <GhnAddressSelect
+                province={formData.address.province}
+                district={formData.address.district}
+                ward={formData.address.ward}
+                onProvinceChange={(p) => handleAddressChange('province', p)}
+                onDistrictChange={(d) => handleAddressChange('district', d)}
+                onWardChange={(w) => handleAddressChange('ward', w)}
+                errors={{
+                  province: errors.address_province,
+                  district: errors.address_district,
+                  ward: errors.address_ward,
+                }}
                 disabled={loading}
-                onChange={(e) => handleAddressChange('province', e.target.value)}
-              />
-              <FormInput
-                label="Quận / Huyện"
-                required
-                placeholder="VD: Quận Bình Tân"
-                value={formData.address.district}
-                error={errors.address_district}
-                disabled={loading}
-                onChange={(e) => handleAddressChange('district', e.target.value)}
-              />
-              <FormInput
-                label="Phường / Xã"
-                required
-                placeholder="VD: Phường An Lạc"
-                value={formData.address.ward}
-                error={errors.address_ward}
-                disabled={loading}
-                onChange={(e) => handleAddressChange('ward', e.target.value)}
               />
             </div>
 
