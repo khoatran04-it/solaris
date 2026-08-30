@@ -2,13 +2,21 @@ using AutoMapper;
 using backend.Data;
 using backend.DTOs;
 using backend.DTOs.InventoryAuditDTOs;
+using backend.Helpers;
 using backend.Models;
 using backend.Models.Enums;
 using backend.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace backend.Services
 {
+    /// <summary>
+    /// Service Quản lý Quy trình Kiểm kê Kho Hàng (Stocktake / Inventory Audits & Blind Count).
+    /// </summary>
     public class InventoryAuditService : IInventoryAuditService
     {
         private readonly SolarisDbContext _context;
@@ -20,6 +28,8 @@ namespace backend.Services
             _mapper = mapper;
         }
 
+        #region Truy vấn & Phân quyền (Query & RBAC)
+        /// <inheritdoc />
         public async Task<PagedResult<InventoryAuditReadDto>> GetPagedAsync(
             string? search,
             int? warehouseId,
@@ -44,19 +54,36 @@ namespace backend.Services
 
             if (!string.IsNullOrWhiteSpace(search))
             {
-                var s = search.ToLower();
+                var s = search.ToLower().Trim();
                 query = query.Where(a => a.AuditCode.ToLower().Contains(s) ||
-                                         a.Auditor!.FullName.ToLower().Contains(s));
+                                         (a.Auditor != null && a.Auditor.FullName.ToLower().Contains(s)) ||
+                                         (a.Note != null && a.Note.ToLower().Contains(s)));
             }
 
-            if (warehouseId.HasValue) query = query.Where(a => a.WarehouseId == warehouseId.Value);
-            if (status.HasValue && Enum.IsDefined(typeof(InventoryAuditStatus), status.Value))
-                query = query.Where(a => a.Status == (InventoryAuditStatus)status.Value);
-            if (auditType.HasValue && Enum.IsDefined(typeof(InventoryAuditType), auditType.Value))
-                query = query.Where(a => a.AuditType == (InventoryAuditType)auditType.Value);
+            if (warehouseId.HasValue && warehouseId.Value > 0)
+            {
+                query = query.Where(a => a.WarehouseId == warehouseId.Value);
+            }
 
-            if (startDate.HasValue) query = query.Where(a => a.AuditDate >= startDate.Value.Date);
-            if (endDate.HasValue) query = query.Where(a => a.AuditDate < endDate.Value.Date.AddDays(1));
+            if (status.HasValue && Enum.IsDefined(typeof(InventoryAuditStatus), status.Value))
+            {
+                query = query.Where(a => a.Status == (InventoryAuditStatus)status.Value);
+            }
+
+            if (auditType.HasValue && Enum.IsDefined(typeof(InventoryAuditType), auditType.Value))
+            {
+                query = query.Where(a => a.AuditType == (InventoryAuditType)auditType.Value);
+            }
+
+            if (startDate.HasValue)
+            {
+                query = query.Where(a => a.AuditDate >= startDate.Value.Date);
+            }
+
+            if (endDate.HasValue)
+            {
+                query = query.Where(a => a.AuditDate < endDate.Value.Date.AddDays(1));
+            }
 
             var totalRecords = await query.CountAsync();
 
@@ -77,6 +104,7 @@ namespace backend.Services
             };
         }
 
+        /// <inheritdoc />
         public async Task<InventoryAuditReadDto> GetByIdAsync(int id, List<int>? allowedWarehouseIds = null)
         {
             var query = _context.InventoryAudits
@@ -95,22 +123,43 @@ namespace backend.Services
             }
 
             var entity = await query.FirstOrDefaultAsync(a => a.Id == id);
-            if (entity == null) throw new KeyNotFoundException("Không tìm thấy Phiếu kiểm kê.");
+            if (entity == null)
+                throw new KeyNotFoundException("Không tìm thấy Phiếu kiểm kê hoặc bạn không có quyền truy cập kho này.");
 
             return _mapper.Map<InventoryAuditReadDto>(entity);
         }
+        #endregion
 
+        #region Quy trình 1: Khởi tạo & Đếm thực tế (Snapshot & Blind Count)
+        /// <inheritdoc />
         public async Task<int> CreateAsync(InventoryAuditCreateDto dto)
         {
+            var warehouseExists = await _context.Warehouses.AnyAsync(w => w.Id == dto.WarehouseId);
+            if (!warehouseExists)
+                throw new KeyNotFoundException($"Kho hàng với ID {dto.WarehouseId} không tồn tại.");
+
+            int auditorId = dto.AuditorId ?? 1;
+            var auditorExists = await _context.IAUsers.AnyAsync(u => u.Id == auditorId);
+            if (!auditorExists)
+            {
+                var firstUser = await _context.IAUsers.FirstOrDefaultAsync();
+                if (firstUser != null) auditorId = firstUser.Id;
+            }
+
+            var auditCode = $"AUD-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString()[..6].ToUpper()}";
+
             var audit = new InventoryAudit
             {
-                AuditCode = $"AUD-{DateTime.UtcNow:yyyyMMdd}-{DateTime.UtcNow:HHmmss}",
+                AuditCode = auditCode,
                 WarehouseId = dto.WarehouseId,
                 AuditType = dto.AuditType,
-                AuditorId = dto.AuditorId ?? 1,
+                AuditorId = auditorId,
                 AuditDate = DateTime.UtcNow,
                 Status = InventoryAuditStatus.InProgress,
-                Note = dto.Note
+                Note = dto.Note?.Trim(),
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+                IsDeleted = false
             };
 
             // 1. Chụp ảnh số liệu tồn hệ thống (Snapshot System Quantity)
@@ -121,7 +170,7 @@ namespace backend.Services
 
             if (dto.SpecificItems != null && dto.SpecificItems.Any())
             {
-                var specificVariantIds = dto.SpecificItems.Select(s => s.VariantId).ToList();
+                var specificVariantIds = dto.SpecificItems.Select(s => s.VariantId).Distinct().ToList();
                 invQuery = invQuery.Where(i => specificVariantIds.Contains(i.VariantId));
             }
 
@@ -152,69 +201,96 @@ namespace backend.Services
             audit.TotalSystemQty = totalSysQty;
             audit.TotalActualQty = 0;
             audit.TotalVarianceQty = -totalSysQty;
+            audit.TotalVarianceAmount = audit.Details.Sum(d => d.VarianceAmount);
 
-            _context.InventoryAudits.Add(audit);
-            await _context.SaveChangesAsync();
+            await _context.ExecuteInTransactionAsync(async () =>
+            {
+                _context.InventoryAudits.Add(audit);
+                await _context.SaveChangesAsync();
+            });
 
             return audit.Id;
         }
 
+        /// <inheritdoc />
         public async Task<bool> SubmitCountAsync(int id, InventoryAuditSubmitCountDto dto)
         {
-            var audit = await _context.InventoryAudits
-                .Include(a => a.Details)
-                .FirstOrDefaultAsync(a => a.Id == id);
-
-            if (audit == null) throw new KeyNotFoundException("Không tìm thấy Phiếu kiểm kê.");
-            if (audit.Status != InventoryAuditStatus.Draft && audit.Status != InventoryAuditStatus.InProgress)
-                throw new InvalidOperationException("Chỉ có thể nộp số liệu khi phiếu đang ở trạng thái Nháp hoặc Đang kiểm đếm.");
-
-            decimal totalActual = 0;
-            decimal totalVariance = 0;
-            decimal totalVarianceAmount = 0;
-
-            foreach (var detail in audit.Details)
-            {
-                var countItem = dto.Items.FirstOrDefault(i => i.DetailId == detail.Id);
-                if (countItem != null)
-                {
-                    detail.ActualQuantity = countItem.ActualQuantity;
-                    detail.VarianceQuantity = detail.ActualQuantity - detail.SystemQuantity;
-                    detail.VarianceAmount = detail.VarianceQuantity * detail.UnitPrice;
-                    detail.ReasonNote = countItem.ReasonNote;
-                }
-
-                totalActual += detail.ActualQuantity;
-                totalVariance += detail.VarianceQuantity;
-                totalVarianceAmount += detail.VarianceAmount;
-            }
-
-            audit.TotalActualQty = totalActual;
-            audit.TotalVarianceQty = totalVariance;
-            audit.TotalVarianceAmount = totalVarianceAmount;
-            audit.Status = InventoryAuditStatus.PendingApproval;
-            if (!string.IsNullOrWhiteSpace(dto.Note)) audit.Note = dto.Note;
-
-            await _context.SaveChangesAsync();
-            return true;
-        }
-
-        public async Task<int> ApproveAndReconcileAsync(int id, int approvedById)
-        {
-            using var transaction = await _context.Database.BeginTransactionAsync();
-            try
+            return await _context.ExecuteInTransactionAsync(async () =>
             {
                 var audit = await _context.InventoryAudits
                     .Include(a => a.Details)
                     .FirstOrDefaultAsync(a => a.Id == id);
 
-                if (audit == null) throw new KeyNotFoundException("Không tìm thấy Phiếu kiểm kê.");
+                if (audit == null)
+                    throw new KeyNotFoundException("Không tìm thấy Phiếu kiểm kê.");
+
+                if (audit.Status != InventoryAuditStatus.Draft && audit.Status != InventoryAuditStatus.InProgress)
+                    throw new InvalidOperationException("Chỉ có thể nộp số liệu khi phiếu đang ở trạng thái Nháp hoặc Đang kiểm đếm.");
+
+                decimal totalActual = 0;
+                decimal totalVariance = 0;
+                decimal totalVarianceAmount = 0;
+
+                foreach (var detail in audit.Details)
+                {
+                    var countItem = dto.Items.FirstOrDefault(i => i.DetailId == detail.Id);
+                    if (countItem != null)
+                    {
+                        detail.ActualQuantity = countItem.ActualQuantity;
+                        detail.VarianceQuantity = detail.ActualQuantity - detail.SystemQuantity;
+                        detail.VarianceAmount = detail.VarianceQuantity * detail.UnitPrice;
+                        detail.ReasonNote = countItem.ReasonNote?.Trim();
+                    }
+
+                    totalActual += detail.ActualQuantity;
+                    totalVariance += detail.VarianceQuantity;
+                    totalVarianceAmount += detail.VarianceAmount;
+                }
+
+                audit.TotalActualQty = totalActual;
+                audit.TotalVarianceQty = totalVariance;
+                audit.TotalVarianceAmount = totalVarianceAmount;
+                audit.Status = InventoryAuditStatus.PendingApproval;
+                audit.UpdatedAt = DateTime.UtcNow;
+
+                if (!string.IsNullOrWhiteSpace(dto.Note))
+                {
+                    audit.Note = dto.Note.Trim();
+                }
+
+                await _context.SaveChangesAsync();
+                return true;
+            });
+        }
+        #endregion
+
+        #region Quy trình 2: Chốt sổ & Bù trừ (Reconciliation)
+        /// <inheritdoc />
+        public async Task<int> ApproveAndReconcileAsync(int id, int approvedById)
+        {
+            return await _context.ExecuteInTransactionAsync(async () =>
+            {
+                var audit = await _context.InventoryAudits
+                    .Include(a => a.Details)
+                    .FirstOrDefaultAsync(a => a.Id == id);
+
+                if (audit == null)
+                    throw new KeyNotFoundException("Không tìm thấy Phiếu kiểm kê.");
+
                 if (audit.Status != InventoryAuditStatus.PendingApproval && audit.Status != InventoryAuditStatus.InProgress)
-                    throw new InvalidOperationException("Phiếu kiểm kê phải ở trạng thái Chờ duyệt.");
+                    throw new InvalidOperationException("Phiếu kiểm kê phải ở trạng thái Đang kiểm đếm hoặc Chờ duyệt để thực hiện chốt sổ.");
+
+                var approverExists = await _context.IAUsers.AnyAsync(u => u.Id == approvedById);
+                if (!approverExists)
+                {
+                    var firstUser = await _context.IAUsers.FirstOrDefaultAsync();
+                    if (firstUser != null) approvedById = firstUser.Id;
+                }
 
                 audit.Status = InventoryAuditStatus.Completed;
                 audit.ApprovedById = approvedById;
                 audit.CompletedDate = DateTime.UtcNow;
+                audit.UpdatedAt = DateTime.UtcNow;
 
                 // Tự động sinh Phiếu Điều Chỉnh Tồn Kho để cân bằng số liệu
                 var nonZeroDetails = audit.Details.Where(d => d.VarianceQuantity != 0).ToList();
@@ -222,25 +298,31 @@ namespace backend.Services
 
                 if (nonZeroDetails.Any())
                 {
+                    var reason = audit.TotalVarianceQty >= 0
+                        ? InventoryAdjustmentReason.Surplus
+                        : InventoryAdjustmentReason.Shrinkage;
+
                     var adjustment = new InventoryAdjustment
                     {
-                        AdjustmentCode = $"ADJ-{DateTime.UtcNow:yyyyMMdd}-{DateTime.UtcNow:HHmmss}",
+                        AdjustmentCode = $"ADJ-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString()[..6].ToUpper()}",
                         WarehouseId = audit.WarehouseId,
                         AuditId = audit.Id,
                         Status = InventoryAdjustmentStatus.Approved,
-                        Reason = InventoryAdjustmentReason.Surplus,
+                        Reason = reason,
                         CreatedById = audit.AuditorId,
                         ApprovedById = approvedById,
                         AdjustmentDate = DateTime.UtcNow,
                         ApprovedDate = DateTime.UtcNow,
-                        TotalVarianceAmount = audit.TotalVarianceAmount,
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow,
+                        TotalVarianceAmount = Math.Abs(audit.TotalVarianceAmount),
                         Note = $"Cân bằng tồn kho tự động theo kết quả kiểm kê {audit.AuditCode}"
                     };
 
                     foreach (var detail in nonZeroDetails)
                     {
-                        var adjType = detail.VarianceQuantity > 0 
-                            ? InventoryAdjustmentType.IncreaseAvailable 
+                        var adjType = detail.VarianceQuantity > 0
+                            ? InventoryAdjustmentType.IncreaseAvailable
                             : InventoryAdjustmentType.DecreaseAvailable;
 
                         var qty = Math.Abs(detail.VarianceQuantity);
@@ -297,10 +379,11 @@ namespace backend.Services
                             VariantId = detail.VariantId,
                             BatchId = detail.BatchId,
                             Type = TransactionType.Adjustment,
-                            Quantity = detail.VarianceQuantity, // dương hoặc âm
+                            Quantity = detail.VarianceQuantity,
                             ReferenceCode = audit.AuditCode,
-                            Note = $"Cân bằng kiểm kê: Thực tế={detail.ActualQuantity}, Hệ thống={detail.SystemQuantity} ({detail.ReasonNote})",
-                            CreatedById = approvedById
+                            Note = $"Cân bằng kiểm kê {audit.AuditCode}: Thực tế={detail.ActualQuantity}, Hệ thống={detail.SystemQuantity} ({detail.ReasonNote})",
+                            CreatedById = approvedById,
+                            CreatedAt = DateTime.UtcNow
                         });
                     }
 
@@ -308,31 +391,37 @@ namespace backend.Services
                     await _context.SaveChangesAsync();
                     adjustmentId = adjustment.Id;
                 }
-
-                await _context.SaveChangesAsync();
-                await transaction.CommitAsync();
+                else
+                {
+                    await _context.SaveChangesAsync();
+                }
 
                 return adjustmentId;
-            }
-            catch
-            {
-                await transaction.RollbackAsync();
-                throw;
-            }
+            });
         }
 
+        /// <inheritdoc />
         public async Task<bool> CancelAsync(int id, string reason)
         {
-            var audit = await _context.InventoryAudits.FindAsync(id);
-            if (audit == null) throw new KeyNotFoundException("Không tìm thấy Phiếu kiểm kê.");
-            if (audit.Status == InventoryAuditStatus.Completed)
-                throw new InvalidOperationException("Không thể hủy Phiếu kiểm kê đã hoàn tất và chốt sổ.");
+            return await _context.ExecuteInTransactionAsync(async () =>
+            {
+                var audit = await _context.InventoryAudits.FindAsync(id);
+                if (audit == null)
+                    throw new KeyNotFoundException("Không tìm thấy Phiếu kiểm kê.");
 
-            audit.Status = InventoryAuditStatus.Cancelled;
-            audit.Note = $"Hủy phiếu: {reason}";
+                if (audit.Status == InventoryAuditStatus.Completed)
+                    throw new InvalidOperationException("Không thể hủy Phiếu kiểm kê đã hoàn tất và chốt sổ.");
 
-            await _context.SaveChangesAsync();
-            return true;
+                audit.Status = InventoryAuditStatus.Cancelled;
+                audit.Note = string.IsNullOrWhiteSpace(audit.Note)
+                    ? $"Hủy phiếu: {reason}"
+                    : $"{audit.Note} | Hủy phiếu: {reason}";
+                audit.UpdatedAt = DateTime.UtcNow;
+
+                await _context.SaveChangesAsync();
+                return true;
+            });
         }
+        #endregion
     }
 }
