@@ -277,39 +277,36 @@ namespace backend.Tests.Modules.Module05_ProductPricing
         /// TC05: Cập nhật lô hàng thành công, chặn nếu trùng mã với lô hàng khác hoặc ID không tồn tại.
         /// </summary>
         [Fact]
-        public async Task UpdateAsync_ShouldUpdateSuccessfully_AndValidateUniqueness()
+        public async Task UpdateAsync_ShouldUpdateSuccessfully_AndValidateDates()
         {
             // Arrange
             using var context = TestFactories.CreateInMemoryDbContext();
             context.ProductVariants.Add(new ProductVariant { Id = 1, Code = "SKU-01", Name = "Dưa lưới", ProductId = 1 });
             context.ProductBatches.AddRange(
-                new ProductBatch { Id = 1, BatchCode = "LOT-01", VariantId = 1, ManufactureDate = new DateTime(2026, 8, 1), ExpiryDate = new DateTime(2026, 8, 20) },
-                new ProductBatch { Id = 2, BatchCode = "LOT-02", VariantId = 1, ManufactureDate = new DateTime(2026, 8, 1), ExpiryDate = new DateTime(2026, 8, 20) }
+                new ProductBatch { Id = 1, BatchCode = "LOT-01", VariantId = 1, ManufactureDate = new DateTime(2026, 8, 1), ExpiryDate = new DateTime(2026, 8, 20), IsActive = true },
+                new ProductBatch { Id = 2, BatchCode = "LOT-02", VariantId = 1, ManufactureDate = new DateTime(2026, 8, 1), ExpiryDate = new DateTime(2026, 8, 20), IsActive = true }
             );
             await context.SaveChangesAsync();
 
             var service = new ProductBatchService(context, _mapper);
 
-            // Act 1: Cập nhật hợp lệ
+            // Act 1: Cập nhật hợp lệ (Gia hạn HSD và đổi trạng thái)
             var updateDto = new ProductBatchUpdateDto
             {
-                BatchCode = "LOT-01-UPDATED",
-                VariantId = 1,
                 ManufactureDate = new DateTime(2026, 8, 2),
                 ExpiryDate = new DateTime(2026, 8, 25),
-                IsActive = true
+                IsActive = false
             };
             var updateResult = await service.UpdateAsync(1, updateDto);
 
-            // Act 2: Cập nhật trùng mã với Lot 2
-            var duplicateDto = new ProductBatchUpdateDto
+            // Act 2: Cập nhật HSD <= NSX
+            var invalidDateDto = new ProductBatchUpdateDto
             {
-                BatchCode = "lot-02",
-                VariantId = 1,
-                ManufactureDate = new DateTime(2026, 8, 2),
-                ExpiryDate = new DateTime(2026, 8, 25)
+                ManufactureDate = new DateTime(2026, 8, 25),
+                ExpiryDate = new DateTime(2026, 8, 20),
+                IsActive = true
             };
-            var actDuplicate = () => service.UpdateAsync(1, duplicateDto);
+            var actInvalidDate = () => service.UpdateAsync(1, invalidDateDto);
 
             // Act 3: Cập nhật ID không tồn tại
             var actNotFound = () => service.UpdateAsync(999, updateDto);
@@ -317,10 +314,11 @@ namespace backend.Tests.Modules.Module05_ProductPricing
             // Assert
             updateResult.Should().BeTrue();
             var updated = await context.ProductBatches.FindAsync(1);
-            updated!.BatchCode.Should().Be("LOT-01-UPDATED");
+            updated!.ExpiryDate.Should().Be(new DateTime(2026, 8, 25));
+            updated.IsActive.Should().BeFalse();
 
-            await actDuplicate.Should().ThrowAsync<InvalidOperationException>()
-                .WithMessage("*Cập nhật thất bại: Mã lô 'lot-02' đã bị trùng lặp.*");
+            await actInvalidDate.Should().ThrowAsync<InvalidOperationException>()
+                .WithMessage("*Hạn sử dụng phải lớn hơn Ngày sản xuất.*");
 
             await actNotFound.Should().ThrowAsync<KeyNotFoundException>()
                 .WithMessage("*Không tìm thấy lô hàng cần sửa.*");
@@ -411,6 +409,96 @@ namespace backend.Tests.Modules.Module05_ProductPricing
             deleteResult.Should().BeTrue();
             batchAfterDelete!.IsDeleted.Should().BeTrue();
             batchAfterDelete.DeletedAt.Should().NotBeNull();
+        }
+        #endregion
+
+        #region TC08: SAFETY SHIELD - CHẶN XÓA KHI ĐÃ PHÁT SINH PHIẾU XUẤT KHO
+        /// <summary>
+        /// TC08: Chặn xóa lô hàng nếu đã phát sinh trong lịch sử phiếu xuất kho (InventoryIssueDetails).
+        /// </summary>
+        [Fact]
+        public async Task DeleteAsync_ShouldThrowInvalidOperation_WhenHasIssueDetails()
+        {
+            // Arrange
+            using var context = TestFactories.CreateInMemoryDbContext();
+            context.ProductBatches.Add(new ProductBatch
+            {
+                Id = 5,
+                BatchCode = "LOT-ISSUED",
+                VariantId = 1,
+                ManufactureDate = new DateTime(2026, 8, 1),
+                ExpiryDate = new DateTime(2026, 8, 20)
+            });
+
+            context.InventoryIssueDetails.Add(new InventoryIssueDetail
+            {
+                Id = 1,
+                InventoryIssueId = 100,
+                VariantId = 1,
+                BatchId = 5,
+                UoMId = 1,
+                Quantity = 20,
+                UnitPrice = 50000,
+                TotalPrice = 1000000
+            });
+            await context.SaveChangesAsync();
+
+            var service = new ProductBatchService(context, _mapper);
+
+            // Act & Assert
+            var act = () => service.DeleteAsync(5);
+            await act.Should().ThrowAsync<InvalidOperationException>()
+                .WithMessage("*Không thể xóa lô hàng này vì đã phát sinh trong lịch sử phiếu xuất kho.*");
+        }
+        #endregion
+
+        #region TC09: TRUY XUẤT NGUỒN GỐC - AUTOMAPPER FLATTENING DỮ LIỆU VARIANT VÀ SUPPLIER
+        /// <summary>
+        /// TC09: Đảm bảo AutoMapper làm phẳng chính xác VariantName, VariantCode và SupplierName phục vụ hiển thị tem nhãn.
+        /// </summary>
+        [Fact]
+        public async Task GetByIdAsync_ShouldMapFlattenedData_ForTraceability()
+        {
+            // Arrange
+            using var context = TestFactories.CreateInMemoryDbContext();
+            context.ProductVariants.Add(new ProductVariant
+            {
+                Id = 10,
+                Code = "SKU-TAO-ENVY",
+                Name = "Táo Envy Size Nhỏ",
+                ProductId = 1
+            });
+            context.Suppliers.Add(new Supplier
+            {
+                Id = 20,
+                Code = "SUP-DALAT",
+                Name = "Công Ty Nông Sản Đà Lạt",
+                Phone = "02633888999",
+                Email = "dalat@gap.vn"
+            });
+            context.ProductBatches.Add(new ProductBatch
+            {
+                Id = 100,
+                BatchCode = "LOT-ENVY-001",
+                VariantId = 10,
+                SupplierId = 20,
+                ManufactureDate = new DateTime(2026, 8, 1),
+                ExpiryDate = new DateTime(2026, 8, 30),
+                IsActive = true
+            });
+            await context.SaveChangesAsync();
+
+            var service = new ProductBatchService(context, _mapper);
+
+            // Act
+            var result = await service.GetByIdAsync(100);
+
+            // Assert
+            result.Should().NotBeNull();
+            result.BatchCode.Should().Be("LOT-ENVY-001");
+            result.VariantName.Should().Be("Táo Envy Size Nhỏ");
+            result.VariantCode.Should().Be("SKU-TAO-ENVY");
+            result.SupplierName.Should().Be("Công Ty Nông Sản Đà Lạt");
         }
         #endregion
     }

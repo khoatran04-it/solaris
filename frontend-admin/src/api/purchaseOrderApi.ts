@@ -8,27 +8,31 @@ import {
 } from '../types/purchaseOrder';
 
 export const purchaseOrderApi = {
+  getAllList: (): Promise<PurchaseOrder[]> => {
+    return axiosClient.get('/purchase-orders/all');
+  },
+
   getAll: (params?: PurchaseOrderQueryParams): Promise<PagedResult<PurchaseOrder>> => {
-    return axiosClient.get('/PurchaseOrders', { params });
+    return axiosClient.get('/purchase-orders', { params });
   },
 
   getById: (id: number): Promise<PurchaseOrder> => {
-    return axiosClient.get(`/PurchaseOrders/${id}`);
+    return axiosClient.get(`/purchase-orders/${id}`);
   },
 
-  create: (data: PurchaseOrderCreatePayload): Promise<{ id: number }> => {
-    return axiosClient.post('/PurchaseOrders', data);
+  create: (data: PurchaseOrderCreatePayload): Promise<PurchaseOrder> => {
+    return axiosClient.post('/purchase-orders', data);
   },
 
-  update: (id: number, data: PurchaseOrderCreatePayload): Promise<void> => {
-    return axiosClient.put(`/PurchaseOrders/${id}`, data);
+  update: (id: number, data: PurchaseOrderCreatePayload): Promise<{ message: string }> => {
+    return axiosClient.put(`/purchase-orders/${id}`, data);
   },
 
-  updateStatus: (id: number, data: PurchaseOrderUpdatePayload): Promise<void> => {
-    return axiosClient.put(`/PurchaseOrders/${id}/status`, data);
+  updateStatus: (id: number, data: PurchaseOrderUpdatePayload): Promise<{ message: string }> => {
+    return axiosClient.put(`/purchase-orders/${id}/status`, data);
   },
 
-  delete: (id: number): Promise<void> => {
-    return axiosClient.delete(`/PurchaseOrders/${id}`);
+  delete: (id: number): Promise<{ message: string }> => {
+    return axiosClient.delete(`/purchase-orders/${id}`);
   },
 };
