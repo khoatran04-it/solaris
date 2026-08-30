@@ -1,8 +1,8 @@
-﻿using AutoMapper;
+using AutoMapper;
 using backend.Models;
 using backend.DTOs.InventoryDTOs;
 
-namespace backend.Mappings
+namespace backend.Profiles
 {
     public class InventoryProfile : Profile
     {

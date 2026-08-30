@@ -1,17 +1,23 @@
+using backend.DTOs;
 using backend.DTOs.InventoryReceiptDTOs;
 using backend.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using System;
 using System.Security.Claims;
+using System.Threading.Tasks;
 
 namespace backend.Controllers
 {
     /// <summary>
-    /// API Quản lý Phiếu Nhập Kho & Kiểm Đếm Chất Lượng Nông Sản (Inventory Receipts - IR).
+    /// API Quản lý Phiếu Nhập Kho & Kiểm Đếm Chất Lượng Nông Sản (Goods Receipt Note - GRN).
     /// </summary>
+    [Route("api/inventory-receipts")]
     [Route("api/[controller]")]
     [ApiController]
     [Authorize]
+    [Produces("application/json")]
     public class InventoryReceiptsController : ControllerBase
     {
         private readonly IInventoryReceiptService _service;
@@ -21,8 +27,22 @@ namespace backend.Controllers
             _service = service;
         }
 
+        /// <summary>
+        /// Lấy danh sách phiếu nhập kho có phân trang và bộ lọc đa chiều.
+        /// </summary>
+        /// <param name="search">Từ khóa tìm kiếm theo mã phiếu, tên nhà cung cấp hoặc ghi chú.</param>
+        /// <param name="warehouseId">ID kho hàng tiếp nhận.</param>
+        /// <param name="supplierId">ID nhà cung cấp giao hàng.</param>
+        /// <param name="status">Trạng thái phiếu nhập (1: Pending, 2: Inspecting, 3: Completed, 4: Cancelled).</param>
+        /// <param name="startDate">Lọc từ ngày lập phiếu.</param>
+        /// <param name="endDate">Lọc đến ngày lập phiếu.</param>
+        /// <param name="pageIndex">Trang hiện tại (bắt đầu từ 1, mặc định: 1).</param>
+        /// <param name="pageSize">Số bản ghi trên mỗi trang (mặc định: 10).</param>
+        /// <returns>Danh sách phân trang phiếu nhập kho.</returns>
+        /// <response code="200">Truy vấn thành công.</response>
+        /// <response code="401">Chưa xác thực người dùng.</response>
         [HttpGet]
-        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(PagedResult<InventoryReceiptReadDto>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetPaged(
             [FromQuery] string? search,
             [FromQuery] int? warehouseId,
@@ -37,8 +57,16 @@ namespace backend.Controllers
             return Ok(result);
         }
 
+        /// <summary>
+        /// Lấy thông tin chi tiết một phiếu nhập kho kèm danh sách kiểm đếm hàng hóa theo ID.
+        /// </summary>
+        /// <param name="id">ID phiếu nhập kho.</param>
+        /// <returns>Dữ liệu chi tiết phiếu nhập kho.</returns>
+        /// <response code="200">Truy vấn thành công.</response>
+        /// <response code="401">Chưa xác thực người dùng.</response>
+        /// <response code="404">Không tìm thấy phiếu nhập kho.</response>
         [HttpGet("{id}")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(InventoryReceiptReadDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetById(int id)
         {
@@ -53,6 +81,14 @@ namespace backend.Controllers
             }
         }
 
+        /// <summary>
+        /// Khởi tạo phiếu nhập kho mới ở trạng thái chờ kiểm đếm (Pending).
+        /// </summary>
+        /// <param name="dto">Dữ liệu tạo phiếu nhập kho và danh sách hàng hóa.</param>
+        /// <returns>Mã ID phiếu nhập kho vừa tạo.</returns>
+        /// <response code="201">Tạo phiếu nhập kho thành công.</response>
+        /// <response code="400">Dữ liệu đầu vào không hợp lệ hoặc vi phạm ràng buộc nghiệp vụ.</response>
+        /// <response code="401">Chưa xác thực người dùng.</response>
         [HttpPost]
         [ProducesResponseType(StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -69,6 +105,16 @@ namespace backend.Controllers
             }
         }
 
+        /// <summary>
+        /// Hoàn tất phiếu nhập kho: Chốt sổ kiểm đếm, chính thức cộng số lượng vào tồn kho khả dụng và ghi sổ cái giao dịch.
+        /// </summary>
+        /// <param name="id">ID phiếu nhập kho cần hoàn tất.</param>
+        /// <param name="request">Ghi chú bổ sung khi hoàn tất.</param>
+        /// <returns>Thông báo kết quả xử lý.</returns>
+        /// <response code="200">Hoàn tất nhập kho thành công.</response>
+        /// <response code="400">Phiếu nhập kho không ở trạng thái hợp lệ để chốt sổ.</response>
+        /// <response code="401">Chưa xác thực người dùng.</response>
+        /// <response code="404">Không tìm thấy phiếu nhập kho.</response>
         [HttpPost("{id}/complete")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -97,6 +143,16 @@ namespace backend.Controllers
             }
         }
 
+        /// <summary>
+        /// Hủy phiếu nhập kho chưa hoàn tất với lý do cụ thể.
+        /// </summary>
+        /// <param name="id">ID phiếu nhập kho cần hủy.</param>
+        /// <param name="request">Lý do hủy phiếu nhập.</param>
+        /// <returns>Thông báo kết quả hủy.</returns>
+        /// <response code="200">Hủy phiếu nhập kho thành công.</response>
+        /// <response code="400">Lý do trống hoặc phiếu đã chốt sổ không thể hủy.</response>
+        /// <response code="401">Chưa xác thực người dùng.</response>
+        /// <response code="404">Không tìm thấy phiếu nhập kho.</response>
         [HttpPost("{id}/cancel")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -118,6 +174,15 @@ namespace backend.Controllers
             }
         }
 
+        /// <summary>
+        /// Xóa mềm một phiếu nhập kho (chỉ áp dụng cho phiếu chưa chốt sổ).
+        /// </summary>
+        /// <param name="id">ID phiếu nhập kho cần xóa.</param>
+        /// <returns>Thông báo kết quả xóa.</returns>
+        /// <response code="200">Xóa phiếu nhập kho thành công.</response>
+        /// <response code="400">Phiếu nhập kho đã hoàn tất không thể xóa.</response>
+        /// <response code="401">Chưa xác thực người dùng.</response>
+        /// <response code="404">Không tìm thấy phiếu nhập kho.</response>
         [HttpDelete("{id}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -140,13 +205,21 @@ namespace backend.Controllers
         }
     }
 
+    /// <summary>
+    /// Payload yêu cầu hoàn tất phiếu nhập kho.
+    /// </summary>
     public class CompleteReceiptRequest
     {
+        /// <summary>Ghi chú bổ sung khi hoàn tất.</summary>
         public string? Note { get; set; }
     }
 
+    /// <summary>
+    /// Payload yêu cầu hủy phiếu nhập kho.
+    /// </summary>
     public class CancelReceiptRequest
     {
+        /// <summary>Lý do hủy phiếu nhập kho (bắt buộc).</summary>
         public string Reason { get; set; } = string.Empty;
     }
 }

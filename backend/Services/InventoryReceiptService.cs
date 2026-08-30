@@ -2,13 +2,21 @@ using AutoMapper;
 using backend.Data;
 using backend.DTOs;
 using backend.DTOs.InventoryReceiptDTOs;
+using backend.Helpers;
 using backend.Models;
 using backend.Models.Enums;
 using backend.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace backend.Services
 {
+    /// <summary>
+    /// Service xử lý toàn bộ vòng đời Phiếu Nhập Kho & Kiểm định chất lượng hàng hóa (Goods Receipt Note - GRN).
+    /// </summary>
     public class InventoryReceiptService : IInventoryReceiptService
     {
         private readonly SolarisDbContext _context;
@@ -20,6 +28,8 @@ namespace backend.Services
             _mapper = mapper;
         }
 
+        #region Truy vấn (Query)
+        /// <inheritdoc />
         public async Task<PagedResult<InventoryReceiptReadDto>> GetPagedAsync(
             string? search, int? warehouseId, int? supplierId, int? status, DateTime? startDate, DateTime? endDate, int pageIndex, int pageSize)
         {
@@ -37,10 +47,10 @@ namespace backend.Services
                                          (x.Note != null && x.Note.ToLower().Contains(lowerSearch)));
             }
 
-            if (warehouseId.HasValue)
+            if (warehouseId.HasValue && warehouseId.Value > 0)
                 query = query.Where(x => x.WarehouseId == warehouseId.Value);
 
-            if (supplierId.HasValue)
+            if (supplierId.HasValue && supplierId.Value > 0)
                 query = query.Where(x => x.SupplierId == supplierId.Value);
 
             if (status.HasValue && Enum.IsDefined(typeof(InventoryReceiptStatus), status.Value))
@@ -76,6 +86,7 @@ namespace backend.Services
             };
         }
 
+        /// <inheritdoc />
         public async Task<InventoryReceiptReadDto> GetByIdAsync(int id)
         {
             var entity = await _context.InventoryReceipts
@@ -93,35 +104,47 @@ namespace backend.Services
 
             return _mapper.Map<InventoryReceiptReadDto>(entity);
         }
+        #endregion
 
+        #region Thao tác Dữ liệu & Quy trình (Command & Workflow)
+        /// <inheritdoc />
         public async Task<int> CreateAsync(InventoryReceiptCreateDto dto)
         {
             if (dto.Details == null || !dto.Details.Any())
-                throw new ArgumentException("Phiếu nhập kho phải có ít nhất 1 dòng kiểm đếm hàng hóa.");
+                throw new InvalidOperationException("Phiếu nhập kho phải có ít nhất 1 dòng kiểm đếm hàng hóa.");
 
-            var warehouseExists = await _context.Warehouses.AnyAsync(w => w.Id == dto.WarehouseId);
+            var warehouseExists = await _context.Warehouses.AnyAsync(w => w.Id == dto.WarehouseId && !w.IsDeleted);
             if (!warehouseExists)
-                throw new ArgumentException($"Kho nhận hàng với ID {dto.WarehouseId} không tồn tại.");
+                throw new InvalidOperationException($"Kho nhận hàng với ID {dto.WarehouseId} không tồn tại hoặc đã bị vô hiệu hóa.");
 
-            var entity = _mapper.Map<InventoryReceipt>(dto);
+            if (dto.SupplierId.HasValue)
+            {
+                var supplierExists = await _context.Suppliers.AnyAsync(s => s.Id == dto.SupplierId.Value && !s.IsDeleted);
+                if (!supplierExists)
+                    throw new InvalidOperationException($"Nhà cung cấp với ID {dto.SupplierId.Value} không tồn tại.");
+            }
 
-            // Sinh mã phiếu nhập duy nhất chống va chạm
-            entity.ReceiptCode = $"IR-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString()[..6].ToUpper()}";
-            entity.Status = InventoryReceiptStatus.Pending;
-            entity.CreatedAt = DateTime.UtcNow;
-            entity.UpdatedAt = DateTime.UtcNow;
-            entity.IsDeleted = false;
+            return await _context.ExecuteInTransactionAsync(async () =>
+            {
+                var entity = _mapper.Map<InventoryReceipt>(dto);
 
-            _context.InventoryReceipts.Add(entity);
-            await _context.SaveChangesAsync();
+                entity.ReceiptCode = $"IR-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString()[..6].ToUpper()}";
+                entity.Status = InventoryReceiptStatus.Pending;
+                entity.CreatedAt = DateTime.UtcNow;
+                entity.UpdatedAt = DateTime.UtcNow;
+                entity.IsDeleted = false;
 
-            return entity.Id;
+                _context.InventoryReceipts.Add(entity);
+                await _context.SaveChangesAsync();
+
+                return entity.Id;
+            });
         }
 
+        /// <inheritdoc />
         public async Task<bool> CompleteReceiptAsync(int id, int receivedById, string? note)
         {
-            using var transaction = await _context.Database.BeginTransactionAsync();
-            try
+            return await _context.ExecuteInTransactionAsync(async () =>
             {
                 var receipt = await _context.InventoryReceipts
                     .Include(x => x.Details)
@@ -133,11 +156,10 @@ namespace backend.Services
                 if (receipt.Status != InventoryReceiptStatus.Pending && receipt.Status != InventoryReceiptStatus.Inspecting)
                     throw new InvalidOperationException("Phiếu nhập kho phải ở trạng thái Chờ nhập kho (Pending) hoặc Đang kiểm tra (Inspecting) mới có thể hoàn tất.");
 
-                // Xác thực an toàn người kiểm đếm
-                var userExists = await _context.IAUsers.AnyAsync(u => u.Id == receivedById);
+                var userExists = await _context.IAUsers.AnyAsync(u => u.Id == receivedById && !u.IsDeleted);
                 if (!userExists)
                 {
-                    var firstUser = await _context.IAUsers.FirstOrDefaultAsync();
+                    var firstUser = await _context.IAUsers.FirstOrDefaultAsync(u => !u.IsDeleted);
                     if (firstUser != null) receivedById = firstUser.Id;
                 }
 
@@ -227,64 +249,61 @@ namespace backend.Services
 
                     if (po != null && (po.Status == PurchaseOrderStatus.Approved || po.Status == PurchaseOrderStatus.PartiallyReceived))
                     {
-                        bool isFullyReceived = true;
-                        foreach (var d in po.Details)
-                        {
-                            if (d.ReceivedQuantity < d.OrderQuantity)
-                            {
-                                isFullyReceived = false;
-                                break;
-                            }
-                        }
-
+                        bool isFullyReceived = po.Details.All(d => d.ReceivedQuantity >= d.OrderQuantity);
                         po.Status = isFullyReceived ? PurchaseOrderStatus.Completed : PurchaseOrderStatus.PartiallyReceived;
                         po.UpdatedAt = DateTime.UtcNow;
                     }
                 }
 
                 await _context.SaveChangesAsync();
-                await transaction.CommitAsync();
                 return true;
-            }
-            catch
-            {
-                await transaction.RollbackAsync();
-                throw;
-            }
+            });
         }
 
+        /// <inheritdoc />
         public async Task<bool> CancelReceiptAsync(int id, string reason)
         {
-            var receipt = await _context.InventoryReceipts.FindAsync(id);
-            if (receipt == null)
-                throw new KeyNotFoundException("Không tìm thấy Phiếu Nhập Kho.");
+            if (string.IsNullOrWhiteSpace(reason))
+                throw new ArgumentException("Lý do hủy phiếu nhập kho không được để trống.", nameof(reason));
 
-            if (receipt.Status == InventoryReceiptStatus.Completed)
-                throw new InvalidOperationException("Không thể hủy Phiếu Nhập Kho đã hoàn tất vào sổ cái.");
+            return await _context.ExecuteInTransactionAsync(async () =>
+            {
+                var receipt = await _context.InventoryReceipts.FindAsync(id);
+                if (receipt == null)
+                    throw new KeyNotFoundException("Không tìm thấy Phiếu Nhập Kho.");
 
-            receipt.Status = InventoryReceiptStatus.Cancelled;
-            receipt.CancellationReason = reason?.Trim();
-            receipt.UpdatedAt = DateTime.UtcNow;
+                if (receipt.Status == InventoryReceiptStatus.Completed)
+                    throw new InvalidOperationException("Không thể hủy Phiếu Nhập Kho đã hoàn tất vào sổ cái.");
 
-            await _context.SaveChangesAsync();
-            return true;
+                receipt.Status = InventoryReceiptStatus.Cancelled;
+                receipt.CancellationReason = reason.Trim();
+                receipt.UpdatedAt = DateTime.UtcNow;
+
+                await _context.SaveChangesAsync();
+                return true;
+            });
         }
 
+        /// <inheritdoc />
         public async Task<bool> DeleteAsync(int id)
         {
-            var receipt = await _context.InventoryReceipts.FindAsync(id);
-            if (receipt == null)
-                throw new KeyNotFoundException("Không tìm thấy Phiếu Nhập Kho.");
+            return await _context.ExecuteInTransactionAsync(async () =>
+            {
+                var receipt = await _context.InventoryReceipts.FindAsync(id);
+                if (receipt == null)
+                    throw new KeyNotFoundException("Không tìm thấy Phiếu Nhập Kho.");
 
-            if (receipt.Status == InventoryReceiptStatus.Completed)
-                throw new InvalidOperationException("Không thể xóa Phiếu Nhập Kho đã hoàn tất vào sổ cái.");
+                if (receipt.Status == InventoryReceiptStatus.Completed)
+                    throw new InvalidOperationException("Không thể xóa Phiếu Nhập Kho đã hoàn tất vào sổ cái.");
 
-            receipt.IsDeleted = true;
-            receipt.DeletedAt = DateTime.UtcNow;
-            receipt.UpdatedAt = DateTime.UtcNow;
+                receipt.IsDeleted = true;
+                receipt.DeletedAt = DateTime.UtcNow;
+                receipt.UpdatedAt = DateTime.UtcNow;
 
-            await _context.SaveChangesAsync();
-            return true;
+                await _context.SaveChangesAsync();
+                return true;
+            });
         }
+        #endregion
     }
 }

@@ -1,40 +1,90 @@
-﻿namespace backend.DTOs.InventoryDTOs
+﻿using System;
+
+namespace backend.DTOs.InventoryDTOs
 {
-    // DTO này dùng để hiển thị trên Bảng danh sách Tồn kho hiện tại
+    /// <summary>
+    /// DTO hiển thị Báo cáo Tồn kho theo Thời gian thực (Real-time Inventory Read DTO).
+    /// Dữ liệu đã được làm phẳng và tính toán sẵn các chỉ số cảnh báo (Vòng đời, Trạng thái) 
+    /// nhằm tối ưu hóa việc render DataGrid / Dashboard trên Frontend.
+    /// </summary>
     public class InventoryReadDto
     {
-        public int Id { get; set; } // ID dòng tồn kho
+        public int Id { get; set; }
 
-        // 1. Tọa độ Kho
+        #region Tọa độ Kho (Location)
         public int WarehouseId { get; set; }
-        public string WarehouseName { get; set; } = string.Empty;
+
+        /// <summary>Mã Kho hàng (Dùng để hiển thị tag/label).</summary>
         public string WarehouseCode { get; set; } = string.Empty;
 
-        // 2. Thông tin Sản phẩm (Biến thể)
-        public int VariantId { get; set; }
-        public string VariantCode { get; set; } = string.Empty; // Mã SKU
-        public string VariantName { get; set; } = string.Empty; // Tên SP
-        public string BaseUoMName { get; set; } = string.Empty; // ĐVT (Cực kỳ quan trọng: Kg, Bó, Quả...)
+        /// <summary>Tên Kho hàng.</summary>
+        public string WarehouseName { get; set; } = string.Empty;
+        #endregion
 
-        // 3. Thông tin Lô hàng & Cảnh báo Nông sản
+        #region Hàng hóa & Đơn vị tính (Product)
+        public int VariantId { get; set; }
+
+        /// <summary>Mã SKU của Sản phẩm.</summary>
+        public string VariantCode { get; set; } = string.Empty;
+
+        /// <summary>Tên hiển thị của Biến thể (Ví dụ: Cà chua Cherry 500g).</summary>
+        public string VariantName { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Đơn vị tính cơ sở (Base UoM). 
+        /// Kỷ luật hiển thị: Mọi con số tồn kho trong bảng này đều quy về ĐVT cơ sở (Kg, Bó, Quả) để tránh sai lệch.
+        /// </summary>
+        public string BaseUoMName { get; set; } = string.Empty;
+        #endregion
+
+        #region Lô hàng & Truy xuất nguồn gốc (Batch & Traceability)
         public int BatchId { get; set; }
         public string BatchCode { get; set; } = string.Empty;
         public DateTime ManufactureDate { get; set; }
         public DateTime ExpiryDate { get; set; }
 
-        // 🔥 Trường tính toán cho Frontend: Số ngày còn lại trước khi hết hạn
-        public int DaysToExpiry => (ExpiryDate - DateTime.UtcNow).Days;
-
-        // Tên Nhà cung cấp (Để biết lô rau này của bác nông dân nào)
+        /// <summary>
+        /// Tên Nhà cung cấp/Nông hộ (Giúp truy vết lô nông sản này đến từ đâu).
+        /// </summary>
         public string SupplierName { get; set; } = string.Empty;
 
-        // 4. Số liệu Tồn kho (Hiển thị 4 cột rõ ràng)
-        public decimal QuantityAvailable { get; set; } // Hàng xanh (Bán được)
-        public decimal QuantityReserved { get; set; }  // Hàng vàng (Đã chốt đơn, chờ giao)
-        public decimal QuantityQC { get; set; }        // Hàng cam (Boom hàng chờ check)
-        public decimal QuantityDamaged { get; set; }   // Hàng đỏ (Thối, hỏng)
+        /// <summary>
+        /// Số ngày còn lại trước khi hết hạn (Tính toán realtime cho Frontend).
+        /// Nghiệp vụ: Frontend có thể dựa vào số ngày này để tô màu cảnh báo Đỏ (Đã hết hạn) / Vàng (Cận date) / Xanh (An toàn).
+        /// </summary>
+        public int DaysToExpiry => (ExpiryDate - DateTime.UtcNow).Days;
+        #endregion
 
-        // Tổng tồn kho vật lý đang nằm trong tòa nhà
+        #region Phân mảng Số liệu Tồn kho (Inventory Buckets)
+        /// <summary>
+        /// [Hàng Xanh] - Số lượng có sẵn để bán.
+        /// (Dùng để đồng bộ lên Website/App cho khách hàng đặt mua).
+        /// </summary>
+        public decimal QuantityAvailable { get; set; }
+
+        /// <summary>
+        /// [Hàng Vàng] - Số lượng đã bị giữ chỗ.
+        /// (Đã có khách đặt mua nhưng chưa xuất kho đi, bị khóa lại không cho bán tiếp).
+        /// </summary>
+        public decimal QuantityReserved { get; set; }
+
+        /// <summary>
+        /// [Hàng Cam] - Số lượng đang chờ kiểm định (Quality Control).
+        /// (Hàng khách bom hoàn trả về, hoặc hàng đang nghi ngờ chất lượng, chờ QC đánh giá).
+        /// </summary>
+        public decimal QuantityQC { get; set; }
+
+        /// <summary>
+        /// [Hàng Đỏ] - Số lượng hỏng/thối chờ tiêu hủy.
+        /// (Không tính vào tồn kho khả dụng nhưng vẫn nằm trong kho vật lý chiếm không gian).
+        /// </summary>
+        public decimal QuantityDamaged { get; set; }
+
+        /// <summary>
+        /// Tổng tồn kho vật lý đang nằm trong tòa nhà.
+        /// Bằng tổng 4 trạng thái cộng lại. Phục vụ cho đối soát khi nhân viên đi đếm kho cuối tháng.
+        /// </summary>
         public decimal TotalQuantity => QuantityAvailable + QuantityReserved + QuantityQC + QuantityDamaged;
+        #endregion
     }
 }
