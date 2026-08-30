@@ -1,39 +1,67 @@
+using AutoMapper;
 using backend.Data;
 using backend.DTOs.AiDTOs;
 using backend.DTOs.PaymentDTOs;
+using backend.Helpers;
 using backend.Models;
 using backend.Models.Enums;
 using backend.Services.Interfaces;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
-using System.Net.Http.Headers;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Net.Http;
 using System.Text;
 using System.Text.Json;
+using System.Threading.Tasks;
 
 namespace backend.Services
 {
+    /// <summary>
+    /// Service Tích hợp Trí tuệ Nhân tạo Google Gemini (AI Chatbot & Conversational Commerce).
+    /// Đóng vai trò là Trợ lý bán hàng thông minh:
+    /// - Quản lý ngữ cảnh và lịch sử hội thoại (Session & Context Management)
+    /// - Nhận diện ý định khách hàng (Intent Recognition: Tìm sản phẩm, Đặt lại đơn cũ, Tra cứu đơn hàng)
+    /// - Gọi API Google Gemini với mô hình thế hệ mới (gemini-3.5-flash-lite)
+    /// - Chuyển đổi giỏ hàng ảo thành đơn hàng thực tế (Interactive Mini-Checkout)
+    /// - Bọc toàn bộ thao tác ghi trong ExecuteInTransactionAsync bảo đảm an toàn với SqlServerRetryingExecutionStrategy.
+    /// </summary>
     public class GeminiChatService : IGeminiChatService
     {
         private readonly HttpClient _httpClient;
         private readonly IConfiguration _config;
         private readonly SolarisDbContext _context;
+        private readonly IMapper _mapper;
         private readonly IVnPayService _vnPayService;
+        private readonly IHttpContextAccessor _httpContextAccessor;
 
         public GeminiChatService(
             HttpClient httpClient,
             IConfiguration config,
             SolarisDbContext context,
-            IVnPayService vnPayService)
+            IMapper mapper,
+            IVnPayService vnPayService,
+            IHttpContextAccessor httpContextAccessor)
         {
             _httpClient = httpClient;
             _config = config;
             _context = context;
+            _mapper = mapper;
             _vnPayService = vnPayService;
+            _httpContextAccessor = httpContextAccessor;
         }
 
+        #region 1. Quản lý Phiên hội thoại (Session Management)
+
+        /// <summary>
+        /// Lấy danh sách các phiên hội thoại của người dùng để hiển thị trên Sidebar/Lịch sử Chat.
+        /// </summary>
         public async Task<List<ChatSessionReadDto>> GetCustomerSessionsAsync(int? customerId, string? sessionToken)
         {
             var query = _context.ChatSessions
+                .Include(s => s.Messages)
                 .Where(s => s.IsActive);
 
             if (customerId.HasValue && customerId.Value > 0)
@@ -49,21 +77,16 @@ namespace backend.Services
                 return new List<ChatSessionReadDto>();
             }
 
-            return await query
+            var sessions = await query
                 .OrderByDescending(s => s.UpdatedAt)
-                .Select(s => new ChatSessionReadDto
-                {
-                    Id = s.Id,
-                    SessionToken = s.SessionToken,
-                    Title = s.Title,
-                    CreatedAt = s.CreatedAt,
-                    UpdatedAt = s.UpdatedAt,
-                    TotalMessages = s.Messages.Count,
-                    LastMessage = s.Messages.OrderByDescending(m => m.CreatedAt).Select(m => m.Content).FirstOrDefault()
-                })
                 .ToListAsync();
+
+            return _mapper.Map<List<ChatSessionReadDto>>(sessions);
         }
 
+        /// <summary>
+        /// Lấy toàn bộ lịch sử tin nhắn của một phiên cụ thể.
+        /// </summary>
         public async Task<List<ChatMessageReadDto>> GetSessionMessagesAsync(int sessionId, int? customerId, string? sessionToken)
         {
             var session = await _context.ChatSessions
@@ -75,293 +98,333 @@ namespace backend.Services
                 return new List<ChatMessageReadDto>();
             }
 
-            return session.Messages
-                .OrderBy(m => m.CreatedAt)
-                .Select(m => new ChatMessageReadDto
+            // Kiểm tra quyền truy cập (Ownership Check)
+            if (customerId.HasValue && customerId.Value > 0)
+            {
+                if (session.CustomerId != null && session.CustomerId != customerId.Value && session.SessionToken != sessionToken)
                 {
-                    Id = m.Id,
-                    Role = m.Role,
-                    Content = m.Content,
-                    PayloadType = m.PayloadType,
-                    Payload = string.IsNullOrEmpty(m.PayloadJson) ? null : JsonSerializer.Deserialize<object>(m.PayloadJson),
-                    CreatedAt = m.CreatedAt
-                })
-                .ToList();
-        }
-
-        public async Task<ChatSessionReadDto> CreateSessionAsync(int? customerId, string? sessionToken, string? title)
-        {
-            string token = string.IsNullOrEmpty(sessionToken) ? Guid.NewGuid().ToString("N") : sessionToken;
-            string sessionTitle = string.IsNullOrWhiteSpace(title) ? "Cuộc trò chuyện mới" : title.Trim();
-
-            var session = new ChatSession
+                    return new List<ChatMessageReadDto>();
+                }
+            }
+            else if (!string.IsNullOrEmpty(sessionToken))
             {
-                CustomerId = customerId,
-                SessionToken = token,
-                Title = sessionTitle,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow,
-                IsActive = true
-            };
-
-            _context.ChatSessions.Add(session);
-            await _context.SaveChangesAsync();
-
-            return new ChatSessionReadDto
-            {
-                Id = session.Id,
-                SessionToken = session.SessionToken,
-                Title = session.Title,
-                CreatedAt = session.CreatedAt,
-                UpdatedAt = session.UpdatedAt,
-                TotalMessages = 0
-            };
-        }
-
-        public async Task<bool> DeleteSessionAsync(int sessionId, int? customerId, string? sessionToken)
-        {
-            var session = await _context.ChatSessions.FirstOrDefaultAsync(s => s.Id == sessionId);
-            if (session == null) return false;
-
-            session.IsActive = false;
-            session.UpdatedAt = DateTime.UtcNow;
-            await _context.SaveChangesAsync();
-            return true;
-        }
-
-        public async Task<AiChatResponseDto> SendMessageAsync(AiSendMessageRequestDto request, int? customerId, string ipAddress)
-        {
-            ChatSession? session = null;
-
-            if (request.SessionId.HasValue && request.SessionId.Value > 0)
-            {
-                session = await _context.ChatSessions
-                    .Include(s => s.Messages)
-                    .FirstOrDefaultAsync(s => s.Id == request.SessionId.Value && s.IsActive);
+                if (session.SessionToken != sessionToken && session.CustomerId != null)
+                {
+                    return new List<ChatMessageReadDto>();
+                }
             }
 
-            if (session == null)
+            var messages = session.Messages
+                .OrderBy(m => m.CreatedAt)
+                .ToList();
+
+            return _mapper.Map<List<ChatMessageReadDto>>(messages);
+        }
+
+        /// <summary>
+        /// Khởi tạo một phiên hội thoại mới và bọc trong transaction an toàn.
+        /// </summary>
+        public async Task<ChatSessionReadDto> CreateSessionAsync(int? customerId, string? sessionToken, string? title)
+        {
+            return await _context.ExecuteInTransactionAsync(async () =>
             {
-                string token = string.IsNullOrEmpty(request.SessionToken) ? Guid.NewGuid().ToString("N") : request.SessionToken;
-                session = new ChatSession
+                string token = string.IsNullOrEmpty(sessionToken) ? Guid.NewGuid().ToString("N") : sessionToken;
+                string sessionTitle = string.IsNullOrWhiteSpace(title) ? "Cuộc trò chuyện mới" : title.Trim();
+
+                var session = new ChatSession
                 {
                     CustomerId = customerId,
                     SessionToken = token,
-                    Title = GenerateSessionTitle(request.Message),
+                    Title = sessionTitle,
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow,
                     IsActive = true
                 };
+
                 _context.ChatSessions.Add(session);
                 await _context.SaveChangesAsync();
-            }
 
-            // Nếu user đã đăng nhập nhưng session chưa gán CustomerId -> Cập nhật
-            if (customerId.HasValue && customerId.Value > 0 && session.CustomerId == null)
-            {
-                session.CustomerId = customerId.Value;
-            }
-
-            // 1. Lưu tin nhắn của User
-            var userMsg = new ChatMessage
-            {
-                SessionId = session.Id,
-                Role = "user",
-                Content = request.Message.Trim(),
-                PayloadType = "none",
-                CreatedAt = DateTime.UtcNow
-            };
-            _context.ChatMessages.Add(userMsg);
-            await _context.SaveChangesAsync();
-
-            // 2. Phân tích ý định (Intent Recognition) & Tra cứu dữ liệu thực tế
-            string userText = request.Message.Trim();
-            string lowerText = userText.ToLower();
-
-            string payloadType = "none";
-            object? payloadObject = null;
-            string payloadJson = string.Empty;
-
-            // Xử lý Re-order (Khách muốn đặt lại đơn cũ)
-            if (lowerText.Contains("đặt lại") || lowerText.Contains("đơn hôm qua") || lowerText.Contains("đơn cũ") || lowerText.Contains("lên lại đơn"))
-            {
-                var reorderPayload = await PrepareReOrderPayloadAsync(session.CustomerId ?? customerId);
-                if (reorderPayload != null && reorderPayload.Items.Count > 0)
-                {
-                    payloadType = "interactive_order";
-                    payloadObject = reorderPayload;
-                    payloadJson = JsonSerializer.Serialize(reorderPayload);
-                }
-            }
-            // Xử lý Tra cứu đơn hàng
-            else if (lowerText.Contains("ord-") || lowerText.Contains("đơn hàng") || lowerText.Contains("vận đơn") || lowerText.Contains("tra cứu"))
-            {
-                // Logic tra cứu đơn hàng
-            }
-            // Xử lý Gợi ý sản phẩm
-            else if (lowerText.Contains("bơ") || lowerText.Contains("sầu riêng") || lowerText.Contains("xoài") || lowerText.Contains("trái cây") || lowerText.Contains("giảm giá") || lowerText.Contains("khuyến mãi") || lowerText.Contains("nông sản"))
-            {
-                var products = await SearchProductsAsync(userText);
-                if (products.Count > 0)
-                {
-                    payloadType = "product_cards";
-                    payloadObject = products;
-                    payloadJson = JsonSerializer.Serialize(products);
-                }
-            }
-
-            // 3. Gọi Gemini API để sinh câu trả lời đàm thoại tự nhiên & thông minh
-            string aiReplyContent = await GenerateGeminiResponseAsync(session.Id, userText, payloadType, payloadObject);
-
-            // 4. Lưu tin nhắn của AI Model
-            var modelMsg = new ChatMessage
-            {
-                SessionId = session.Id,
-                Role = "model",
-                Content = aiReplyContent,
-                PayloadType = payloadType,
-                PayloadJson = string.IsNullOrEmpty(payloadJson) ? null : payloadJson,
-                CreatedAt = DateTime.UtcNow
-            };
-            _context.ChatMessages.Add(modelMsg);
-
-            session.UpdatedAt = DateTime.UtcNow;
-            await _context.SaveChangesAsync();
-
-            return new AiChatResponseDto
-            {
-                SessionId = session.Id,
-                SessionToken = session.SessionToken,
-                Title = session.Title,
-                MessageId = modelMsg.Id,
-                Content = modelMsg.Content,
-                PayloadType = modelMsg.PayloadType,
-                Payload = payloadObject,
-                CreatedAt = modelMsg.CreatedAt
-            };
+                return _mapper.Map<ChatSessionReadDto>(session);
+            });
         }
 
+        /// <summary>
+        /// Xóa mềm một phiên hội thoại khỏi giao diện người dùng.
+        /// </summary>
+        public async Task<bool> DeleteSessionAsync(int sessionId, int? customerId, string? sessionToken)
+        {
+            return await _context.ExecuteInTransactionAsync(async () =>
+            {
+                var session = await _context.ChatSessions.FirstOrDefaultAsync(s => s.Id == sessionId && s.IsActive);
+                if (session == null) return false;
+
+                // Kiểm tra quyền sở hữu trước khi cho phép xóa
+                if (customerId.HasValue && customerId.Value > 0 && session.CustomerId.HasValue && session.CustomerId.Value != customerId.Value)
+                {
+                    return false;
+                }
+
+                session.IsActive = false;
+                session.UpdatedAt = DateTime.UtcNow;
+                await _context.SaveChangesAsync();
+                return true;
+            });
+        }
+
+        #endregion
+
+        #region 2. Tương tác Trí tuệ nhân tạo (LLM Orchestration)
+
+        /// <summary>
+        /// Nhận câu hỏi từ người dùng, tra cứu dữ liệu thực tế, gọi Google Gemini và phản hồi kèm UI Payload.
+        /// </summary>
+        public async Task<AiChatResponseDto> SendMessageAsync(AiSendMessageRequestDto request, int? customerId, string ipAddress)
+        {
+            return await _context.ExecuteInTransactionAsync(async () =>
+            {
+                ChatSession? session = null;
+
+                if (request.SessionId.HasValue && request.SessionId.Value > 0)
+                {
+                    session = await _context.ChatSessions
+                        .Include(s => s.Messages)
+                        .FirstOrDefaultAsync(s => s.Id == request.SessionId.Value && s.IsActive);
+                }
+
+                if (session == null)
+                {
+                    string token = string.IsNullOrEmpty(request.SessionToken) ? Guid.NewGuid().ToString("N") : request.SessionToken;
+                    session = new ChatSession
+                    {
+                        CustomerId = customerId,
+                        SessionToken = token,
+                        Title = GenerateSessionTitle(request.Message),
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow,
+                        IsActive = true
+                    };
+                    _context.ChatSessions.Add(session);
+                    await _context.SaveChangesAsync();
+                }
+
+                // Nếu user đã đăng nhập nhưng session chưa gắn CustomerId -> Đồng bộ
+                if (customerId.HasValue && customerId.Value > 0 && session.CustomerId == null)
+                {
+                    session.CustomerId = customerId.Value;
+                }
+
+                // 1. Lưu tin nhắn của User
+                var userMsg = new ChatMessage
+                {
+                    SessionId = session.Id,
+                    Role = "user",
+                    Content = request.Message.Trim(),
+                    PayloadType = "none",
+                    CreatedAt = DateTime.UtcNow
+                };
+                _context.ChatMessages.Add(userMsg);
+                await _context.SaveChangesAsync();
+
+                // 2. Phân tích ý định (Intent Recognition) & Tra cứu dữ liệu thực tế
+                string userText = request.Message.Trim();
+                string lowerText = userText.ToLower();
+
+                string payloadType = "none";
+                object? payloadObject = null;
+                string payloadJson = string.Empty;
+
+                // Xử lý Re-order (Khách muốn đặt lại đơn cũ)
+                if (lowerText.Contains("đặt lại") || lowerText.Contains("đơn hôm qua") || lowerText.Contains("đơn cũ") || lowerText.Contains("lên lại đơn"))
+                {
+                    var reorderPayload = await PrepareReOrderPayloadAsync(session.CustomerId ?? customerId);
+                    if (reorderPayload != null && reorderPayload.Items.Count > 0)
+                    {
+                        payloadType = "interactive_order";
+                        payloadObject = reorderPayload;
+                        payloadJson = JsonSerializer.Serialize(reorderPayload);
+                    }
+                }
+                // Xử lý Gợi ý sản phẩm
+                else if (lowerText.Contains("bơ") || lowerText.Contains("sầu riêng") || lowerText.Contains("xoài") || lowerText.Contains("trái cây") || 
+                         lowerText.Contains("giảm giá") || lowerText.Contains("khuyến mãi") || lowerText.Contains("nông sản") || lowerText.Contains("mua gì"))
+                {
+                    var products = await SearchProductsAsync(userText);
+                    if (products.Count > 0)
+                    {
+                        payloadType = "product_cards";
+                        payloadObject = products;
+                        payloadJson = JsonSerializer.Serialize(products);
+                    }
+                }
+
+                // 3. Gọi Gemini API để sinh câu trả lời đàm thoại tự nhiên & thông minh
+                string aiReplyContent = await GenerateGeminiResponseAsync(session.Id, userText, payloadType, payloadObject);
+
+                // 4. Lưu tin nhắn của AI Model
+                var modelMsg = new ChatMessage
+                {
+                    SessionId = session.Id,
+                    Role = "model",
+                    Content = aiReplyContent,
+                    PayloadType = payloadType,
+                    PayloadJson = string.IsNullOrEmpty(payloadJson) ? null : payloadJson,
+                    CreatedAt = DateTime.UtcNow
+                };
+                _context.ChatMessages.Add(modelMsg);
+
+                session.UpdatedAt = DateTime.UtcNow;
+                await _context.SaveChangesAsync();
+
+                return new AiChatResponseDto
+                {
+                    SessionId = session.Id,
+                    SessionToken = session.SessionToken,
+                    Title = session.Title,
+                    MessageId = modelMsg.Id,
+                    Content = modelMsg.Content,
+                    PayloadType = modelMsg.PayloadType,
+                    Payload = payloadObject,
+                    CreatedAt = modelMsg.CreatedAt
+                };
+            });
+        }
+
+        #endregion
+
+        #region 3. Nghiệp vụ Chốt đơn qua Chat (Conversational Commerce)
+
+        /// <summary>
+        /// Chuyển đổi giỏ hàng ảo từ khung chat thành đơn hàng thực tế, bọc trong Transaction an toàn.
+        /// </summary>
         public async Task<ConfirmInteractiveOrderResponseDto> ConfirmInteractiveOrderAsync(ConfirmInteractiveOrderRequestDto request, int? customerId)
         {
-            if (request.Items == null || request.Items.Count == 0)
+            return await _context.ExecuteInTransactionAsync(async () =>
             {
-                throw new ArgumentException("Danh sách sản phẩm trong đơn hàng không được để trống.");
-            }
-
-            int validCustomerId = customerId ?? 1; // Default to first customer if guest
-            var now = DateTime.UtcNow;
-            string orderCode = $"ORD-{now:yyyyMMdd}-{new Random().Next(1000, 9999)}";
-
-            decimal subTotal = 0;
-            decimal totalDiscount = 0;
-            var orderDetails = new List<OrderDetail>();
-
-            foreach (var item in request.Items)
-            {
-                var variant = await _context.ProductVariants
-                    .Include(v => v.Product)
-                    .FirstOrDefaultAsync(v => v.Id == item.VariantId && !v.IsDeleted);
-
-                if (variant == null) continue;
-
-                decimal itemTotal = (item.Quantity * item.UnitPrice) - item.DiscountAmount;
-                subTotal += (item.Quantity * item.UnitPrice);
-                totalDiscount += item.DiscountAmount;
-
-                orderDetails.Add(new OrderDetail
+                if (request.Items == null || request.Items.Count == 0)
                 {
-                    VariantId = variant.Id,
-                    UoMId = item.UoMId > 0 ? item.UoMId : (variant.Product?.BaseUoMId ?? 1),
-                    Quantity = item.Quantity,
-                    BaseQuantity = item.Quantity,
-                    UnitPrice = item.UnitPrice,
-                    DiscountAmount = item.DiscountAmount,
-                    TotalPrice = Math.Max(0, itemTotal),
-                    IssuedQuantity = 0
-                });
-            }
+                    throw new ArgumentException("Danh sách sản phẩm trong đơn hàng không được để trống.");
+                }
 
-            // Tính phí ship (Freeship nếu net subtotal >= 300k)
-            decimal netSubTotal = subTotal - totalDiscount;
-            decimal shippingFee = netSubTotal >= 300000 ? 0 : (request.ShippingFee > 0 ? request.ShippingFee : 25000);
-            decimal totalAmount = Math.Max(0, netSubTotal + shippingFee);
+                int validCustomerId = customerId ?? 1; // Default customer 1 if guest
+                var now = DateTime.UtcNow;
+                string orderCode = $"ORD-{now:yyyyMMdd}-{new Random().Next(1000, 9999)}";
 
-            var order = new Order
-            {
-                OrderCode = orderCode,
-                CustomerId = validCustomerId,
-                ReceiverName = request.ReceiverName ?? "Khách hàng",
-                ReceiverPhone = request.ReceiverPhone ?? "0900000000",
-                DeliveryAddress = request.DeliveryAddress ?? "Địa chỉ giao hàng",
-                GhnDistrictId = request.GhnDistrictId ?? 1442,
-                GhnWardCode = request.GhnWardCode ?? "20101",
-                ShippingProvider = "GHN",
-                OrderDate = now,
-                Status = OrderStatus.Confirmed,
-                PaymentStatus = PaymentStatus.Unpaid,
-                PaymentMethod = request.PaymentMethod == 1 ? PaymentMethod.COD : PaymentMethod.EWallet,
-                SubTotal = subTotal,
-                DiscountAmount = totalDiscount,
-                ShippingFee = shippingFee,
-                TotalAmount = totalAmount,
-                Note = string.IsNullOrWhiteSpace(request.Note) ? "Đặt qua Trợ lý AI Solaris Chatbot" : $"{request.Note} (Đặt qua AI Chatbot)",
-                CreatedAt = now,
-                UpdatedAt = now,
-                Details = orderDetails
-            };
+                decimal subTotal = 0;
+                decimal totalDiscount = 0;
+                var orderDetails = new List<OrderDetail>();
 
-            _context.Orders.Add(order);
-            await _context.SaveChangesAsync();
-
-            // Sinh URL thanh toán VNPay nếu chọn EWallet/VNPay
-            string? paymentUrl = null;
-            if (order.PaymentMethod == PaymentMethod.EWallet)
-            {
-                try
+                foreach (var item in request.Items)
                 {
-                    var vnPayReq = new VnPayPaymentRequestDto
+                    var variant = await _context.ProductVariants
+                        .Include(v => v.Product)
+                        .FirstOrDefaultAsync(v => v.Id == item.VariantId && !v.IsDeleted);
+
+                    if (variant == null) continue;
+
+                    decimal itemTotal = (item.Quantity * item.UnitPrice) - item.DiscountAmount;
+                    subTotal += (item.Quantity * item.UnitPrice);
+                    totalDiscount += item.DiscountAmount;
+
+                    orderDetails.Add(new OrderDetail
                     {
-                        OrderCode = order.OrderCode,
-                        OrderDescription = $"Thanh toan don hang {order.OrderCode} qua AI Chatbot"
-                    };
-                    // Sử dụng HttpContext qua Service
+                        VariantId = variant.Id,
+                        UoMId = item.UoMId > 0 ? item.UoMId : (variant.Product?.BaseUoMId ?? 1),
+                        Quantity = item.Quantity,
+                        BaseQuantity = item.Quantity,
+                        UnitPrice = item.UnitPrice,
+                        DiscountAmount = item.DiscountAmount,
+                        TotalPrice = Math.Max(0, itemTotal),
+                        IssuedQuantity = 0
+                    });
                 }
-                catch
+
+                // Tính phí ship (Freeship 100% nếu net subtotal >= 300k)
+                decimal netSubTotal = subTotal - totalDiscount;
+                decimal shippingFee = netSubTotal >= 300000 ? 0 : (request.ShippingFee > 0 ? request.ShippingFee : 25000);
+                decimal totalAmount = Math.Max(0, netSubTotal + shippingFee);
+
+                var order = new Order
                 {
-                    // Fallback
+                    OrderCode = orderCode,
+                    CustomerId = validCustomerId,
+                    ReceiverName = request.ReceiverName ?? "Khách hàng",
+                    ReceiverPhone = request.ReceiverPhone ?? "0900000000",
+                    DeliveryAddress = request.DeliveryAddress ?? "Địa chỉ giao hàng",
+                    GhnDistrictId = request.GhnDistrictId ?? 1442,
+                    GhnWardCode = request.GhnWardCode ?? "20101",
+                    ShippingProvider = "GHN",
+                    OrderDate = now,
+                    Status = OrderStatus.Confirmed,
+                    PaymentStatus = PaymentStatus.Unpaid,
+                    PaymentMethod = request.PaymentMethod == 1 ? PaymentMethod.COD : PaymentMethod.EWallet,
+                    SubTotal = subTotal,
+                    DiscountAmount = totalDiscount,
+                    ShippingFee = shippingFee,
+                    TotalAmount = totalAmount,
+                    Note = string.IsNullOrWhiteSpace(request.Note) ? "Đặt qua Trợ lý AI Solaris Chatbot" : $"{request.Note} (Đặt qua AI Chatbot)",
+                    CreatedAt = now,
+                    UpdatedAt = now,
+                    Details = orderDetails
+                };
+
+                _context.Orders.Add(order);
+                await _context.SaveChangesAsync();
+
+                // Sinh URL thanh toán VNPay nếu chọn EWallet/VNPay (Method = 3)
+                string? paymentUrl = null;
+                if (order.PaymentMethod == PaymentMethod.EWallet && _httpContextAccessor.HttpContext != null)
+                {
+                    try
+                    {
+                        var vnPayReq = new VnPayPaymentRequestDto
+                        {
+                            OrderCode = order.OrderCode,
+                            OrderDescription = $"Thanh toan don hang {order.OrderCode} qua AI Chatbot"
+                        };
+                        var vnPayRes = await _vnPayService.CreatePaymentUrlAsync(vnPayReq, _httpContextAccessor.HttpContext);
+                        paymentUrl = vnPayRes.PaymentUrl;
+                    }
+                    catch
+                    {
+                        // Fallback URL
+                    }
                 }
-            }
 
-            // Gửi tin nhắn xác nhận vào ChatSession
-            var successMsg = new ChatMessage
-            {
-                SessionId = request.SessionId,
-                Role = "model",
-                Content = $"🎉 **Lên đơn hàng thành công!**\n\nMã đơn hàng của bạn là: **`{order.OrderCode}`**\nTổng thanh toán: **{totalAmount:N0} ₫** (Đã áp dụng Freeship 100%).\n\nĐơn hàng đã được chuyển sang bộ phận kho để chuẩn bị và bàn giao bưu tá GHN Express.",
-                PayloadType = "order_success",
-                PayloadJson = JsonSerializer.Serialize(new
+                // Gửi tin nhắn xác nhận vào ChatSession
+                var successMsg = new ChatMessage
                 {
-                    orderId = order.Id,
-                    orderCode = order.OrderCode,
-                    totalAmount = order.TotalAmount,
-                    paymentMethodName = order.PaymentMethod == PaymentMethod.COD ? "Thanh toán khi nhận (COD)" : "Cổng VNPay Sandbox",
-                    paymentUrl = paymentUrl
-                }),
-                CreatedAt = DateTime.UtcNow
-            };
-            _context.ChatMessages.Add(successMsg);
-            await _context.SaveChangesAsync();
+                    SessionId = request.SessionId,
+                    Role = "model",
+                    Content = $"🎉 **Lên đơn hàng thành công!**\n\nMã đơn hàng của bạn là: **`{order.OrderCode}`**\nTổng thanh toán: **{totalAmount:N0} ₫** (Đã áp dụng Freeship 100%).\n\nĐơn hàng đã được chuyển sang bộ phận kho để chuẩn bị và bàn giao bưu tá GHN Express.",
+                    PayloadType = "order_success",
+                    PayloadJson = JsonSerializer.Serialize(new
+                    {
+                        orderId = order.Id,
+                        orderCode = order.OrderCode,
+                        totalAmount = order.TotalAmount,
+                        paymentMethodName = order.PaymentMethod == PaymentMethod.COD ? "Thanh toán khi nhận (COD)" : "Cổng VNPay Sandbox",
+                        paymentUrl = paymentUrl
+                    }),
+                    CreatedAt = DateTime.UtcNow
+                };
+                _context.ChatMessages.Add(successMsg);
+                await _context.SaveChangesAsync();
 
-            return new ConfirmInteractiveOrderResponseDto
-            {
-                OrderId = order.Id,
-                OrderCode = order.OrderCode,
-                TotalAmount = order.TotalAmount,
-                PaymentMethodName = order.PaymentMethod == PaymentMethod.COD ? "Thanh toán khi nhận (COD)" : "Cổng VNPay Sandbox",
-                PaymentUrl = paymentUrl,
-                Message = "Tạo đơn hàng thành công qua AI Chatbot."
-            };
+                return new ConfirmInteractiveOrderResponseDto
+                {
+                    OrderId = order.Id,
+                    OrderCode = order.OrderCode,
+                    TotalAmount = order.TotalAmount,
+                    PaymentMethodName = order.PaymentMethod == PaymentMethod.COD ? "Thanh toán khi nhận (COD)" : "Cổng VNPay Sandbox",
+                    PaymentUrl = paymentUrl,
+                    Message = "Tạo đơn hàng thành công qua AI Chatbot."
+                };
+            });
         }
+
+        #endregion
+
+        #region 4. Helper Methods & Gemini LLM Integration
 
         private async Task<InteractiveOrderPayloadDto?> PrepareReOrderPayloadAsync(int? customerId)
         {
@@ -384,24 +447,10 @@ namespace backend.Services
 
             if (lastOrder == null || lastOrder.Details.Count == 0)
             {
-                // Nếu chưa có đơn cũ -> gợi ý combo nông sản hot
                 return await PrepareDefaultSuggestionOrderAsync();
             }
 
-            var items = lastOrder.Details.Select(d => new InteractiveOrderItemDto
-            {
-                VariantId = d.VariantId,
-                VariantCode = d.Variant?.Code ?? "SP",
-                VariantName = d.Variant?.Name ?? "Nông sản sạch Solaris",
-                Slug = d.Variant?.Product?.Slug ?? "san-pham",
-                ImagePath = d.Variant?.ImagePath ?? d.Variant?.Product?.ImagePath,
-                UoMId = d.UoMId,
-                UoMName = d.UoM?.Name ?? "Kg",
-                Quantity = d.Quantity,
-                UnitPrice = d.UnitPrice,
-                DiscountAmount = d.DiscountAmount,
-                TotalPrice = d.TotalPrice
-            }).ToList();
+            var items = _mapper.Map<List<InteractiveOrderItemDto>>(lastOrder.Details);
 
             decimal subTotal = items.Sum(i => i.Quantity * i.UnitPrice);
             decimal totalDiscount = items.Sum(i => i.DiscountAmount);
@@ -474,7 +523,6 @@ namespace backend.Services
 
         private async Task<List<AiProductCardDto>> SearchProductsAsync(string keyword)
         {
-            string k = keyword.ToLower();
             var query = _context.Products
                 .Include(p => p.Variants)
                     .ThenInclude(v => v.Prices)
@@ -487,38 +535,14 @@ namespace backend.Services
                 .Take(4)
                 .ToListAsync();
 
-            var result = new List<AiProductCardDto>();
-            foreach (var p in products)
-            {
-                var firstVariant = p.Variants.FirstOrDefault(v => !v.IsDeleted && v.IsActive) ?? p.Variants.FirstOrDefault();
-                var firstPrice = firstVariant?.Prices.FirstOrDefault(pr => !pr.IsDeleted) ?? firstVariant?.Prices.FirstOrDefault();
-                decimal price = firstPrice?.Price ?? 60000;
-
-                result.Add(new AiProductCardDto
-                {
-                    Id = p.Id,
-                    VariantId = firstVariant?.Id ?? p.Id,
-                    Name = p.Name,
-                    Slug = p.Slug ?? "san-pham",
-                    ImagePath = p.ImagePath,
-                    Price = price,
-                    DiscountedPrice = price,
-                    UoMName = p.BaseUoM?.Name ?? "Kg",
-                    Origin = "Đà Lạt, Lâm Đồng",
-                    Certification = "VietGAP",
-                    BrixLevel = "15°Bx",
-                    IsInStock = true
-                });
-            }
-
-            return result;
+            return _mapper.Map<List<AiProductCardDto>>(products);
         }
 
         private async Task<string> GenerateGeminiResponseAsync(int sessionId, string userMessage, string payloadType, object? payloadObject)
         {
             var geminiSection = _config.GetSection("GeminiSettings");
             string apiKey = geminiSection["ApiKey"] ?? "AQ.Ab8RN6Ko-9K1tmb7cmtOnCitJg-3nNntiZFmh7jvycBIdFmEfg";
-            string model = geminiSection["Model"] ?? "gemini-flash-latest";
+            string model = geminiSection["Model"] ?? "gemini-3.5-flash-lite";
             string baseUrl = geminiSection["BaseUrl"] ?? "https://generativelanguage.googleapis.com/v1beta/models/";
 
             string systemInstruction = @"Bạn là Solaris AI Assistant - Trợ lý bán hàng & chăm sóc khách hàng trực tuyến 24/7 của Sàn Thương Mại Điện Tử Nông Sản Sạch Cao Cấp Solaris (solaris-os.io.vn).
@@ -531,7 +555,6 @@ NGUYÊN TẮC PHỤC VỤ CỦA BẠN:
 5. Thanh toán: Cổng VNPay Sandbox (VNPAY-QR, ATM nội địa, Visa/Mastercard), Chuyển khoản VietQR, COD khi nhận hàng.
 6. Lên đơn tự động: Khi khách muốn đặt hàng hoặc đặt lại đơn cũ, bạn phản hồi ngắn gọn, niềm nở và hướng dẫn khách kiểm tra số lượng trên thẻ đơn hàng tương tác để bấm thanh toán.";
 
-            // Lấy 6 tin nhắn gần nhất trong phiên để giữ ngữ cảnh hội thoại
             var recentMessages = await _context.ChatMessages
                 .Where(m => m.SessionId == sessionId)
                 .OrderByDescending(m => m.CreatedAt)
@@ -550,7 +573,6 @@ NGUYÊN TẮC PHỤC VỤ CỦA BẠN:
                 });
             }
 
-            // Nếu có payload đặc biệt, bổ sung gợi ý vào prompt
             string extraContext = string.Empty;
             if (payloadType == "interactive_order")
             {
@@ -583,7 +605,7 @@ NGUYÊN TẮC PHỤC VỤ CỦA BẠN:
                 }
             };
 
-            string[] candidateModels = new[] { model, "gemini-flash-latest", "gemini-flash-lite-latest" };
+            string[] candidateModels = new[] { model, "gemini-3.5-flash-lite", "gemini-3.7-flash", "gemini-2.5-flash-lite", "gemini-flash-latest" };
 
             foreach (var currentModel in candidateModels.Distinct())
             {
@@ -644,5 +666,7 @@ NGUYÊN TẮC PHỤC VỤ CỦA BẠN:
             }
             return string.IsNullOrWhiteSpace(cleaned) ? "Cuộc trò chuyện mới" : cleaned;
         }
+
+        #endregion
     }
 }
