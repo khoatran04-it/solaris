@@ -202,7 +202,7 @@ export default function ChatbotWidget() {
                     <span className="text-xs font-bold tracking-wide">Trợ Lý Nông Sản AI</span>
                     
                     <span className="px-1.5 py-0.5 bg-emerald-950/40 text-[10px] font-extrabold rounded-md text-emerald-200 border border-emerald-400/30">
-                        2.5 Flash
+                        3.5 Flash
                     </span>
                 </button>
             )}
