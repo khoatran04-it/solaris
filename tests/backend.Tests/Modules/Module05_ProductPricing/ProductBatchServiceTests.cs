@@ -411,5 +411,95 @@ namespace backend.Tests.Modules.Module05_ProductPricing
             batchAfterDelete.DeletedAt.Should().NotBeNull();
         }
         #endregion
+
+        #region TC08: SAFETY SHIELD - CHẶN XÓA KHI ĐÃ PHÁT SINH PHIẾU XUẤT KHO
+        /// <summary>
+        /// TC08: Chặn xóa lô hàng nếu đã phát sinh trong lịch sử phiếu xuất kho (InventoryIssueDetails).
+        /// </summary>
+        [Fact]
+        public async Task DeleteAsync_ShouldThrowInvalidOperation_WhenHasIssueDetails()
+        {
+            // Arrange
+            using var context = TestFactories.CreateInMemoryDbContext();
+            context.ProductBatches.Add(new ProductBatch
+            {
+                Id = 5,
+                BatchCode = "LOT-ISSUED",
+                VariantId = 1,
+                ManufactureDate = new DateTime(2026, 8, 1),
+                ExpiryDate = new DateTime(2026, 8, 20)
+            });
+
+            context.InventoryIssueDetails.Add(new InventoryIssueDetail
+            {
+                Id = 1,
+                InventoryIssueId = 100,
+                VariantId = 1,
+                BatchId = 5,
+                UoMId = 1,
+                Quantity = 20,
+                UnitPrice = 50000,
+                TotalPrice = 1000000
+            });
+            await context.SaveChangesAsync();
+
+            var service = new ProductBatchService(context, _mapper);
+
+            // Act & Assert
+            var act = () => service.DeleteAsync(5);
+            await act.Should().ThrowAsync<InvalidOperationException>()
+                .WithMessage("*Không thể xóa lô hàng này vì đã phát sinh trong lịch sử phiếu xuất kho.*");
+        }
+        #endregion
+
+        #region TC09: TRUY XUẤT NGUỒN GỐC - AUTOMAPPER FLATTENING DỮ LIỆU VARIANT VÀ SUPPLIER
+        /// <summary>
+        /// TC09: Đảm bảo AutoMapper làm phẳng chính xác VariantName, VariantCode và SupplierName phục vụ hiển thị tem nhãn.
+        /// </summary>
+        [Fact]
+        public async Task GetByIdAsync_ShouldMapFlattenedData_ForTraceability()
+        {
+            // Arrange
+            using var context = TestFactories.CreateInMemoryDbContext();
+            context.ProductVariants.Add(new ProductVariant
+            {
+                Id = 10,
+                Code = "SKU-TAO-ENVY",
+                Name = "Táo Envy Size Nhỏ",
+                ProductId = 1
+            });
+            context.Suppliers.Add(new Supplier
+            {
+                Id = 20,
+                Code = "SUP-DALAT",
+                Name = "Công Ty Nông Sản Đà Lạt",
+                Phone = "02633888999",
+                Email = "dalat@gap.vn"
+            });
+            context.ProductBatches.Add(new ProductBatch
+            {
+                Id = 100,
+                BatchCode = "LOT-ENVY-001",
+                VariantId = 10,
+                SupplierId = 20,
+                ManufactureDate = new DateTime(2026, 8, 1),
+                ExpiryDate = new DateTime(2026, 8, 30),
+                IsActive = true
+            });
+            await context.SaveChangesAsync();
+
+            var service = new ProductBatchService(context, _mapper);
+
+            // Act
+            var result = await service.GetByIdAsync(100);
+
+            // Assert
+            result.Should().NotBeNull();
+            result.BatchCode.Should().Be("LOT-ENVY-001");
+            result.VariantName.Should().Be("Táo Envy Size Nhỏ");
+            result.VariantCode.Should().Be("SKU-TAO-ENVY");
+            result.SupplierName.Should().Be("Công Ty Nông Sản Đà Lạt");
+        }
+        #endregion
     }
 }
