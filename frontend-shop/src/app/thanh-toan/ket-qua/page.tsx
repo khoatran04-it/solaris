@@ -1,13 +1,12 @@
 'use client';
 
 import React, { useEffect, useState, Suspense } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { 
     CheckCircle2, 
     XCircle, 
     ShoppingBag, 
-    ArrowRight, 
     FileText,
     ShieldCheck
 } from 'lucide-react';
@@ -17,7 +16,6 @@ import { VnPayCallbackResult } from '@/types/payment';
 
 function KetQuaContent() {
     const searchParams = useSearchParams();
-    const router = useRouter();
 
     const [loading, setLoading] = useState(true);
     const [result, setResult] = useState<VnPayCallbackResult | null>(null);

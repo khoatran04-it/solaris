@@ -7,7 +7,6 @@ import { Lock, User, Phone, Mail, ArrowRight, AlertCircle } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { useCartStore } from '@/stores/cartStore';
 import shopAuthApi from '@/api/shopAuthApi';
-import { ShopAuthResponse } from '@/types/auth';
 
 function DangKyContent() {
     const router = useRouter();

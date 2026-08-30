@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { ShoppingBag, Check, ShieldCheck, Truck, RotateCcw, Award, MapPin, Heart, Sparkles } from 'lucide-react';
+import { ShoppingBag, Check, ShieldCheck, Truck, RotateCcw } from 'lucide-react';
 import { ShopProductDetail, ShopProductVariant, ShopVariantPrice } from '@/types/product';
 import { formatVND } from '@/lib/utils';
 import { useCartStore } from '@/stores/cartStore';

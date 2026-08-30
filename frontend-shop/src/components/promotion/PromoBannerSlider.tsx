@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ChevronLeft, ChevronRight, Sparkles, Clock, ArrowRight } from 'lucide-react';
+import { Sparkles, Clock, ArrowRight } from 'lucide-react';
 import { ShopPromotionBadge } from '@/types/product';
 
 interface PromoBannerSliderProps {

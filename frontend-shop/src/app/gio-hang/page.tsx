@@ -1,9 +1,9 @@
-﻿'use client';
+'use client';
 
 import React, { useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ShoppingBag, Trash2, ArrowRight, ShieldCheck, Truck, RotateCcw, AlertTriangle } from 'lucide-react';
+import { ShoppingBag, Trash2, ArrowRight, ShieldCheck, Truck } from 'lucide-react';
 import { useCartStore } from '@/stores/cartStore';
 import { useAuthStore } from '@/stores/authStore';
 import { formatVND } from '@/lib/utils';
@@ -11,7 +11,7 @@ import { formatVND } from '@/lib/utils';
 export default function GioHangPage() {
     const router = useRouter();
     const { isAuthenticated } = useAuthStore();
-    const { cart, guestItems, totalCount, fetchCart, updateQuantity, removeItem, clearCart, isLoading } = useCartStore();
+    const { cart, guestItems, totalCount, fetchCart, updateQuantity, removeItem, clearCart } = useCartStore();
 
     useEffect(() => {
         fetchCart();

@@ -14,8 +14,7 @@ import {
     LogOut, 
     Package, 
     MapPin, 
-    RotateCcw,
-    ShieldCheck
+    RotateCcw
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { useCartStore } from '@/stores/cartStore';
@@ -31,7 +30,6 @@ export default function Header() {
     const [categories, setCategories] = useState<ShopCategoryTree[]>([]);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-    const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
 
     useEffect(() => {
         initAuth();

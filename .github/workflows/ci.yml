@@ -70,10 +70,10 @@ jobs:
         run: npm run build
 
   # ==========================================
-  # 3. BUILD FRONTEND SHOP (Next.js 15 SSR)
+  # 3. BUILD & TEST FRONTEND SHOP (Next.js 16 SSR + Vitest)
   # ==========================================
   frontend-shop-ci:
-    name: Build Frontend Shop
+    name: Build & Test Frontend Shop
     runs-on: ubuntu-latest
 
     steps:
@@ -91,10 +91,19 @@ jobs:
         working-directory: ./frontend-shop
         run: npm ci
 
-      - name: Build Next.js 15 Standalone
+      - name: Run ESLint Check
+        working-directory: ./frontend-shop
+        run: npm run lint
+
+      - name: Run Frontend Shop Unit & Component Tests (Vitest)
+        working-directory: ./frontend-shop
+        run: npm run test
+
+      - name: Build Next.js 16 Standalone
         working-directory: ./frontend-shop
         env:
           NEXT_TELEMETRY_DISABLED: 1
           NEXT_PUBLIC_API_URL: https://localhost:7070/api/shop
           NEXT_PUBLIC_SITE_URL: http://localhost:3000
         run: npm run build
+

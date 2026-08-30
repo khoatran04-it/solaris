@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { MapPin, User, Package, RotateCcw, Plus, Trash2, CheckCircle2, Star } from 'lucide-react';
+import { MapPin, User, Package, RotateCcw, Plus, Trash2 } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import shopCustomerApi from '@/api/shopCustomerApi';
 import { ShopAddress, ShopAddressPayload } from '@/types/customer';
