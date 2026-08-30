@@ -163,6 +163,7 @@ export default function InteractiveOrderCard({ sessionId, payload, onOrderSucces
                                 type="button"
                                 onClick={() => handleUpdateQuantity(idx, -1)}
                                 className="w-6 h-6 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 flex items-center justify-center font-bold"
+                                title="Giảm số lượng"
                             >
                                 <Minus className="w-3 h-3" />
                             </button>
@@ -173,6 +174,7 @@ export default function InteractiveOrderCard({ sessionId, payload, onOrderSucces
                                 type="button"
                                 onClick={() => handleUpdateQuantity(idx, 1)}
                                 className="w-6 h-6 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 flex items-center justify-center font-bold"
+                                title="Tăng số lượng"
                             >
                                 <Plus className="w-3 h-3" />
                             </button>
