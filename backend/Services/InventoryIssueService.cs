@@ -2,13 +2,21 @@ using AutoMapper;
 using backend.Data;
 using backend.DTOs;
 using backend.DTOs.InventoryIssueDTOs;
+using backend.Helpers;
 using backend.Models;
 using backend.Models.Enums;
 using backend.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace backend.Services
 {
+    /// <summary>
+    /// Service xử lý toàn bộ quy trình Phiếu Xuất Kho (Goods Issue Note) và thuật toán gợi ý lấy hàng FEFO.
+    /// </summary>
     public class InventoryIssueService : IInventoryIssueService
     {
         private readonly SolarisDbContext _context;
@@ -20,6 +28,8 @@ namespace backend.Services
             _mapper = mapper;
         }
 
+        #region Truy vấn & Phân quyền (Query & RBAC)
+        /// <inheritdoc />
         public async Task<PagedResult<InventoryIssueReadDto>> GetPagedAsync(
             string? search,
             int? warehouseId,
@@ -50,12 +60,17 @@ namespace backend.Services
                                          (i.Note != null && i.Note.ToLower().Contains(s)));
             }
 
-            if (warehouseId.HasValue) query = query.Where(i => i.WarehouseId == warehouseId.Value);
+            if (warehouseId.HasValue && warehouseId.Value > 0)
+                query = query.Where(i => i.WarehouseId == warehouseId.Value);
+
             if (status.HasValue && Enum.IsDefined(typeof(InventoryIssueStatus), status.Value))
                 query = query.Where(i => i.Status == (InventoryIssueStatus)status.Value);
 
-            if (startDate.HasValue) query = query.Where(i => i.IssueDate >= startDate.Value.Date);
-            if (endDate.HasValue) query = query.Where(i => i.IssueDate < endDate.Value.Date.AddDays(1));
+            if (startDate.HasValue)
+                query = query.Where(i => i.IssueDate >= startDate.Value.Date);
+
+            if (endDate.HasValue)
+                query = query.Where(i => i.IssueDate < endDate.Value.Date.AddDays(1));
 
             var totalRecords = await query.CountAsync();
 
@@ -76,6 +91,7 @@ namespace backend.Services
             };
         }
 
+        /// <inheritdoc />
         public async Task<InventoryIssueReadDto> GetByIdAsync(int id, List<int>? allowedWarehouseIds = null)
         {
             var query = _context.InventoryIssues
@@ -94,84 +110,72 @@ namespace backend.Services
             }
 
             var entity = await query.FirstOrDefaultAsync(i => i.Id == id);
-            if (entity == null) throw new KeyNotFoundException("Không tìm thấy Phiếu xuất kho.");
+            if (entity == null)
+                throw new KeyNotFoundException("Không tìm thấy Phiếu xuất kho.");
 
             return _mapper.Map<InventoryIssueReadDto>(entity);
         }
+        #endregion
 
+        #region Thao tác Dữ liệu & Quy trình (Command & Workflow)
+        /// <inheritdoc />
         public async Task<int> CreateAsync(InventoryIssueCreateDto dto, int? currentUserId = null)
         {
             if (dto.Details == null || !dto.Details.Any())
-                throw new ArgumentException("Phiếu xuất phải có ít nhất 1 dòng chi tiết.");
+                throw new InvalidOperationException("Phiếu xuất kho phải có ít nhất 1 dòng chi tiết.");
 
-            var whExists = await _context.Warehouses.AnyAsync(w => w.Id == dto.WarehouseId);
+            var whExists = await _context.Warehouses.AnyAsync(w => w.Id == dto.WarehouseId && !w.IsDeleted);
             if (!whExists)
-                throw new ArgumentException($"Kho hàng với ID {dto.WarehouseId} không tồn tại.");
+                throw new InvalidOperationException($"Kho hàng với ID {dto.WarehouseId} không tồn tại hoặc đã bị vô hiệu hóa.");
 
             int safeUserId = currentUserId ?? dto.IssuedById ?? 1;
-            var userExists = await _context.IAUsers.AnyAsync(u => u.Id == safeUserId);
+            var userExists = await _context.IAUsers.AnyAsync(u => u.Id == safeUserId && !u.IsDeleted);
             if (!userExists)
             {
-                var firstUser = await _context.IAUsers.FirstOrDefaultAsync();
+                var firstUser = await _context.IAUsers.FirstOrDefaultAsync(u => !u.IsDeleted);
                 safeUserId = firstUser?.Id ?? 1;
             }
 
-            var issue = new InventoryIssue
+            return await _context.ExecuteInTransactionAsync(async () =>
             {
-                IssueCode = $"ISS-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString()[..6].ToUpper()}",
-                OrderId = dto.OrderId,
-                WarehouseId = dto.WarehouseId,
-                IssuedById = safeUserId,
-                IssueDate = dto.IssueDate ?? DateTime.UtcNow,
-                Status = InventoryIssueStatus.Pending,
-                ReceiverName = dto.ReceiverName?.Trim(),
-                ReceiverPhone = dto.ReceiverPhone?.Trim(),
-                DeliveryAddress = dto.DeliveryAddress?.Trim(),
-                Note = dto.Note?.Trim(),
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow,
-                IsDeleted = false
-            };
+                var issue = _mapper.Map<InventoryIssue>(dto);
 
-            foreach (var item in dto.Details)
-            {
-                issue.Details.Add(new InventoryIssueDetail
-                {
-                    OrderDetailId = item.OrderDetailId,
-                    VariantId = item.VariantId,
-                    BatchId = item.BatchId,
-                    UoMId = item.UoMId,
-                    Quantity = item.Quantity,
-                    UnitPrice = item.UnitPrice,
-                    TotalPrice = item.Quantity * item.UnitPrice
-                });
-            }
+                issue.IssueCode = $"ISS-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString()[..6].ToUpper()}";
+                issue.IssuedById = safeUserId;
+                issue.IssueDate = dto.IssueDate ?? DateTime.UtcNow;
+                issue.Status = InventoryIssueStatus.Pending;
+                issue.CreatedAt = DateTime.UtcNow;
+                issue.UpdatedAt = DateTime.UtcNow;
+                issue.IsDeleted = false;
 
-            _context.InventoryIssues.Add(issue);
-            await _context.SaveChangesAsync();
+                _context.InventoryIssues.Add(issue);
+                await _context.SaveChangesAsync();
 
-            return issue.Id;
+                return issue.Id;
+            });
         }
 
+        /// <inheritdoc />
         public async Task<bool> CompleteIssueAsync(int id, int issuedById, string? note)
         {
-            using var transaction = await _context.Database.BeginTransactionAsync();
-            try
+            return await _context.ExecuteInTransactionAsync(async () =>
             {
                 var issue = await _context.InventoryIssues
                     .Include(i => i.Details)
                     .Include(i => i.Order).ThenInclude(o => o!.Details)
                     .FirstOrDefaultAsync(i => i.Id == id);
 
-                if (issue == null) throw new KeyNotFoundException("Không tìm thấy Phiếu xuất kho.");
+                if (issue == null)
+                    throw new KeyNotFoundException("Không tìm thấy Phiếu xuất kho.");
+
                 if (issue.Status != InventoryIssueStatus.Pending && issue.Status != InventoryIssueStatus.Picking)
-                    throw new InvalidOperationException("Phiếu xuất phải ở trạng thái Pending hoặc Picking mới có thể hoàn tất.");
+                    throw new InvalidOperationException("Phiếu xuất kho phải ở trạng thái Chờ xử lý (Pending) hoặc Đang nhặt hàng (Picking) mới có thể hoàn tất.");
 
                 int safeUserId = issuedById;
-                var userExists = await _context.IAUsers.AnyAsync(u => u.Id == safeUserId);
+                var userExists = await _context.IAUsers.AnyAsync(u => u.Id == safeUserId && !u.IsDeleted);
                 if (!userExists)
                 {
-                    var firstUser = await _context.IAUsers.FirstOrDefaultAsync();
+                    var firstUser = await _context.IAUsers.FirstOrDefaultAsync(u => !u.IsDeleted);
                     safeUserId = firstUser?.Id ?? 1;
                 }
 
@@ -197,7 +201,6 @@ namespace backend.Services
                         }
                         else
                         {
-                            // Nếu xuất nhiều hơn số giữ chỗ, trừ phần còn lại vào QuantityAvailable
                             var diff = detail.Quantity - inventory.QuantityReserved;
                             inventory.QuantityReserved = 0;
                             inventory.QuantityAvailable = Math.Max(0, inventory.QuantityAvailable - diff);
@@ -239,47 +242,58 @@ namespace backend.Services
                 }
 
                 await _context.SaveChangesAsync();
-                await transaction.CommitAsync();
                 return true;
-            }
-            catch
-            {
-                await transaction.RollbackAsync();
-                throw;
-            }
+            });
         }
 
+        /// <inheritdoc />
         public async Task<bool> CancelIssueAsync(int id, string reason)
         {
-            var issue = await _context.InventoryIssues.FindAsync(id);
-            if (issue == null) throw new KeyNotFoundException("Không tìm thấy Phiếu xuất kho.");
-            if (issue.Status == InventoryIssueStatus.Completed)
-                throw new InvalidOperationException("Không thể hủy Phiếu xuất kho đã hoàn tất.");
+            if (string.IsNullOrWhiteSpace(reason))
+                throw new ArgumentException("Lý do hủy phiếu xuất kho không được để trống.", nameof(reason));
 
-            issue.Status = InventoryIssueStatus.Cancelled;
-            issue.CancellationReason = reason?.Trim();
-            issue.UpdatedAt = DateTime.UtcNow;
+            return await _context.ExecuteInTransactionAsync(async () =>
+            {
+                var issue = await _context.InventoryIssues.FindAsync(id);
+                if (issue == null)
+                    throw new KeyNotFoundException("Không tìm thấy Phiếu xuất kho.");
 
-            await _context.SaveChangesAsync();
-            return true;
+                if (issue.Status == InventoryIssueStatus.Completed)
+                    throw new InvalidOperationException("Không thể hủy Phiếu xuất kho đã hoàn tất.");
+
+                issue.Status = InventoryIssueStatus.Cancelled;
+                issue.CancellationReason = reason.Trim();
+                issue.UpdatedAt = DateTime.UtcNow;
+
+                await _context.SaveChangesAsync();
+                return true;
+            });
         }
 
+        /// <inheritdoc />
         public async Task<bool> DeleteAsync(int id)
         {
-            var issue = await _context.InventoryIssues.FindAsync(id);
-            if (issue == null) throw new KeyNotFoundException("Không tìm thấy Phiếu xuất kho.");
+            return await _context.ExecuteInTransactionAsync(async () =>
+            {
+                var issue = await _context.InventoryIssues.FindAsync(id);
+                if (issue == null)
+                    throw new KeyNotFoundException("Không tìm thấy Phiếu xuất kho.");
 
-            if (issue.Status == InventoryIssueStatus.Completed)
-                throw new InvalidOperationException("Không thể xóa Phiếu xuất kho đã hoàn tất.");
+                if (issue.Status == InventoryIssueStatus.Completed)
+                    throw new InvalidOperationException("Không thể xóa Phiếu xuất kho đã hoàn tất.");
 
-            issue.IsDeleted = true;
-            issue.DeletedAt = DateTime.UtcNow;
-            issue.UpdatedAt = DateTime.UtcNow;
+                issue.IsDeleted = true;
+                issue.DeletedAt = DateTime.UtcNow;
+                issue.UpdatedAt = DateTime.UtcNow;
 
-            await _context.SaveChangesAsync();
-            return true;
+                await _context.SaveChangesAsync();
+                return true;
+            });
         }
+        #endregion
 
+        #region Thuật toán Kho (Smart Logistics)
+        /// <inheritdoc />
         public async Task<List<SuggestedBatchDto>> GetSuggestedBatchesAsync(int warehouseId, int variantId, decimal neededQuantity)
         {
             var inventories = await _context.WarehouseInventories
@@ -305,9 +319,11 @@ namespace backend.Services
                 });
 
                 remaining -= pickQty;
+                if (remaining <= 0) break;
             }
 
             return result;
         }
+        #endregion
     }
 }
