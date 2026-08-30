@@ -4,15 +4,12 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
     Bot, 
     X, 
-    Sparkles, 
     Send, 
-    RotateCcw, 
     Plus, 
     Trash2, 
     Clock, 
     ChevronLeft,
-    Loader2,
-    CheckCircle2
+    Loader2
 } from 'lucide-react';
 import { ChatSession, ChatMessage } from '@/types/chat';
 import shopAiApi from '@/api/shopAiApi';
@@ -49,6 +46,7 @@ export default function ChatbotWidget() {
         if (isOpen && sessionToken) {
             loadSessions();
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isOpen, sessionToken]);
 
     // 3. Tự động cuộn xuống tin nhắn mới nhất

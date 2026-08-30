@@ -1,6 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
-import { CheckCircle2, ArrowRight, ExternalLink, Package } from 'lucide-react';
+import { CheckCircle2, ExternalLink, Package } from 'lucide-react';
 import { formatVND } from '@/lib/utils';
 
 interface OrderSuccessCardProps {

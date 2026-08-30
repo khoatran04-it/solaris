@@ -2,7 +2,7 @@ import React from 'react';
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { Sparkles, Clock, Tag } from 'lucide-react';
+import { Sparkles, Clock } from 'lucide-react';
 import ProductCard from '@/components/product/ProductCard';
 import shopProductApi from '@/api/shopProductApi';
 import { formatDate } from '@/lib/utils';

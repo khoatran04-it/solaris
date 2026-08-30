@@ -6,8 +6,6 @@ import {
     Plus, 
     Minus, 
     Trash2, 
-    Truck, 
-    CreditCard, 
     ArrowRight, 
     Sparkles, 
     Gift,

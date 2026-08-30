@@ -1,6 +1,5 @@
 import { MetadataRoute } from 'next';
 import shopProductApi from '@/api/shopProductApi';
-import { PagedResult } from '@/types/common';
 import { ShopProductCard, ShopCategoryTree, ShopCategoryItem, ShopPromotionBadge } from '@/types/product';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {

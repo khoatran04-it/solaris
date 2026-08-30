@@ -48,7 +48,7 @@ export const useCartStore = create<CartState>((set, get) => ({
         const token = typeof window !== 'undefined' ? localStorage.getItem('solaris_shop_token') : null;
         if (!token) {
             // Guest mode
-            let items = [...get().guestItems];
+            const items = [...get().guestItems];
             const existing = items.find(i => i.variantId === variantId && i.uoMId === uoMId);
             if (existing) {
                 existing.quantity += quantity;

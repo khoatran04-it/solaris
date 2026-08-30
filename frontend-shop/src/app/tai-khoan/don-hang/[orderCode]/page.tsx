@@ -5,14 +5,9 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { 
     Package, 
-    Calendar, 
     MapPin, 
-    CreditCard, 
-    ShieldCheck, 
     RotateCcw, 
-    XCircle, 
-    ArrowLeft,
-    CheckCircle2
+    ArrowLeft
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import shopOrderApi from '@/api/shopOrderApi';

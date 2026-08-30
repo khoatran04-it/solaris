@@ -2,7 +2,7 @@ import React from 'react';
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { MapPin, Award, CheckCircle2, ShieldAlert, Sparkles, FileText, Info } from 'lucide-react';
+import { MapPin, Award, CheckCircle2, FileText, Info } from 'lucide-react';
 import ProductDetailClient from '@/components/product/ProductDetailClient';
 import JsonLdProduct from '@/components/seo/JsonLdProduct';
 import shopProductApi from '@/api/shopProductApi';

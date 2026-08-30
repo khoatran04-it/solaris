@@ -1,10 +1,9 @@
 import React from 'react';
 import Link from 'next/link';
-import { Sparkles, ArrowRight, ShieldCheck, Flame, Leaf, CheckCircle2, TrendingUp } from 'lucide-react';
+import { ArrowRight, Flame, Leaf, CheckCircle2 } from 'lucide-react';
 import PromoBannerSlider from '@/components/promotion/PromoBannerSlider';
 import ProductCard from '@/components/product/ProductCard';
 import shopProductApi from '@/api/shopProductApi';
-import { ShopCategoryTree, ShopProductCard, ShopPromotionBadge } from '@/types/product';
 
 // Force dynamic rendering to avoid build-time static hang
 export const dynamic = 'force-dynamic';

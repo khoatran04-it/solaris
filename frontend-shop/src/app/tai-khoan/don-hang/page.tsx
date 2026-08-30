@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Package, Calendar, ArrowRight, Eye, User, MapPin, RotateCcw, Clock } from 'lucide-react';
+import { Package, Calendar, Eye, User, MapPin, RotateCcw } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import shopOrderApi from '@/api/shopOrderApi';
 import { formatVND, formatDateTime } from '@/lib/utils';
@@ -109,7 +109,11 @@ export default function DonHangListPage() {
 
                 {/* Orders List */}
                 <div className="lg:col-span-3 space-y-4">
-                    {ordersResult.items.length > 0 ? (
+                    {isLoading ? (
+                        <div className="bg-white rounded-3xl border border-slate-200 p-16 text-center text-xs text-slate-400">
+                            Đang tải lịch sử đơn hàng...
+                        </div>
+                    ) : ordersResult.items.length > 0 ? (
                         ordersResult.items.map((order) => (
                             <div
                                 key={order.id}
@@ -151,10 +155,10 @@ export default function DonHangListPage() {
                                 </div>
 
                                 {/* Total & CTA */}
-                                <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
+                                <div className="flex items-center justify-between pt-2">
                                     <div>
                                         <span className="text-xs text-slate-500">Tổng thanh toán: </span>
-                                        <span className="font-black text-emerald-700 text-base">
+                                        <span className="font-black text-sm text-emerald-700">
                                             {formatVND(order.totalAmount)}
                                         </span>
                                     </div>
