@@ -10,8 +10,9 @@ namespace backend.Controllers
     /// <summary>
     /// API Quản lý Lô Hàng Nông Sản (Product Batches / Lots).
     /// </summary>
-    [Route("api/[controller]")]
     [ApiController]
+    [Route("api/product-batches")]
+    [Route("api/[controller]")]
     [Authorize]
     [Produces("application/json")]
     public class ProductBatchesController : ControllerBase

@@ -147,7 +147,7 @@ const PurchaseOrderList: React.FC = () => {
         onSearchChange={setSearchTerm}
         onAdd={() => navigate('/purchase-orders/create')}
         icon={ShoppingCart}
-        searchPlaceholder="Tìm theo mã PO..."
+        searchPlaceholder="Tìm kiếm theo mã đơn, nhà cung cấp, ghi chú..."
       />
 
       <ListCard>

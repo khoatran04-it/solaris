@@ -277,39 +277,36 @@ namespace backend.Tests.Modules.Module05_ProductPricing
         /// TC05: Cập nhật lô hàng thành công, chặn nếu trùng mã với lô hàng khác hoặc ID không tồn tại.
         /// </summary>
         [Fact]
-        public async Task UpdateAsync_ShouldUpdateSuccessfully_AndValidateUniqueness()
+        public async Task UpdateAsync_ShouldUpdateSuccessfully_AndValidateDates()
         {
             // Arrange
             using var context = TestFactories.CreateInMemoryDbContext();
             context.ProductVariants.Add(new ProductVariant { Id = 1, Code = "SKU-01", Name = "Dưa lưới", ProductId = 1 });
             context.ProductBatches.AddRange(
-                new ProductBatch { Id = 1, BatchCode = "LOT-01", VariantId = 1, ManufactureDate = new DateTime(2026, 8, 1), ExpiryDate = new DateTime(2026, 8, 20) },
-                new ProductBatch { Id = 2, BatchCode = "LOT-02", VariantId = 1, ManufactureDate = new DateTime(2026, 8, 1), ExpiryDate = new DateTime(2026, 8, 20) }
+                new ProductBatch { Id = 1, BatchCode = "LOT-01", VariantId = 1, ManufactureDate = new DateTime(2026, 8, 1), ExpiryDate = new DateTime(2026, 8, 20), IsActive = true },
+                new ProductBatch { Id = 2, BatchCode = "LOT-02", VariantId = 1, ManufactureDate = new DateTime(2026, 8, 1), ExpiryDate = new DateTime(2026, 8, 20), IsActive = true }
             );
             await context.SaveChangesAsync();
 
             var service = new ProductBatchService(context, _mapper);
 
-            // Act 1: Cập nhật hợp lệ
+            // Act 1: Cập nhật hợp lệ (Gia hạn HSD và đổi trạng thái)
             var updateDto = new ProductBatchUpdateDto
             {
-                BatchCode = "LOT-01-UPDATED",
-                VariantId = 1,
                 ManufactureDate = new DateTime(2026, 8, 2),
                 ExpiryDate = new DateTime(2026, 8, 25),
-                IsActive = true
+                IsActive = false
             };
             var updateResult = await service.UpdateAsync(1, updateDto);
 
-            // Act 2: Cập nhật trùng mã với Lot 2
-            var duplicateDto = new ProductBatchUpdateDto
+            // Act 2: Cập nhật HSD <= NSX
+            var invalidDateDto = new ProductBatchUpdateDto
             {
-                BatchCode = "lot-02",
-                VariantId = 1,
-                ManufactureDate = new DateTime(2026, 8, 2),
-                ExpiryDate = new DateTime(2026, 8, 25)
+                ManufactureDate = new DateTime(2026, 8, 25),
+                ExpiryDate = new DateTime(2026, 8, 20),
+                IsActive = true
             };
-            var actDuplicate = () => service.UpdateAsync(1, duplicateDto);
+            var actInvalidDate = () => service.UpdateAsync(1, invalidDateDto);
 
             // Act 3: Cập nhật ID không tồn tại
             var actNotFound = () => service.UpdateAsync(999, updateDto);
@@ -317,10 +314,11 @@ namespace backend.Tests.Modules.Module05_ProductPricing
             // Assert
             updateResult.Should().BeTrue();
             var updated = await context.ProductBatches.FindAsync(1);
-            updated!.BatchCode.Should().Be("LOT-01-UPDATED");
+            updated!.ExpiryDate.Should().Be(new DateTime(2026, 8, 25));
+            updated.IsActive.Should().BeFalse();
 
-            await actDuplicate.Should().ThrowAsync<InvalidOperationException>()
-                .WithMessage("*Cập nhật thất bại: Mã lô 'lot-02' đã bị trùng lặp.*");
+            await actInvalidDate.Should().ThrowAsync<InvalidOperationException>()
+                .WithMessage("*Hạn sử dụng phải lớn hơn Ngày sản xuất.*");
 
             await actNotFound.Should().ThrowAsync<KeyNotFoundException>()
                 .WithMessage("*Không tìm thấy lô hàng cần sửa.*");

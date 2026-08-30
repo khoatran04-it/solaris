@@ -6,6 +6,10 @@ using backend.Helpers;
 using backend.Models;
 using backend.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace backend.Services
 {
@@ -63,11 +67,11 @@ namespace backend.Services
             }
 
             // 2. Filter: Theo Biến thể sản phẩm
-            if (variantId.HasValue)
+            if (variantId.HasValue && variantId.Value > 0)
                 query = query.Where(x => x.VariantId == variantId.Value);
 
             // 3. Filter: Theo Nhà cung cấp
-            if (supplierId.HasValue)
+            if (supplierId.HasValue && supplierId.Value > 0)
                 query = query.Where(x => x.SupplierId == supplierId.Value);
 
             // 4. Filter: Trạng thái
@@ -173,30 +177,15 @@ namespace backend.Services
                 if (entity == null)
                     throw new KeyNotFoundException("Không tìm thấy lô hàng cần sửa.");
 
-                var trimmedCode = dto.BatchCode.Trim();
-
                 // 1. Business Rule: Validate NSX & HSD
                 if (dto.ExpiryDate <= dto.ManufactureDate)
                     throw new InvalidOperationException("Hạn sử dụng phải lớn hơn Ngày sản xuất.");
 
-                // 2. Kiểm tra trùng Mã lô (Trừ bản thân nó)
-                if (await _context.ProductBatches.AnyAsync(x => x.Id != id && x.BatchCode.ToLower() == trimmedCode.ToLower()))
-                    throw new InvalidOperationException($"Cập nhật thất bại: Mã lô '{trimmedCode}' đã bị trùng lặp.");
-
-                // 3. Kiểm tra tính hợp lệ của VariantId
-                if (!await _context.ProductVariants.AnyAsync(v => v.Id == dto.VariantId && !v.IsDeleted))
-                    throw new InvalidOperationException("Biến thể sản phẩm không tồn tại hoặc đã bị xóa.");
-
-                // 4. Kiểm tra tính hợp lệ của SupplierId nếu có
-                if (dto.SupplierId > 0 && !await _context.Suppliers.AnyAsync(s => s.Id == dto.SupplierId && !s.IsDeleted))
-                    throw new InvalidOperationException("Nhà cung cấp không tồn tại hoặc đã bị xóa.");
-
+                // 2. Map các trường được phép cập nhật (ManufactureDate, ExpiryDate, IsActive)
                 _mapper.Map(dto, entity);
-                entity.BatchCode = trimmedCode;
                 entity.UpdatedAt = DateTime.UtcNow;
 
                 await _context.SaveChangesAsync();
-
                 return true;
             });
         }
@@ -210,7 +199,7 @@ namespace backend.Services
                 if (entity == null)
                     throw new KeyNotFoundException("Không tìm thấy lô hàng để xóa.");
 
-                // 1. SAFETY SHIELD: Chặn xóa nếu lô hàng đang có tồn kho
+                // 1. SAFETY SHIELD: Chặn xóa nếu lô hàng đang có tồn kho khả dụng
                 var hasInventory = await _context.WarehouseInventories.AnyAsync(wi => wi.BatchId == id && wi.QuantityAvailable > 0);
                 if (hasInventory)
                     throw new InvalidOperationException("Không thể xóa lô hàng này vì đang có tồn kho khả dụng trong kho.");
@@ -219,6 +208,11 @@ namespace backend.Services
                 var hasReceipt = await _context.InventoryReceiptDetails.AnyAsync(ird => ird.BatchId == id);
                 if (hasReceipt)
                     throw new InvalidOperationException("Không thể xóa lô hàng này vì đã phát sinh trong lịch sử phiếu nhập kho.");
+
+                // 3. SAFETY SHIELD: Chặn xóa nếu đã phát sinh trong phiếu xuất kho
+                var hasIssues = await _context.InventoryIssueDetails.AnyAsync(iid => iid.BatchId == id);
+                if (hasIssues)
+                    throw new InvalidOperationException("Không thể xóa lô hàng này vì đã phát sinh trong lịch sử phiếu xuất kho.");
 
                 _context.ProductBatches.Remove(entity);
                 await _context.SaveChangesAsync();
