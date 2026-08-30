@@ -1,20 +1,33 @@
-﻿using backend.Data;
+using AutoMapper;
+using backend.Data;
 using backend.DTOs;
 using backend.DTOs.ShopDTOs;
+using backend.Helpers;
 using backend.Models;
 using backend.Models.Enums;
 using backend.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace backend.Services
 {
+    /// <summary>
+    /// Service xử lý Yêu cầu Đổi trả hàng cho Storefront B2C (Customer Self-Service RMA).
+    /// Hỗ trợ khách hàng gửi yêu cầu trả hàng từ lịch sử mua hàng, tự động bóc tách lô xuất gốc,
+    /// và tra cứu tiến độ kiểm định QC cùng số tiền hoàn trả.
+    /// </summary>
     public class ShopReturnService : IShopReturnService
     {
         private readonly SolarisDbContext _context;
+        private readonly IMapper _mapper;
 
-        public ShopReturnService(SolarisDbContext context)
+        public ShopReturnService(SolarisDbContext context, IMapper mapper)
         {
             _context = context;
+            _mapper = mapper;
         }
 
         public async Task<ShopReturnReadDto> CreateReturnRequestAsync(int customerId, ShopReturnCreateRequestDto request)
@@ -36,68 +49,71 @@ namespace backend.Services
             if (request.Items == null || !request.Items.Any())
                 throw new ArgumentException("Vui lòng chọn ít nhất một sản phẩm cần đổi/trả.");
 
-            var now = DateTime.UtcNow;
-            string dateStr = now.ToString("yyyyMMdd");
-            string randStr = Guid.NewGuid().ToString("N").Substring(0, 4).ToUpperInvariant();
-            string returnCode = $"RET-{dateStr}-{randStr}";
-
-            var returnDetails = new List<CustomerReturnDetail>();
-            decimal totalRefund = 0;
-
-            foreach (var item in request.Items)
+            return await _context.ExecuteInTransactionAsync(async () =>
             {
-                if (item.ReturnedQuantity <= 0) continue;
+                var now = DateTime.UtcNow;
+                string dateStr = now.ToString("yyyyMMdd");
+                string randStr = Guid.NewGuid().ToString("N").Substring(0, 4).ToUpperInvariant();
+                string returnCode = $"RET-{dateStr}-{randStr}";
 
-                var orderDetail = order.Details.FirstOrDefault(d => d.VariantId == item.VariantId);
-                decimal unitPrice = orderDetail?.UnitPrice ?? 0;
+                var returnDetails = new List<CustomerReturnDetail>();
+                decimal totalRefund = 0;
 
-                // Tìm BatchId từ các phiếu xuất kho đã hoàn tất
-                int resolvedBatchId = item.BatchId;
-                if (resolvedBatchId <= 0)
+                foreach (var item in request.Items)
                 {
-                    var issuedDetail = order.InventoryIssues
-                        .SelectMany(i => i.Details)
-                        .FirstOrDefault(id => id.VariantId == item.VariantId);
+                    if (item.ReturnedQuantity <= 0) continue;
 
-                    resolvedBatchId = issuedDetail?.BatchId ?? 0;
+                    var orderDetail = order.Details.FirstOrDefault(d => d.VariantId == item.VariantId);
+                    decimal unitPrice = orderDetail?.UnitPrice ?? 0;
+
+                    // Tìm BatchId từ các phiếu xuất kho đã hoàn tất
+                    int resolvedBatchId = item.BatchId;
+                    if (resolvedBatchId <= 0)
+                    {
+                        var issuedDetail = order.InventoryIssues
+                            .SelectMany(i => i.Details)
+                            .FirstOrDefault(id => id.VariantId == item.VariantId);
+
+                        resolvedBatchId = issuedDetail?.BatchId ?? 0;
+                    }
+
+                    decimal refundAmount = item.ReturnedQuantity * unitPrice;
+                    totalRefund += refundAmount;
+
+                    returnDetails.Add(new CustomerReturnDetail
+                    {
+                        VariantId = item.VariantId,
+                        BatchId = resolvedBatchId,
+                        UoMId = item.UoMId,
+                        ReturnedQuantity = item.ReturnedQuantity,
+                        AcceptedQuantity = 0,
+                        DamagedQuantity = 0,
+                        UnitPrice = unitPrice,
+                        RefundAmount = refundAmount,
+                        RejectReason = item.Reason
+                    });
                 }
 
-                decimal refundAmount = item.ReturnedQuantity * unitPrice;
-                totalRefund += refundAmount;
-
-                returnDetails.Add(new CustomerReturnDetail
+                var customerReturn = new CustomerReturn
                 {
-                    VariantId = item.VariantId,
-                    BatchId = resolvedBatchId,
-                    UoMId = item.UoMId,
-                    ReturnedQuantity = item.ReturnedQuantity,
-                    AcceptedQuantity = 0,
-                    DamagedQuantity = 0,
-                    UnitPrice = unitPrice,
-                    RefundAmount = refundAmount,
-                    RejectReason = item.Reason
-                });
-            }
+                    ReturnCode = returnCode,
+                    OrderId = order.Id,
+                    CustomerId = customerId,
+                    WarehouseId = order.WarehouseId ?? 1,
+                    ReturnDate = now,
+                    Status = CustomerReturnStatus.Pending,
+                    RefundAmount = totalRefund,
+                    Reason = request.Reason?.Trim(),
+                    CreatedAt = now,
+                    UpdatedAt = now,
+                    Details = returnDetails
+                };
 
-            var customerReturn = new CustomerReturn
-            {
-                ReturnCode = returnCode,
-                OrderId = order.Id,
-                CustomerId = customerId,
-                WarehouseId = order.WarehouseId ?? 1,
-                ReturnDate = now,
-                Status = CustomerReturnStatus.Pending,
-                RefundAmount = totalRefund,
-                Reason = request.Reason?.Trim(),
-                CreatedAt = now,
-                UpdatedAt = now,
-                Details = returnDetails
-            };
+                _context.CustomerReturns.Add(customerReturn);
+                await _context.SaveChangesAsync();
 
-            _context.CustomerReturns.Add(customerReturn);
-            await _context.SaveChangesAsync();
-
-            return await GetReturnByCodeInternalAsync(customerReturn.Id);
+                return await GetReturnByCodeInternalAsync(customerReturn.Id);
+            });
         }
 
         public async Task<PagedResult<ShopReturnReadDto>> GetCustomerReturnsAsync(int customerId, int pageIndex = 1, int pageSize = 10)
@@ -112,6 +128,7 @@ namespace backend.Services
                     .ThenInclude(d => d.UoM)
                 .Where(r => r.CustomerId == customerId && !r.IsDeleted)
                 .OrderByDescending(r => r.ReturnDate)
+                .AsNoTracking()
                 .AsQueryable();
 
             int totalRecords = await query.CountAsync();
@@ -122,7 +139,7 @@ namespace backend.Services
                 .Take(pageSize)
                 .ToListAsync();
 
-            var items = returns.Select(r => MapToShopReturnDto(r)).ToList();
+            var items = _mapper.Map<List<ShopReturnReadDto>>(returns);
 
             return new PagedResult<ShopReturnReadDto>
             {
@@ -144,12 +161,13 @@ namespace backend.Services
                     .ThenInclude(d => d.Batch)
                 .Include(r => r.Details)
                     .ThenInclude(d => d.UoM)
+                .AsNoTracking()
                 .FirstOrDefaultAsync(r => r.CustomerId == customerId && r.ReturnCode == returnCode.Trim() && !r.IsDeleted);
 
             if (ret == null)
                 return null;
 
-            return MapToShopReturnDto(ret);
+            return _mapper.Map<ShopReturnReadDto>(ret);
         }
 
         private async Task<ShopReturnReadDto> GetReturnByCodeInternalAsync(int returnId)
@@ -162,47 +180,10 @@ namespace backend.Services
                     .ThenInclude(d => d.Batch)
                 .Include(r => r.Details)
                     .ThenInclude(d => d.UoM)
+                .AsNoTracking()
                 .FirstAsync(r => r.Id == returnId);
 
-            return MapToShopReturnDto(ret);
+            return _mapper.Map<ShopReturnReadDto>(ret);
         }
-
-        private ShopReturnReadDto MapToShopReturnDto(CustomerReturn r)
-        {
-            return new ShopReturnReadDto
-            {
-                Id = r.Id,
-                ReturnCode = r.ReturnCode,
-                OrderCode = r.Order?.OrderCode ?? string.Empty,
-                ReturnDate = r.ReturnDate,
-                Status = r.Status,
-                StatusName = GetReturnStatusName(r.Status),
-                RefundAmount = r.RefundAmount,
-                Reason = r.Reason,
-                InspectionNotes = r.InspectionNotes,
-                Details = r.Details.Select(d => new ShopReturnItemReadDto
-                {
-                    VariantId = d.VariantId,
-                    VariantName = d.Variant?.Name ?? string.Empty,
-                    VariantCode = d.Variant?.Code ?? string.Empty,
-                    BatchCode = d.Batch?.BatchCode,
-                    UoMName = d.UoM?.Name ?? string.Empty,
-                    ReturnedQuantity = d.ReturnedQuantity,
-                    AcceptedQuantity = d.AcceptedQuantity,
-                    DamagedQuantity = d.DamagedQuantity,
-                    RefundAmount = d.RefundAmount,
-                    RejectReason = d.RejectReason
-                }).ToList()
-            };
-        }
-
-        private string GetReturnStatusName(CustomerReturnStatus status) => status switch
-        {
-            CustomerReturnStatus.Pending => "Chờ tiếp nhận",
-            CustomerReturnStatus.Inspecting => "Đang kiểm định QC",
-            CustomerReturnStatus.Completed => "Đã hoàn tất & hoàn tiền",
-            CustomerReturnStatus.Rejected => "Từ chối trả hàng",
-            _ => status.ToString()
-        };
     }
 }

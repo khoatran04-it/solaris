@@ -2,13 +2,23 @@ using AutoMapper;
 using backend.Data;
 using backend.DTOs;
 using backend.DTOs.CustomerReturnDTOs;
+using backend.Helpers;
 using backend.Models;
 using backend.Models.Enums;
 using backend.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace backend.Services
 {
+    /// <summary>
+    /// Service xử lý nghiệp vụ Quản lý Phiếu Khách Hàng Trả Hàng (Customer Return / RMA Engine).
+    /// Chịu trách nhiệm toàn bộ quy trình thu hồi: Tiếp nhận yêu cầu, Phân quyền dữ liệu kho (Data Isolation),
+    /// Kiểm định chất lượng (QC), Hạch toán hoàn tiền (Refund), và Điều hướng dòng tồn kho (Available vs Damaged).
+    /// </summary>
     public class CustomerReturnService : ICustomerReturnService
     {
         private readonly SolarisDbContext _context;
@@ -20,6 +30,7 @@ namespace backend.Services
             _mapper = mapper;
         }
 
+        #region Truy vấn & Phân quyền Dữ liệu (Read & Data Isolation)
         public async Task<PagedResult<CustomerReturnReadDto>> GetPagedAsync(
             string? search,
             int? warehouseId,
@@ -100,7 +111,9 @@ namespace backend.Services
 
             return _mapper.Map<CustomerReturnReadDto>(entity);
         }
+        #endregion
 
+        #region Khởi tạo Yêu cầu (RMA Initiation)
         public async Task<int> CreateAsync(CustomerReturnCreateDto dto, int? currentUserId = null)
         {
             if (dto.Details == null || !dto.Details.Any())
@@ -135,46 +148,50 @@ namespace backend.Services
                 safeUserId = firstUser?.Id ?? 1;
             }
 
-            var ret = new CustomerReturn
+            return await _context.ExecuteInTransactionAsync(async () =>
             {
-                ReturnCode = $"RET-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString()[..6].ToUpper()}",
-                OrderId = dto.OrderId,
-                CustomerId = customerId,
-                WarehouseId = warehouseId,
-                ReceivedById = safeUserId,
-                ReturnDate = dto.ReturnDate ?? DateTime.UtcNow,
-                Status = CustomerReturnStatus.Pending,
-                Reason = dto.Reason?.Trim(),
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow,
-                IsDeleted = false
-            };
-
-            foreach (var item in dto.Details)
-            {
-                ret.Details.Add(new CustomerReturnDetail
+                var ret = new CustomerReturn
                 {
-                    VariantId = item.VariantId,
-                    BatchId = item.BatchId,
-                    UoMId = item.UoMId,
-                    ReturnedQuantity = item.ReturnedQuantity,
-                    UnitPrice = item.UnitPrice ?? 0,
-                    AcceptedQuantity = 0,
-                    DamagedQuantity = 0,
-                    RefundAmount = 0
-                });
-            }
+                    ReturnCode = $"RET-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString()[..6].ToUpper()}",
+                    OrderId = dto.OrderId,
+                    CustomerId = customerId,
+                    WarehouseId = warehouseId,
+                    ReceivedById = safeUserId,
+                    ReturnDate = dto.ReturnDate ?? DateTime.UtcNow,
+                    Status = CustomerReturnStatus.Pending,
+                    Reason = dto.Reason?.Trim(),
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow,
+                    IsDeleted = false
+                };
 
-            _context.CustomerReturns.Add(ret);
-            await _context.SaveChangesAsync();
+                foreach (var item in dto.Details)
+                {
+                    ret.Details.Add(new CustomerReturnDetail
+                    {
+                        VariantId = item.VariantId,
+                        BatchId = item.BatchId,
+                        UoMId = item.UoMId,
+                        ReturnedQuantity = item.ReturnedQuantity,
+                        UnitPrice = item.UnitPrice ?? 0,
+                        AcceptedQuantity = 0,
+                        DamagedQuantity = 0,
+                        RefundAmount = 0
+                    });
+                }
 
-            return ret.Id;
+                _context.CustomerReturns.Add(ret);
+                await _context.SaveChangesAsync();
+
+                return ret.Id;
+            });
         }
+        #endregion
 
+        #region Kiểm định & Hạch toán (QC & Fulfillment)
         public async Task<bool> InspectAndCompleteAsync(int id, int receivedById, CustomerReturnInspectionDto dto)
         {
-            using var transaction = await _context.Database.BeginTransactionAsync();
-            try
+            return await _context.ExecuteInTransactionAsync(async () =>
             {
                 var ret = await _context.CustomerReturns
                     .Include(r => r.Details)
@@ -283,45 +300,48 @@ namespace backend.Services
                 ret.UpdatedAt = DateTime.UtcNow;
 
                 await _context.SaveChangesAsync();
-                await transaction.CommitAsync();
                 return true;
-            }
-            catch
-            {
-                await transaction.RollbackAsync();
-                throw;
-            }
+            });
         }
 
         public async Task<bool> RejectReturnAsync(int id, string reason)
         {
-            var ret = await _context.CustomerReturns.FindAsync(id);
-            if (ret == null) throw new KeyNotFoundException("Không tìm thấy Phiếu trả hàng.");
-            if (ret.Status == CustomerReturnStatus.Completed)
-                throw new InvalidOperationException("Không thể từ chối Phiếu trả hàng đã hoàn tất.");
+            return await _context.ExecuteInTransactionAsync(async () =>
+            {
+                var ret = await _context.CustomerReturns.FindAsync(id);
+                if (ret == null) throw new KeyNotFoundException("Không tìm thấy Phiếu trả hàng.");
+                if (ret.Status == CustomerReturnStatus.Completed)
+                    throw new InvalidOperationException("Không thể từ chối Phiếu trả hàng đã hoàn tất.");
 
-            ret.Status = CustomerReturnStatus.Rejected;
-            ret.InspectionNotes = $"Từ chối nhận hàng: {reason?.Trim()}";
-            ret.UpdatedAt = DateTime.UtcNow;
+                ret.Status = CustomerReturnStatus.Rejected;
+                ret.InspectionNotes = $"Từ chối nhận hàng: {reason?.Trim()}";
+                ret.UpdatedAt = DateTime.UtcNow;
 
-            await _context.SaveChangesAsync();
-            return true;
+                await _context.SaveChangesAsync();
+                return true;
+            });
         }
+        #endregion
 
+        #region Quản trị Hệ thống (Admin Options)
         public async Task<bool> DeleteAsync(int id)
         {
-            var ret = await _context.CustomerReturns.FindAsync(id);
-            if (ret == null) throw new KeyNotFoundException("Không tìm thấy Phiếu trả hàng.");
+            return await _context.ExecuteInTransactionAsync(async () =>
+            {
+                var ret = await _context.CustomerReturns.FindAsync(id);
+                if (ret == null) throw new KeyNotFoundException("Không tìm thấy Phiếu trả hàng.");
 
-            if (ret.Status == CustomerReturnStatus.Completed)
-                throw new InvalidOperationException("Không thể xóa Phiếu trả hàng đã hoàn tất.");
+                if (ret.Status == CustomerReturnStatus.Completed)
+                    throw new InvalidOperationException("Không thể xóa Phiếu trả hàng đã hoàn tất.");
 
-            ret.IsDeleted = true;
-            ret.DeletedAt = DateTime.UtcNow;
-            ret.UpdatedAt = DateTime.UtcNow;
+                ret.IsDeleted = true;
+                ret.DeletedAt = DateTime.UtcNow;
+                ret.UpdatedAt = DateTime.UtcNow;
 
-            await _context.SaveChangesAsync();
-            return true;
+                await _context.SaveChangesAsync();
+                return true;
+            });
         }
+        #endregion
     }
 }
