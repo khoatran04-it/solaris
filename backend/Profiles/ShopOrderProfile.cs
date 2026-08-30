@@ -46,7 +46,7 @@ namespace backend.Profiles
                 .ForMember(dest => dest.PaymentMethodName, opt => opt.MapFrom(src => GetPaymentMethodName(src.PaymentMethod)))
                 .ForMember(dest => dest.SubTotal, opt => opt.MapFrom(src => src.SubTotal))
                 .ForMember(dest => dest.DiscountAmount, opt => opt.MapFrom(src =>
-                    src.Details != null ? src.Details.Sum(d => d.DiscountAmount) : 0))
+                    src.DiscountAmount > 0 ? src.DiscountAmount : (src.Details != null ? src.Details.Sum(d => d.DiscountAmount) : 0)))
                 .ForMember(dest => dest.ShippingFee, opt => opt.MapFrom(src => src.ShippingFee))
                 .ForMember(dest => dest.TotalAmount, opt => opt.MapFrom(src => src.TotalAmount))
                 .ForMember(dest => dest.ReceiverName, opt => opt.MapFrom(src => src.ReceiverName))

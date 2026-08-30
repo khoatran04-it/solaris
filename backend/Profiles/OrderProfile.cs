@@ -22,7 +22,8 @@ namespace backend.Profiles
                 .ForMember(dest => dest.CustomerName, opt => opt.MapFrom(src => src.Customer != null ? src.Customer.Name : string.Empty))
                 .ForMember(dest => dest.CustomerPhone, opt => opt.MapFrom(src => src.Customer != null ? src.Customer.PhoneNumber : string.Empty))
                 .ForMember(dest => dest.WarehouseName, opt => opt.MapFrom(src => src.Warehouse != null ? src.Warehouse.Name : null))
-                .ForMember(dest => dest.DiscountAmount, opt => opt.MapFrom(src => src.Details != null ? src.Details.Sum(d => d.DiscountAmount) : 0))
+                .ForMember(dest => dest.DiscountAmount, opt => opt.MapFrom(src =>
+                    src.DiscountAmount > 0 ? src.DiscountAmount : (src.Details != null ? src.Details.Sum(d => d.DiscountAmount) : 0)))
                 .ForMember(dest => dest.IssuedItems, opt => opt.Ignore());
             #endregion
 
