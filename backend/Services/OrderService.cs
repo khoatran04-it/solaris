@@ -2,13 +2,23 @@ using AutoMapper;
 using backend.Data;
 using backend.DTOs;
 using backend.DTOs.OrderDTOs;
+using backend.Helpers;
 using backend.Models;
 using backend.Models.Enums;
 using backend.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace backend.Services
 {
+    /// <summary>
+    /// Service xử lý nghiệp vụ Quản lý Đơn Bán Hàng (Sales Order Engine).
+    /// Hỗ trợ phân quyền kho (Data Isolation), định tuyến kho thông minh (Smart Routing),
+    /// giữ chỗ và hoàn trả tồn kho (Reserve / Unreserve), và quản trị vòng đời đơn hàng.
+    /// </summary>
     public class OrderService : IOrderService
     {
         private readonly SolarisDbContext _context;
@@ -22,6 +32,7 @@ namespace backend.Services
             _routingService = routingService;
         }
 
+        #region Truy vấn & Phân quyền Dữ liệu (Read & Data Isolation)
         public async Task<PagedResult<OrderReadDto>> GetPagedAsync(
             string? search,
             int? customerId,
@@ -37,6 +48,7 @@ namespace backend.Services
             var query = _context.Orders
                 .Include(o => o.Customer)
                 .Include(o => o.Warehouse)
+                .Include(o => o.Details)
                 .AsQueryable();
 
             if (allowedWarehouseIds != null && allowedWarehouseIds.Any())
@@ -55,8 +67,10 @@ namespace backend.Services
 
             if (customerId.HasValue) query = query.Where(o => o.CustomerId == customerId.Value);
             if (warehouseId.HasValue) query = query.Where(o => o.WarehouseId == warehouseId.Value);
-            if (status.HasValue && Enum.IsDefined(typeof(OrderStatus), status.Value)) query = query.Where(o => o.Status == (OrderStatus)status.Value);
-            if (paymentStatus.HasValue && Enum.IsDefined(typeof(PaymentStatus), paymentStatus.Value)) query = query.Where(o => o.PaymentStatus == (PaymentStatus)paymentStatus.Value);
+            if (status.HasValue && Enum.IsDefined(typeof(OrderStatus), status.Value))
+                query = query.Where(o => o.Status == (OrderStatus)status.Value);
+            if (paymentStatus.HasValue && Enum.IsDefined(typeof(PaymentStatus), paymentStatus.Value))
+                query = query.Where(o => o.PaymentStatus == (PaymentStatus)paymentStatus.Value);
 
             if (startDate.HasValue) query = query.Where(o => o.OrderDate >= startDate.Value.Date);
             if (endDate.HasValue) query = query.Where(o => o.OrderDate < endDate.Value.Date.AddDays(1));
@@ -134,7 +148,9 @@ namespace backend.Services
 
             return dto;
         }
+        #endregion
 
+        #region Thao tác Vận hành (Command & Workflow)
         public async Task<int> CreateAsync(OrderCreateDto dto, int? currentUserId = null)
         {
             if (dto.Details == null || !dto.Details.Any())
@@ -162,8 +178,7 @@ namespace backend.Services
                 safeUserId = firstUser?.Id ?? 1;
             }
 
-            using var transaction = await _context.Database.BeginTransactionAsync();
-            try
+            return await _context.ExecuteInTransactionAsync(async () =>
             {
                 // 4. Định tuyến kho thông minh nếu chưa chỉ định kho
                 int? assignedWarehouseId = null;
@@ -300,33 +315,32 @@ namespace backend.Services
 
                 _context.Orders.Add(order);
                 await _context.SaveChangesAsync();
-                await transaction.CommitAsync();
 
                 return order.Id;
-            }
-            catch
-            {
-                await transaction.RollbackAsync();
-                throw;
-            }
+            });
         }
 
         public async Task<bool> UpdateStatusAsync(int id, OrderUpdateDto dto)
         {
-            var order = await _context.Orders.FindAsync(id);
-            if (order == null) throw new KeyNotFoundException("Không tìm thấy Đơn hàng.");
+            return await _context.ExecuteInTransactionAsync(async () =>
+            {
+                var order = await _context.Orders.FindAsync(id);
+                if (order == null) throw new KeyNotFoundException("Không tìm thấy Đơn hàng.");
 
-            if (dto.Status.HasValue) order.Status = dto.Status.Value;
-            if (dto.PaymentStatus.HasValue) order.PaymentStatus = dto.PaymentStatus.Value;
-            if (dto.WarehouseId.HasValue && dto.WarehouseId.Value > 0) order.WarehouseId = dto.WarehouseId.Value;
-            if (dto.Note != null) order.Note = dto.Note.Trim();
-            if (dto.CancellationReason != null) order.CancellationReason = dto.CancellationReason.Trim();
-            order.UpdatedAt = DateTime.UtcNow;
+                if (dto.Status.HasValue) order.Status = dto.Status.Value;
+                if (dto.PaymentStatus.HasValue) order.PaymentStatus = dto.PaymentStatus.Value;
+                if (dto.WarehouseId.HasValue && dto.WarehouseId.Value > 0) order.WarehouseId = dto.WarehouseId.Value;
+                if (dto.Note != null) order.Note = dto.Note.Trim();
+                if (dto.CancellationReason != null) order.CancellationReason = dto.CancellationReason.Trim();
+                order.UpdatedAt = DateTime.UtcNow;
 
-            await _context.SaveChangesAsync();
-            return true;
+                await _context.SaveChangesAsync();
+                return true;
+            });
         }
+        #endregion
 
+        #region Hủy & Xóa (Cancellation & Deletion)
         public async Task<bool> CancelAsync(int id, string reason, int? currentUserId = null)
         {
             int safeUserId = currentUserId ?? 1;
@@ -337,8 +351,7 @@ namespace backend.Services
                 safeUserId = firstUser?.Id ?? 1;
             }
 
-            using var transaction = await _context.Database.BeginTransactionAsync();
-            try
+            return await _context.ExecuteInTransactionAsync(async () =>
             {
                 var order = await _context.Orders
                     .Include(o => o.Details)
@@ -392,30 +405,28 @@ namespace backend.Services
                 order.UpdatedAt = DateTime.UtcNow;
 
                 await _context.SaveChangesAsync();
-                await transaction.CommitAsync();
                 return true;
-            }
-            catch
-            {
-                await transaction.RollbackAsync();
-                throw;
-            }
+            });
         }
 
         public async Task<bool> DeleteAsync(int id)
         {
-            var order = await _context.Orders.FindAsync(id);
-            if (order == null) throw new KeyNotFoundException("Không tìm thấy Đơn hàng.");
+            return await _context.ExecuteInTransactionAsync(async () =>
+            {
+                var order = await _context.Orders.FindAsync(id);
+                if (order == null) throw new KeyNotFoundException("Không tìm thấy Đơn hàng.");
 
-            if (order.Status != OrderStatus.Confirmed && order.Status != OrderStatus.Cancelled)
-                throw new InvalidOperationException("Chỉ được phép xóa đơn hàng chưa thực hiện xuất kho hoặc đã hủy.");
+                if (order.Status != OrderStatus.Confirmed && order.Status != OrderStatus.Cancelled)
+                    throw new InvalidOperationException("Chỉ được phép xóa đơn hàng chưa thực hiện xuất kho hoặc đã hủy.");
 
-            order.IsDeleted = true;
-            order.DeletedAt = DateTime.UtcNow;
-            order.UpdatedAt = DateTime.UtcNow;
+                order.IsDeleted = true;
+                order.DeletedAt = DateTime.UtcNow;
+                order.UpdatedAt = DateTime.UtcNow;
 
-            await _context.SaveChangesAsync();
-            return true;
+                await _context.SaveChangesAsync();
+                return true;
+            });
         }
+        #endregion
     }
 }

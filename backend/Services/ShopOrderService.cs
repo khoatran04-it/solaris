@@ -1,21 +1,34 @@
+using AutoMapper;
 using backend.Data;
 using backend.DTOs;
 using backend.DTOs.ShopDTOs;
+using backend.Helpers;
 using backend.Models;
 using backend.Models.Enums;
 using backend.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace backend.Services
 {
+    /// <summary>
+    /// Service xử lý Đơn hàng cho Storefront B2C (Customer Self-Service Orders).
+    /// Chịu trách nhiệm quy trình Checkout giỏ hàng, giữ chỗ tồn kho (Stock Reservation),
+    /// tra cứu lịch sử mua hàng, và hỗ trợ khách hàng tự hủy đơn.
+    /// </summary>
     public class ShopOrderService : IShopOrderService
     {
         private readonly SolarisDbContext _context;
+        private readonly IMapper _mapper;
         private readonly IOrderRoutingService _routingService;
 
-        public ShopOrderService(SolarisDbContext context, IOrderRoutingService routingService)
+        public ShopOrderService(SolarisDbContext context, IMapper mapper, IOrderRoutingService routingService)
         {
             _context = context;
+            _mapper = mapper;
             _routingService = routingService;
         }
 
@@ -86,9 +99,7 @@ namespace backend.Services
                 }
             }
 
-            // 2. Chạy trong Database Transaction để khóa giữ chỗ tồn kho an toàn (ACID)
-            using var transaction = await _context.Database.BeginTransactionAsync();
-            try
+            return await _context.ExecuteInTransactionAsync(async () =>
             {
                 var now = DateTime.UtcNow;
 
@@ -109,12 +120,12 @@ namespace backend.Services
                 var primaryWarehouse = warehouses.FirstOrDefault(w => w.WarehouseType != null && w.WarehouseType.ToLower().Contains("tổng")) ?? warehouses.First();
                 int selectedWarehouseId = primaryWarehouse.Id;
 
-                // 3. Chuẩn bị chi tiết đơn hàng & Tính giá
+                // 2. Chuẩn bị chi tiết đơn hàng & Tính giá
                 var orderDetails = new List<OrderDetail>();
                 decimal subTotal = 0;
                 decimal totalDiscount = 0;
 
-                // 4. Sinh trước mã đơn hàng ORD-YYYYMMDD-XXXXXX
+                // 3. Sinh trước mã đơn hàng ORD-YYYYMMDD-XXXXXX
                 string dateStr = now.ToString("yyyyMMdd");
                 string randStr = Guid.NewGuid().ToString("N").Substring(0, 6).ToUpperInvariant();
                 string orderCode = $"ORD-{dateStr}-{randStr}";
@@ -241,8 +252,6 @@ namespace backend.Services
                     totalDiscount += tierDiscount;
                 }
 
-                decimal totalAmount = Math.Max(0, subTotal - totalDiscount);
-
                 var order = new Order
                 {
                     OrderCode = orderCode,
@@ -276,15 +285,9 @@ namespace backend.Services
                 cart.UpdatedAt = now;
 
                 await _context.SaveChangesAsync();
-                await transaction.CommitAsync();
 
                 return await GetOrderByCodeInternalAsync(order.Id);
-            }
-            catch
-            {
-                await transaction.RollbackAsync();
-                throw;
-            }
+            });
         }
 
         public async Task<PagedResult<ShopOrderReadDto>> GetCustomerOrdersAsync(int customerId, int pageIndex = 1, int pageSize = 10)
@@ -292,6 +295,7 @@ namespace backend.Services
             var query = _context.Orders
                 .Include(o => o.Details)
                     .ThenInclude(d => d.Variant)
+                        .ThenInclude(v => v!.Product)
                 .Include(o => o.Details)
                     .ThenInclude(d => d.UoM)
                 .Where(o => o.CustomerId == customerId && !o.IsDeleted)
@@ -304,9 +308,10 @@ namespace backend.Services
             var orders = await query
                 .Skip((pageIndex - 1) * pageSize)
                 .Take(pageSize)
+                .AsNoTracking()
                 .ToListAsync();
 
-            var items = orders.Select(o => MapToShopOrderDto(o)).ToList();
+            var items = _mapper.Map<List<ShopOrderReadDto>>(orders);
 
             return new PagedResult<ShopOrderReadDto>
             {
@@ -323,31 +328,32 @@ namespace backend.Services
             var order = await _context.Orders
                 .Include(o => o.Details)
                     .ThenInclude(d => d.Variant)
+                        .ThenInclude(v => v!.Product)
                 .Include(o => o.Details)
                     .ThenInclude(d => d.UoM)
+                .AsNoTracking()
                 .FirstOrDefaultAsync(o => o.CustomerId == customerId && o.OrderCode == orderCode.Trim() && !o.IsDeleted);
 
             if (order == null)
                 return null;
 
-            return MapToShopOrderDto(order);
+            return _mapper.Map<ShopOrderReadDto>(order);
         }
 
         public async Task<bool> CancelOrderAsync(int customerId, string orderCode, string reason)
         {
-            var order = await _context.Orders
-                .Include(o => o.Details)
-                .FirstOrDefaultAsync(o => o.CustomerId == customerId && o.OrderCode == orderCode.Trim() && !o.IsDeleted);
-
-            if (order == null)
-                throw new KeyNotFoundException("Không tìm thấy đơn hàng.");
-
-            if (order.Status != OrderStatus.Pending && order.Status != OrderStatus.Confirmed)
-                throw new InvalidOperationException("Đơn hàng đang được chuẩn bị hoặc đang giao, không thể tự hủy trực tiếp. Vui lòng liên hệ bộ phận hỗ trợ.");
-
-            using var transaction = await _context.Database.BeginTransactionAsync();
-            try
+            return await _context.ExecuteInTransactionAsync(async () =>
             {
+                var order = await _context.Orders
+                    .Include(o => o.Details)
+                    .FirstOrDefaultAsync(o => o.CustomerId == customerId && o.OrderCode == orderCode.Trim() && !o.IsDeleted);
+
+                if (order == null)
+                    throw new KeyNotFoundException("Không tìm thấy đơn hàng.");
+
+                if (order.Status != OrderStatus.Pending && order.Status != OrderStatus.Confirmed)
+                    throw new InvalidOperationException("Đơn hàng đang được chuẩn bị hoặc đang giao, không thể tự hủy trực tiếp. Vui lòng liên hệ bộ phận hỗ trợ.");
+
                 var now = DateTime.UtcNow;
 
                 var systemUser = await _context.IAUsers.FirstOrDefaultAsync(u => u.IsActive && !u.IsDeleted)
@@ -391,15 +397,8 @@ namespace backend.Services
                 order.UpdatedAt = now;
 
                 await _context.SaveChangesAsync();
-                await transaction.CommitAsync();
-
                 return true;
-            }
-            catch
-            {
-                await transaction.RollbackAsync();
-                throw;
-            }
+            });
         }
 
         private async Task<ShopOrderReadDto> GetOrderByCodeInternalAsync(int orderId)
@@ -407,84 +406,13 @@ namespace backend.Services
             var order = await _context.Orders
                 .Include(o => o.Details)
                     .ThenInclude(d => d.Variant)
+                        .ThenInclude(v => v!.Product)
                 .Include(o => o.Details)
                     .ThenInclude(d => d.UoM)
+                .AsNoTracking()
                 .FirstAsync(o => o.Id == orderId);
 
-            return MapToShopOrderDto(order);
+            return _mapper.Map<ShopOrderReadDto>(order);
         }
-
-        private ShopOrderReadDto MapToShopOrderDto(Order o)
-        {
-            return new ShopOrderReadDto
-            {
-                Id = o.Id,
-                OrderCode = o.OrderCode,
-                OrderDate = o.OrderDate,
-                Status = o.Status,
-                StatusName = GetStatusName(o.Status),
-                PaymentStatus = o.PaymentStatus,
-                PaymentStatusName = GetPaymentStatusName(o.PaymentStatus),
-                PaymentMethod = o.PaymentMethod,
-                PaymentMethodName = GetPaymentMethodName(o.PaymentMethod),
-                SubTotal = o.SubTotal,
-                DiscountAmount = o.DiscountAmount,
-                ShippingFee = o.ShippingFee,
-                TotalAmount = o.TotalAmount,
-                ReceiverName = o.ReceiverName,
-                ReceiverPhone = o.ReceiverPhone,
-                DeliveryAddress = o.DeliveryAddress,
-                TrackingCode = o.TrackingCode,
-                ShippingProvider = o.ShippingProvider,
-                ExpectedDeliveryDate = o.ExpectedDeliveryDate?.ToString("dd/MM/yyyy"),
-                Note = o.Note,
-                CancellationReason = o.CancellationReason,
-                Items = o.Details.Select(d => new ShopOrderItemDto
-                {
-                    DetailId = d.Id,
-                    VariantId = d.VariantId,
-                    VariantName = d.Variant?.Name ?? string.Empty,
-                    VariantCode = d.Variant?.Code ?? string.Empty,
-                    ImagePath = d.Variant?.ImagePath,
-                    UoMId = d.UoMId,
-                    UoMName = d.UoM?.Name ?? string.Empty,
-                    Quantity = d.Quantity,
-                    UnitPrice = d.UnitPrice,
-                    DiscountAmount = d.DiscountAmount,
-                    TotalPrice = d.TotalPrice,
-                    IssuedQuantity = d.IssuedQuantity
-                }).ToList()
-            };
-        }
-
-        private string GetStatusName(OrderStatus status) => status switch
-        {
-            OrderStatus.Draft => "Nháp",
-            OrderStatus.Pending => "Chờ xác nhận",
-            OrderStatus.Confirmed => "Đã xác nhận",
-            OrderStatus.Processing => "Đang chuẩn bị hàng",
-            OrderStatus.Shipping => "Đang giao hàng",
-            OrderStatus.Completed => "Giao thành công",
-            OrderStatus.Cancelled => "Đã hủy",
-            _ => status.ToString()
-        };
-
-        private string GetPaymentStatusName(PaymentStatus status) => status switch
-        {
-            PaymentStatus.Unpaid => "Chưa thanh toán",
-            PaymentStatus.PartiallyPaid => "Đã cọc 1 phần",
-            PaymentStatus.Paid => "Đã thanh toán",
-            PaymentStatus.Refunded => "Đã hoàn tiền",
-            _ => status.ToString()
-        };
-
-        private string GetPaymentMethodName(PaymentMethod method) => method switch
-        {
-            PaymentMethod.COD => "Thanh toán khi nhận hàng (COD)",
-            PaymentMethod.BankTransfer => "Chuyển khoản ngân hàng",
-            PaymentMethod.EWallet => "Ví điện tử",
-            PaymentMethod.CreditCard => "Thẻ tín dụng / Ghi nợ",
-            _ => method.ToString()
-        };
     }
 }
