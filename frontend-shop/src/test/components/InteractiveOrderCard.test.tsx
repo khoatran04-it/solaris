@@ -23,11 +23,12 @@ describe('Module 15 - InteractiveOrderCard Component (UI Testing in RAM)', () =>
                 variantId: 101,
                 variantCode: 'VAR-BO-01',
                 variantName: 'Bơ Sáp 034 Đặc Sản',
+                uoMId: 1,
+                uoMName: 'Kg',
                 unitPrice: 100000,
                 quantity: 2,
                 discountAmount: 0,
-                totalPrice: 200000,
-                uoMName: 'Kg'
+                totalPrice: 200000
             }
         ],
         subTotal: 200000,

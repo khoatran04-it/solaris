@@ -98,19 +98,22 @@ describe('Module 15 - ChatbotWidget Component (UI Testing in RAM)', () => {
                 items: [
                     {
                         variantId: 1,
+                        variantCode: 'VAR-BO-01',
                         variantName: 'Bơ Sáp 034 VIP',
+                        uoMId: 1,
+                        uoMName: 'Kg',
                         unitPrice: 85000,
                         quantity: 2,
                         discountAmount: 0,
-                        totalPrice: 170000,
-                        uoMName: 'Kg'
+                        totalPrice: 170000
                     }
                 ],
                 subTotal: 170000,
                 totalDiscount: 0,
                 shippingFee: 25000,
                 totalAmount: 195000,
-                isFreeShipping: false
+                isFreeShipping: false,
+                freeShippingThreshold: 300000
             }
         });
 
