@@ -150,6 +150,7 @@ namespace backend.Data
                 ("Xuất xứ / Vùng trồng", "string"),
                 ("Chứng nhận chất lượng", "string"),
                 ("Độ ngọt (Brix)", "number"),
+                ("Hạn sử dụng", "string"),
                 ("Hướng dẫn bảo quản", "string"),
                 ("Hướng dẫn sử dụng", "string"),
                 ("Khối lượng tịnh", "string")
