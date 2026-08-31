@@ -96,12 +96,17 @@ namespace backend.Services
         {
             try
             {
-                var response = await _httpClient.GetAsync($"master-data/ward?district_id={districtId}");
+                var payload = JsonSerializer.Serialize(new { district_id = districtId });
+                var content = new StringContent(payload, Encoding.UTF8, "application/json");
+                var response = await _httpClient.PostAsync("master-data/ward", content);
                 if (response.IsSuccessStatusCode)
                 {
                     var str = await response.Content.ReadAsStringAsync();
                     var res = JsonSerializer.Deserialize<GhnApiResponse<List<GhnWardDto>>>(str, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-                    return res?.Data ?? new List<GhnWardDto>();
+                    if (res?.Data != null && res.Data.Any())
+                    {
+                        return res.Data;
+                    }
                 }
             }
             catch
@@ -113,7 +118,14 @@ namespace backend.Services
             {
                 new() { WardCode = "20101", DistrictID = districtId, WardName = "Phường Bến Nghé" },
                 new() { WardCode = "20102", DistrictID = districtId, WardName = "Phường Bến Thành" },
-                new() { WardCode = "20103", DistrictID = districtId, WardName = "Phường Cầu Kho" }
+                new() { WardCode = "20103", DistrictID = districtId, WardName = "Phường Cầu Kho" },
+                new() { WardCode = "20104", DistrictID = districtId, WardName = "Phường Cầu Ông Lãnh" },
+                new() { WardCode = "20105", DistrictID = districtId, WardName = "Phường Cô Giang" },
+                new() { WardCode = "20106", DistrictID = districtId, WardName = "Phường Đa Kao" },
+                new() { WardCode = "20107", DistrictID = districtId, WardName = "Phường Nguyễn Cư Trinh" },
+                new() { WardCode = "20108", DistrictID = districtId, WardName = "Phường Nguyễn Thái Bình" },
+                new() { WardCode = "20109", DistrictID = districtId, WardName = "Phường Phạm Ngũ Lão" },
+                new() { WardCode = "20110", DistrictID = districtId, WardName = "Phường Tân Định" }
             };
         }
 

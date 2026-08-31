@@ -1,7 +1,16 @@
 import React from 'react';
 import { Bell, User, ChevronDown } from 'lucide-react';
+import { useAuthStore } from '../../stores/useAuthStore';
 
 export const Header: React.FC = () => {
+  const { userInfo } = useAuthStore();
+
+  const displayName = userInfo?.fullName || userInfo?.username || 'Người dùng';
+  const roleDisplay =
+    userInfo?.roles && userInfo.roles.length > 0
+      ? userInfo.roles.join(' • ')
+      : 'Nhân viên';
+
   return (
     <header className="h-16 bg-white border-b border-slate-100 flex items-center justify-end px-8 sticky top-0 z-40 shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
       <div className="flex items-center gap-8">
@@ -29,26 +38,34 @@ export const Header: React.FC = () => {
         <div className="flex items-center gap-4 group cursor-pointer p-1.5 pr-3 rounded-2xl hover:bg-slate-50 transition-all duration-300 border border-transparent hover:border-slate-100">
           {/* Nội dung Text */}
           <div className="flex flex-col items-end">
-            <span className="font-black text-[13px] text-slate-800 tracking-tight leading-none group-hover:text-amber-600 transition-colors">
-              ĐĂNG KHOA
+            <span className="font-black text-[13px] text-slate-800 tracking-tight leading-none group-hover:text-amber-600 transition-colors uppercase">
+              {displayName}
             </span>
             <div className="flex items-center gap-1.5 mt-1">
-              <span className="inline-block w-1 h-1 rounded-full bg-emerald-500"></span>
+              <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest italic leading-none">
-                Super Admin
+                {roleDisplay}
               </span>
             </div>
           </div>
 
           {/* Avatar Container */}
           <div className="relative">
-            <div className="w-10 h-10 rounded-xl border-2 border-slate-100 flex items-center justify-center bg-white shadow-sm group-hover:border-amber-400 group-hover:shadow-md transition-all duration-300 overflow-hidden">
-              <div className="bg-slate-800 w-full h-full flex items-center justify-center text-amber-400 group-hover:bg-amber-400 group-hover:text-slate-900 transition-all duration-300">
-                <User size={20} strokeWidth={2.5} />
-              </div>
+            <div className="w-10 h-10 rounded-xl border-2 border-slate-100 flex items-center justify-center bg-white shadow-xs group-hover:border-amber-400 group-hover:shadow-md transition-all duration-300 overflow-hidden">
+              {userInfo?.avatarUrl ? (
+                <img
+                  src={userInfo.avatarUrl}
+                  alt={displayName}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="bg-slate-800 w-full h-full flex items-center justify-center text-amber-400 group-hover:bg-amber-400 group-hover:text-slate-900 transition-all duration-300 font-black text-sm">
+                  {displayName.charAt(0).toUpperCase()}
+                </div>
+              )}
             </div>
             {/* Status dot */}
-            <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 border-2 border-white rounded-full shadow-sm"></div>
+            <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 border-2 border-white rounded-full shadow-xs"></div>
           </div>
 
           {/* Nút dropdown nhỏ */}

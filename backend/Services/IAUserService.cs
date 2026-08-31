@@ -121,21 +121,39 @@ namespace backend.Services
         #region Thao tác Dữ liệu (Command)
         public async Task<int> CreateAsync(IAUserCreateDto dto)
         {
-            // Kiểm tra trùng lặp thông tin định danh (Username, CCCD, Email, SĐT)
-            bool isDuplicate = await _context.IAUsers.AnyAsync(x =>
-                x.Username == dto.Username ||
-                x.CitizenId == dto.CitizenId ||
-                x.Email == dto.Email ||
-                x.PhoneNumber == dto.PhoneNumber);
+            var normalizedUsername = dto.Username.Trim().ToLower();
+            var normalizedEmail = dto.Email.Trim().ToLower();
+            var normalizedPhone = dto.PhoneNumber.Trim();
+            var normalizedCitizenId = dto.CitizenId.Trim();
 
-            if (isDuplicate)
+            // Kiểm tra trùng lặp từng trường định danh để báo lỗi chi tiết
+            if (await _context.IAUsers.AnyAsync(x => x.Username.ToLower() == normalizedUsername))
             {
-                throw new InvalidOperationException("Thông tin định danh (Tên đăng nhập, CCCD, Email hoặc SĐT) đã tồn tại trong hệ thống.");
+                throw new InvalidOperationException($"Tên đăng nhập '{dto.Username}' đã tồn tại trong hệ thống.");
+            }
+
+            if (await _context.IAUsers.AnyAsync(x => x.Email.ToLower() == normalizedEmail))
+            {
+                throw new InvalidOperationException($"Email '{dto.Email}' đã được sử dụng bởi tài khoản khác.");
+            }
+
+            if (await _context.IAUsers.AnyAsync(x => x.CitizenId == normalizedCitizenId))
+            {
+                throw new InvalidOperationException($"Số CCCD '{dto.CitizenId}' đã tồn tại trong hệ thống.");
+            }
+
+            if (await _context.IAUsers.AnyAsync(x => x.PhoneNumber == normalizedPhone))
+            {
+                throw new InvalidOperationException($"Số điện thoại '{dto.PhoneNumber}' đã tồn tại trong hệ thống.");
             }
 
             return await _context.ExecuteInTransactionAsync(async () =>
             {
                 var entity = _mapper.Map<IAUser>(dto);
+                entity.Username = dto.Username.Trim();
+                entity.Email = normalizedEmail;
+                entity.PhoneNumber = normalizedPhone;
+                entity.CitizenId = normalizedCitizenId;
 
                 // Mã hóa mật khẩu bằng BCrypt
                 entity.PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password);
@@ -147,14 +165,14 @@ namespace backend.Services
                 if (dto.RoleIds.Any())
                 {
                     _context.IAUserRoles.AddRange(
-                        dto.RoleIds.Select(rId => new IAUserRole { UserId = entity.Id, RoleId = rId }));
+                        dto.RoleIds.Distinct().Select(rId => new IAUserRole { UserId = entity.Id, RoleId = rId }));
                 }
 
                 // Gán danh sách kho phụ trách ban đầu
                 if (dto.WarehouseIds.Any())
                 {
                     _context.IAUserWarehouses.AddRange(
-                        dto.WarehouseIds.Select(wId => new IAUserWarehouse { UserId = entity.Id, WarehouseId = wId }));
+                        dto.WarehouseIds.Distinct().Select(wId => new IAUserWarehouse { UserId = entity.Id, WarehouseId = wId }));
                 }
 
                 // Thiết lập các quyền ngoại lệ ban đầu
@@ -189,19 +207,36 @@ namespace backend.Services
                     throw new KeyNotFoundException($"Không tìm thấy tài khoản nhân viên với ID = {id}.");
                 }
 
-                // Kiểm tra trùng lặp thông tin định danh với các tài khoản khác
-                bool isDuplicate = await _context.IAUsers.AnyAsync(x =>
-                    x.Id != id && (
-                        x.CitizenId == dto.CitizenId ||
-                        x.Email == dto.Email ||
-                        x.PhoneNumber == dto.PhoneNumber));
+                var normalizedEmail = dto.Email.Trim().ToLower();
+                var normalizedPhone = dto.PhoneNumber.Trim();
+                var normalizedCitizenId = dto.CitizenId.Trim();
 
-                if (isDuplicate)
+                // Kiểm tra trùng lặp từng trường định danh với các tài khoản khác
+                if (await _context.IAUsers.AnyAsync(x => x.Id != id && x.Email.ToLower() == normalizedEmail))
                 {
-                    throw new InvalidOperationException("Thông tin định danh (CCCD, Email hoặc SĐT) đã bị trùng lặp với nhân viên khác.");
+                    throw new InvalidOperationException($"Email '{dto.Email}' đã được sử dụng bởi tài khoản khác.");
+                }
+
+                if (await _context.IAUsers.AnyAsync(x => x.Id != id && x.CitizenId == normalizedCitizenId))
+                {
+                    throw new InvalidOperationException($"Số CCCD '{dto.CitizenId}' đã tồn tại trong hệ thống.");
+                }
+
+                if (await _context.IAUsers.AnyAsync(x => x.Id != id && x.PhoneNumber == normalizedPhone))
+                {
+                    throw new InvalidOperationException($"Số điện thoại '{dto.PhoneNumber}' đã tồn tại trong hệ thống.");
+                }
+
+                // Bảo vệ tài khoản admin tối cao không bị khóa
+                if (entity.Username.Equals("admin", StringComparison.OrdinalIgnoreCase) && !dto.IsActive)
+                {
+                    throw new InvalidOperationException("Không thể tạm khóa tài khoản quản trị viên tối cao (admin).");
                 }
 
                 _mapper.Map(dto, entity);
+                entity.Email = normalizedEmail;
+                entity.PhoneNumber = normalizedPhone;
+                entity.CitizenId = normalizedCitizenId;
 
                 #region Đồng bộ lại các quan hệ Nhiều - Nhiều
                 // 1. Đồng bộ Vai trò (Roles)
@@ -212,7 +247,7 @@ namespace backend.Services
                 if (dto.RoleIds.Any())
                 {
                     _context.IAUserRoles.AddRange(
-                        dto.RoleIds.Select(rId => new IAUserRole { UserId = id, RoleId = rId }));
+                        dto.RoleIds.Distinct().Select(rId => new IAUserRole { UserId = id, RoleId = rId }));
                 }
 
                 // 2. Đồng bộ Kho hàng (Warehouses)
@@ -223,7 +258,7 @@ namespace backend.Services
                 if (dto.WarehouseIds.Any())
                 {
                     _context.IAUserWarehouses.AddRange(
-                        dto.WarehouseIds.Select(wId => new IAUserWarehouse { UserId = id, WarehouseId = wId }));
+                        dto.WarehouseIds.Distinct().Select(wId => new IAUserWarehouse { UserId = id, WarehouseId = wId }));
                 }
 
                 // 3. Đồng bộ Quyền ngoại lệ (Custom Permissions)
@@ -269,6 +304,11 @@ namespace backend.Services
                 throw new KeyNotFoundException($"Không tìm thấy tài khoản nhân viên với ID = {id}.");
             }
 
+            if (entity.Username.Equals("admin", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("Không thể xóa tài khoản quản trị viên tối cao (admin).");
+            }
+
             // DbContext sẽ tự động chuyển thành Soft Delete (IsDeleted = true) trong SaveChangesAsync
             _context.IAUsers.Remove(entity);
             await _context.SaveChangesAsync();
@@ -281,6 +321,11 @@ namespace backend.Services
             if (entity == null)
             {
                 throw new KeyNotFoundException($"Không tìm thấy tài khoản nhân viên với ID = {id}.");
+            }
+
+            if (entity.Username.Equals("admin", StringComparison.OrdinalIgnoreCase) && entity.IsActive)
+            {
+                throw new InvalidOperationException("Không thể tạm khóa tài khoản quản trị viên tối cao (admin).");
             }
 
             entity.IsActive = !entity.IsActive;

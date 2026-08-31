@@ -43,8 +43,8 @@ const MENU_CONFIG: MenuItem[] = [
     label: 'Bán hàng & Khách hàng',
     icon: ShoppingBag,
     children: [
-      { label: 'Đơn hàng bán', path: '/orders', permission: PERMISSIONS.INVENTORY.VIEW },
-      { label: 'Đơn hàng trả', path: '/customer-returns', permission: PERMISSIONS.INVENTORY.VIEW },
+      { label: 'Đơn hàng bán', path: '/orders', permission: PERMISSIONS.ORDER.VIEW },
+      { label: 'Đơn hàng trả', path: '/customer-returns', permission: PERMISSIONS.RETURN.VIEW },
       { label: 'Danh sách Khách hàng', path: '/customers', permission: PERMISSIONS.CUSTOMER.VIEW },
       {
         label: 'Phân loại Khách hàng',
@@ -73,7 +73,7 @@ const MENU_CONFIG: MenuItem[] = [
     label: 'Mua hàng & Nhà cung cấp',
     icon: ShoppingCart,
     children: [
-      { label: 'Đơn mua hàng', path: '/purchase-orders', permission: PERMISSIONS.INVENTORY.VIEW },
+      { label: 'Đơn mua hàng', path: '/purchase-orders', permission: PERMISSIONS.PURCHASE.VIEW },
       {
         label: 'Danh sách Nhà cung cấp',
         path: '/suppliers',
@@ -96,32 +96,32 @@ const MENU_CONFIG: MenuItem[] = [
     label: 'Quản lý Kho bãi',
     icon: Package,
     children: [
-      { label: 'Tổng quan Tồn kho', path: '/inventories', permission: PERMISSIONS.INVENTORY.VIEW },
+      { label: 'Tổng quan Tồn kho', path: '/inventories', permission: PERMISSIONS.INVENTORY.RECEIPT_VIEW },
       {
         label: 'Phiếu nhập kho',
         path: '/inventory-receipts',
-        permission: PERMISSIONS.INVENTORY.VIEW,
+        permission: PERMISSIONS.INVENTORY.RECEIPT_VIEW,
       },
       {
         label: 'Phiếu xuất kho',
         path: '/inventory-issues',
-        permission: PERMISSIONS.INVENTORY.VIEW,
+        permission: PERMISSIONS.INVENTORY.ISSUE_VIEW,
       },
       {
         label: 'Chuyển kho nội bộ',
         path: '/inventory-transfers',
-        permission: PERMISSIONS.INVENTORY.VIEW,
+        permission: PERMISSIONS.INVENTORY.TRANSFER_VIEW,
       },
-      { label: 'Kiểm kê kho', path: '/inventory-audits', permission: PERMISSIONS.INVENTORY.VIEW },
+      { label: 'Kiểm kê kho', path: '/inventory-audits', permission: PERMISSIONS.INVENTORY.AUDIT_VIEW },
       {
         label: 'Điều chỉnh tồn kho',
         path: '/inventory-adjustments',
-        permission: PERMISSIONS.INVENTORY.VIEW,
+        permission: PERMISSIONS.INVENTORY.ADJUSTMENT_VIEW,
       },
       {
         label: 'Sổ cái & Chốt ca',
         path: '/inventory-reconciliation',
-        permission: PERMISSIONS.INVENTORY.VIEW,
+        permission: PERMISSIONS.INVENTORY.RECEIPT_VIEW,
       },
       { label: 'Danh sách Kho bãi', path: '/warehouses', permission: PERMISSIONS.WAREHOUSE.VIEW },
     ],
@@ -140,12 +140,12 @@ const MENU_CONFIG: MenuItem[] = [
       {
         label: 'Danh mục Sản phẩm',
         path: '/product-categories',
-        permission: PERMISSIONS.PRODUCT.CATEGORY_MANAGE,
+        permission: PERMISSIONS.CATEGORY.VIEW,
       },
       {
         label: 'Nhóm danh mục',
         path: '/product-category-groups',
-        permission: PERMISSIONS.PRODUCT.CATEGORY_MANAGE,
+        permission: PERMISSIONS.CATEGORY.VIEW,
       },
       {
         label: 'Từ điển thuộc tính',
@@ -179,6 +179,9 @@ export const Sidebar: React.FC = () => {
 
   const { userInfo, logout } = useAuthStore();
   const userPermissions = userInfo?.permissions || [];
+  const isSuperAdmin = userInfo?.roles?.some(
+    (r) => r.toUpperCase() === 'ADMIN' || r.toUpperCase() === 'SUPER_ADMIN'
+  );
 
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [openMenus, setOpenMenus] = useState<string[]>([]);
@@ -193,6 +196,7 @@ export const Sidebar: React.FC = () => {
 
   const hasPermission = (requiredPermission?: string) => {
     if (!requiredPermission) return true;
+    if (isSuperAdmin) return true;
     return userPermissions.includes(requiredPermission);
   };
 

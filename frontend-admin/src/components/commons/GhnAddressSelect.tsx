@@ -52,14 +52,20 @@ export const GhnAddressSelect: React.FC<GhnAddressSelectProps> = ({
   // 2. Tìm Province ID tương ứng khi có giá trị `province` ban đầu (hoặc khi edit mode)
   useEffect(() => {
     if (province && provinces.length > 0) {
-      const matched = provinces.find(
-        (p) =>
-          p.provinceName.toLowerCase() === province.toLowerCase() ||
-          p.provinceName.toLowerCase().includes(province.toLowerCase()) ||
-          province.toLowerCase().includes(p.provinceName.toLowerCase())
+      const exact = provinces.find(
+        (p) => p.provinceName.trim().toLowerCase() === province.trim().toLowerCase()
       );
-      if (matched) {
-        setSelectedProvinceId(matched.provinceID);
+      if (exact) {
+        setSelectedProvinceId(exact.provinceID);
+      } else {
+        const matched = provinces.find(
+          (p) =>
+            p.provinceName.toLowerCase().startsWith(province.toLowerCase()) ||
+            province.toLowerCase().includes(p.provinceName.toLowerCase())
+        );
+        if (matched) {
+          setSelectedProvinceId(matched.provinceID);
+        }
       }
     }
   }, [province, provinces]);
@@ -81,17 +87,23 @@ export const GhnAddressSelect: React.FC<GhnAddressSelectProps> = ({
     }
   }, [selectedProvinceId]);
 
-  // 4. Tìm District ID tương ứng khi có giá trị `district` ban đầu
+  // 4. Tìm District ID tương ứng khi có giá trị `district` ban đầu (Ưu tiên Exact Match tránh Quận 1 nhầm sang Quận 12)
   useEffect(() => {
     if (district && districts.length > 0) {
-      const matched = districts.find(
-        (d) =>
-          d.districtName.toLowerCase() === district.toLowerCase() ||
-          d.districtName.toLowerCase().includes(district.toLowerCase()) ||
-          district.toLowerCase().includes(d.districtName.toLowerCase())
+      const exact = districts.find(
+        (d) => d.districtName.trim().toLowerCase() === district.trim().toLowerCase()
       );
-      if (matched) {
-        setSelectedDistrictId(matched.districtID);
+      if (exact) {
+        setSelectedDistrictId(exact.districtID);
+      } else {
+        const matched = districts.find(
+          (d) =>
+            d.districtName.toLowerCase().startsWith(district.toLowerCase()) ||
+            district.toLowerCase().includes(d.districtName.toLowerCase())
+        );
+        if (matched) {
+          setSelectedDistrictId(matched.districtID);
+        }
       }
     }
   }, [district, districts]);

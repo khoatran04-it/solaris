@@ -1,60 +1,125 @@
-// Danh sách Mã quyền khớp 100% với Database Backend
+// Danh sách Mã quyền chuẩn hóa (Single Source of Truth) khớp 100% với SystemPermission Enum Backend
 export const PERMISSIONS = {
-  // 1. Hệ thống
+  // 1. Hệ thống & Phân quyền
   SYSTEM: {
     ROLE_VIEW: 'ROLE_VIEW',
-    ROLE_MANAGE: 'ROLE_MANAGE',
+    ROLE_CREATE: 'ROLE_CREATE',
+    ROLE_UPDATE: 'ROLE_UPDATE',
+    ROLE_DELETE: 'ROLE_DELETE',
+    ROLE_MANAGE: 'ROLE_UPDATE', // Alias
     USER_VIEW: 'USER_VIEW',
-    USER_MANAGE: 'USER_MANAGE',
+    USER_CREATE: 'USER_CREATE',
+    USER_UPDATE: 'USER_UPDATE',
+    USER_DELETE: 'USER_DELETE',
+    USER_MANAGE: 'USER_UPDATE', // Alias
   },
 
-  // 2. Nhà cung cấp (Bao gồm Supplier, SupplierType)
-  SUPPLIER: {
-    VIEW: 'SUPPLIER_VIEW',
-    MANAGE: 'SUPPLIER_MANAGE',
-    CONFIG: 'SUPPLIER_CONFIG', // Dành cho các trang Type
-  },
-
-  // 3. Khách hàng (Bao gồm Customer, Type, Tier, Group)
-  CUSTOMER: {
-    VIEW: 'CUSTOMER_VIEW',
-    MANAGE: 'CUSTOMER_MANAGE',
-    CONFIG: 'CUSTOMER_CONFIG', // Dành cho Type, Tier, Group
-  },
-
-  // 4. Sản phẩm (Bao gồm Product, Variant, Category, CategoryGroup)
-  PRODUCT: {
-    VIEW: 'PRODUCT_VIEW',
-    MANAGE: 'PRODUCT_MANAGE',
-    CATEGORY_MANAGE: 'CATEGORY_MANAGE',
-  },
-
-  // 5. Thuộc tính (AttributeDefinition, CategoryAttribute)
-  ATTRIBUTE: {
-    MANAGE: 'ATTRIBUTE_MANAGE', // Thường thuộc tính ít người xem đơn thuần, gộp luôn vào Manage
-  },
-
-  // 6. Đơn vị tính (UoM, UoMCategory, UoMConversion)
+  // 2. Đơn vị tính
   UOM: {
     VIEW: 'UOM_VIEW',
-    MANAGE: 'UOM_MANAGE',
+    CREATE: 'UOM_CREATE',
+    UPDATE: 'UOM_UPDATE',
+    DELETE: 'UOM_DELETE',
+    MANAGE: 'UOM_UPDATE',
   },
 
-  // 7. Khuyến mãi (PromotionCampaign)
+  // 3. Nhà cung cấp / Nhà vườn
+  SUPPLIER: {
+    VIEW: 'SUPPLIER_VIEW',
+    CREATE: 'SUPPLIER_CREATE',
+    UPDATE: 'SUPPLIER_UPDATE',
+    DELETE: 'SUPPLIER_DELETE',
+    MANAGE: 'SUPPLIER_UPDATE',
+    CONFIG: 'SUPPLIER_UPDATE',
+  },
+
+  // 4. Danh mục & Thuộc tính
+  CATEGORY: {
+    VIEW: 'CATEGORY_VIEW',
+    CREATE: 'CATEGORY_CREATE',
+    UPDATE: 'CATEGORY_UPDATE',
+    DELETE: 'CATEGORY_DELETE',
+  },
+  ATTRIBUTE: {
+    MANAGE: 'ATTRIBUTE_MANAGE',
+  },
+
+  // 5. Sản phẩm & Bảng giá
+  PRODUCT: {
+    VIEW: 'PRODUCT_VIEW',
+    CREATE: 'PRODUCT_CREATE',
+    UPDATE: 'PRODUCT_UPDATE',
+    DELETE: 'PRODUCT_DELETE',
+    MANAGE: 'PRODUCT_UPDATE',
+    CATEGORY_MANAGE: 'CATEGORY_UPDATE',
+  },
+
+  // 6. Khách hàng & Hạng thẻ
+  CUSTOMER: {
+    VIEW: 'CUSTOMER_VIEW',
+    CREATE: 'CUSTOMER_CREATE',
+    UPDATE: 'CUSTOMER_UPDATE',
+    DELETE: 'CUSTOMER_DELETE',
+    MANAGE: 'CUSTOMER_UPDATE',
+    CONFIG: 'CUSTOMER_UPDATE',
+  },
+
+  // 7. Khuyến mãi
   PROMOTION: {
     VIEW: 'PROMOTION_VIEW',
-    MANAGE: 'PROMOTION_MANAGE',
+    CREATE: 'PROMOTION_CREATE',
+    UPDATE: 'PROMOTION_UPDATE',
+    DELETE: 'PROMOTION_DELETE',
+    MANAGE: 'PROMOTION_UPDATE',
   },
 
-  // 8. Kho (Warehouse)
+  // 8. Mạng lưới Kho hàng
   WAREHOUSE: {
     VIEW: 'WAREHOUSE_VIEW',
-    MANAGE: 'WAREHOUSE_MANAGE',
+    CREATE: 'WAREHOUSE_CREATE',
+    UPDATE: 'WAREHOUSE_UPDATE',
+    DELETE: 'WAREHOUSE_DELETE',
+    MANAGE: 'WAREHOUSE_UPDATE',
   },
 
-  //9. Kho Tổng (Inventory)
+  // 9. Mua hàng
+  PURCHASE: {
+    VIEW: 'PURCHASE_VIEW',
+    CREATE: 'PURCHASE_CREATE',
+    UPDATE: 'PURCHASE_UPDATE',
+    APPROVE: 'PURCHASE_APPROVE',
+    CANCEL: 'PURCHASE_CANCEL',
+  },
+
+  // 10. Vận hành Kho & Tồn kho
   INVENTORY: {
-    VIEW: 'INVENTORY_VIEW',
-    MANAGE: 'INVENTORY_MANAGE',
+    VIEW: 'RECEIPT_VIEW',
+    MANAGE: 'RECEIPT_CONFIRM',
+    RECEIPT_VIEW: 'RECEIPT_VIEW',
+    RECEIPT_CREATE: 'RECEIPT_CREATE',
+    RECEIPT_CONFIRM: 'RECEIPT_CONFIRM',
+    ISSUE_VIEW: 'ISSUE_VIEW',
+    ISSUE_CREATE: 'ISSUE_CREATE',
+    TRANSFER_VIEW: 'TRANSFER_VIEW',
+    TRANSFER_MANAGE: 'TRANSFER_MANAGE',
+    AUDIT_VIEW: 'AUDIT_VIEW',
+    AUDIT_CREATE: 'AUDIT_CREATE',
+    ADJUSTMENT_VIEW: 'ADJUSTMENT_VIEW',
+    ADJUSTMENT_CREATE: 'ADJUSTMENT_CREATE',
+  },
+
+  // 11. Đơn bán hàng
+  ORDER: {
+    VIEW: 'ORDER_VIEW',
+    CREATE: 'ORDER_CREATE',
+    PROCESS: 'ORDER_PROCESS',
+    CANCEL: 'ORDER_CANCEL',
+  },
+
+  // 12. Đổi trả & QC
+  RETURN: {
+    VIEW: 'RETURN_VIEW',
+    CREATE: 'RETURN_CREATE',
+    INSPECT: 'RETURN_INSPECT',
   },
 };

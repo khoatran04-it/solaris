@@ -32,6 +32,23 @@ namespace backend.Controllers
         }
 
         /// <summary>
+        /// Helper trích xuất danh sách ID kho mà nhân viên có quyền truy cập từ JWT Token Claims.
+        /// </summary>
+        private List<int>? GetAllowedWarehouseIds()
+        {
+            var claim = User.Claims.FirstOrDefault(c => c.Type == "WarehouseIds");
+            if (claim != null && !string.IsNullOrWhiteSpace(claim.Value))
+            {
+                return claim.Value.Split(',')
+                    .Select(s => int.TryParse(s.Trim(), out int id) ? id : 0)
+                    .Where(id => id > 0)
+                    .ToList();
+            }
+
+            return null; // Mặc định nếu không có claim giới hạn thì xem toàn cục (SuperAdmin / HQ)
+        }
+
+        /// <summary>
         /// Lấy danh sách Đơn bán hàng có phân trang và bộ lọc đa chiều (Admin / Quản trị kho).
         /// </summary>
         /// <param name="search">Từ khóa tìm kiếm theo Mã đơn, Tên người nhận, SĐT người nhận hoặc Tên khách hàng.</param>
@@ -60,7 +77,8 @@ namespace backend.Controllers
             [FromQuery] int pageIndex = 1,
             [FromQuery] int pageSize = 10)
         {
-            var result = await _service.GetPagedAsync(search, customerId, warehouseId, status, paymentStatus, startDate, endDate, pageIndex, pageSize);
+            var allowedWarehouseIds = GetAllowedWarehouseIds();
+            var result = await _service.GetPagedAsync(search, customerId, warehouseId, status, paymentStatus, startDate, endDate, pageIndex, pageSize, allowedWarehouseIds);
             return Ok(result);
         }
 

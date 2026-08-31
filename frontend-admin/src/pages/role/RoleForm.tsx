@@ -142,7 +142,12 @@ const RoleForm: React.FC = () => {
       }
       setTimeout(() => navigate('/roles'), 1000);
     } catch (error: any) {
-      showToast('error', error.response?.data?.message || 'CÓ LỖI XẢY RA KHI LƯU');
+      const serverMsg = error.response?.data?.message || error.message || 'CÓ LỖI XẢY RA KHI LƯU';
+      showToast('error', serverMsg);
+      if (serverMsg.includes('Mã vai trò') || serverMsg.includes('Code')) {
+        setErrors((prev) => ({ ...prev, code: serverMsg }));
+        setActiveTab('info');
+      }
     } finally {
       setLoading(false);
     }

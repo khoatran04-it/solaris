@@ -31,13 +31,18 @@ namespace backend.Services
         #region Truy vấn (Query)
         /// <inheritdoc />
         public async Task<PagedResult<InventoryReceiptReadDto>> GetPagedAsync(
-            string? search, int? warehouseId, int? supplierId, int? status, DateTime? startDate, DateTime? endDate, int pageIndex, int pageSize)
+            string? search, int? warehouseId, int? supplierId, int? status, DateTime? startDate, DateTime? endDate, int pageIndex, int pageSize, List<int>? allowedWarehouseIds = null)
         {
             var query = _context.InventoryReceipts
                 .Include(x => x.Warehouse)
                 .Include(x => x.Supplier)
                 .Include(x => x.ReceivedBy)
                 .AsQueryable();
+
+            if (allowedWarehouseIds != null && allowedWarehouseIds.Any())
+            {
+                query = query.Where(x => allowedWarehouseIds.Contains(x.WarehouseId));
+            }
 
             if (!string.IsNullOrWhiteSpace(search))
             {
@@ -87,9 +92,9 @@ namespace backend.Services
         }
 
         /// <inheritdoc />
-        public async Task<InventoryReceiptReadDto> GetByIdAsync(int id)
+        public async Task<InventoryReceiptReadDto> GetByIdAsync(int id, List<int>? allowedWarehouseIds = null)
         {
-            var entity = await _context.InventoryReceipts
+            var query = _context.InventoryReceipts
                 .Include(x => x.Warehouse)
                 .Include(x => x.Supplier)
                 .Include(x => x.ReceivedBy)
@@ -97,10 +102,17 @@ namespace backend.Services
                 .Include(x => x.Details).ThenInclude(d => d.Batch)
                 .Include(x => x.Details).ThenInclude(d => d.UoM)
                 .AsNoTracking()
-                .FirstOrDefaultAsync(x => x.Id == id);
+                .AsQueryable();
+
+            if (allowedWarehouseIds != null && allowedWarehouseIds.Any())
+            {
+                query = query.Where(x => allowedWarehouseIds.Contains(x.WarehouseId));
+            }
+
+            var entity = await query.FirstOrDefaultAsync(x => x.Id == id);
 
             if (entity == null)
-                throw new KeyNotFoundException("Không tìm thấy Phiếu Nhập Kho.");
+                throw new KeyNotFoundException("Không tìm thấy Phiếu Nhập Kho hoặc bạn không có quyền truy cập kho này.");
 
             return _mapper.Map<InventoryReceiptReadDto>(entity);
         }
