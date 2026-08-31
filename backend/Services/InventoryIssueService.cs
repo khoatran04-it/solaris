@@ -140,7 +140,7 @@ namespace backend.Services
             {
                 var issue = _mapper.Map<InventoryIssue>(dto);
 
-                issue.IssueCode = $"ISS-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString()[..6].ToUpper()}";
+                issue.IssueCode = $"ISS-{DateTimeHelper.VietnamDateString}-{Guid.NewGuid().ToString()[..6].ToUpper()}";
                 issue.IssuedById = safeUserId;
                 issue.IssueDate = dto.IssueDate ?? DateTime.UtcNow;
                 issue.Status = InventoryIssueStatus.Pending;

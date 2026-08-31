@@ -178,7 +178,7 @@ namespace backend.Services
                 // Sinh mã chứng từ nếu client không truyền
                 if (string.IsNullOrWhiteSpace(dto.OrderCode))
                 {
-                    entity.OrderCode = $"PO-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString()[..6].ToUpper()}";
+                    entity.OrderCode = $"PO-{DateTimeHelper.VietnamDateString}-{Guid.NewGuid().ToString()[..6].ToUpper()}";
                 }
                 else
                 {

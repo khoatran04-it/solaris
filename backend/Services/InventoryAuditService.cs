@@ -146,7 +146,7 @@ namespace backend.Services
                 if (firstUser != null) auditorId = firstUser.Id;
             }
 
-            var auditCode = $"AUD-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString()[..6].ToUpper()}";
+            var auditCode = $"AUD-{DateTimeHelper.VietnamDateString}-{Guid.NewGuid().ToString()[..6].ToUpper()}";
 
             var audit = new InventoryAudit
             {
@@ -304,7 +304,7 @@ namespace backend.Services
 
                     var adjustment = new InventoryAdjustment
                     {
-                        AdjustmentCode = $"ADJ-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString()[..6].ToUpper()}",
+                        AdjustmentCode = $"ADJ-{DateTimeHelper.VietnamDateString}-{Guid.NewGuid().ToString()[..6].ToUpper()}",
                         WarehouseId = audit.WarehouseId,
                         AuditId = audit.Id,
                         Status = InventoryAdjustmentStatus.Approved,

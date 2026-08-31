@@ -8,6 +8,7 @@ interface DatePickerProps {
   value: Date | null;
   onChange: (date: Date) => void;
   placeholder?: string;
+  alignRight?: boolean;
 }
 
 const DatePicker: React.FC<DatePickerProps> = ({
@@ -17,6 +18,7 @@ const DatePicker: React.FC<DatePickerProps> = ({
   value,
   onChange,
   placeholder = 'Chọn ngày/tháng/năm...',
+  alignRight = false,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(value || new Date());
@@ -102,7 +104,11 @@ const DatePicker: React.FC<DatePickerProps> = ({
 
       {/* POPUP LỊCH (CALENDAR) */}
       {isOpen && (
-        <div className="absolute top-[calc(100%+8px)] left-0 w-70 bg-white border border-slate-100 rounded-2xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.15)] z-100 p-5 font-normal animate-in fade-in zoom-in-95 duration-200">
+        <div
+          className={`absolute top-[calc(100%+8px)] ${
+            alignRight ? 'right-0' : 'left-0'
+          } w-70 bg-white border border-slate-100 rounded-2xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.15)] z-100 p-5 font-normal animate-in fade-in zoom-in-95 duration-200`}
+        >
           {/* Header: Tháng / Năm */}
           <div className="flex justify-between items-center mb-5">
             <button

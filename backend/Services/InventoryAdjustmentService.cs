@@ -152,7 +152,7 @@ namespace backend.Services
                 if (firstUser != null) creatorId = firstUser.Id;
             }
 
-            var adjustmentCode = $"ADJ-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString()[..6].ToUpper()}";
+            var adjustmentCode = $"ADJ-{DateTimeHelper.VietnamDateString}-{Guid.NewGuid().ToString()[..6].ToUpper()}";
 
             var adjustment = new InventoryAdjustment
             {

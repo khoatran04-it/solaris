@@ -156,7 +156,7 @@ namespace backend.Services
             {
                 var transfer = _mapper.Map<InventoryTransfer>(dto);
 
-                transfer.TransferCode = $"TRF-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString()[..6].ToUpper()}";
+                transfer.TransferCode = $"TRF-{DateTimeHelper.VietnamDateString}-{Guid.NewGuid().ToString()[..6].ToUpper()}";
                 transfer.Status = InventoryTransferStatus.Draft;
                 transfer.CreatedById = safeCreatedById;
                 transfer.CreatedAt = DateTime.UtcNow;

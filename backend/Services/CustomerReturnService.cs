@@ -152,7 +152,7 @@ namespace backend.Services
             {
                 var ret = new CustomerReturn
                 {
-                    ReturnCode = $"RET-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString()[..6].ToUpper()}",
+                    ReturnCode = $"RET-{DateTimeHelper.VietnamDateString}-{Guid.NewGuid().ToString()[..6].ToUpper()}",
                     OrderId = dto.OrderId,
                     CustomerId = customerId,
                     WarehouseId = warehouseId,

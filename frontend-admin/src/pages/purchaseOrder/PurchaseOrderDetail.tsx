@@ -11,7 +11,7 @@ import {
   DetailCard,
   DetailSection,
   InfoField,
-} from '../../components/commons/TabUI'; // Giữ nguyên đường dẫn import của sếp
+} from '../../components/commons/TabUI';
 import { Toast } from '../../components/commons/Toast';
 
 // API & Types
@@ -65,14 +65,12 @@ const PurchaseOrderDetail: React.FC = () => {
     setTimeout(() => setToast((prev) => ({ ...prev, show: false })), 3000);
   };
 
-  // Hàm gọi API Update Trạng Thái (Cần viết thêm hàm updateStatus trong purchaseOrderApi.ts)
   const handleUpdateStatus = async (status: PurchaseOrderStatus, reason?: string) => {
     if (!po) return;
 
     try {
       setActionLoading(true);
 
-      // Giả định sếp có hàm PATCH cập nhật trạng thái riêng biệt để tối ưu
       await purchaseOrderApi.updateStatus(po.id, {
         status,
         cancellationReason: reason,
@@ -103,7 +101,28 @@ const PurchaseOrderDetail: React.FC = () => {
 
   const formatDate = (dateString?: string) => {
     if (!dateString) return '---';
-    return dateString.includes('T') ? dateString.split('T')[0] : dateString.substring(0, 10);
+    try {
+      const d = new Date(dateString);
+      if (isNaN(d.getTime())) return dateString;
+      return d.toLocaleDateString('vi-VN', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+      });
+    } catch {
+      return dateString.includes('T') ? dateString.split('T')[0] : dateString;
+    }
+  };
+
+  const extractWarehouse = (note?: string) => {
+    if (!note) return '---';
+    const match = note.match(/\[Kho nhận:\s*([^\]]+)\]/i);
+    return match ? match[1].trim() : '---';
+  };
+
+  const getCleanNote = (note?: string) => {
+    if (!note) return '';
+    return note.replace(/\[Kho nhận:\s*[^\]]+\]\s*/i, '').trim();
   };
 
   // --- RENDER ---
@@ -113,6 +132,8 @@ const PurchaseOrderDetail: React.FC = () => {
     return (
       <div className="p-12 text-center text-rose-500 font-bold">Không tìm thấy Đơn mua hàng!</div>
     );
+
+  const cleanNoteText = getCleanNote(po.note);
 
   return (
     <DetailPageContainer>
@@ -124,57 +145,59 @@ const PurchaseOrderDetail: React.FC = () => {
       />
 
       {/* ================= THANH CÔNG CỤ (ACTION BUTTONS) ================= */}
-      <div className="flex flex-wrap gap-3 mb-6 p-4 bg-white border border-slate-200 rounded-xl shadow-sm">
-        <div className="flex-1 flex items-center gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-2 p-4.5 bg-white border border-slate-100 rounded-3xl shadow-[0_2px_20px_-4px_rgba(0,0,0,0.05)]">
+        <div className="flex items-center gap-3">
           <span className="text-sm font-bold text-slate-500">Trạng thái hiện tại:</span>
           <span
-            className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold border ${PurchaseOrderStatusColors[po.status]}`}
+            className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-extrabold border ${PurchaseOrderStatusColors[po.status]}`}
           >
             {PurchaseOrderStatusLabels[po.status]}
           </span>
         </div>
 
-        {/* NÚT: DRAFT -> PROCESSING */}
-        {po.status === PurchaseOrderStatus.Draft && (
-          <button
-            onClick={() => handleUpdateStatus(PurchaseOrderStatus.Processing)}
-            disabled={actionLoading}
-            className="flex items-center gap-2 px-5 py-2 bg-blue-600 text-white rounded-lg font-bold text-sm hover:bg-blue-700 transition-colors disabled:opacity-50 shadow-sm shadow-blue-200"
-          >
-            <Clock size={16} /> Chuyển Chờ Duyệt
-          </button>
-        )}
-
-        {/* NÚT: PROCESSING -> APPROVED / CANCELLED */}
-        {po.status === PurchaseOrderStatus.Processing && (
-          <>
+        <div className="flex items-center gap-3">
+          {/* NÚT: DRAFT -> PROCESSING */}
+          {po.status === PurchaseOrderStatus.Draft && (
             <button
-              onClick={() => setCancelModalOpen(true)}
+              onClick={() => handleUpdateStatus(PurchaseOrderStatus.Processing)}
               disabled={actionLoading}
-              className="flex items-center gap-2 px-5 py-2 bg-white text-red-600 border border-red-200 rounded-lg font-bold text-sm hover:bg-red-50 transition-colors disabled:opacity-50"
+              className="flex items-center gap-2 px-5 py-2.5 bg-amber-400 text-slate-900 rounded-xl font-bold text-sm hover:bg-amber-300 transition-all shadow-xs disabled:opacity-50 cursor-pointer"
             >
-              Hủy Đơn
+              <Clock size={16} /> Chuyển Chờ Duyệt
             </button>
-            <button
-              onClick={() => handleUpdateStatus(PurchaseOrderStatus.Approved)}
-              disabled={actionLoading}
-              className="flex items-center gap-2 px-5 py-2 bg-emerald-600 text-white rounded-lg font-bold text-sm hover:bg-emerald-700 transition-colors disabled:opacity-50 shadow-sm shadow-emerald-200"
-            >
-              <CheckCircle size={16} /> Duyệt Đơn Hàng
-            </button>
-          </>
-        )}
+          )}
 
-        {/* NÚT: APPROVED / PARTIALLY RECEIVED -> TẠO PHIẾU NHẬP */}
-        {(po.status === PurchaseOrderStatus.Approved ||
-          po.status === PurchaseOrderStatus.PartiallyReceived) && (
-          <button
-            onClick={() => navigate(`/inventory-receipts/create?poId=${po.id}`)}
-            className="flex items-center gap-2 px-5 py-2 bg-indigo-600 text-white rounded-lg font-bold text-sm hover:bg-indigo-700 transition-colors shadow-sm shadow-indigo-200"
-          >
-            <Package size={16} /> Nhận Hàng (Tạo Phiếu Nhập)
-          </button>
-        )}
+          {/* NÚT: PROCESSING -> APPROVED / CANCELLED */}
+          {po.status === PurchaseOrderStatus.Processing && (
+            <>
+              <button
+                onClick={() => setCancelModalOpen(true)}
+                disabled={actionLoading}
+                className="flex items-center gap-2 px-5 py-2.5 bg-white text-rose-600 border border-rose-200 rounded-xl font-bold text-sm hover:bg-rose-50 transition-colors disabled:opacity-50 cursor-pointer"
+              >
+                Hủy Đơn
+              </button>
+              <button
+                onClick={() => handleUpdateStatus(PurchaseOrderStatus.Approved)}
+                disabled={actionLoading}
+                className="flex items-center gap-2 px-5 py-2.5 bg-emerald-600 text-white rounded-xl font-bold text-sm hover:bg-emerald-700 transition-all shadow-xs disabled:opacity-50 cursor-pointer"
+              >
+                <CheckCircle size={16} /> Duyệt Đơn Hàng
+              </button>
+            </>
+          )}
+
+          {/* NÚT: APPROVED / PARTIALLY RECEIVED -> TẠO PHIẾU NHẬP */}
+          {(po.status === PurchaseOrderStatus.Approved ||
+            po.status === PurchaseOrderStatus.PartiallyReceived) && (
+            <button
+              onClick={() => navigate(`/inventory-receipts/create?poId=${po.id}`)}
+              className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-xl font-bold text-sm hover:bg-indigo-700 transition-all shadow-xs cursor-pointer"
+            >
+              <Package size={16} /> Nhận Hàng (Tạo Phiếu Nhập)
+            </button>
+          )}
+        </div>
       </div>
 
       {/* ================= TABS ĐIỀU HƯỚNG ================= */}
@@ -197,50 +220,74 @@ const PurchaseOrderDetail: React.FC = () => {
       {activeTab === 'info' && (
         <div className="animate-in fade-in duration-300">
           <DetailCard>
-            {/* Cảnh báo Hủy đơn */}
-            {po.status === PurchaseOrderStatus.Cancelled && po.cancellationReason && (
-              <div className="mb-6 bg-rose-50 border border-rose-200 text-rose-700 p-4 rounded-xl flex gap-3 items-start shadow-sm">
-                <AlertCircle className="w-5 h-5 shrink-0 mt-0.5 text-rose-500" />
-                <div>
-                  <h4 className="font-bold text-sm uppercase tracking-wider">Lý do hủy đơn:</h4>
-                  <p className="text-sm mt-1 font-medium">{po.cancellationReason}</p>
-                </div>
-              </div>
-            )}
-
-            <DetailSection title="Chứng Từ Giao Dịch">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-6">
-                <InfoField
-                  label="Mã Đơn Hàng (PO)"
-                  value={<span className="font-bold text-indigo-700">{po.orderCode}</span>}
-                />
-                <InfoField
-                  label="Nhà Cung Cấp"
-                  value={<span className="font-bold text-slate-800">{po.supplierName}</span>}
-                />
-                <InfoField label="Người Lập Đơn" value={po.createdByName} />
-                <InfoField
-                  label="Tổng Tiền Thanh Toán"
-                  value={
-                    <span className="font-black text-emerald-600 text-lg">
-                      {formatCurrency(po.totalAmount)}
-                    </span>
-                  }
-                />
-
-                <InfoField label="Ngày Lập Đơn" value={formatDate(po.orderDate)} />
-                <InfoField label="Ngày Giao Dự Kiến" value={formatDate(po.expectedDeliveryDate)} />
-              </div>
-
-              {po.note && (
-                <div className="mt-6 pt-6 border-t border-slate-100">
-                  <InfoField
-                    label="Ghi Chú Chung"
-                    value={<span className="italic text-slate-600">{po.note}</span>}
-                  />
+            <div className="p-8 flex flex-col gap-6">
+              {/* Cảnh báo Hủy đơn */}
+              {po.status === PurchaseOrderStatus.Cancelled && po.cancellationReason && (
+                <div className="bg-rose-50 border border-rose-200 text-rose-700 p-4 rounded-2xl flex gap-3 items-start shadow-sm">
+                  <AlertCircle className="w-5 h-5 shrink-0 mt-0.5 text-rose-500" />
+                  <div>
+                    <h4 className="font-bold text-sm uppercase tracking-wider">Lý do hủy đơn:</h4>
+                    <p className="text-sm mt-1 font-medium">{po.cancellationReason}</p>
+                  </div>
                 </div>
               )}
-            </DetailSection>
+
+              <DetailSection title="Chứng Từ Giao Dịch">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-6">
+                  <InfoField
+                    label="Mã Đơn Hàng (PO)"
+                    value={
+                      <span className="font-mono font-bold text-amber-800 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200/80">
+                        {po.orderCode}
+                      </span>
+                    }
+                  />
+                  <InfoField
+                    label="Nhà Cung Cấp"
+                    value={<span className="font-bold text-slate-800">{po.supplierName}</span>}
+                  />
+                  <InfoField
+                    label="Kho Nhận Hàng Dự Kiến"
+                    value={
+                      <span className="font-semibold text-slate-800 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200">
+                        {extractWarehouse(po.note)}
+                      </span>
+                    }
+                  />
+                  <InfoField
+                    label="Trạng Thái Đơn"
+                    value={
+                      <span
+                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-extrabold border ${PurchaseOrderStatusColors[po.status]}`}
+                      >
+                        {PurchaseOrderStatusLabels[po.status]}
+                      </span>
+                    }
+                  />
+
+                  <InfoField label="Người Lập Đơn" value={po.createdByName} />
+                  <InfoField label="Ngày Lập Đơn" value={formatDate(po.orderDate)} />
+                  <InfoField label="Ngày Giao Dự Kiến" value={formatDate(po.expectedDeliveryDate)} />
+                  <InfoField
+                    label="Tổng Tiền Thanh Toán"
+                    value={
+                      <span className="font-black text-amber-700 text-lg">
+                        {formatCurrency(po.totalAmount)}
+                      </span>
+                    }
+                  />
+                </div>
+
+                {cleanNoteText ? (
+                  <div className="mt-4 pt-6 border-t border-slate-100">
+                    <InfoField
+                      label="Ghi Chú & Yêu Cầu Vận Chuyển"
+                      value={<span className="text-slate-700 font-medium">{cleanNoteText}</span>}
+                    />
+                  </div>
+                ) : null}
+              </DetailSection>
+            </div>
           </DetailCard>
         </div>
       )}
@@ -249,99 +296,106 @@ const PurchaseOrderDetail: React.FC = () => {
       {activeTab === 'items' && (
         <div className="animate-in fade-in duration-300">
           <DetailCard>
-            <DetailSection title="Danh Sách Hàng Hóa Cần Nhập">
-              <div className="overflow-x-auto border border-slate-200 rounded-xl shadow-sm">
-                <table className="w-full text-left text-sm whitespace-nowrap">
-                  <thead className="bg-slate-50 text-slate-500 font-bold text-xs uppercase tracking-wider border-b border-slate-200">
-                    <tr>
-                      <th className="px-4 py-4 text-center w-12">#</th>
-                      <th className="px-4 py-4">Mã SKU</th>
-                      <th className="px-4 py-4">Tên Sản Phẩm</th>
-                      <th className="px-4 py-4">ĐVT</th>
-                      <th className="px-4 py-4 text-right">Giá Nhập</th>
-                      <th className="px-4 py-4 text-center bg-indigo-50/50">SL Đặt</th>
-                      <th className="px-4 py-4 text-center bg-emerald-50/50">Đã Nhận</th>
-                      <th className="px-4 py-4 text-right">Thành Tiền</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {!po.details || po.details.length === 0 ? (
+            <div className="p-8 flex flex-col gap-6">
+              <DetailSection title="Danh Sách Hàng Hóa Cần Nhập">
+                <div className="overflow-x-auto border border-slate-200 rounded-2xl shadow-2xs">
+                  <table className="w-full text-left text-sm border-collapse">
+                    <thead className="bg-slate-50/80 text-slate-500 font-bold text-xs uppercase tracking-wider border-b border-slate-200">
                       <tr>
-                        <td colSpan={8} className="px-4 py-8 text-center text-slate-400 italic">
-                          Không có dữ liệu mặt hàng
-                        </td>
+                        <th className="py-3.5 px-4 text-center w-12">#</th>
+                        <th className="py-3.5 px-4 w-[18%]">Mã SKU</th>
+                        <th className="py-3.5 px-4 w-[32%]">Tên Sản Phẩm</th>
+                        <th className="py-3.5 px-4 w-[12%]">Đơn Vị Tính</th>
+                        <th className="py-3.5 px-4 w-[14%] text-right">Giá Nhập</th>
+                        <th className="py-3.5 px-4 w-[10%] text-center">SL Đặt</th>
+                        <th className="py-3.5 px-4 w-[10%] text-center">Đã Nhận</th>
+                        <th className="py-3.5 px-4 w-[14%] text-right">Thành Tiền</th>
                       </tr>
-                    ) : (
-                      po.details.map((item, index) => {
-                        const isFullyReceived = item.receivedQuantity >= item.orderQuantity;
-                        // Tính tiến độ giao hàng
-                        const hasStartedReceiving = item.receivedQuantity > 0;
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {!po.details || po.details.length === 0 ? (
+                        <tr>
+                          <td colSpan={8} className="py-8 text-center text-slate-400 italic">
+                            Không có dữ liệu mặt hàng
+                          </td>
+                        </tr>
+                      ) : (
+                        po.details.map((item, index) => {
+                          const isFullyReceived = item.receivedQuantity >= item.orderQuantity;
+                          const hasStartedReceiving = item.receivedQuantity > 0;
 
-                        return (
-                          <tr
-                            key={item.id || index}
-                            className="hover:bg-slate-50/80 transition-colors group"
+                          return (
+                            <tr
+                              key={item.id || index}
+                              className="hover:bg-slate-50/60 transition-colors group"
+                            >
+                              <td className="py-3.5 px-4 text-slate-400 text-center font-medium">
+                                {index + 1}
+                              </td>
+                              <td className="py-3.5 px-4 font-bold text-slate-700">
+                                <span className="font-mono text-xs font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200/80">
+                                  {item.variantCode}
+                                </span>
+                              </td>
+                              <td className="py-3.5 px-4 font-semibold text-slate-900">
+                                {item.variantName}
+                              </td>
+                              <td className="py-3.5 px-4 text-slate-600 font-medium">
+                                {item.uoMName}
+                              </td>
+                              <td className="py-3.5 px-4 text-right text-slate-700 font-semibold">
+                                {formatCurrency(item.unitPrice)}
+                              </td>
+
+                              {/* Cột SL Đặt */}
+                              <td className="py-3.5 px-4 text-center">
+                                <span className="font-black text-indigo-700 text-sm">
+                                  {item.orderQuantity}
+                                </span>
+                              </td>
+
+                              {/* Cột SL Đã Nhận (Tiến độ giao hàng) */}
+                              <td className="py-3.5 px-4 text-center">
+                                {isFullyReceived ? (
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-200">
+                                    ĐỦ ({item.receivedQuantity})
+                                  </span>
+                                ) : hasStartedReceiving ? (
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-700 border border-amber-200">
+                                    THIẾU ({item.receivedQuantity}/{item.orderQuantity})
+                                  </span>
+                                ) : (
+                                  <span className="text-slate-400 font-medium text-xs">0</span>
+                                )}
+                              </td>
+
+                              <td className="py-3.5 px-4 text-right font-extrabold text-slate-800">
+                                {formatCurrency(item.totalPrice)}
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                    {po.details && po.details.length > 0 && (
+                      <tfoot className="bg-slate-50/80 border-t border-slate-200">
+                        <tr>
+                          <td
+                            colSpan={7}
+                            className="px-6 py-4 text-right text-slate-600 text-xs font-extrabold uppercase tracking-wider"
                           >
-                            <td className="px-4 py-3 text-slate-400 text-center">{index + 1}</td>
-                            <td className="px-4 py-3 font-bold text-slate-700">
-                              {item.variantCode}
-                            </td>
-                            <td className="px-4 py-3 font-medium text-slate-900">
-                              {item.variantName}
-                            </td>
-                            <td className="px-4 py-3 text-slate-500">{item.uoMName}</td>
-                            <td className="px-4 py-3 text-right text-slate-600">
-                              {formatCurrency(item.unitPrice)}
-                            </td>
-
-                            {/* Cột SL Đặt */}
-                            <td className="px-4 py-3 text-center bg-indigo-50/20 group-hover:bg-indigo-50/50">
-                              <span className="font-bold text-indigo-700 text-[15px]">
-                                {item.orderQuantity}
-                              </span>
-                            </td>
-
-                            {/* Cột SL Đã Nhận (Tiến độ giao hàng) */}
-                            <td className="px-4 py-3 text-center bg-emerald-50/20 group-hover:bg-emerald-50/50">
-                              {isFullyReceived ? (
-                                <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-200">
-                                  ĐỦ ({item.receivedQuantity})
-                                </span>
-                              ) : hasStartedReceiving ? (
-                                <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-amber-100 text-amber-700 border border-amber-200">
-                                  THIẾU ({item.receivedQuantity}/{item.orderQuantity})
-                                </span>
-                              ) : (
-                                <span className="text-slate-400 font-medium text-[13px]">0</span>
-                              )}
-                            </td>
-
-                            <td className="px-4 py-3 text-right font-bold text-slate-800">
-                              {formatCurrency(item.totalPrice)}
-                            </td>
-                          </tr>
-                        );
-                      })
+                            Tổng Giá Trị Đơn Hàng:
+                          </td>
+                          <td className="px-4 py-4 text-right text-lg font-black text-amber-700">
+                            {formatCurrency(po.totalAmount)}
+                          </td>
+                        </tr>
+                      </tfoot>
                     )}
-                  </tbody>
-                  {po.details && po.details.length > 0 && (
-                    <tfoot className="bg-slate-50/80 border-t border-slate-200">
-                      <tr>
-                        <td
-                          colSpan={7}
-                          className="px-4 py-4 text-right text-slate-600 text-xs font-bold uppercase tracking-wider"
-                        >
-                          Tổng Giá Trị Đơn Hàng:
-                        </td>
-                        <td className="px-4 py-4 text-right text-lg font-black text-emerald-600">
-                          {formatCurrency(po.totalAmount)}
-                        </td>
-                      </tr>
-                    </tfoot>
-                  )}
-                </table>
-              </div>
-            </DetailSection>
+                  </table>
+                </div>
+              </DetailSection>
+            </div>
           </DetailCard>
         </div>
       )}
@@ -382,7 +436,7 @@ const PurchaseOrderDetail: React.FC = () => {
                   setCancelReason('');
                 }}
                 disabled={actionLoading}
-                className="px-5 py-2 border border-slate-300 rounded-lg text-sm font-bold text-slate-600 bg-white hover:bg-slate-100 transition-colors"
+                className="px-5 py-2 border border-slate-300 rounded-lg text-sm font-bold text-slate-600 bg-white hover:bg-slate-100 transition-colors cursor-pointer"
               >
                 Quay lại
               </button>
@@ -391,7 +445,7 @@ const PurchaseOrderDetail: React.FC = () => {
                   handleUpdateStatus(PurchaseOrderStatus.Cancelled, cancelReason.trim())
                 }
                 disabled={actionLoading || !cancelReason.trim()}
-                className="px-5 py-2 bg-rose-600 text-white rounded-lg text-sm font-bold hover:bg-rose-700 transition-colors disabled:opacity-50 disabled:bg-slate-300 shadow-sm"
+                className="px-5 py-2 bg-rose-600 text-white rounded-lg text-sm font-bold hover:bg-rose-700 transition-colors disabled:opacity-50 disabled:bg-slate-300 shadow-sm cursor-pointer"
               >
                 {actionLoading ? 'Đang xử lý...' : 'Xác Nhận Hủy'}
               </button>

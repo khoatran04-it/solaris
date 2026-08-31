@@ -142,13 +142,28 @@ export const ListPagination: React.FC<PaginationProps> = ({
   </div>
 );
 
-// 6. Cell Ngày thuần túy (YYYY-MM-DD)
+// 6. Cell Ngày thuần túy (DD/MM/YYYY chuẩn múi giờ Việt Nam)
 export const DateCell: React.FC<{ isoString?: string | null }> = ({ isoString }) => {
   if (!isoString) return <span className="text-slate-400 font-medium">-</span>;
 
-  // Nếu chuỗi chứa T, lấy phần ngày trước T
-  const rawDate = isoString.includes('T') ? isoString.split('T')[0] : isoString.substring(0, 10);
-  return <span className="text-sm font-semibold text-slate-700 tracking-tight">{rawDate}</span>;
+  let safeIsoString = isoString;
+  if (!isoString.endsWith('Z') && !isoString.includes('+')) {
+    safeIsoString = `${isoString}Z`;
+  }
+
+  const d = new Date(safeIsoString);
+  if (isNaN(d.getTime())) {
+    return <span className="text-sm font-semibold text-slate-700">{isoString}</span>;
+  }
+
+  const dateStr = d.toLocaleDateString('vi-VN', {
+    timeZone: 'Asia/Ho_Chi_Minh',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  });
+
+  return <span className="text-sm font-semibold text-slate-700 tracking-tight">{dateStr}</span>;
 };
 
 // 7. Cell Ngày giờ (Date + Time chuẩn múi giờ Việt Nam)
@@ -165,15 +180,20 @@ export const DateTimeCell: React.FC<{ isoString?: string | null }> = ({ isoStrin
     return <span className="text-sm font-semibold text-slate-700">{isoString}</span>;
   }
 
-  const dateStr = d.toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' });
-  const timeStr = d.toLocaleTimeString('en-GB', {
+  const dateStr = d.toLocaleDateString('vi-VN', {
+    timeZone: 'Asia/Ho_Chi_Minh',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  });
+  const timeStr = d.toLocaleTimeString('vi-VN', {
     timeZone: 'Asia/Ho_Chi_Minh',
     hour: '2-digit',
     minute: '2-digit',
   });
 
   return (
-    <div className="flex flex-col items-center">
+    <div className="flex flex-col items-start">
       <span className="text-sm font-semibold text-slate-700 tracking-tight">{dateStr}</span>
       <span className="text-[11px] text-slate-400 font-bold uppercase tracking-tighter">
         {timeStr}

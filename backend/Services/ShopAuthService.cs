@@ -1,5 +1,6 @@
 using backend.Data;
 using backend.DTOs.ShopDTOs;
+using backend.Helpers;
 using backend.Models;
 using backend.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
@@ -117,7 +118,7 @@ namespace backend.Services
                 .FirstOrDefaultAsync(t => t.IsActive);
 
             // 4. Sinh mã khách hàng CUST-YYYYMMDD-XXXX
-            string todayStr = DateTime.UtcNow.ToString("yyyyMMdd");
+            string todayStr = DateTimeHelper.VietnamDateString;
             string randomSuffix = Guid.NewGuid().ToString("N").Substring(0, 4).ToUpperInvariant();
             string customerCode = $"CUST-{todayStr}-{randomSuffix}";
 

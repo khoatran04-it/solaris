@@ -126,7 +126,7 @@ namespace backend.Services
                 decimal totalDiscount = 0;
 
                 // 3. Sinh trước mã đơn hàng ORD-YYYYMMDD-XXXXXX
-                string dateStr = now.ToString("yyyyMMdd");
+                string dateStr = DateTimeHelper.VietnamDateString;
                 string randStr = Guid.NewGuid().ToString("N").Substring(0, 6).ToUpperInvariant();
                 string orderCode = $"ORD-{dateStr}-{randStr}";
 

@@ -52,7 +52,7 @@ namespace backend.Services
             return await _context.ExecuteInTransactionAsync(async () =>
             {
                 var now = DateTime.UtcNow;
-                string dateStr = now.ToString("yyyyMMdd");
+                string dateStr = DateTimeHelper.VietnamDateString;
                 string randStr = Guid.NewGuid().ToString("N").Substring(0, 4).ToUpperInvariant();
                 string returnCode = $"RET-{dateStr}-{randStr}";
 

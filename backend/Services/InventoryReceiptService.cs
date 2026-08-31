@@ -140,7 +140,7 @@ namespace backend.Services
             {
                 var entity = _mapper.Map<InventoryReceipt>(dto);
 
-                entity.ReceiptCode = $"IR-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString()[..6].ToUpper()}";
+                entity.ReceiptCode = $"IR-{DateTimeHelper.VietnamDateString}-{Guid.NewGuid().ToString()[..6].ToUpper()}";
                 entity.Status = InventoryReceiptStatus.Pending;
                 entity.CreatedAt = DateTime.UtcNow;
                 entity.UpdatedAt = DateTime.UtcNow;

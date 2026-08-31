@@ -246,7 +246,8 @@ export const FormSelect: React.FC<FormSelectProps> = ({
                     setIsOpen(false);
                     setSearch('');
                   }}
-                  className={`px-3 py-2.5 rounded-lg text-[13px] font-semibold cursor-pointer transition-colors ${value === opt.value ? 'bg-yellow-400 text-slate-900' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
+                  className={`px-3 py-2.5 rounded-lg text-[13px] font-semibold cursor-pointer transition-colors truncate ${value === opt.value ? 'bg-yellow-400 text-slate-900' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
+                  title={opt.label}
                 >
                   {opt.label}
                 </div>

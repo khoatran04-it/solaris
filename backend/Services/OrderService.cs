@@ -226,7 +226,7 @@ namespace backend.Services
                 // 6. Khởi tạo Entity Đơn hàng
                 var order = new Order
                 {
-                    OrderCode = $"ORD-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString()[..6].ToUpper()}",
+                    OrderCode = $"ORD-{DateTimeHelper.VietnamDateString}-{Guid.NewGuid().ToString()[..6].ToUpper()}",
                     CustomerId = dto.CustomerId,
                     CustomerAddressId = validAddressId,
                     ReceiverName = recName,
