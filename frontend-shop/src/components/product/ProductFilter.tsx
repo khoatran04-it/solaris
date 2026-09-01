@@ -39,7 +39,7 @@ function ProductFilterContent({ categories, origins, certifications }: ProductFi
     const hasActiveFilters = Boolean(currentCatSlug || currentOrigin || currentCert || searchParams.get('search'));
 
     return (
-        <aside className="bg-white rounded-2xl border border-slate-200/80 p-5 space-y-6 shadow-xs">
+        <aside className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 space-y-6">
             {/* Header */}
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                 <div className="flex items-center gap-2">
@@ -50,7 +50,7 @@ function ProductFilterContent({ categories, origins, certifications }: ProductFi
                 {hasActiveFilters && (
                     <button
                         onClick={resetFilters}
-                        className="text-[11px] font-semibold text-rose-600 hover:text-rose-700 flex items-center gap-1"
+                        className="text-slate-500 hover:text-slate-700 flex items-center gap-1 text-[11px] font-semibold"
                     >
                         <RotateCcw className="w-3 h-3" />
                         Xóa lọc
@@ -60,7 +60,7 @@ function ProductFilterContent({ categories, origins, certifications }: ProductFi
 
             {/* Sắp xếp nhanh */}
             <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-700 block">Sắp xếp theo</label>
+                <label className="text-xs font-bold text-slate-700 uppercase tracking-wide block">Sắp xếp theo</label>
                 <select
                     value={currentSort}
                     onChange={(e) => updateFilter('sort', e.target.value)}
@@ -76,12 +76,12 @@ function ProductFilterContent({ categories, origins, certifications }: ProductFi
 
             {/* Danh mục ngành hàng */}
             <div className="space-y-3">
-                <label className="text-xs font-bold text-slate-700 block">Danh mục sản phẩm</label>
+                <label className="text-xs font-bold text-slate-700 uppercase tracking-wide block">Danh mục sản phẩm</label>
                 <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
                     <button
                         onClick={() => updateFilter('category', '')}
-                        className={`w-full text-left text-xs px-3 py-2 rounded-lg font-medium flex items-center justify-between transition-colors ${
-                            !currentCatSlug ? 'bg-emerald-50 text-emerald-800 font-bold' : 'text-slate-600 hover:bg-slate-50'
+                        className={`w-full text-left text-xs px-3 py-2 rounded-lg border flex items-center justify-between transition-colors ${
+                            !currentCatSlug ? 'bg-emerald-50 border-emerald-300 text-emerald-700 font-bold' : 'border-slate-200 hover:border-emerald-300 text-slate-600'
                         }`}
                     >
                         <span>Tất cả sản phẩm</span>
@@ -92,8 +92,8 @@ function ProductFilterContent({ categories, origins, certifications }: ProductFi
                         <button
                             key={cat.categoryId}
                             onClick={() => updateFilter('category', cat.categorySlug)}
-                            className={`w-full text-left text-xs px-3 py-2 rounded-lg font-medium flex items-center justify-between transition-colors ${
-                                currentCatSlug === cat.categorySlug ? 'bg-emerald-50 text-emerald-800 font-bold' : 'text-slate-600 hover:bg-slate-50'
+                            className={`w-full text-left text-xs px-3 py-2 rounded-lg border flex items-center justify-between transition-colors ${
+                                currentCatSlug === cat.categorySlug ? 'bg-emerald-50 border-emerald-300 text-emerald-700 font-bold' : 'border-slate-200 hover:border-emerald-300 text-slate-600'
                             }`}
                         >
                             <span>{cat.categoryName}</span>
@@ -106,7 +106,7 @@ function ProductFilterContent({ categories, origins, certifications }: ProductFi
             {/* Xuất xứ / Vùng trồng */}
             {origins.length > 0 && (
                 <div className="space-y-3 pt-3 border-t border-slate-100">
-                    <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                    <label className="text-xs font-bold text-slate-700 uppercase tracking-wide flex items-center gap-1.5">
                         <MapPin className="w-3.5 h-3.5 text-emerald-600" />
                         Xuất xứ / Vùng trồng
                     </label>
@@ -115,8 +115,8 @@ function ProductFilterContent({ categories, origins, certifications }: ProductFi
                             <button
                                 key={origin}
                                 onClick={() => updateFilter('origin', currentOrigin === origin ? '' : origin)}
-                                className={`w-full text-left text-xs px-3 py-1.5 rounded-lg font-medium flex items-center justify-between transition-colors ${
-                                    currentOrigin === origin ? 'bg-emerald-50 text-emerald-800 font-bold' : 'text-slate-600 hover:bg-slate-50'
+                                className={`w-full text-left text-xs px-3 py-1.5 rounded-lg border flex items-center justify-between transition-colors ${
+                                    currentOrigin === origin ? 'bg-emerald-50 border-emerald-300 text-emerald-700 font-bold' : 'border-slate-200 hover:border-emerald-300 text-slate-600'
                                 }`}
                             >
                                 <span>{origin}</span>
@@ -130,7 +130,7 @@ function ProductFilterContent({ categories, origins, certifications }: ProductFi
             {/* Chứng nhận chất lượng */}
             {certifications.length > 0 && (
                 <div className="space-y-3 pt-3 border-t border-slate-100">
-                    <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                    <label className="text-xs font-bold text-slate-700 uppercase tracking-wide flex items-center gap-1.5">
                         <Award className="w-3.5 h-3.5 text-emerald-600" />
                         Tiêu chuẩn an toàn
                     </label>
@@ -139,8 +139,8 @@ function ProductFilterContent({ categories, origins, certifications }: ProductFi
                             <button
                                 key={cert}
                                 onClick={() => updateFilter('cert', currentCert === cert ? '' : cert)}
-                                className={`w-full text-left text-xs px-3 py-1.5 rounded-lg font-medium flex items-center justify-between transition-colors ${
-                                    currentCert === cert ? 'bg-emerald-50 text-emerald-800 font-bold' : 'text-slate-600 hover:bg-slate-50'
+                                className={`w-full text-left text-xs px-3 py-1.5 rounded-lg border flex items-center justify-between transition-colors ${
+                                    currentCert === cert ? 'bg-emerald-50 border-emerald-300 text-emerald-700 font-bold' : 'border-slate-200 hover:border-emerald-300 text-slate-600'
                                 }`}
                             >
                                 <span>{cert}</span>

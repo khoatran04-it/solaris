@@ -134,47 +134,47 @@ export default async function HomePage() {
 
             {/* 5. Trust & Quality Banner (Farm to Table) */}
             <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div className="bg-gradient-to-br from-emerald-900 via-teal-900 to-slate-900 text-white rounded-3xl p-8 sm:p-12 shadow-xl border border-emerald-500/20 grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
+                <div className="bg-gradient-to-br from-emerald-50 via-teal-50 to-white rounded-3xl p-8 sm:p-12 shadow-[0_2px_20px_-4px_rgba(0,0,0,0.05)] border border-emerald-200 grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
                     <div className="space-y-4">
-                        <span className="px-3 py-1 bg-emerald-400/20 border border-emerald-300/30 text-emerald-300 rounded-full text-xs font-bold">
+                        <span className="px-3 py-1 bg-emerald-100 border border-emerald-200 text-emerald-700 rounded-full text-xs font-bold">
                             CAM KẾT CHẤT LƯỢNG SOLARIS
                         </span>
-                        <h2 className="text-2xl sm:text-3xl font-black leading-tight">
+                        <h2 className="text-2xl sm:text-3xl font-black leading-tight text-slate-900">
                             Kỷ Luật Thép Của Ngành Nông Sản & Thực Phẩm
                         </h2>
-                        <p className="text-xs text-emerald-100/80 leading-relaxed">
+                        <p className="text-xs text-slate-600 leading-relaxed">
                             Mỗi sản phẩm tại Solaris đều tuân thủ nghiêm ngặt quy trình kiểm soát FEFO (Hết hạn trước - Xuất trước), độ ngọt Brix đo đạc minh bạch và truy xuất xuất xứ chuẩn Nghị định 15/2018/NĐ-CP.
                         </p>
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-                            <div className="flex items-center gap-2 text-xs font-semibold text-emerald-200">
+                            <div className="flex items-center gap-2 text-xs font-semibold text-emerald-800">
                                 <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
                                 <span>100% kiểm định an toàn QC</span>
                             </div>
-                            <div className="flex items-center gap-2 text-xs font-semibold text-emerald-200">
+                            <div className="flex items-center gap-2 text-xs font-semibold text-emerald-800">
                                 <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
                                 <span>Giao hàng tươi sống 2h</span>
                             </div>
-                            <div className="flex items-center gap-2 text-xs font-semibold text-emerald-200">
+                            <div className="flex items-center gap-2 text-xs font-semibold text-emerald-800">
                                 <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
                                 <span>Bảo quản nhiệt độ 2-8°C</span>
                             </div>
-                            <div className="flex items-center gap-2 text-xs font-semibold text-emerald-200">
+                            <div className="flex items-center gap-2 text-xs font-semibold text-emerald-800">
                                 <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
                                 <span>Đổi trả miễn phí 24h</span>
                             </div>
                         </div>
                     </div>
 
-                    <div className="bg-white/5 border border-white/10 backdrop-blur-md rounded-2xl p-6 space-y-4 text-center">
+                    <div className="bg-white border border-emerald-200 rounded-2xl p-6 space-y-4 text-center shadow-sm">
                         <div className="text-5xl">🚜</div>
-                        <h3 className="text-lg font-bold text-white">Bạn là Nông Hộ hoặc Khách B2B?</h3>
-                        <p className="text-xs text-slate-300">
+                        <h3 className="text-lg font-bold text-slate-900">Bạn là Nông Hộ hoặc Khách B2B?</h3>
+                        <p className="text-xs text-slate-500">
                             Hợp tác cùng chuỗi cung ứng Solaris để đưa nông sản chất lượng cao đến hàng triệu gia đình.
                         </p>
                         <Link
                             href="/san-pham"
-                            className="inline-block px-6 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs rounded-full shadow-lg transition-all"
+                            className="inline-block px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-md transition-all hover:-translate-y-0.5"
                         >
                             Xem Thêm Danh Mục
                         </Link>

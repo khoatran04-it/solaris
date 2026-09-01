@@ -7,7 +7,8 @@ import {
     Package, 
     MapPin, 
     RotateCcw, 
-    ArrowLeft
+    ArrowLeft,
+    CheckCircle2
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import shopOrderApi from '@/api/shopOrderApi';
@@ -25,6 +26,8 @@ export default function OrderDetailPage() {
     const [isCancelling, setIsCancelling] = useState(false);
     const [cancelReason, setCancelReason] = useState('');
     const [showCancelModal, setShowCancelModal] = useState(false);
+    const [showConfirmDeliveryModal, setShowConfirmDeliveryModal] = useState(false);
+    const [isConfirmingDelivery, setIsConfirmingDelivery] = useState(false);
 
     useEffect(() => {
         initAuth();
@@ -67,6 +70,19 @@ export default function OrderDetailPage() {
         }
     };
 
+    const handleConfirmDelivery = async () => {
+        setIsConfirmingDelivery(true);
+        try {
+            const updated = await shopOrderApi.confirmDelivery(orderCode);
+            setOrder(updated);
+            setShowConfirmDeliveryModal(false);
+        } catch (error: any) {
+            alert(error?.message || 'Không thể xác nhận nhận hàng.');
+        } finally {
+            setIsConfirmingDelivery(false);
+        }
+    };
+
     if (isLoading) {
         return (
             <div className="max-w-7xl mx-auto px-4 py-16 text-center text-xs text-slate-500">
@@ -87,7 +103,8 @@ export default function OrderDetailPage() {
     }
 
     const canCancel = order.statusName === 'Chờ xác nhận' || order.statusName === 'Đã xác nhận';
-    const canReturn = order.statusName === 'Giao thành công' || order.statusName === 'Đang giao hàng';
+    const canConfirmDelivery = order.statusName === 'Đang giao hàng' || order.statusName === 'Đang chuẩn bị hàng';
+    const canReturn = order.statusName === 'Giao thành công';
 
     return (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
@@ -111,7 +128,7 @@ export default function OrderDetailPage() {
                     </div>
                 </div>
 
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 flex-wrap">
                     <span className="px-3.5 py-1.5 bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-bold rounded-full">
                         {order.statusName}
                     </span>
@@ -125,10 +142,20 @@ export default function OrderDetailPage() {
                         </button>
                     )}
 
+                    {canConfirmDelivery && (
+                        <button
+                            onClick={() => setShowConfirmDeliveryModal(true)}
+                            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-all shadow-md shadow-emerald-600/20 flex items-center gap-1.5 hover:-translate-y-0.5 active:scale-95"
+                        >
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            <span>Đã nhận được hàng</span>
+                        </button>
+                    )}
+
                     {canReturn && (
                         <Link
                             href={`/tai-khoan/tra-hang?orderCode=${order.orderCode}`}
-                            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-colors flex items-center gap-1.5"
+                            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-colors flex items-center gap-1.5 shadow-sm"
                         >
                             <RotateCcw className="w-3.5 h-3.5" />
                             <span>Yêu cầu đổi/trả</span>
@@ -268,6 +295,44 @@ export default function OrderDetailPage() {
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Confirm Delivery Modal */}
+            {showConfirmDeliveryModal && (
+                <div className="fixed inset-0 z-50 bg-slate-950/50 backdrop-blur-xs flex items-center justify-center p-4">
+                    <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 space-y-5 shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-150 text-center">
+                        <div className="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto shadow-inner border border-emerald-100">
+                            <CheckCircle2 className="w-8 h-8" />
+                        </div>
+                        <div className="space-y-1.5">
+                            <h3 className="font-black text-base text-slate-900">Xác Nhận Đã Nhận Hàng?</h3>
+                            <p className="text-xs text-slate-600 leading-relaxed">
+                                Bạn xác nhận đã nhận đầy đủ sản phẩm nông sản tươi ngon từ GHN và hài lòng với chất lượng?
+                            </p>
+                            <p className="text-[11px] text-emerald-700 font-medium bg-emerald-50/70 p-2.5 rounded-xl border border-emerald-100 mt-2">
+                                🌟 Đơn hàng sẽ được chuyển sang <strong>Giao thành công</strong> và tự động tích lũy điểm hạng thành viên cho bạn!
+                            </p>
+                        </div>
+                        <div className="flex items-center justify-center gap-3 pt-2">
+                            <button
+                                type="button"
+                                onClick={() => setShowConfirmDeliveryModal(false)}
+                                disabled={isConfirmingDelivery}
+                                className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl transition-colors"
+                            >
+                                Để sau
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleConfirmDelivery}
+                                disabled={isConfirmingDelivery}
+                                className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-all shadow-md shadow-emerald-600/30 hover:-translate-y-0.5 active:scale-95"
+                            >
+                                {isConfirmingDelivery ? 'Đang cập nhật...' : 'Xác nhận đã nhận'}
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

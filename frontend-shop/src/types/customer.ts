@@ -3,6 +3,12 @@ import { ShopCustomerInfo } from './auth';
 export interface ShopCustomerProfile extends ShopCustomerInfo {
     birthday?: string;
     gender?: boolean | null;
+    totalSpent?: number;
+    totalOrders?: number;
+    nextTierName?: string;
+    nextTierMinSpending?: number;
+    amountToNextTier?: number;
+    tierProgressPercent?: number;
     addresses: ShopAddress[];
 }
 

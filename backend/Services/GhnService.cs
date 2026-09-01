@@ -256,35 +256,66 @@ namespace backend.Services
             msg.Headers.Add("ShopId", shopId.ToString());
 
             var response = await _httpClient.SendAsync(msg);
-            string trackingCode = $"GHN{order.Id}{DateTime.UtcNow:MMddHHmm}";
+            var str = await response.Content.ReadAsStringAsync();
+
+            string trackingCode = string.Empty;
             string expectedDate = DateTime.UtcNow.AddDays(2).ToString("dd/MM/yyyy");
             decimal totalFee = order.ShippingFee;
 
-            if (response.IsSuccessStatusCode)
+            try
             {
-                var str = await response.Content.ReadAsStringAsync();
                 using var doc = JsonDocument.Parse(str);
-                if (doc.RootElement.TryGetProperty("data", out var dataElem))
+                int ghnCode = doc.RootElement.TryGetProperty("code", out var cProp) ? cProp.GetInt32() : (int)response.StatusCode;
+
+                if (response.IsSuccessStatusCode && ghnCode == 200)
                 {
-                    if (dataElem.TryGetProperty("order_code", out var codeElem))
+                    if (doc.RootElement.TryGetProperty("data", out var dataElem))
                     {
-                        trackingCode = codeElem.GetString() ?? trackingCode;
-                    }
-                    if (dataElem.TryGetProperty("expected_delivery_time", out var timeElem))
-                    {
-                        expectedDate = timeElem.GetString() ?? expectedDate;
-                    }
-                    if (dataElem.TryGetProperty("total_fee", out var feeElem))
-                    {
-                        totalFee = feeElem.GetDecimal();
+                        if (dataElem.TryGetProperty("order_code", out var codeElem))
+                        {
+                            trackingCode = codeElem.GetString() ?? string.Empty;
+                        }
+                        if (dataElem.TryGetProperty("expected_delivery_time", out var timeElem))
+                        {
+                            expectedDate = timeElem.GetString() ?? expectedDate;
+                        }
+                        if (dataElem.TryGetProperty("total_fee", out var feeElem))
+                        {
+                            totalFee = feeElem.GetDecimal();
+                        }
                     }
                 }
+                else
+                {
+                    string errorMsg = "GHN từ chối tiếp nhận vận đơn.";
+                    if (doc.RootElement.TryGetProperty("message", out var msgElem) && !string.IsNullOrWhiteSpace(msgElem.GetString()))
+                    {
+                        errorMsg = msgElem.GetString()!;
+                    }
+                    else if (doc.RootElement.TryGetProperty("code_message_value", out var valElem) && !string.IsNullOrWhiteSpace(valElem.GetString()))
+                    {
+                        errorMsg = valElem.GetString()!;
+                    }
+
+                    throw new InvalidOperationException($"Lỗi từ GHN Express: {errorMsg}");
+                }
+            }
+            catch (JsonException)
+            {
+                if (!response.IsSuccessStatusCode)
+                {
+                    throw new InvalidOperationException($"Lỗi cổng GHN Express (HTTP {response.StatusCode}): {str}");
+                }
+            }
+
+            if (string.IsNullOrEmpty(trackingCode))
+            {
+                throw new InvalidOperationException("Không nhận được mã vận đơn từ GHN Express.");
             }
 
             // Cập nhật vào Database
             order.TrackingCode = trackingCode;
             order.ShippingProvider = "GHN";
-            order.Status = OrderStatus.Shipping;
             order.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();

@@ -6,6 +6,7 @@ import ProductVariantForm from '../../../pages/productVariant/ProductVariantForm
 import { productVariantApi } from '../../../api/productVariantApi';
 import { productApi } from '../../../api/productApi';
 import { uomApi } from '../../../api/uomApi';
+import { uomConversionApi } from '../../../api/uomConversionApi';
 
 // Mock APIs
 vi.mock('../../../api/productVariantApi', () => ({
@@ -29,6 +30,12 @@ vi.mock('../../../api/uomApi', () => ({
   },
 }));
 
+vi.mock('../../../api/uomConversionApi', () => ({
+  uomConversionApi: {
+    getAllList: vi.fn(),
+  },
+}));
+
 /**
  * ============================================================================
  * 📦 MODULE 5: PRODUCT & PRICING
@@ -48,6 +55,18 @@ describe('Module 05 - ProductVariantForm Component', () => {
     (uomApi.getAllList as any).mockResolvedValue([
       { id: 1, name: 'Kilogram', code: 'KG' },
       { id: 2, name: 'Thùng 10Kg', code: 'BOX' },
+    ]);
+    (uomConversionApi.getAllList as any).mockResolvedValue([
+      {
+        id: 1,
+        fromUoMId: 2,
+        fromUoMName: 'Thùng 10Kg',
+        toUoMId: 1,
+        toUoMName: 'Kilogram',
+        conversionFactor: 10,
+        productId: null,
+        isActive: true,
+      },
     ]);
   });
 

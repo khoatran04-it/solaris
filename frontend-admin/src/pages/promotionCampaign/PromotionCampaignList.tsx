@@ -130,23 +130,25 @@ const PromotionCampaignList: React.FC = () => {
   // --- HELPER FUNC: Lấy màu và nhãn cho thời hạn chiến dịch ---
   const getCampaignTimeStatus = (startStr: string, endStr: string, isActive: boolean) => {
     if (!isActive)
-      return { text: 'Đã khóa', style: 'bg-slate-100 text-slate-500 border-slate-200' };
+      return { text: 'Đã khóa', icon: '🔒', style: 'bg-rose-50 text-rose-600 border-rose-200' };
 
     const now = new Date().getTime();
     const start = new Date(startStr).getTime();
     const end = new Date(endStr).getTime();
 
     if (now < start)
-      return { text: 'Sắp diễn ra', style: 'bg-amber-50 text-amber-600 border-amber-200/60' };
+      return { text: 'Sắp diễn ra', icon: '🟡', style: 'bg-amber-50 text-amber-700 border-amber-200' };
     if (now > end)
       return {
         text: 'Đã kết thúc',
-        style: 'bg-slate-50 text-slate-400 border-slate-200 border-dashed',
+        icon: '⚪',
+        style: 'bg-slate-100 text-slate-500 border-slate-200',
       };
 
     return {
       text: 'Đang diễn ra',
-      style: 'bg-emerald-50 text-emerald-700 border-emerald-200 animate-pulse-slow',
+      icon: '🟢',
+      style: 'bg-emerald-50 text-emerald-700 border-emerald-300 shadow-2xs font-extrabold',
     };
   };
 
@@ -166,18 +168,22 @@ const PromotionCampaignList: React.FC = () => {
 
       <ListCard>
         <div className="overflow-x-auto flex-1 min-h-100 pb-24">
-          <table className="w-full text-left border-collapse">
+          <table className="w-full text-left border-collapse min-w-[950px]">
             <thead>
               <tr className="bg-slate-50/70 border-b border-slate-100">
-                <th className="w-[30%] py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider text-left">
+                <th className="w-[28%] py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider text-left">
                   Thông Tin Chiến Dịch
                 </th>
 
-                <th className="w-[15%] py-4 px-2 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                <th className="w-[12%] py-4 px-2 text-xs font-bold text-slate-500 uppercase tracking-wider">
                   Mức Giảm Giá
                 </th>
 
-                <th className="w-[15%] py-4 px-2 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                <th className="w-[14%] py-4 px-2 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">
+                  Trạng Thái Chiến Dịch
+                </th>
+
+                <th className="w-[14%] py-4 px-2 text-xs font-bold text-slate-500 uppercase tracking-wider">
                   <div className="flex justify-center">
                     <CustomFilter
                       title="TRẠNG THÁI (HỆ THỐNG)"
@@ -188,7 +194,7 @@ const PromotionCampaignList: React.FC = () => {
                   </div>
                 </th>
 
-                <th className="w-[15%] py-4 px-2 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                <th className="w-[11%] py-4 px-2 text-xs font-bold text-slate-500 uppercase tracking-wider">
                   <div className="flex justify-center">
                     <CustomDateFilter
                       title="TỪ NGÀY"
@@ -198,7 +204,7 @@ const PromotionCampaignList: React.FC = () => {
                   </div>
                 </th>
 
-                <th className="w-[15%] py-4 px-2 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                <th className="w-[11%] py-4 px-2 text-xs font-bold text-slate-500 uppercase tracking-wider">
                   <div className="flex justify-center">
                     <CustomDateFilter
                       title="ĐẾN NGÀY"
@@ -216,7 +222,7 @@ const PromotionCampaignList: React.FC = () => {
 
             <tbody className="divide-y divide-slate-100">
               {isLoading ? (
-                <TableLoading colSpan={6} />
+                <TableLoading colSpan={7} />
               ) : data.length > 0 ? (
                 data.map((item) => {
                   const timeStatus = getCampaignTimeStatus(
@@ -240,30 +246,35 @@ const PromotionCampaignList: React.FC = () => {
                             <span className="font-extrabold text-slate-800 text-[14px] leading-tight">
                               {item.name}
                             </span>
-                            <div className="flex items-center gap-2 mt-1.5">
-                              <span
-                                className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold border uppercase tracking-wide ${timeStatus.style}`}
-                              >
-                                {timeStatus.text}
-                              </span>
-                              <span className="text-[11px] text-slate-500 line-clamp-1">
+                            {item.description && (
+                              <span className="text-[12px] text-slate-500 line-clamp-1 mt-1 font-medium">
                                 {item.description}
                               </span>
-                            </div>
+                            )}
                           </div>
                         </div>
                       </td>
 
                       {/* CELL 2: MỨC GIẢM */}
                       <td className="py-3 px-2">
-                        <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-sm font-bold bg-rose-50 text-rose-600 border border-rose-200/60 shadow-sm">
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-sm font-bold bg-rose-50 text-rose-600 border border-rose-200/60 shadow-2xs">
                           {item.isPercentage
                             ? `Giảm ${item.discountValue}%`
                             : `-${item.discountValue.toLocaleString('vi-VN')} ₫`}
                         </span>
                       </td>
 
-                      {/* CELL 3: TRẠNG THÁI HỆ THỐNG */}
+                      {/* CELL 3: TRẠNG THÁI CHIẾN DỊCH (TÁCH CỘT RIÊNG) */}
+                      <td className="py-3 px-2 text-center">
+                        <span
+                          className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border uppercase tracking-wide ${timeStatus.style}`}
+                        >
+                          <span>{timeStatus.icon}</span>
+                          <span>{timeStatus.text}</span>
+                        </span>
+                      </td>
+
+                      {/* CELL 4: TRẠNG THÁI HỆ THỐNG */}
                       <td className="py-3 px-2 text-center">
                         <div className="flex justify-center">
                           <button
@@ -283,7 +294,7 @@ const PromotionCampaignList: React.FC = () => {
                         </div>
                       </td>
 
-                      {/* CELL 4 & 5 (START - END DATE) */}
+                      {/* CELL 5 & 6 (START - END DATE) */}
                       <td className="py-3 px-2 text-center">
                         <DateTimeCell isoString={item.startDate} />
                       </td>
@@ -291,7 +302,7 @@ const PromotionCampaignList: React.FC = () => {
                         <DateTimeCell isoString={item.endDate} />
                       </td>
 
-                      {/* CELL 6: ACTIONS */}
+                      {/* CELL 7: ACTIONS */}
                       <td className="py-3 px-6">
                         <div className="flex justify-center gap-1.5 opacity-40 group-hover:opacity-100 transition-all duration-300">
                           <button
@@ -317,7 +328,7 @@ const PromotionCampaignList: React.FC = () => {
                   );
                 })
               ) : (
-                <TableEmpty colSpan={6} message="Chưa có chiến dịch khuyến mãi nào." />
+                <TableEmpty colSpan={7} message="Chưa có chiến dịch khuyến mãi nào." />
               )}
             </tbody>
           </table>

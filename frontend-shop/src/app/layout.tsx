@@ -1,4 +1,4 @@
-﻿import type { Metadata } from 'next';
+import type { Metadata } from 'next';
 import './globals.css';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
@@ -33,7 +33,7 @@ export default function RootLayout({
 }) {
     return (
         <html lang="vi" className="scroll-smooth">
-            <body className="min-h-screen flex flex-col bg-slate-50 text-slate-800 antialiased font-sans">
+            <body className="min-h-screen flex flex-col bg-white text-slate-800 antialiased font-sans">
                 <Header />
                 <main className="flex-1">
                     {children}

@@ -186,11 +186,15 @@ const InventoryAdjustmentList: React.FC = () => {
           <table className="w-full text-left border-collapse min-w-250">
             <thead>
               <tr className="bg-slate-50/70 border-b border-slate-100">
-                <th className="w-[14%] py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider text-left">
+                <th className="w-[12%] py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider text-left">
                   Mã Điều Chỉnh
                 </th>
 
-                <th className="w-[14%] py-4 px-2 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                <th className="w-[12%] py-4 px-2 text-xs font-bold text-slate-500 uppercase tracking-wider text-left">
+                  Mã Kiểm Kê Gốc
+                </th>
+
+                <th className="w-[13%] py-4 px-2 text-xs font-bold text-slate-500 uppercase tracking-wider">
                   <CustomFilter
                     title="KHO HÀNG"
                     options={warehouseOptions}
@@ -199,7 +203,7 @@ const InventoryAdjustmentList: React.FC = () => {
                   />
                 </th>
 
-                <th className="w-[14%] py-4 px-2 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                <th className="w-[13%] py-4 px-2 text-xs font-bold text-slate-500 uppercase tracking-wider">
                   <CustomFilter
                     title="LÝ DO ĐIỀU CHỈNH"
                     options={reasonOptions}
@@ -211,7 +215,7 @@ const InventoryAdjustmentList: React.FC = () => {
                 <th className="w-[10%] py-4 px-2 text-xs font-bold text-slate-500 uppercase tracking-wider">
                   <div className="flex justify-center">
                     <CustomDateFilter
-                      title="TỪ NGÀY"
+                      title="NGÀY ĐIỀU CHỈNH"
                       selectedDate={fromDateFilter}
                       onApply={setFromDateFilter}
                     />
@@ -221,14 +225,14 @@ const InventoryAdjustmentList: React.FC = () => {
                 <th className="w-[10%] py-4 px-2 text-xs font-bold text-slate-500 uppercase tracking-wider">
                   <div className="flex justify-center">
                     <CustomDateFilter
-                      title="ĐẾN NGÀY"
+                      title="THỜI GIAN LẬP"
                       selectedDate={toDateFilter}
                       onApply={setToDateFilter}
                     />
                   </div>
                 </th>
 
-                <th className="w-[12%] py-4 px-2 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                <th className="w-[11%] py-4 px-2 text-xs font-bold text-slate-500 uppercase tracking-wider">
                   <div className="flex justify-center">
                     <CustomFilter
                       title="TRẠNG THÁI"
@@ -239,11 +243,11 @@ const InventoryAdjustmentList: React.FC = () => {
                   </div>
                 </th>
 
-                <th className="w-[10%] py-4 px-2 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">
+                <th className="w-[9%] py-4 px-2 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">
                   Tổng Giá Trị
                 </th>
 
-                <th className="w-[10%] py-4 px-2 text-xs font-bold text-slate-500 uppercase tracking-wider hidden lg:table-cell text-center">
+                <th className="w-[9%] py-4 px-2 text-xs font-bold text-slate-500 uppercase tracking-wider hidden lg:table-cell text-center">
                   Người Lập
                 </th>
 
@@ -255,10 +259,10 @@ const InventoryAdjustmentList: React.FC = () => {
 
             <tbody className="divide-y divide-slate-100 text-sm">
               {loading ? (
-                <TableLoading colSpan={9} />
+                <TableLoading colSpan={10} />
               ) : adjustments.length === 0 ? (
                 <TableEmpty
-                  colSpan={9}
+                  colSpan={10}
                   message="Không có phiếu điều chỉnh nào phù hợp điều kiện tìm kiếm."
                 />
               ) : (
@@ -272,36 +276,45 @@ const InventoryAdjustmentList: React.FC = () => {
                       <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-[12px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-sm">
                         {adj.adjustmentCode}
                       </span>
-                      {adj.auditCode && (
-                        <div className="mt-1 text-[11px] text-slate-500">
-                          Từ kiểm kê:{' '}
-                          <button
-                            onClick={() => navigate(`/inventory-audits/${adj.auditId}`)}
-                            className="text-indigo-600 hover:underline font-bold"
-                          >
-                            {adj.auditCode}
-                          </button>
-                        </div>
+                    </td>
+
+                    {/* CELL 2: MÃ KIỂM KÊ GỐC */}
+                    <td className="py-3 px-2">
+                      {adj.auditCode ? (
+                        <button
+                          onClick={() => navigate(`/inventory-audits/${adj.auditId}`)}
+                          className="inline-flex items-center px-2.5 py-1 rounded-lg text-[12px] font-bold text-amber-800 bg-amber-50 border border-amber-300 hover:bg-amber-100 hover:underline shadow-2xs transition-colors cursor-pointer"
+                          title="Xem chi tiết đợt kiểm kê gốc"
+                        >
+                          {adj.auditCode}
+                        </button>
+                      ) : (
+                        <span className="text-[12px] italic text-slate-400">Trực tiếp</span>
                       )}
                     </td>
 
-                    {/* CELL 2: KHO HÀNG */}
+                    {/* CELL 3: KHO HÀNG */}
                     <td className="py-3 px-2">
                       <div className="text-[13px] font-bold text-slate-800">
                         {adj.warehouseName}
                       </div>
                     </td>
 
-                    {/* CELL 3: LÝ DO */}
+                    {/* CELL 4: LÝ DO */}
                     <td className="py-3 px-2">
                       <span className="text-[12px] font-medium text-slate-700 bg-slate-100 px-2 py-1 rounded-md border border-slate-200">
                         {InventoryAdjustmentReasonLabels[adj.reason]}
                       </span>
                     </td>
 
-                    {/* CELL 4 & 5: NGÀY LẬP */}
-                    <td className="py-3 px-2 text-center" colSpan={2}>
+                    {/* CELL 4: NGÀY ĐIỀU CHỈNH */}
+                    <td className="py-3 px-2 text-center">
                       <DateCell isoString={adj.adjustmentDate} />
+                    </td>
+
+                    {/* CELL 5: THỜI GIAN LẬP */}
+                    <td className="py-3 px-2 text-center">
+                      <DateTimeCell isoString={adj.createdAt} />
                     </td>
 
                     {/* CELL 6: TRẠNG THÁI */}

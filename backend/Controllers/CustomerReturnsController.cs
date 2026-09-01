@@ -117,15 +117,94 @@ namespace backend.Controllers
         }
 
         /// <summary>
+        /// Duyệt Phiếu Yêu Cầu Trả Hàng (Pending -> Approved).
+        /// </summary>
+        [HttpPost("{id:int}/approve")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> Approve(int id)
+        {
+            try
+            {
+                var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                int userId = 1;
+                if (!string.IsNullOrEmpty(userIdStr) && int.TryParse(userIdStr, out int parsedId))
+                {
+                    userId = parsedId;
+                }
+
+                await _service.ApproveAsync(id, userId);
+                return Ok(new { message = "Đã duyệt yêu cầu trả hàng thành công" });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// BƯỚC 2: Kiểm định chất lượng tại kho (Approved -> Inspecting).
+        /// </summary>
+        [HttpPost("{id:int}/inspect")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> Inspect(int id, [FromBody] CustomerReturnInspectionDto dto)
+        {
+            try
+            {
+                var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                int userId = 1;
+                if (!string.IsNullOrEmpty(userIdStr) && int.TryParse(userIdStr, out int parsedId))
+                {
+                    userId = parsedId;
+                }
+
+                await _service.InspectQCAsync(id, userId, dto);
+                return Ok(new { message = "Nghiệm thu kiểm định QC thành công" });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// BƯỚC 3: Hoàn tất trực tiếp Phiếu trả hàng (Inspecting -> Completed).
+        /// </summary>
+        [HttpPost("{id:int}/complete")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> Complete(int id)
+        {
+            try
+            {
+                await _service.CompleteReturnAsync(id);
+                return Ok(new { message = "Hoàn tất phiếu trả hàng thành công" });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        /// <summary>
         /// Kiểm định chất lượng (QC Inspection) và Hoàn tất phiếu trả hàng (Nhập kho + Hoàn tiền).
         /// </summary>
-        /// <param name="id">ID của phiếu trả hàng cần kiểm định và hoàn tất.</param>
-        /// <param name="dto">Dữ liệu kết quả kiểm định số lượng hàng đạt (Accepted) vs số lượng hàng hỏng (Damaged) của từng dòng.</param>
-        /// <returns>Thông báo kết quả nghiệm thu phiếu trả hàng.</returns>
-        /// <response code="200">Nghiệm thu, hoàn tất nhập kho và cập nhật tiền hoàn thành công.</response>
-        /// <response code="400">Phiếu trả hàng không ở trạng thái được phép nghiệm thu hoặc dữ liệu kiểm định không hợp lệ.</response>
-        /// <response code="404">Không tìm thấy phiếu trả hàng cần nghiệm thu.</response>
-        /// <response code="401">Người dùng chưa đăng nhập.</response>
         [HttpPost("{id:int}/inspect-and-complete")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]

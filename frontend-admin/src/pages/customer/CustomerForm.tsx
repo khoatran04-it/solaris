@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Hexagon, Save, Plus, MapPin } from 'lucide-react';
+import { Hexagon, Save, Plus, MapPin, Eye, EyeOff, Lock } from 'lucide-react';
 
 // API & Types
 import { customerApi } from '../../api/customerApi';
@@ -30,6 +30,7 @@ const INITIAL_STATE: CustomerPayload = {
   name: '',
   phoneNumber: '',
   email: '',
+  password: '',
   taxCode: '',
   avatarPath: '',
   birthday: null,
@@ -78,6 +79,7 @@ const CustomerForm: React.FC = () => {
   const [existingPhones, setExistingPhones] = useState<string[]>([]);
   const [originalPhone, setOriginalPhone] = useState('');
 
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
   // Options cho các Dropdown/Badges
@@ -212,6 +214,10 @@ const CustomerForm: React.FC = () => {
       if (!emailRegex.test(formData.email.trim())) newErrors.email = 'Email không hợp lệ.';
     }
 
+    if (formData.password?.trim() && formData.password.trim().length < 6) {
+      newErrors.password = 'Mật khẩu phải có tối thiểu 6 ký tự.';
+    }
+
     // 2. Kiểm tra Phân quyền
     if (!formData.customerTypeId) newErrors.customerTypeId = 'Vui lòng chọn loại khách hàng.';
     if (!formData.customerTierId) newErrors.customerTierId = 'Vui lòng chọn bậc xếp hạng.';
@@ -249,6 +255,7 @@ const CustomerForm: React.FC = () => {
         name: formData.name.trim(),
         phoneNumber: formData.phoneNumber.trim(),
         email: formData.email?.trim() || null,
+        password: formData.password?.trim() || null,
         taxCode: formData.taxCode?.trim() || null,
         avatarPath: formData.avatarPath?.trim() || null,
         note: formData.note?.trim() || null,
@@ -322,6 +329,30 @@ const CustomerForm: React.FC = () => {
                 disabled={loading}
                 onChange={(e) => handleFieldChange('phoneNumber', e.target.value)}
               />
+              <div className="relative">
+                <FormInput
+                  label={isEditMode ? 'Đặt lại Mật khẩu' : 'Mật khẩu Web/App (Tùy chọn)'}
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder={
+                    isEditMode
+                      ? 'Để trống nếu giữ nguyên...'
+                      : 'Nhập nếu muốn cấp quyền đăng nhập Shop...'
+                  }
+                  value={formData.password || ''}
+                  error={errors.password}
+                  disabled={loading}
+                  onChange={(e) => handleFieldChange('password', e.target.value)}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3.5 top-[38px] text-slate-400 hover:text-slate-600 transition-colors p-1"
+                  tabIndex={-1}
+                  title={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
               <FormInput
                 label="Email"
                 placeholder="email@example.com"

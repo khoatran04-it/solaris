@@ -22,6 +22,9 @@ namespace backend.DTOs.CustomerDTOs
 
         /// <summary>Địa chỉ Email liên hệ.</summary>
         public string? Email { get; set; }
+
+        /// <summary>Mật khẩu khởi tạo tài khoản trực tuyến (Nếu quản trị viên muốn cấp quyền đăng nhập Storefront ngay).</summary>
+        public string? Password { get; set; }
         #endregion
 
         #region Thông tin Chi tiết & Cá nhân hóa

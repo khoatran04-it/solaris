@@ -4,6 +4,7 @@ using backend.DTOs;
 using backend.DTOs.CustomerDTOs;
 using backend.Helpers;
 using backend.Models;
+using backend.Models.Enums;
 using backend.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
@@ -158,7 +159,7 @@ namespace backend.Services
             var customer = await _context.Customers
                 .Include(c => c.CustomerType)
                 .Include(c => c.CustomerTier)
-                .Include(c => c.Addresses)
+                .Include(c => c.Addresses.Where(a => !a.IsDeleted))
                 .Include(c => c.GroupLinks)
                     .ThenInclude(gl => gl.CustomerGroup)
                 .AsNoTracking()
@@ -166,7 +167,51 @@ namespace backend.Services
 
             if (customer == null) return null;
 
-            return _mapper.Map<CustomerReadDto>(customer);
+            var dto = _mapper.Map<CustomerReadDto>(customer);
+
+            // 1. Tính tổng tiền đã chi tiêu (các đơn hàng hoàn tất hoặc đã thanh toán)
+            var totalSpent = await _context.Orders
+                .Where(o => o.CustomerId == id && o.Status == OrderStatus.Completed && !o.IsDeleted)
+                .SumAsync(o => (decimal?)o.TotalAmount) ?? 0m;
+
+            var totalOrders = await _context.Orders
+                .Where(o => o.CustomerId == id && !o.IsDeleted)
+                .CountAsync();
+
+            dto.TotalSpent = totalSpent;
+            dto.TotalOrders = totalOrders;
+            dto.DiscountPercent = customer.CustomerTier?.DiscountPercent ?? 0m;
+
+            // 2. Tính toán tiến độ nâng hạng thành viên (Tier Progress)
+            var tiers = await _context.CustomerTiers
+                .Where(t => t.IsActive && !t.IsDeleted)
+                .OrderBy(t => t.MinSpending)
+                .ToListAsync();
+
+            var currentMin = customer.CustomerTier?.MinSpending ?? 0m;
+            var nextTier = tiers.FirstOrDefault(t => t.MinSpending > totalSpent);
+
+            if (nextTier != null)
+            {
+                dto.NextTierName = nextTier.Name;
+                dto.NextTierMinSpending = nextTier.MinSpending;
+                dto.AmountToNextTier = Math.Max(0, nextTier.MinSpending - totalSpent);
+
+                var span = nextTier.MinSpending - currentMin;
+                dto.TierProgressPercent = span > 0
+                    ? Math.Min(100m, Math.Max(0m, Math.Round((totalSpent - currentMin) / span * 100m, 1)))
+                    : 100m;
+            }
+            else
+            {
+                // Đã đạt hạng cao nhất
+                dto.NextTierName = null;
+                dto.NextTierMinSpending = null;
+                dto.AmountToNextTier = 0;
+                dto.TierProgressPercent = 100m;
+            }
+
+            return dto;
         }
 
         #endregion
@@ -204,6 +249,12 @@ namespace backend.Services
                 newCustomer.CustomerTierId = dto.CustomerTierId;
                 newCustomer.CreatedAt = DateTime.UtcNow;
                 newCustomer.UpdatedAt = DateTime.UtcNow;
+
+                if (!string.IsNullOrWhiteSpace(dto.Password))
+                {
+                    newCustomer.Username = trimmedPhone;
+                    newCustomer.PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password.Trim());
+                }
 
                 _context.Customers.Add(newCustomer);
                 await _context.SaveChangesAsync();
@@ -286,6 +337,12 @@ namespace backend.Services
                 customer.CustomerTypeId = dto.CustomerTypeId;
                 customer.CustomerTierId = dto.CustomerTierId;
                 customer.UpdatedAt = DateTime.UtcNow;
+
+                if (!string.IsNullOrWhiteSpace(dto.Password))
+                {
+                    customer.Username = trimmedPhone;
+                    customer.PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password.Trim());
+                }
 
                 // Quản lý liên kết Nhóm khách hàng (Xử lý an toàn với Soft Delete và Composite Key)
                 var allExistingLinks = await _context.CustomerGroupLinks

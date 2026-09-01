@@ -284,7 +284,7 @@ export default function ThanhToanPage() {
     const amountMissingForFreeShip = Math.max(0, freeShippingThreshold - netSubTotal);
 
     return (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
             
             {/* Header */}
             <div>
@@ -335,10 +335,10 @@ export default function ThanhToanPage() {
                 <div className="lg:col-span-2 space-y-6">
                     
                     {/* 1. Sổ Địa Chỉ Giao Hàng & GHN Selector */}
-                    <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-xs space-y-5">
+                    <div className="bg-white rounded-2xl border border-slate-100 p-6 sm:p-8 shadow-sm space-y-5">
                         <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                            <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                                <MapPin className="w-4 h-4 text-emerald-600" />
+                            <h2 className="text-sm font-extrabold text-slate-800 uppercase tracking-wider flex items-center gap-2">
+                                <span className="w-1.5 h-4 bg-emerald-500 rounded-full"></span>
                                 1. Địa Chỉ Nhận Hàng (GHN Logistics)
                             </h2>
 
@@ -391,35 +391,35 @@ export default function ThanhToanPage() {
                             /* New Address Form with GHN 3-level selector */
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div className="space-y-1">
-                                    <label className="text-xs font-semibold text-slate-700">Họ tên người nhận *</label>
+                                    <label className="font-bold text-[13px] text-slate-700 uppercase tracking-wide mb-2 block">Họ tên người nhận *</label>
                                     <input
                                         type="text"
                                         placeholder="Nguyễn Văn A"
                                         value={receiverName}
                                         onChange={(e) => setReceiverName(e.target.value)}
-                                        className="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500"
+                                        className="w-full h-[46px] p-2.5 bg-slate-50/50 border border-slate-200 rounded-xl focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20"
                                         required={useNewAddress}
                                     />
                                 </div>
 
                                 <div className="space-y-1">
-                                    <label className="text-xs font-semibold text-slate-700">Số điện thoại nhận hàng *</label>
+                                    <label className="font-bold text-[13px] text-slate-700 uppercase tracking-wide mb-2 block">Số điện thoại nhận hàng *</label>
                                     <input
                                         type="tel"
                                         placeholder="0912345678"
                                         value={receiverPhone}
                                         onChange={(e) => setReceiverPhone(e.target.value)}
-                                        className="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500"
+                                        className="w-full h-[46px] p-2.5 bg-slate-50/50 border border-slate-200 rounded-xl focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20"
                                         required={useNewAddress}
                                     />
                                 </div>
 
                                 <div className="space-y-1">
-                                    <label className="text-xs font-semibold text-slate-700">Tỉnh / Thành phố (GHN) *</label>
+                                    <label className="font-bold text-[13px] text-slate-700 uppercase tracking-wide mb-2 block">Tỉnh / Thành phố (GHN) *</label>
                                     <select
                                         value={selectedProvinceId}
                                         onChange={(e) => setSelectedProvinceId(Number(e.target.value))}
-                                        className="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500"
+                                        className="w-full h-[46px] p-2.5 bg-slate-50/50 border border-slate-200 rounded-xl focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20"
                                     >
                                         {provinces.map(p => (
                                             <option key={p.provinceID} value={p.provinceID}>
@@ -430,11 +430,11 @@ export default function ThanhToanPage() {
                                 </div>
 
                                 <div className="space-y-1">
-                                    <label className="text-xs font-semibold text-slate-700">Quận / Huyện (GHN) *</label>
+                                    <label className="font-bold text-[13px] text-slate-700 uppercase tracking-wide mb-2 block">Quận / Huyện (GHN) *</label>
                                     <select
                                         value={selectedDistrictId || ''}
                                         onChange={(e) => setSelectedDistrictId(Number(e.target.value))}
-                                        className="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500"
+                                        className="w-full h-[46px] p-2.5 bg-slate-50/50 border border-slate-200 rounded-xl focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20"
                                     >
                                         {districts.map(d => (
                                             <option key={d.districtID} value={d.districtID}>
@@ -445,11 +445,11 @@ export default function ThanhToanPage() {
                                 </div>
 
                                 <div className="space-y-1">
-                                    <label className="text-xs font-semibold text-slate-700">Phường / Xã (GHN) *</label>
+                                    <label className="font-bold text-[13px] text-slate-700 uppercase tracking-wide mb-2 block">Phường / Xã (GHN) *</label>
                                     <select
                                         value={selectedWardCode}
                                         onChange={(e) => setSelectedWardCode(e.target.value)}
-                                        className="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500"
+                                        className="w-full h-[46px] p-2.5 bg-slate-50/50 border border-slate-200 rounded-xl focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20"
                                     >
                                         {wards.map(w => (
                                             <option key={w.wardCode} value={w.wardCode}>
@@ -460,13 +460,13 @@ export default function ThanhToanPage() {
                                 </div>
 
                                 <div className="space-y-1">
-                                    <label className="text-xs font-semibold text-slate-700">Địa chỉ cụ thể (Số nhà, tên đường) *</label>
+                                    <label className="font-bold text-[13px] text-slate-700 uppercase tracking-wide mb-2 block">Địa chỉ cụ thể (Số nhà, tên đường) *</label>
                                     <input
                                         type="text"
                                         placeholder="123 Đường Lê Lợi"
                                         value={streetAddress}
                                         onChange={(e) => setStreetAddress(e.target.value)}
-                                        className="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500"
+                                        className="w-full h-[46px] p-2.5 bg-slate-50/50 border border-slate-200 rounded-xl focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20"
                                         required={useNewAddress}
                                     />
                                 </div>
@@ -474,21 +474,21 @@ export default function ThanhToanPage() {
                         )}
 
                         <div className="space-y-1 pt-2">
-                            <label className="text-xs font-semibold text-slate-700">Ghi chú đơn hàng (Tùy chọn)</label>
+                            <label className="font-bold text-[13px] text-slate-700 uppercase tracking-wide mb-2 block">Ghi chú đơn hàng (Tùy chọn)</label>
                             <input
                                 type="text"
                                 placeholder="Ví dụ: Giao vào giờ hành chính, gọi trước khi đến..."
                                 value={note}
                                 onChange={(e) => setNote(e.target.value)}
-                                className="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500"
+                                className="w-full h-[46px] p-2.5 bg-slate-50/50 border border-slate-200 rounded-xl focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20"
                             />
                         </div>
                     </div>
 
                     {/* 2. Phương Thức Thanh Toán */}
-                    <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-xs space-y-4">
-                        <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2 pb-3 border-b border-slate-100">
-                            <CreditCard className="w-4 h-4 text-emerald-600" />
+                    <div className="bg-white rounded-2xl border border-slate-100 p-6 sm:p-8 shadow-sm space-y-4">
+                        <h2 className="text-sm font-extrabold text-slate-800 uppercase tracking-wider flex items-center gap-2 pb-3 border-b border-slate-100">
+                            <span className="w-1.5 h-4 bg-emerald-500 rounded-full"></span>
                             2. Phương Thức Thanh Toán
                         </h2>
 
@@ -498,7 +498,7 @@ export default function ThanhToanPage() {
                                 onClick={() => setPaymentMethod(3)}
                                 className={`p-4 rounded-2xl border cursor-pointer transition-all flex flex-col justify-between ${
                                     paymentMethod === 3
-                                        ? 'border-emerald-600 bg-emerald-50/50 shadow-xs'
+                                        ? 'border-emerald-500 bg-emerald-50 shadow-xs'
                                         : 'border-slate-200 hover:border-slate-300'
                                 }`}
                             >
@@ -521,7 +521,7 @@ export default function ThanhToanPage() {
                                 onClick={() => setPaymentMethod(1)}
                                 className={`p-4 rounded-2xl border cursor-pointer transition-all flex flex-col justify-between ${
                                     paymentMethod === 1
-                                        ? 'border-emerald-600 bg-emerald-50/50 shadow-xs'
+                                        ? 'border-emerald-500 bg-emerald-50 shadow-xs'
                                         : 'border-slate-200 hover:border-slate-300'
                                 }`}
                             >
@@ -544,7 +544,7 @@ export default function ThanhToanPage() {
                                 onClick={() => setPaymentMethod(2)}
                                 className={`p-4 rounded-2xl border cursor-pointer transition-all flex flex-col justify-between ${
                                     paymentMethod === 2
-                                        ? 'border-emerald-600 bg-emerald-50/50 shadow-xs'
+                                        ? 'border-emerald-500 bg-emerald-50 shadow-xs'
                                         : 'border-slate-200 hover:border-slate-300'
                                 }`}
                             >
@@ -575,7 +575,7 @@ export default function ThanhToanPage() {
 
                 {/* Right: Cart Summary & Submit CTA */}
                 <div className="space-y-6">
-                    <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-xs space-y-4">
+                    <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm space-y-4">
                         <h3 className="font-bold text-sm text-slate-900 pb-3 border-b border-slate-100">
                             Đơn Hàng ({cart.items.length} món)
                         </h3>
@@ -633,7 +633,7 @@ export default function ThanhToanPage() {
                         <button
                             type="submit"
                             disabled={isSubmitting}
-                            className="w-full py-4 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-2xl text-xs font-bold transition-all shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-2 active:scale-98 disabled:opacity-50"
+                            className="w-full h-[46px] bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold shadow-md flex items-center justify-center gap-2 disabled:opacity-50"
                         >
                             <span>{isSubmitting ? 'Đang xử lý...' : paymentMethod === 3 ? 'Thanh Toán Qua VNPay' : 'Xác Nhận & Đặt Hàng'}</span>
                             <ArrowRight className="w-4 h-4" />

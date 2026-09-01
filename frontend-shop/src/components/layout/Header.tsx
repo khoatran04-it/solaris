@@ -49,9 +49,9 @@ export default function Header() {
     };
 
     return (
-        <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-emerald-100 shadow-xs">
+        <header className="sticky top-0 z-40 bg-white border-b border-slate-100 shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
             {/* Top Notification Bar */}
-            <div className="bg-gradient-to-r from-emerald-600 to-teal-700 text-white text-xs py-1.5 px-4 text-center font-medium flex items-center justify-center gap-2">
+            <div className="bg-emerald-600 text-white text-xs py-1.5 px-4 text-center font-medium flex items-center justify-center gap-2">
                 <Sparkles className="w-3.5 h-3.5 animate-pulse" />
                 <span>Nông sản tươi chuẩn VietGAP / GlobalGAP — Cam kết đổi trả trong 24h</span>
                 <span className="hidden md:inline-block">| Hotline: 1900 8888</span>
@@ -64,8 +64,8 @@ export default function Header() {
                     {/* Logo & Brand */}
                     <div className="flex items-center gap-3">
                         <Link href="/" className="flex items-center gap-2.5 group">
-                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white font-bold text-xl shadow-md shadow-emerald-500/20 group-hover:scale-105 transition-transform">
-                                🌿
+                            <div className="w-10 h-10 rounded-xl bg-emerald-600 flex items-center justify-center text-white font-bold text-xl shadow-md shadow-emerald-500/20 group-hover:scale-105 transition-transform">
+                                ☀️
                             </div>
                             <div>
                                 <span className="text-2xl font-black tracking-tight text-slate-900 group-hover:text-emerald-600 transition-colors">
@@ -86,12 +86,12 @@ export default function Header() {
                                 placeholder="Tìm trái cây, rau củ, xuất xứ Đà Lạt..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all shadow-inner"
+                                className="w-full pl-10 pr-20 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-4 focus:ring-emerald-500/20 focus:border-emerald-500 focus:bg-white transition-all text-slate-800 placeholder-slate-400 font-medium"
                             />
-                            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+                            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
                             <button
                                 type="submit"
-                                className="absolute right-1.5 top-1.5 px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-full text-xs font-semibold transition-colors"
+                                className="absolute right-1.5 top-1.5 px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-colors"
                             >
                                 Tìm
                             </button>
@@ -139,7 +139,7 @@ export default function Header() {
                                 {/* Dropdown Menu */}
                                 {isUserMenuOpen && (
                                     <div 
-                                        className="absolute right-0 mt-2 w-56 bg-white rounded-2xl shadow-xl border border-slate-100 py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150"
+                                        className="absolute right-0 mt-2 w-56 bg-white rounded-2xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.15)] border border-slate-100 py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150"
                                         onMouseLeave={() => setIsUserMenuOpen(false)}
                                     >
                                         <div className="px-4 py-2 border-b border-slate-100">

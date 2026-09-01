@@ -140,5 +140,41 @@ namespace backend.Controllers.Shop
                 return BadRequest(new { message = ex.Message });
             }
         }
+        /// <summary>
+        /// Khách hàng xác nhận "Đã nhận được hàng" (Tương tự Shopee/Lazada).
+        /// Chuyển trạng thái đơn hàng sang Hoàn Tất (Completed), tự động cập nhật thanh toán COD và tích điểm nâng hạng.
+        /// </summary>
+        /// <param name="orderCode">Mã đơn hàng khách xác nhận nhận hàng.</param>
+        /// <returns>Dữ liệu đơn hàng sau khi cập nhật thành công.</returns>
+        /// <response code="200">Xác nhận nhận hàng thành công.</response>
+        /// <response code="400">Đơn hàng không ở trạng thái hợp lệ để xác nhận.</response>
+        /// <response code="404">Không tìm thấy đơn hàng.</response>
+        /// <response code="401">Khách hàng chưa đăng nhập.</response>
+        [HttpPost("{orderCode}/confirm-delivery")]
+        [ProducesResponseType(typeof(ShopOrderReadDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        public async Task<ActionResult<ShopOrderReadDto>> ConfirmDelivery(string orderCode)
+        {
+            try
+            {
+                int customerId = GetCurrentCustomerId();
+                var order = await _orderService.ConfirmDeliveryAsync(customerId, orderCode);
+                return Ok(order);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
     }
 }

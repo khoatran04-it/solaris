@@ -3,7 +3,7 @@
 import React, { useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ShoppingBag, Trash2, ArrowRight, ShieldCheck, Truck } from 'lucide-react';
+import { ShoppingBag, Trash2, ArrowRight, ShieldCheck, Truck, Inbox } from 'lucide-react';
 import { useCartStore } from '@/stores/cartStore';
 import { useAuthStore } from '@/stores/authStore';
 import { formatVND } from '@/lib/utils';
@@ -34,7 +34,7 @@ export default function GioHangPage() {
             {/* Header */}
             <div className="flex items-center justify-between pb-4 border-b border-slate-200">
                 <div>
-                    <h1 className="text-2xl sm:text-3xl font-black text-slate-900 flex items-center gap-2">
+                    <h1 className="text-2xl font-black text-slate-900 flex items-center gap-2">
                         <ShoppingBag className="w-7 h-7 text-emerald-600" />
                         Giỏ Hàng Của Bạn
                     </h1>
@@ -62,11 +62,11 @@ export default function GioHangPage() {
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
                     
                     {/* Left: Items List */}
-                    <div className="lg:col-span-2 space-y-4">
-                        {cart.items.map((item) => (
+                    <div className="lg:col-span-2 bg-white rounded-2xl shadow-[0_2px_20px_-4px_rgba(0,0,0,0.05)] border border-slate-100 p-4 sm:p-5">
+                        {cart.items.map((item, index) => (
                             <div
                                 key={item.id}
-                                className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 group"
+                                className={`flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 group ${index !== cart.items.length - 1 ? 'border-b border-slate-100 pb-4 mb-4' : ''}`}
                             >
                                 <div className="flex items-center gap-4 flex-1">
                                     <div className="w-16 h-16 rounded-xl bg-slate-50 border border-slate-100 overflow-hidden shrink-0 flex items-center justify-center">
@@ -101,19 +101,19 @@ export default function GioHangPage() {
                                 {/* Controls & Total */}
                                 <div className="flex items-center justify-between sm:justify-end gap-6 w-full sm:w-auto pt-3 sm:pt-0 border-t sm:border-t-0 border-slate-100">
                                     {/* Quantity Buttons */}
-                                    <div className="flex items-center border border-slate-200 rounded-lg bg-white overflow-hidden">
+                                    <div className="flex items-center h-[36px] rounded-lg border border-slate-200 bg-white overflow-hidden">
                                         <button
                                             onClick={() => updateQuantity(item.id, Math.max(1, item.quantity - 1))}
-                                            className="px-2.5 py-1 text-slate-600 hover:bg-slate-100 font-bold text-xs"
+                                            className="px-2.5 h-full text-slate-600 hover:bg-slate-100 font-bold text-xs"
                                         >
                                             -
                                         </button>
-                                        <span className="px-3 py-1 text-xs font-bold text-slate-800 min-w-[32px] text-center">
+                                        <span className="px-3 h-full flex items-center justify-center text-xs font-bold text-slate-800 min-w-[32px] text-center">
                                             {item.quantity}
                                         </span>
                                         <button
                                             onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                                            className="px-2.5 py-1 text-slate-600 hover:bg-slate-100 font-bold text-xs"
+                                            className="px-2.5 h-full text-slate-600 hover:bg-slate-100 font-bold text-xs"
                                         >
                                             +
                                         </button>
@@ -129,7 +129,7 @@ export default function GioHangPage() {
                                     {/* Remove Item */}
                                     <button
                                         onClick={() => removeItem(item.id)}
-                                        className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                                        className="p-1.5 text-slate-400 hover:text-rose-500 transition-colors"
                                         title="Xóa khỏi giỏ"
                                     >
                                         <Trash2 className="w-4 h-4" />
@@ -141,7 +141,7 @@ export default function GioHangPage() {
 
                     {/* Right: Order Summary */}
                     <div className="space-y-6">
-                        <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-xs space-y-4">
+                        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 space-y-4">
                             <h2 className="font-bold text-sm text-slate-900 pb-3 border-b border-slate-100">
                                 Tóm Tắt Đơn Hàng
                             </h2>
@@ -172,7 +172,7 @@ export default function GioHangPage() {
 
                             <button
                                 onClick={handleProceedCheckout}
-                                className="w-full py-3.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-2xl text-xs font-bold transition-all shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-2 active:scale-98"
+                                className="w-full h-[46px] bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold shadow-md transition-all flex items-center justify-center gap-2"
                             >
                                 <span>Tiến Hành Đặt Hàng</span>
                                 <ArrowRight className="w-4 h-4" />
@@ -194,12 +194,12 @@ export default function GioHangPage() {
 
                 </div>
             ) : (
-                <div className="bg-white rounded-3xl border border-slate-200 p-16 text-center space-y-4 max-w-lg mx-auto">
-                    <div className="w-20 h-20 rounded-full bg-emerald-50 flex items-center justify-center text-4xl mx-auto">
-                        🛒
+                <div className="bg-white rounded-2xl border border-slate-100 p-16 text-center space-y-4 max-w-lg mx-auto shadow-sm">
+                    <div className="w-20 h-20 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 mx-auto">
+                        <Inbox className="w-10 h-10" />
                     </div>
                     <h3 className="text-lg font-bold text-slate-800">Giỏ hàng của bạn đang trống</h3>
-                    <p className="text-xs text-slate-500 leading-relaxed">
+                    <p className="text-sm text-slate-500 leading-relaxed">
                         Hãy dạo một vòng quanh nông trại Solaris để chọn những món nông sản tươi ngon nhất cho gia đình nhé!
                     </p>
                     <Link

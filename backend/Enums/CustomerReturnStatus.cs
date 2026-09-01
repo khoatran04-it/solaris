@@ -2,9 +2,10 @@ namespace backend.Models.Enums
 {
     public enum CustomerReturnStatus
     {
-        Pending = 1,        // Chờ nhận hàng (Khách yêu cầu trả hàng)
-        Inspecting = 2,     // Đang kiểm định QC (Hàng đang nằm ở QuantityQC)
-        Completed = 3,      // Hoàn tất (Đã phân loại vào Available/Damaged và hoàn tiền)
-        Rejected = 4        // Từ chối nhận trả hàng
+        Pending = 1,        // Chờ tiếp nhận (Khách gửi yêu cầu)
+        Approved = 2,       // Đã duyệt (Chờ nhận hàng tại kho)
+        Inspecting = 3,     // Đang kiểm định QC / Đang xử lý nhập kho
+        Completed = 4,      // Hoàn tất (Đã nhập kho thu hồi & hoàn tiền)
+        Rejected = 5        // Từ chối nhận trả hàng
     }
 }

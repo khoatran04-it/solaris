@@ -55,6 +55,18 @@ function TraHangContent() {
         if (!orderCode.trim()) return;
         try {
             const ord: ShopOrder = await shopOrderApi.getByCode(orderCode.trim());
+
+            // Kiểm tra thời hạn 12 giờ
+            if (ord.orderDate) {
+                const orderTime = new Date(ord.orderDate).getTime();
+                const diffHours = (Date.now() - orderTime) / (1000 * 60 * 60);
+                if (diffHours > 12) {
+                    alert(`Đơn hàng ${ord.orderCode} đã đặt cách đây hơn 12 giờ. Chính sách nông sản tươi Solaris chỉ hỗ trợ đổi/trả trong vòng 12 giờ.`);
+                    setTargetOrder(null);
+                    return;
+                }
+            }
+
             setTargetOrder(ord);
             const init: any = {};
             ord.items.forEach(i => {
@@ -262,14 +274,36 @@ function TraHangContent() {
                                         <p className="text-[11px] text-slate-500">Đơn hàng: <strong>{ret.orderCode}</strong> • {formatDateTime(ret.returnDate)}</p>
                                     </div>
 
-                                    <span className="px-3 py-1 bg-amber-50 text-amber-800 border border-amber-200 text-xs font-bold rounded-full">
-                                        {ret.statusName}
-                                    </span>
+                                    {ret.status === 1 && (
+                                        <span className="px-3 py-1 bg-amber-50 text-amber-800 border border-amber-200 text-xs font-bold rounded-full">
+                                            Chờ tiếp nhận
+                                        </span>
+                                    )}
+                                    {ret.status === 2 && (
+                                        <span className="px-3 py-1 bg-blue-50 text-blue-800 border border-blue-200 text-xs font-bold rounded-full">
+                                            Đã duyệt - Chờ nhận hàng tại kho
+                                        </span>
+                                    )}
+                                    {ret.status === 3 && (
+                                        <span className="px-3 py-1 bg-purple-50 text-purple-800 border border-purple-200 text-xs font-bold rounded-full">
+                                            Đang kiểm định & Xử lý
+                                        </span>
+                                    )}
+                                    {ret.status === 4 && (
+                                        <span className="px-3 py-1 bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-bold rounded-full">
+                                            Hoàn tất & Đã hoàn tiền
+                                        </span>
+                                    )}
+                                    {ret.status === 5 && (
+                                        <span className="px-3 py-1 bg-rose-50 text-rose-800 border border-rose-200 text-xs font-bold rounded-full">
+                                            Từ chối trả hàng
+                                        </span>
+                                    )}
                                 </div>
 
                                 <div className="space-y-1.5 text-xs text-slate-600">
                                     <p>Lý do: {ret.reason || 'Đổi trả bảo hành'}</p>
-                                    <p>Tiền hoàn dự kiến: <strong className="text-emerald-700 font-bold">{formatVND(ret.refundAmount)}</strong></p>
+                                    <p>Tiền hoàn: <strong className="text-emerald-700 font-bold">{formatVND(ret.refundAmount)}</strong></p>
                                     {ret.inspectionNotes && (
                                         <p className="text-slate-500 italic">Ghi chú QC: {ret.inspectionNotes}</p>
                                     )}
@@ -295,7 +329,7 @@ export default function TraHangPage() {
                     Đổi Trả Hàng & Hoàn Tiền (RMA)
                 </h1>
                 <p className="text-xs text-slate-500 mt-1">
-                    Chính sách cam kết đổi trả trong 24H nếu hàng dập nát hoặc không đạt chuẩn chất lượng
+                    Chính sách cam kết đổi trả trong 12H nếu hàng dập nát hoặc không đạt chuẩn chất lượng
                 </p>
             </div>
 

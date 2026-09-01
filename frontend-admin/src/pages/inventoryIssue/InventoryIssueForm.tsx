@@ -12,6 +12,7 @@ import {
   FormHeader,
   FormSection,
 } from '../../components/commons/FormUI';
+import CustomDatePicker from '../../components/commons/CustomDatePicker';
 import { Toast } from '../../components/commons/Toast';
 
 import { inventoryIssueApi } from '../../api/inventoryIssueApi';
@@ -39,7 +40,7 @@ interface DetailRow {
 interface IssueFormState {
   orderId: number | '';
   warehouseId: number | '';
-  issueDate: string;
+  issueDate: Date;
   receiverName: string;
   receiverPhone: string;
   deliveryAddress: string;
@@ -49,7 +50,7 @@ interface IssueFormState {
 const INITIAL_FORM_STATE: IssueFormState = {
   orderId: '',
   warehouseId: '',
-  issueDate: new Date().toLocaleDateString('en-CA'),
+  issueDate: new Date(),
   receiverName: '',
   receiverPhone: '',
   deliveryAddress: '',
@@ -64,6 +65,19 @@ const createEmptyDetailRow = (): DetailRow => ({
   quantity: 1,
   unitPrice: 0,
 });
+
+const formatBatchLabel = (batchCode: string, expiryDate?: string) => {
+  if (!expiryDate) return batchCode;
+  try {
+    const d = new Date(expiryDate);
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    return `${batchCode} (HSD: ${day}/${month}/${year})`;
+  } catch {
+    return batchCode;
+  }
+};
 
 const InventoryIssueForm: React.FC = () => {
   const navigate = useNavigate();
@@ -90,13 +104,14 @@ const InventoryIssueForm: React.FC = () => {
   const [details, setDetails] = useState<DetailRow[]>([createEmptyDetailRow()]);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // --- DROPDOWN OPTIONS ---
+  // Dropdown Options
   const [warehouses, setWarehouses] = useState<{ value: number; label: string }[]>([]);
+  const [orders, setOrders] = useState<{ value: number; label: string }[]>([]);
   const [variants, setVariants] = useState<{ value: number; label: string; prices: any[] }[]>([]);
-  const [batches, setBatches] = useState<{ id: number; variantId: number; batchCode: string }[]>(
-    []
-  );
   const [uoms, setUoms] = useState<{ value: number; label: string }[]>([]);
+
+  // Map lưu danh sách lô theo: key = `${warehouseId}_${variantId}`
+  const [variantBatchesMap, setVariantBatchesMap] = useState<Record<string, SuggestedBatch[]>>({});
 
   const showToast = (type: 'success' | 'warning' | 'error', message: string) => {
     setToast({ show: true, type, message });
@@ -107,14 +122,16 @@ const InventoryIssueForm: React.FC = () => {
   useEffect(() => {
     const loadInit = async () => {
       try {
-        const [whList, varList, batchList, uomList] = await Promise.all([
+        const [whList, varList, uomList, orderRes] = await Promise.all([
           warehouseApi.getAllList().catch(() => []),
           productVariantApi.getAllList().catch(() => []),
-          productBatchApi.getAllList().catch(() => []),
           uomApi.getAllList().catch(() => []),
+          orderApi.getAll({ pageSize: 50 }).catch(() => ({ items: [] })),
         ]);
 
-        setWarehouses(whList.map((w: any) => ({ value: w.id, label: w.name })));
+        const whOpts = whList.map((w: any) => ({ value: w.id, label: w.name }));
+        setWarehouses(whOpts);
+
         setVariants(
           varList.map((v: any) => ({
             value: v.id,
@@ -122,10 +139,13 @@ const InventoryIssueForm: React.FC = () => {
             prices: v.prices || [],
           }))
         );
-        setBatches(
-          batchList.map((b: any) => ({ id: b.id, variantId: b.variantId, batchCode: b.batchCode }))
-        );
         setUoms(uomList.map((u: any) => ({ value: u.id, label: u.name })));
+        setOrders(
+          (orderRes.items || []).map((o: any) => ({
+            value: o.id,
+            label: `${o.orderCode} - ${o.receiverName || o.customerName || 'Khách hàng'} (${o.totalAmount?.toLocaleString('vi-VN')} đ)`,
+          }))
+        );
       } catch (err) {
         showToast('error', 'Lỗi tải danh mục bổ trợ!');
       }
@@ -133,45 +153,141 @@ const InventoryIssueForm: React.FC = () => {
     loadInit();
   }, []);
 
-  const loadOrder = useCallback(async (id: number) => {
-    try {
-      const ord = await orderApi.getById(id);
-      if (ord) {
-        setFormData((prev) => ({
-          ...prev,
-          orderId: ord.id,
-          warehouseId: ord.warehouseId || '',
-          receiverName: ord.receiverName || ord.customerName,
-          receiverPhone: ord.receiverPhone || ord.customerPhone,
-          deliveryAddress: ord.deliveryAddress || '',
-        }));
-
-        if (ord.details && ord.details.length > 0) {
-          const rows: DetailRow[] = ord.details.map((d) => {
-            const unissued = Math.max(0, d.quantity - (d.issuedQuantity || 0));
-            return {
-              id: crypto.randomUUID(),
-              orderDetailId: d.id,
-              variantId: d.variantId,
-              batchId: '',
-              uoMId: d.uoMId,
-              quantity: unissued > 0 ? unissued : d.quantity,
-              unitPrice: d.unitPrice,
-            };
-          });
-          setDetails(rows);
-        }
+  // Fetch batches cho 1 variant tại kho xuất
+  const fetchBatchesForVariant = useCallback(
+    async (whId: number, varId: number, neededQty = 999999) => {
+      if (!whId || !varId) return [];
+      const key = `${whId}_${varId}`;
+      try {
+        const res = await inventoryIssueApi.getSuggestedBatches(whId, varId, neededQty);
+        setVariantBatchesMap((prev) => ({ ...prev, [key]: res || [] }));
+        return res || [];
+      } catch {
+        setVariantBatchesMap((prev) => ({ ...prev, [key]: [] }));
+        return [];
       }
-    } catch (err) {
-      showToast('error', 'Không thể tải thông tin đơn hàng gốc!');
-    }
-  }, []);
+    },
+    []
+  );
+
+  const loadOrder = useCallback(
+    async (id: number) => {
+      try {
+        const ord = await orderApi.getById(id);
+        if (ord) {
+          const whId = ord.warehouseId;
+          setFormData((prev) => ({
+            ...prev,
+            orderId: ord.id,
+            warehouseId: whId || prev.warehouseId,
+            receiverName: ord.receiverName || ord.customerName || '',
+            receiverPhone: ord.receiverPhone || ord.customerPhone || '',
+            deliveryAddress: ord.deliveryAddress || '',
+          }));
+
+          if (ord.details && ord.details.length > 0) {
+            const batchMapUpdates: Record<string, SuggestedBatch[]> = {};
+
+            const rows: DetailRow[] = await Promise.all(
+              ord.details.map(async (d) => {
+                const unissued = Math.max(0, d.quantity - (d.issuedQuantity || 0));
+                const qty = unissued > 0 ? unissued : d.quantity;
+                let autoBatchId: number | '' = '';
+
+                if (whId) {
+                  try {
+                    const suggestions = await inventoryIssueApi.getSuggestedBatches(whId, d.variantId, qty);
+                    if (suggestions && suggestions.length > 0) {
+                      autoBatchId = suggestions[0].batchId;
+                      batchMapUpdates[`${whId}_${d.variantId}`] = suggestions;
+                    } else {
+                      batchMapUpdates[`${whId}_${d.variantId}`] = [];
+                    }
+                  } catch {
+                    batchMapUpdates[`${whId}_${d.variantId}`] = [];
+                  }
+                }
+
+                return {
+                  id: crypto.randomUUID(),
+                  orderDetailId: d.id,
+                  variantId: d.variantId,
+                  batchId: autoBatchId,
+                  uoMId: d.uoMId,
+                  quantity: qty,
+                  unitPrice: d.unitPrice,
+                };
+              })
+            );
+
+            setVariantBatchesMap((prev) => ({ ...prev, ...batchMapUpdates }));
+            setDetails(rows);
+            showToast('success', 'Đã tải thông tin đơn hàng và tự động phân bổ Lô FEFO tối ưu!');
+          }
+        }
+      } catch (err) {
+        showToast('error', 'Không thể tải thông tin đơn hàng gốc!');
+      }
+    },
+    []
+  );
 
   useEffect(() => {
     if (orderIdParam) {
       loadOrder(Number(orderIdParam));
     }
   }, [orderIdParam, loadOrder]);
+
+  // Khi Kho Xuất thay đổi: tự động fetch lại lô hàng cho các mặt hàng đã chọn
+  useEffect(() => {
+    if (formData.warehouseId) {
+      const whId = Number(formData.warehouseId);
+      details.forEach(async (row) => {
+        if (row.variantId) {
+          const suggestions = await fetchBatchesForVariant(whId, Number(row.variantId), row.quantity);
+          if (suggestions && suggestions.length > 0 && !row.batchId) {
+            setDetails((prev) =>
+              prev.map((r) => (r.id === row.id ? { ...r, batchId: suggestions[0].batchId } : r))
+            );
+          }
+        }
+      });
+    }
+  }, [formData.warehouseId, fetchBatchesForVariant]);
+
+  const handleAutoAllocateAllFEFO = async () => {
+    if (!formData.warehouseId) {
+      return showToast('warning', 'Vui lòng chọn Kho xuất ở mục (1) trước!');
+    }
+    try {
+      let successCount = 0;
+      const updatedDetails = await Promise.all(
+        details.map(async (row) => {
+          if (!row.variantId) return row;
+          try {
+            const suggestions = await fetchBatchesForVariant(
+              Number(formData.warehouseId),
+              Number(row.variantId),
+              Number(row.quantity || 1)
+            );
+            if (suggestions && suggestions.length > 0) {
+              successCount++;
+              return { ...row, batchId: suggestions[0].batchId };
+            }
+          } catch {}
+          return row;
+        })
+      );
+      setDetails(updatedDetails);
+      if (successCount > 0) {
+        showToast('success', `Đã tự động phân bổ Lô FEFO tối ưu cho ${successCount} mặt hàng!`);
+      } else {
+        showToast('warning', 'Không tìm thấy Lô hàng có sẵn trong kho!');
+      }
+    } catch (err) {
+      showToast('error', 'Lỗi hệ thống khi phân bổ lô FEFO!');
+    }
+  };
 
   // --- FORM HANDLERS ---
   const handleFieldChange = (field: keyof IssueFormState, value: any) => {
@@ -183,6 +299,15 @@ const InventoryIssueForm: React.FC = () => {
         return newErr;
       });
     }
+  };
+
+  const handleSelectOrder = (orderIdVal: string | number) => {
+    const id = Number(orderIdVal);
+    if (!id) {
+      setFormData((prev) => ({ ...prev, orderId: '' }));
+      return;
+    }
+    loadOrder(id);
   };
 
   const handleAddRow = () => {
@@ -227,28 +352,32 @@ const InventoryIssueForm: React.FC = () => {
 
   // --- FEFO BATCH SUGGESTION ---
   const handleAutoSuggestBatch = async (rowId: string, variantId: number | '') => {
-    if (!formData.warehouseId)
+    if (!formData.warehouseId) {
       return showToast('warning', 'Vui lòng chọn Kho xuất ở mục (1) trước!');
-    if (!variantId) return showToast('warning', 'Vui lòng chọn Sản phẩm trước!');
+    }
+    if (!variantId) {
+      return showToast('warning', 'Vui lòng chọn Sản phẩm trước khi bấm FEFO!');
+    }
 
     const targetRow = details.find((d) => d.id === rowId);
     if (!targetRow) return;
 
     try {
-      const suggestions: SuggestedBatch[] = await inventoryIssueApi.getSuggestedBatches(
+      const suggestions = await fetchBatchesForVariant(
         Number(formData.warehouseId),
         Number(variantId),
-        Number(targetRow.quantity)
+        Number(targetRow.quantity || 1)
       );
 
       if (suggestions && suggestions.length > 0) {
         const topBatch = suggestions[0];
         handleDetailChange(rowId, 'batchId', topBatch.batchId);
-        showToast('success', `Đã tự động chọn Lô tối ưu FEFO: ${topBatch.batchCode}`);
+        showToast('success', `Đã tự động gán Lô tối ưu FEFO: ${topBatch.batchCode}`);
       } else {
         showToast('warning', 'Không tìm thấy Lô hàng nào có sẵn trong kho này!');
       }
     } catch (err) {
+      console.error('Error in FEFO auto suggest:', err);
       showToast('error', 'Lỗi hệ thống: Không thể lấy gợi ý Lô hàng!');
     }
   };
@@ -257,6 +386,8 @@ const InventoryIssueForm: React.FC = () => {
   const validateForm = (): boolean => {
     const errs: Record<string, string> = {};
     if (!formData.warehouseId) errs.warehouseId = 'Vui lòng chọn kho xuất';
+    if (!formData.receiverName.trim()) errs.receiverName = 'Vui lòng nhập tên người nhận';
+    if (!formData.receiverPhone.trim()) errs.receiverPhone = 'Vui lòng nhập số điện thoại nhận';
     if (!formData.deliveryAddress.trim()) errs.deliveryAddress = 'Vui lòng nhập địa chỉ giao hàng';
 
     if (details.length === 0) {
@@ -280,11 +411,18 @@ const InventoryIssueForm: React.FC = () => {
 
     try {
       setLoading(true);
+
+      // Chuẩn hóa ngày ISO theo local date
+      const year = formData.issueDate.getFullYear();
+      const month = String(formData.issueDate.getMonth() + 1).padStart(2, '0');
+      const day = String(formData.issueDate.getDate()).padStart(2, '0');
+      const issueDateIso = `${year}-${month}-${day}T00:00:00Z`;
+
       const payload: InventoryIssueCreatePayload = {
         orderId: formData.orderId ? Number(formData.orderId) : undefined,
         warehouseId: Number(formData.warehouseId),
         issuedById: userInfo?.id || 1,
-        issueDate: `${formData.issueDate}T00:00:00Z`,
+        issueDate: issueDateIso,
         receiverName: formData.receiverName.trim(),
         receiverPhone: formData.receiverPhone.trim(),
         deliveryAddress: formData.deliveryAddress.trim(),
@@ -325,52 +463,73 @@ const InventoryIssueForm: React.FC = () => {
           {/* ================= SECTION 1: THÔNG TIN PHIẾU ================= */}
           <FormSection title="1. Thông Tin Phiếu Xuất">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {/* Đơn hàng tham chiếu */}
+              <FormSelect
+                label="Đơn hàng tham chiếu (Tùy chọn)"
+                value={formData.orderId}
+                onSelect={handleSelectOrder}
+                options={[{ value: '', label: '-- Xuất trực tiếp / Bán lẻ --' }, ...orders]}
+                showSearch
+                searchPlaceholder="Tìm kiếm mã đơn hàng..."
+              />
+
+              {/* Kho xuất hàng */}
               <FormSelect
                 label="Kho xuất hàng"
                 value={formData.warehouseId}
                 onSelect={(val) => handleFieldChange('warehouseId', val ? Number(val) : '')}
                 options={warehouses}
                 error={errors.warehouseId}
+                placeholder="-- Chọn Kho xuất hàng --"
                 required
+                showSearch
+                searchPlaceholder="Tìm kiếm kho xuất..."
               />
 
-              <FormInput
+              {/* Ngày xuất hàng */}
+              <CustomDatePicker
                 label="Ngày xuất hàng"
-                type="date"
                 value={formData.issueDate}
-                onChange={(e) => handleFieldChange('issueDate', e.target.value)}
+                onChange={(d) => d && handleFieldChange('issueDate', d)}
                 required
               />
 
+              {/* Người nhận hàng */}
               <FormInput
                 label="Người nhận hàng"
                 value={formData.receiverName}
                 onChange={(e) => handleFieldChange('receiverName', e.target.value)}
+                error={errors.receiverName}
                 placeholder="Nguyễn Văn A"
+                required
               />
 
+              {/* Số điện thoại nhận */}
               <FormInput
                 label="Số điện thoại nhận"
                 value={formData.receiverPhone}
                 onChange={(e) => handleFieldChange('receiverPhone', e.target.value)}
+                error={errors.receiverPhone}
                 placeholder="0901234567"
+                required
               />
 
-              <div className="md:col-span-2">
-                <FormInput
-                  label="Địa chỉ giao hàng"
-                  value={formData.deliveryAddress}
-                  onChange={(e) => handleFieldChange('deliveryAddress', e.target.value)}
-                  error={errors.deliveryAddress}
-                  required
-                />
-              </div>
+              {/* Địa chỉ giao hàng */}
+              <FormInput
+                label="Địa chỉ giao hàng"
+                value={formData.deliveryAddress}
+                onChange={(e) => handleFieldChange('deliveryAddress', e.target.value)}
+                error={errors.deliveryAddress}
+                placeholder="Số 123 Đường ABC, Quận XYZ..."
+                required
+              />
 
               <div className="md:col-span-2 lg:col-span-3">
                 <FormTextarea
                   label="Ghi chú xuất kho"
                   value={formData.note}
                   onChange={(e: any) => handleFieldChange('note', e.target.value)}
+                  placeholder="Ghi chú thêm về quy cách đóng gói, đơn vị vận chuyển..."
                   rows={2}
                 />
               </div>
@@ -385,84 +544,94 @@ const InventoryIssueForm: React.FC = () => {
               </div>
             )}
 
-            <div className="overflow-x-auto border border-slate-200 rounded-xl bg-white shadow-sm mb-2">
-              <table className="w-full text-left text-sm whitespace-nowrap">
-                <thead className="bg-slate-50 text-slate-500 font-bold text-xs uppercase tracking-wider border-b border-slate-200">
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+              <div className="text-xs text-slate-500 font-medium">
+                Gán lô hàng tự động theo hạn dùng gần nhất (FEFO) hoặc chọn thủ công từng lô
+              </div>
+              <button
+                type="button"
+                onClick={handleAutoAllocateAllFEFO}
+                className="flex items-center gap-2 px-3.5 py-2 bg-gradient-to-r from-amber-50 to-orange-50 hover:from-amber-100 hover:to-orange-100 text-amber-900 border border-amber-300 rounded-xl text-xs font-bold transition-all shadow-2xs hover:shadow-xs active:scale-95"
+              >
+                <Sparkles size={15} className="text-amber-600 animate-pulse" />
+                <span>Tự Động Phân Bổ Lô FEFO Tất Cả</span>
+              </button>
+            </div>
+
+            <div className="overflow-x-auto border border-slate-200 rounded-2xl bg-white shadow-2xs mb-4 min-h-[380px] pb-24">
+              <table className="w-full text-left text-sm whitespace-nowrap min-w-[920px]">
+                <thead className="bg-slate-50/80 text-slate-600 font-bold text-xs uppercase tracking-wider border-b border-slate-200">
                   <tr>
-                    <th className="px-4 py-3 text-center w-12">#</th>
-                    <th className="px-4 py-3 min-w-60">
+                    <th className="px-3 py-3.5 text-center w-12">#</th>
+                    <th className="px-3 py-3.5 min-w-[240px]">
                       Sản phẩm <span className="text-red-500">*</span>
                     </th>
-                    <th className="px-4 py-3 min-w-50">
-                      Lô Hàng (Batch) <span className="text-red-500">*</span>
-                    </th>
-                    <th className="px-4 py-3 min-w-30">
+                    <th className="px-3 py-3.5 w-28 min-w-[90px]">
                       ĐVT <span className="text-red-500">*</span>
                     </th>
-                    <th className="px-4 py-3 w-32 text-center bg-indigo-50/40">
+                    <th className="px-3 py-3.5 min-w-[310px]">
+                      Lô Hàng (FEFO) <span className="text-red-500">*</span>
+                    </th>
+                    <th className="px-3 py-3.5 w-24 text-center bg-amber-50/50 text-amber-900 border-x border-amber-100/70">
                       Số lượng <span className="text-red-500">*</span>
                     </th>
-                    <th className="px-4 py-3 w-36 text-right">Đơn giá</th>
-                    <th className="px-4 py-3 w-36 text-right">Thành tiền</th>
-                    <th className="px-4 py-3 w-16 text-center">Xóa</th>
+                    <th className="px-3 py-3.5 w-32 text-right">Đơn giá</th>
+                    <th className="px-3 py-3.5 w-36 text-right">Thành tiền</th>
+                    <th className="px-3 py-3.5 w-12 text-center">Xóa</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {details.map((row, idx) => {
-                    const rowBatches = batches.filter((b) => b.variantId === Number(row.variantId));
+                    const rowBatches =
+                      formData.warehouseId && row.variantId
+                        ? variantBatchesMap[`${formData.warehouseId}_${row.variantId}`] || []
+                        : [];
+
                     return (
-                      <tr key={row.id} className="hover:bg-slate-50/50 transition-colors">
-                        <td className="px-4 py-2 text-center text-slate-400 font-medium">
+                      <tr
+                        key={row.id}
+                        className="hover:bg-slate-50/60 transition-colors"
+                        style={{ zIndex: 50 - idx }}
+                      >
+                        <td className="px-3 py-3 text-center text-slate-400 font-medium">
                           {idx + 1}
                         </td>
 
-                        <td className="p-2">
+                        {/* Cột 1: Sản phẩm */}
+                        <td className="p-2 min-w-[240px]">
                           <FormSelect
                             label=""
                             showSearch
+                            searchPlaceholder="Tìm kiếm SP..."
                             placeholder="Chọn sản phẩm..."
                             options={variants}
                             value={row.variantId}
                             error={errors[`variantId_${row.id}`]}
                             onSelect={(val) => {
-                              handleDetailChange(row.id, 'variantId', val ? Number(val) : '');
+                              const vId = val ? Number(val) : '';
+                              handleDetailChange(row.id, 'variantId', vId);
                               handleDetailChange(row.id, 'batchId', '');
+                              // Tự động gợi ý Lô FEFO ngay khi chọn SP nếu đã có kho
+                              if (vId && formData.warehouseId) {
+                                fetchBatchesForVariant(
+                                  Number(formData.warehouseId),
+                                  Number(vId),
+                                  Number(row.quantity || 1)
+                                )
+                                  .then((sugs) => {
+                                    if (sugs && sugs.length > 0) {
+                                      handleDetailChange(row.id, 'batchId', sugs[0].batchId);
+                                    }
+                                  })
+                                  .catch(() => {});
+                              }
                             }}
                             disabled={Boolean(row.orderDetailId)}
                           />
                         </td>
 
-                        <td className="p-2">
-                          <div className="flex items-center gap-1.5">
-                            <div className="flex-1">
-                              <FormSelect
-                                label=""
-                                placeholder="-- Chọn Lô --"
-                                options={rowBatches.map((b) => ({
-                                  value: b.id,
-                                  label: b.batchCode,
-                                }))}
-                                value={row.batchId}
-                                error={errors[`batchId_${row.id}`]}
-                                disabled={!row.variantId}
-                                onSelect={(val) =>
-                                  handleDetailChange(row.id, 'batchId', val ? Number(val) : '')
-                                }
-                              />
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => handleAutoSuggestBatch(row.id, row.variantId)}
-                              disabled={!row.variantId || !formData.warehouseId}
-                              className="p-2 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 rounded-lg transition-colors shrink-0 disabled:opacity-40"
-                              title="Tự động chọn Lô hết hạn trước (FEFO)"
-                            >
-                              <Sparkles size={16} />
-                            </button>
-                          </div>
-                        </td>
-
-                        <td className="p-2">
+                        {/* Cột 2: Đơn vị tính */}
+                        <td className="p-2 w-28">
                           <FormSelect
                             label=""
                             placeholder="ĐVT"
@@ -476,11 +645,67 @@ const InventoryIssueForm: React.FC = () => {
                           />
                         </td>
 
-                        <td className="p-2 bg-indigo-50/20 border-l border-indigo-100">
+                        {/* Cột 3: Lô Hàng (FEFO) + Nút AI FEFO */}
+                        <td className="p-2 min-w-[310px]">
+                          <div className="flex items-center gap-1.5">
+                            <div className="flex-1 min-w-0">
+                              <FormSelect
+                                label=""
+                                placeholder={
+                                  !formData.warehouseId
+                                    ? '-- Chọn Kho xuất trước --'
+                                    : !row.variantId
+                                    ? '-- Chọn Sản phẩm trước --'
+                                    : rowBatches.length === 0
+                                    ? '-- Kho xuất hết hàng cho SP này --'
+                                    : '-- Chọn Lô FEFO --'
+                                }
+                                showSearch
+                                searchPlaceholder="Tìm mã lô..."
+                                options={rowBatches.map((b) => {
+                                  const expiryStr = b.expiryDate
+                                    ? `(HSD: ${new Date(b.expiryDate).toLocaleDateString('vi-VN')})`
+                                    : '';
+                                  const stockInfo =
+                                    b.quantityReserved > 0 && b.quantityAvailable === 0
+                                      ? `[Đã giữ chỗ cho đơn: ${b.quantityReserved}]`
+                                      : `[Khả dụng: ${b.quantityAvailable}${
+                                          b.quantityReserved ? `, Giữ chỗ: ${b.quantityReserved}` : ''
+                                        }]`;
+
+                                  return {
+                                    value: b.batchId,
+                                    label: `${b.batchCode} ${expiryStr} - ${stockInfo}`,
+                                  };
+                                })}
+                                value={row.batchId}
+                                error={errors[`batchId_${row.id}`]}
+                                disabled={!row.variantId || !formData.warehouseId}
+                                onSelect={(val) =>
+                                  handleDetailChange(row.id, 'batchId', val ? Number(val) : '')
+                                }
+                              />
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleAutoSuggestBatch(row.id, row.variantId)}
+                              className="px-2.5 py-2.5 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 rounded-xl transition-all font-bold text-xs flex items-center gap-1 shrink-0 cursor-pointer shadow-2xs"
+                              title="Tự động chọn Lô hết hạn trước (FEFO)"
+                            >
+                              <Sparkles size={14} className="text-amber-600" />
+                              <span className="hidden xl:inline">FEFO</span>
+                            </button>
+                          </div>
+                        </td>
+
+                        {/* Cột 4: Số lượng */}
+                        <td className="p-2 bg-amber-50/20 border-x border-amber-100/50 w-24">
                           <FormInput
                             label=""
                             type="number"
-                            className="text-center font-bold text-indigo-700"
+                            min="1"
+                            onFocus={(e) => e.target.select()}
+                            className="text-center font-black text-amber-950"
                             value={row.quantity}
                             error={errors[`quantity_${row.id}`]}
                             onChange={(e) =>
@@ -493,10 +718,13 @@ const InventoryIssueForm: React.FC = () => {
                           />
                         </td>
 
-                        <td className="p-2">
+                        {/* Cột 5: Đơn giá */}
+                        <td className="p-2 w-32">
                           <FormInput
                             label=""
                             type="number"
+                            min="0"
+                            onFocus={(e) => e.target.select()}
                             className="text-right font-medium text-slate-700"
                             value={row.unitPrice}
                             onChange={(e) =>
@@ -509,18 +737,20 @@ const InventoryIssueForm: React.FC = () => {
                           />
                         </td>
 
-                        <td className="px-4 py-2 text-right font-black text-slate-800">
+                        {/* Cột 6: Thành tiền */}
+                        <td className="px-3 py-3 text-right font-black text-amber-900 w-36">
                           {(Number(row.quantity || 0) * Number(row.unitPrice || 0)).toLocaleString(
                             'vi-VN'
                           )}{' '}
                           đ
                         </td>
 
-                        <td className="p-2 text-center border-l border-slate-100">
+                        {/* Cột 7: Xóa dòng */}
+                        <td className="p-2 text-center w-12 border-l border-slate-100">
                           <button
                             type="button"
                             onClick={() => handleRemoveRow(row.id)}
-                            className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors disabled:opacity-20 mx-auto"
+                            className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors disabled:opacity-20 mx-auto cursor-pointer"
                             disabled={details.length === 1}
                             title="Xóa dòng"
                           >
@@ -532,11 +762,13 @@ const InventoryIssueForm: React.FC = () => {
                   })}
                 </tbody>
               </table>
-              <div className="p-3 bg-slate-50/80 border-t border-slate-200 flex justify-center">
+
+              {/* Nút Thêm dòng xuất */}
+              <div className="p-3 bg-slate-50/60 border-t border-slate-200/80 flex justify-center">
                 <button
                   type="button"
                   onClick={handleAddRow}
-                  className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-indigo-600 hover:bg-indigo-100 rounded-lg transition-colors"
+                  className="flex items-center gap-2 px-5 py-2.5 text-sm font-bold text-amber-900 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-xl transition-all shadow-2xs cursor-pointer"
                 >
                   <Plus size={16} /> THÊM DÒNG XUẤT
                 </button>
@@ -549,7 +781,7 @@ const InventoryIssueForm: React.FC = () => {
             <button
               type="button"
               onClick={() => navigate('/inventory-issues')}
-              className="px-6 py-2.5 text-sm font-bold text-slate-600 bg-white border border-slate-300 rounded-xl hover:bg-slate-50 transition-colors shadow-sm"
+              className="px-6 py-2.5 text-sm font-bold text-slate-600 bg-white border border-slate-300 rounded-xl hover:bg-slate-50 transition-colors shadow-xs cursor-pointer"
             >
               Hủy Bỏ
             </button>

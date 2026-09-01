@@ -178,7 +178,7 @@ const InventoryTransferList: React.FC = () => {
                 <th className="w-[12%] py-4 px-2 text-xs font-bold text-slate-500 uppercase tracking-wider">
                   <div className="flex justify-center">
                     <CustomDateFilter
-                      title="TỪ NGÀY"
+                      title="NGÀY CHUYỂN"
                       selectedDate={fromDateFilter}
                       onApply={setFromDateFilter}
                     />
@@ -188,7 +188,7 @@ const InventoryTransferList: React.FC = () => {
                 <th className="w-[12%] py-4 px-2 text-xs font-bold text-slate-500 uppercase tracking-wider">
                   <div className="flex justify-center">
                     <CustomDateFilter
-                      title="ĐẾN NGÀY"
+                      title="THỜI GIAN LẬP"
                       selectedDate={toDateFilter}
                       onApply={setToDateFilter}
                     />
@@ -251,8 +251,27 @@ const InventoryTransferList: React.FC = () => {
                       </div>
                     </td>
 
-                    {/* CELL 4 & 5: NGÀY TẠO */}
-                    <td className="py-3 px-2 text-center" colSpan={2}>
+                    {/* CELL 4: NGÀY CHUYỂN */}
+                    <td className="py-3 px-2 text-center">
+                      <div className="text-[13px] font-semibold text-slate-700">
+                        {transfer.dispatchedDate
+                          ? new Date(transfer.dispatchedDate).toLocaleDateString('vi-VN', {
+                              day: '2-digit',
+                              month: '2-digit',
+                              year: 'numeric',
+                            })
+                          : transfer.createdAt
+                          ? new Date(transfer.createdAt).toLocaleDateString('vi-VN', {
+                              day: '2-digit',
+                              month: '2-digit',
+                              year: 'numeric',
+                            })
+                          : '---'}
+                      </div>
+                    </td>
+
+                    {/* CELL 5: THỜI GIAN LẬP */}
+                    <td className="py-3 px-2 text-center">
                       <DateTimeCell isoString={transfer.createdAt} />
                     </td>
 

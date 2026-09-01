@@ -30,6 +30,9 @@ namespace backend.DTOs.CustomerDTOs
         #region Trạng thái & Hệ thống
         public bool IsActive { get; set; }
 
+        /// <summary>Đã thiết lập tài khoản & mật khẩu đăng nhập trực tuyến (Web/App) hay chưa.</summary>
+        public bool HasOnlineAccount { get; set; }
+
         public DateTime CreatedAt { get; set; }
 
         public DateTime? UpdatedAt { get; set; }
@@ -56,6 +59,29 @@ namespace backend.DTOs.CustomerDTOs
 
         /// <summary>Danh sách Sổ địa chỉ giao hàng của khách hàng.</summary>
         public List<CustomerAddressReadDto> Addresses { get; set; } = new List<CustomerAddressReadDto>();
+        #endregion
+
+        #region Thống kê Mua Hàng & Tiến độ Hạng Thành viên (Loyalty Progress)
+        /// <summary>Tổng số tiền đã thanh toán từ các đơn hàng hoàn tất.</summary>
+        public decimal TotalSpent { get; set; } = 0;
+
+        /// <summary>Tổng số đơn hàng đã đặt.</summary>
+        public int TotalOrders { get; set; } = 0;
+
+        /// <summary>Phần trăm chiết khấu hiện tại của hạng.</summary>
+        public decimal DiscountPercent { get; set; } = 0;
+
+        /// <summary>Tên hạng thành viên tiếp theo (ví dụ: Bạc, Vàng, Kim Cương). Null nếu đã ở hạng cao nhất.</summary>
+        public string? NextTierName { get; set; }
+
+        /// <summary>Mức chi tiêu tối thiểu của hạng tiếp theo.</summary>
+        public decimal? NextTierMinSpending { get; set; }
+
+        /// <summary>Số tiền cần mua thêm để thăng cấp lên hạng tiếp theo.</summary>
+        public decimal AmountToNextTier { get; set; } = 0;
+
+        /// <summary>Phần trăm tiến độ tích lũy để lên hạng tiếp theo (0 - 100%).</summary>
+        public decimal TierProgressPercent { get; set; } = 0;
         #endregion
     }
 }

@@ -112,7 +112,7 @@ export default function DiaChiPage() {
                 <div className="lg:col-span-1 bg-white rounded-3xl border border-slate-200 p-5 space-y-2 shadow-xs">
                     <Link
                         href="/tai-khoan"
-                        className="flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-600 hover:bg-slate-50 font-medium text-xs transition-colors"
+                        className="flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-600 hover:bg-slate-50 hover:text-slate-900 font-medium text-sm transition-colors"
                     >
                         <User className="w-4 h-4 text-slate-400" />
                         <span>Hồ sơ cá nhân</span>
@@ -120,7 +120,7 @@ export default function DiaChiPage() {
 
                     <Link
                         href="/tai-khoan/don-hang"
-                        className="flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-600 hover:bg-slate-50 font-medium text-xs transition-colors"
+                        className="flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-600 hover:bg-slate-50 hover:text-slate-900 font-medium text-sm transition-colors"
                     >
                         <Package className="w-4 h-4 text-slate-400" />
                         <span>Lịch sử đơn hàng</span>
@@ -128,7 +128,7 @@ export default function DiaChiPage() {
 
                     <Link
                         href="/tai-khoan/dia-chi"
-                        className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-emerald-50 text-emerald-800 font-bold text-xs"
+                        className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-emerald-50 text-emerald-700 font-bold text-sm"
                     >
                         <MapPin className="w-4 h-4 text-emerald-600" />
                         <span>Sổ địa chỉ</span>
@@ -136,7 +136,7 @@ export default function DiaChiPage() {
 
                     <Link
                         href="/tai-khoan/tra-hang"
-                        className="flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-600 hover:bg-slate-50 font-medium text-xs transition-colors"
+                        className="flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-600 hover:bg-slate-50 hover:text-slate-900 font-medium text-sm transition-colors"
                     >
                         <RotateCcw className="w-4 h-4 text-slate-400" />
                         <span>Đổi trả hàng (RMA)</span>
@@ -152,7 +152,7 @@ export default function DiaChiPage() {
                         {!showAddForm && (
                             <button
                                 onClick={() => setShowAddForm(true)}
-                                className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-colors shadow-xs"
+                                className="inline-flex items-center gap-1.5 px-4 h-[40px] bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-bold transition-colors shadow-sm"
                             >
                                 <Plus className="w-4 h-4" />
                                 <span>Thêm địa chỉ mới</span>
@@ -161,30 +161,30 @@ export default function DiaChiPage() {
                     </div>
 
                     {showAddForm && (
-                        <div className="bg-white rounded-3xl border border-emerald-200 p-6 sm:p-8 shadow-md space-y-4">
+                        <div className="bg-white rounded-3xl shadow-[0_2px_20px_-4px_rgba(0,0,0,0.05)] border border-slate-100 p-6 sm:p-8 space-y-4">
                             <h3 className="text-sm font-bold text-slate-900 pb-2 border-b border-slate-100">
                                 Thêm Địa Chỉ Nhận Hàng Mới
                             </h3>
 
                             <form onSubmit={handleAddAddress} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div className="space-y-1">
-                                    <label className="text-xs font-semibold text-slate-700">Họ tên người nhận *</label>
+                                    <label className="font-bold text-[13px] text-slate-700 uppercase tracking-wide mb-1 block">Họ tên người nhận *</label>
                                     <input
                                         type="text"
                                         value={receiverName}
                                         onChange={(e) => setReceiverName(e.target.value)}
-                                        className="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-xl"
+                                        className="w-full h-[46px] px-4 rounded-xl border border-slate-200 text-sm bg-slate-50/50 hover:bg-white focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20 focus:outline-none transition-all text-slate-800 placeholder-slate-400 font-medium"
                                         required
                                     />
                                 </div>
 
                                 <div className="space-y-1">
-                                    <label className="text-xs font-semibold text-slate-700">Số điện thoại *</label>
+                                    <label className="font-bold text-[13px] text-slate-700 uppercase tracking-wide mb-1 block">Số điện thoại *</label>
                                     <input
                                         type="tel"
                                         value={phone}
                                         onChange={(e) => setPhone(e.target.value)}
-                                        className="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-xl"
+                                        className="w-full h-[46px] px-4 rounded-xl border border-slate-200 text-sm bg-slate-50/50 hover:bg-white focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20 focus:outline-none transition-all text-slate-800 placeholder-slate-400 font-medium"
                                         required
                                     />
                                 </div>
@@ -203,13 +203,13 @@ export default function DiaChiPage() {
                                 </div>
 
                                 <div className="space-y-1 sm:col-span-2">
-                                    <label className="text-xs font-semibold text-slate-700">Địa chỉ cụ thể *</label>
+                                    <label className="font-bold text-[13px] text-slate-700 uppercase tracking-wide mb-1 block">Địa chỉ cụ thể *</label>
                                     <input
                                         type="text"
                                         placeholder="123 Đường Lê Lợi"
                                         value={streetAddress}
                                         onChange={(e) => setStreetAddress(e.target.value)}
-                                        className="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-xl"
+                                        className="w-full h-[46px] px-4 rounded-xl border border-slate-200 text-sm bg-slate-50/50 hover:bg-white focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20 focus:outline-none transition-all text-slate-800 placeholder-slate-400 font-medium"
                                         required
                                     />
                                 </div>
@@ -231,14 +231,14 @@ export default function DiaChiPage() {
                                     <button
                                         type="submit"
                                         disabled={isSaving}
-                                        className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-colors"
+                                        className="px-6 h-[46px] bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-bold transition-colors"
                                     >
                                         {isSaving ? 'Đang lưu...' : 'Lưu địa chỉ'}
                                     </button>
                                     <button
                                         type="button"
                                         onClick={() => setShowAddForm(false)}
-                                        className="px-4 py-2.5 bg-slate-100 text-slate-700 rounded-xl text-xs font-semibold"
+                                        className="px-4 h-[46px] bg-slate-100 text-slate-700 rounded-xl text-sm font-semibold hover:bg-slate-200 transition-colors"
                                     >
                                         Hủy
                                     </button>
@@ -251,7 +251,7 @@ export default function DiaChiPage() {
                         {addresses.map((addr) => (
                             <div
                                 key={addr.id}
-                                className={`bg-white rounded-3xl border p-6 shadow-xs flex flex-col justify-between space-y-4 ${
+                                className={`bg-white rounded-xl border p-4 transition-all hover:border-emerald-300 flex flex-col justify-between space-y-4 ${
                                     addr.isDefault ? 'border-emerald-300 ring-1 ring-emerald-300' : 'border-slate-200'
                                 }`}
                             >
@@ -259,7 +259,7 @@ export default function DiaChiPage() {
                                     <div className="flex items-center justify-between">
                                         <h4 className="font-bold text-xs text-slate-900">{addr.receiverName}</h4>
                                         {addr.isDefault && (
-                                            <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-bold rounded-full">
+                                            <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold rounded-full">
                                                 Mặc định
                                             </span>
                                         )}
@@ -274,7 +274,7 @@ export default function DiaChiPage() {
                                     {!addr.isDefault ? (
                                         <button
                                             onClick={() => handleSetDefault(addr.id)}
-                                            className="text-emerald-700 hover:text-emerald-800 font-semibold text-[11px]"
+                                            className="text-emerald-600 hover:text-emerald-700 font-semibold text-[11px]"
                                         >
                                             Đặt làm mặc định
                                         </button>

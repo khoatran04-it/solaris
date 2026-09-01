@@ -16,11 +16,14 @@ export const FormCard: React.FC<{ children: React.ReactNode }> = ({ children }) 
 );
 
 // 3. Label dùng chung
-export const FormLabel: React.FC<{ label: string; required?: boolean }> = ({ label, required }) => (
-  <label className="font-bold text-[13px] text-slate-700 uppercase tracking-wide mb-2 block">
-    {label} {required && <span className="text-red-500 ml-1">*</span>}
-  </label>
-);
+export const FormLabel: React.FC<{ label: string; required?: boolean }> = ({ label, required }) => {
+  if (!label) return null;
+  return (
+    <label className="font-bold text-[13px] text-slate-700 uppercase tracking-wide mb-2 block">
+      {label} {required && <span className="text-red-500 ml-1">*</span>}
+    </label>
+  );
+};
 
 // 4. Input Field chuẩn (Đã fix chiều cao h-[46px])
 interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {

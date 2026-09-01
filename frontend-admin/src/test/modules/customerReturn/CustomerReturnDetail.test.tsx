@@ -10,6 +10,9 @@ import { CustomerReturnStatus } from '../../../types/customerReturn';
 vi.mock('../../../api/customerReturnApi', () => ({
   customerReturnApi: {
     getById: vi.fn(),
+    approve: vi.fn(),
+    inspect: vi.fn(),
+    complete: vi.fn(),
     inspectAndComplete: vi.fn(),
     reject: vi.fn(),
   },
@@ -112,10 +115,34 @@ describe('Module 13 - CustomerReturnDetail Component', () => {
     });
   });
 
-  // TC03: Mở modal nghiệm thu QC và gọi API inspect-and-complete
-  it('TC03 - Mở modal nghiệm thu QC, nhập phân loại số lượng và gọi API customerReturnApi.inspectAndComplete', async () => {
-    (customerReturnApi.inspectAndComplete as any).mockResolvedValue({
-      message: 'Nghiệm thu hoàn tất',
+  // TC03a: Duyệt yêu cầu khi ở trạng thái Pending
+  it('TC03a - Duyệt yêu cầu khi ở trạng thái Pending và gọi API customerReturnApi.approve', async () => {
+    (customerReturnApi.approve as any).mockResolvedValue({
+      message: 'Đã duyệt yêu cầu thành công',
+    });
+
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByText('RET-20260830-050')).toBeInTheDocument();
+    });
+
+    const approveBtn = screen.getByRole('button', { name: /Duyệt Yêu Cầu/i });
+    fireEvent.click(approveBtn);
+
+    await waitFor(() => {
+      expect(customerReturnApi.approve).toHaveBeenCalledWith(50);
+    });
+  });
+
+  // TC03b: Mở modal nghiệm thu QC khi ở trạng thái Approved và gọi API inspect
+  it('TC03b - Mở modal nghiệm thu QC khi ở trạng thái Approved, nhập phân loại số lượng và gọi API customerReturnApi.inspect', async () => {
+    (customerReturnApi.getById as any).mockResolvedValue({
+      ...mockReturn,
+      status: CustomerReturnStatus.Approved,
+    });
+    (customerReturnApi.inspect as any).mockResolvedValue({
+      message: 'Nghiệm thu kiểm định QC thành công',
     });
 
     renderComponent();
@@ -135,12 +162,55 @@ describe('Module 13 - CustomerReturnDetail Component', () => {
     const notesInput = screen.getByPlaceholderText(/Hàng đạt 80% chất lượng ban đầu/i);
     fireEvent.change(notesInput, { target: { value: 'Đã kiểm tra: 1 hộp bình thường, 1 hộp dập' } });
 
-    const confirmQcBtn = screen.getByRole('button', { name: /Hoàn Tất Nghiệm Thu & Cập Nhật Kho/i });
+    const confirmQcBtn = screen.getByRole('button', { name: /Lưu Kết Quả Kiểm Định & Chuyển Sang Xử Lý/i });
     fireEvent.click(confirmQcBtn);
 
     await waitFor(() => {
-      expect(customerReturnApi.inspectAndComplete).toHaveBeenCalledWith(50, expect.any(Object));
+      expect(customerReturnApi.inspect).toHaveBeenCalledWith(50, expect.any(Object));
     });
+  });
+
+  // TC03c: Hoàn tất phiếu trả hàng trực tiếp khi ở trạng thái Inspecting
+  it('TC03c - Hoàn tất trả hàng khi ở trạng thái Inspecting và gọi API customerReturnApi.complete', async () => {
+    (customerReturnApi.getById as any).mockResolvedValue({
+      ...mockReturn,
+      status: CustomerReturnStatus.Inspecting,
+    });
+    (customerReturnApi.complete as any).mockResolvedValue({
+      message: 'Hoàn tất phiếu trả hàng thành công',
+    });
+
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByText('RET-20260830-050')).toBeInTheDocument();
+    });
+
+    const completeBtn = screen.getByRole('button', { name: /Hoàn Tất Trả Hàng/i });
+    fireEvent.click(completeBtn);
+
+    await waitFor(() => {
+      expect(customerReturnApi.complete).toHaveBeenCalledWith(50);
+    });
+  });
+
+  // TC03d: Điều hướng sang trang Tạo Phiếu Nhập Kho Thu Hồi khi ở trạng thái Inspecting
+  it('TC03d - Bấm nút Tạo Phiếu Nhập Kho Thu Hồi điều hướng sang /inventory-receipts/create?returnId=50', async () => {
+    (customerReturnApi.getById as any).mockResolvedValue({
+      ...mockReturn,
+      status: CustomerReturnStatus.Inspecting,
+    });
+
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByText('RET-20260830-050')).toBeInTheDocument();
+    });
+
+    const createReceiptBtn = screen.getByRole('button', { name: /Tạo Phiếu Nhập Kho Thu Hồi/i });
+    fireEvent.click(createReceiptBtn);
+
+    expect(mockNavigate).toHaveBeenCalledWith('/inventory-receipts/create?returnId=50');
   });
 
   // TC04: Mở modal từ chối và gọi API reject

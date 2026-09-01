@@ -65,7 +65,7 @@ export const CustomFilter: React.FC<CustomFilterProps> = ({
 
       {/* BẢNG LỌC POPUP EXCEL */}
       {isOpen && (
-        <div className="absolute top-[calc(100%+12px)] left-0 w-56 bg-white border border-slate-100 rounded-2xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.15)] z-50 font-normal animate-in fade-in zoom-in-95 duration-200 overflow-hidden flex flex-col">
+        <div className="absolute top-[calc(100%+12px)] left-0 min-w-[280px] max-w-sm bg-white border border-slate-100 rounded-2xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.15)] z-50 font-normal animate-in fade-in zoom-in-95 duration-200 overflow-hidden flex flex-col">
           {/* Danh sách lựa chọn (Có thanh cuộn nếu quá dài) */}
           <div className="max-h-60 overflow-y-auto p-2 space-y-0.5 custom-scrollbar">
             {options.map((opt) => {
@@ -78,6 +78,7 @@ export const CustomFilter: React.FC<CustomFilterProps> = ({
                                         flex items-center gap-3 px-3 py-2 cursor-pointer rounded-lg transition-colors duration-200 text-[13px] font-medium
                                         ${isSelected ? 'bg-green-50/50 text-slate-900' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}
                                     `}
+                  title={opt.label}
                 >
                   {/* Checkbox Custom mượt mà */}
                   <div

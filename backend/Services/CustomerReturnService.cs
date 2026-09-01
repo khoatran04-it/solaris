@@ -188,19 +188,44 @@ namespace backend.Services
         }
         #endregion
 
-        #region Kiểm định & Hạch toán (QC & Fulfillment)
-        public async Task<bool> InspectAndCompleteAsync(int id, int receivedById, CustomerReturnInspectionDto dto)
+        #region Duyệt & Kiểm định & Hạch toán (Lifecycle Workflow)
+        public async Task<bool> ApproveAsync(int id, int approvedById)
+        {
+            return await _context.ExecuteInTransactionAsync(async () =>
+            {
+                var ret = await _context.CustomerReturns.FindAsync(id);
+                if (ret == null) throw new KeyNotFoundException("Không tìm thấy Phiếu trả hàng.");
+                if (ret.Status != CustomerReturnStatus.Pending)
+                    throw new InvalidOperationException("Chỉ có thể duyệt Phiếu trả hàng đang ở trạng thái Chờ tiếp nhận (Pending).");
+
+                int safeUserId = approvedById;
+                var userExists = await _context.IAUsers.AnyAsync(u => u.Id == safeUserId);
+                if (!userExists)
+                {
+                    var firstUser = await _context.IAUsers.FirstOrDefaultAsync();
+                    safeUserId = firstUser?.Id ?? 1;
+                }
+
+                ret.Status = CustomerReturnStatus.Approved;
+                ret.ReceivedById = safeUserId;
+                ret.UpdatedAt = DateTime.UtcNow;
+
+                await _context.SaveChangesAsync();
+                return true;
+            });
+        }
+
+        public async Task<bool> InspectQCAsync(int id, int receivedById, CustomerReturnInspectionDto dto)
         {
             return await _context.ExecuteInTransactionAsync(async () =>
             {
                 var ret = await _context.CustomerReturns
                     .Include(r => r.Details)
-                    .Include(r => r.Order).ThenInclude(o => o!.Details)
                     .FirstOrDefaultAsync(r => r.Id == id);
 
                 if (ret == null) throw new KeyNotFoundException("Không tìm thấy Phiếu trả hàng.");
-                if (ret.Status != CustomerReturnStatus.Pending && ret.Status != CustomerReturnStatus.Inspecting)
-                    throw new InvalidOperationException("Phiếu trả hàng phải ở trạng thái Pending hoặc Inspecting mới có thể nghiệm thu.");
+                if (ret.Status != CustomerReturnStatus.Pending && ret.Status != CustomerReturnStatus.Approved && ret.Status != CustomerReturnStatus.Inspecting)
+                    throw new InvalidOperationException("Phiếu trả hàng phải ở trạng thái Đã duyệt hoặc Đang kiểm định.");
 
                 int safeUserId = receivedById;
                 var userExists = await _context.IAUsers.AnyAsync(u => u.Id == safeUserId);
@@ -212,7 +237,7 @@ namespace backend.Services
 
                 decimal totalRefund = 0;
 
-                // 1. Phân loại kiểm định từng dòng: Hàng tốt -> QuantityAvailable, Hàng hỏng -> QuantityDamaged
+                // 1. Phân loại kiểm định từng dòng: Hàng tốt -> AcceptedQuantity, Hàng hỏng -> DamagedQuantity
                 foreach (var detail in ret.Details)
                 {
                     var itemInspection = dto.Items.FirstOrDefault(i => i.DetailId == detail.Id);
@@ -223,70 +248,93 @@ namespace backend.Services
                         detail.RejectReason = itemInspection.RejectReason?.Trim();
                         detail.RefundAmount = (detail.AcceptedQuantity + detail.DamagedQuantity) * detail.UnitPrice;
                         totalRefund += detail.RefundAmount;
-
-                        var inv = await _context.WarehouseInventories
-                            .FirstOrDefaultAsync(x => x.WarehouseId == ret.WarehouseId &&
-                                                      x.VariantId == detail.VariantId &&
-                                                      x.BatchId == detail.BatchId);
-
-                        if (inv == null)
-                        {
-                            inv = new WarehouseInventory
-                            {
-                                WarehouseId = ret.WarehouseId,
-                                VariantId = detail.VariantId,
-                                BatchId = detail.BatchId,
-                                QuantityAvailable = detail.AcceptedQuantity,
-                                QuantityDamaged = detail.DamagedQuantity,
-                                QuantityReserved = 0,
-                                QuantityQC = 0,
-                                CreatedAt = DateTime.UtcNow,
-                                UpdatedAt = DateTime.UtcNow
-                            };
-                            _context.WarehouseInventories.Add(inv);
-                        }
-                        else
-                        {
-                            // Tăng tồn kho thực tế theo kết quả nghiệm thu QC
-                            inv.QuantityAvailable += detail.AcceptedQuantity;
-                            inv.QuantityDamaged += detail.DamagedQuantity;
-
-                            // Giải phóng giữ chỗ nếu đơn hàng chưa từng thực hiện xuất kho (tránh bị kẹt giữ chỗ ảo)
-                            if (ret.Order != null && (ret.Order.Status == OrderStatus.Confirmed || ret.Order.Status == OrderStatus.Processing))
-                            {
-                                var totalItemReclaimed = detail.AcceptedQuantity + detail.DamagedQuantity;
-                                if (inv.QuantityReserved > 0 && totalItemReclaimed > 0)
-                                {
-                                    var releaseReserve = Math.Min(inv.QuantityReserved, totalItemReclaimed);
-                                    inv.QuantityReserved -= releaseReserve;
-                                }
-                            }
-
-                            inv.UpdatedAt = DateTime.UtcNow;
-                        }
-
-                        // Ghi sổ cái CustomerReturn
-                        var totalReclaimed = detail.AcceptedQuantity + detail.DamagedQuantity;
-                        if (totalReclaimed > 0)
-                        {
-                            _context.InventoryTransactions.Add(new InventoryTransaction
-                            {
-                                TransactionCode = $"TXN-{DateTime.UtcNow:yyyyMMddHHmmss}-{Guid.NewGuid().ToString()[..4].ToUpper()}",
-                                WarehouseId = ret.WarehouseId,
-                                VariantId = detail.VariantId,
-                                BatchId = detail.BatchId,
-                                Type = TransactionType.CustomerReturn,
-                                Quantity = totalReclaimed,
-                                ReferenceCode = ret.ReturnCode,
-                                Note = $"Khách trả hàng theo phiếu {ret.ReturnCode} (Đạt: {detail.AcceptedQuantity}, Lỗi: {detail.DamagedQuantity})",
-                                CreatedById = safeUserId,
-                                CreatedAt = DateTime.UtcNow
-                            });
-                        }
                     }
                 }
 
-                // 2. Cập nhật trạng thái hoàn tiền trên Đơn hàng gốc
+                ret.Status = CustomerReturnStatus.Inspecting; // Đã kiểm định QC, chuyển sang trạng thái Đang xử lý (Chờ nhập kho)
+                ret.RefundAmount = totalRefund;
+                ret.InspectionNotes = dto.InspectionNotes?.Trim();
+                ret.ReceivedById = safeUserId;
+                ret.UpdatedAt = DateTime.UtcNow;
+
+                await _context.SaveChangesAsync();
+                return true;
+            });
+        }
+
+        public async Task<bool> CompleteReturnAsync(int id)
+        {
+            return await _context.ExecuteInTransactionAsync(async () =>
+            {
+                var ret = await _context.CustomerReturns
+                    .Include(r => r.Details)
+                    .Include(r => r.Order)
+                    .FirstOrDefaultAsync(r => r.Id == id);
+
+                if (ret == null) throw new KeyNotFoundException("Không tìm thấy Phiếu trả hàng.");
+                if (ret.Status == CustomerReturnStatus.Completed) return true;
+
+                foreach (var detail in ret.Details)
+                {
+                    var inv = await _context.WarehouseInventories
+                        .FirstOrDefaultAsync(x => x.WarehouseId == ret.WarehouseId &&
+                                                  x.VariantId == detail.VariantId &&
+                                                  x.BatchId == detail.BatchId);
+
+                    if (inv == null)
+                    {
+                        inv = new WarehouseInventory
+                        {
+                            WarehouseId = ret.WarehouseId,
+                            VariantId = detail.VariantId,
+                            BatchId = detail.BatchId,
+                            QuantityAvailable = detail.AcceptedQuantity,
+                            QuantityDamaged = detail.DamagedQuantity,
+                            QuantityReserved = 0,
+                            QuantityQC = 0,
+                            CreatedAt = DateTime.UtcNow,
+                            UpdatedAt = DateTime.UtcNow
+                        };
+                        _context.WarehouseInventories.Add(inv);
+                    }
+                    else
+                    {
+                        inv.QuantityAvailable += detail.AcceptedQuantity;
+                        inv.QuantityDamaged += detail.DamagedQuantity;
+
+                        if (ret.Order != null && (ret.Order.Status == OrderStatus.Confirmed || ret.Order.Status == OrderStatus.Processing))
+                        {
+                            var totalItemReclaimed = detail.AcceptedQuantity + detail.DamagedQuantity;
+                            if (inv.QuantityReserved > 0 && totalItemReclaimed > 0)
+                            {
+                                var releaseReserve = Math.Min(inv.QuantityReserved, totalItemReclaimed);
+                                inv.QuantityReserved -= releaseReserve;
+                            }
+                        }
+
+                        inv.UpdatedAt = DateTime.UtcNow;
+                    }
+
+                    var totalReclaimed = detail.AcceptedQuantity + detail.DamagedQuantity;
+                    if (totalReclaimed > 0)
+                    {
+                        _context.InventoryTransactions.Add(new InventoryTransaction
+                        {
+                            TransactionCode = $"TXN-{DateTimeHelper.VietnamNow:yyyyMMddHHmmss}-{Guid.NewGuid().ToString()[..4].ToUpper()}",
+                            WarehouseId = ret.WarehouseId,
+                            VariantId = detail.VariantId,
+                            BatchId = detail.BatchId,
+                            Type = TransactionType.CustomerReturn,
+                            Quantity = totalReclaimed,
+                            ReferenceCode = ret.ReturnCode,
+                            Note = $"Nghiệm thu hoàn tất trả hàng theo phiếu {ret.ReturnCode} (Đạt: {detail.AcceptedQuantity}, Hỏng: {detail.DamagedQuantity})",
+                            CreatedById = ret.ReceivedById ?? 1,
+                            CreatedAt = DateTime.UtcNow
+                        });
+                    }
+                }
+
+                // Cập nhật trạng thái hoàn tiền trên Đơn hàng gốc
                 if (ret.Order != null)
                 {
                     ret.Order.PaymentStatus = PaymentStatus.Refunded;
@@ -294,14 +342,17 @@ namespace backend.Services
                 }
 
                 ret.Status = CustomerReturnStatus.Completed;
-                ret.ReceivedById = safeUserId;
-                ret.RefundAmount = totalRefund;
-                ret.InspectionNotes = dto.InspectionNotes?.Trim();
                 ret.UpdatedAt = DateTime.UtcNow;
 
                 await _context.SaveChangesAsync();
                 return true;
             });
+        }
+
+        public async Task<bool> InspectAndCompleteAsync(int id, int receivedById, CustomerReturnInspectionDto dto)
+        {
+            await InspectQCAsync(id, receivedById, dto);
+            return await CompleteReturnAsync(id);
         }
 
         public async Task<bool> RejectReturnAsync(int id, string reason)

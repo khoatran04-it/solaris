@@ -1,6 +1,7 @@
-﻿using backend.Data;
+using backend.Data;
 using backend.DTOs.ShopDTOs;
 using backend.Models;
+using backend.Models.Enums;
 using backend.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
@@ -25,6 +26,39 @@ namespace backend.Services
             if (customer == null)
                 throw new KeyNotFoundException("Không tìm thấy khách hàng.");
 
+            var totalSpent = await _context.Orders
+                .Where(o => o.CustomerId == customerId && o.Status == OrderStatus.Completed && !o.IsDeleted)
+                .SumAsync(o => (decimal?)o.TotalAmount) ?? 0m;
+
+            var totalOrders = await _context.Orders
+                .Where(o => o.CustomerId == customerId && !o.IsDeleted)
+                .CountAsync();
+
+            var tiers = await _context.CustomerTiers
+                .Where(t => t.IsActive && !t.IsDeleted)
+                .OrderBy(t => t.MinSpending)
+                .ToListAsync();
+
+            var currentMin = customer.CustomerTier?.MinSpending ?? 0m;
+            var nextTier = tiers.FirstOrDefault(t => t.MinSpending > totalSpent);
+
+            string? nextTierName = null;
+            decimal? nextTierMinSpending = null;
+            decimal amountToNextTier = 0m;
+            decimal progressPercent = 100m;
+
+            if (nextTier != null)
+            {
+                nextTierName = nextTier.Name;
+                nextTierMinSpending = nextTier.MinSpending;
+                amountToNextTier = Math.Max(0, nextTier.MinSpending - totalSpent);
+
+                var span = nextTier.MinSpending - currentMin;
+                progressPercent = span > 0
+                    ? Math.Min(100m, Math.Max(0m, Math.Round((totalSpent - currentMin) / span * 100m, 1)))
+                    : 100m;
+            }
+
             return new ShopCustomerProfileDto
             {
                 Id = customer.Id,
@@ -37,6 +71,12 @@ namespace backend.Services
                 AvatarPath = customer.AvatarPath,
                 CustomerTierName = customer.CustomerTier?.Name ?? "Thành Viên",
                 DiscountPercent = customer.CustomerTier?.DiscountPercent ?? 0,
+                TotalSpent = totalSpent,
+                TotalOrders = totalOrders,
+                NextTierName = nextTierName,
+                NextTierMinSpending = nextTierMinSpending,
+                AmountToNextTier = amountToNextTier,
+                TierProgressPercent = progressPercent,
                 Addresses = customer.Addresses.Select(a => new ShopAddressDto
                 {
                     Id = a.Id,

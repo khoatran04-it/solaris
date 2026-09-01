@@ -227,17 +227,17 @@ const OrderList: React.FC = () => {
                 <th className="w-[10%] py-4 px-2 text-xs font-bold text-slate-500 uppercase tracking-wider">
                   <div className="flex justify-center">
                     <CustomDateFilter
-                      title="TỪ NGÀY"
+                      title="NGÀY ĐẶT"
                       selectedDate={fromDateFilter}
                       onApply={setFromDateFilter}
                     />
                   </div>
                 </th>
 
-                <th className="w-[10%] py-4 px-2 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                <th className="w-[11%] py-4 px-2 text-xs font-bold text-slate-500 uppercase tracking-wider">
                   <div className="flex justify-center">
                     <CustomDateFilter
-                      title="ĐẾN NGÀY"
+                      title="THỜI GIAN TẠO"
                       selectedDate={toDateFilter}
                       onApply={setToDateFilter}
                     />
@@ -321,9 +321,14 @@ const OrderList: React.FC = () => {
                       )}
                     </td>
 
-                    {/* CELL 5 & 6: NGÀY ĐẶT */}
-                    <td className="py-3 px-2 text-center" colSpan={2}>
+                    {/* CELL 5: NGÀY ĐẶT */}
+                    <td className="py-3 px-2 text-center">
                       <DateCell isoString={order.orderDate} />
+                    </td>
+
+                    {/* CELL 6: THỜI GIAN TẠO */}
+                    <td className="py-3 px-2 text-center">
+                      <DateTimeCell isoString={order.createdAt} />
                     </td>
 
                     {/* CELL 7: TRẠNG THÁI ĐƠN */}

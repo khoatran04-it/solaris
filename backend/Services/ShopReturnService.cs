@@ -46,6 +46,13 @@ namespace backend.Services
             if (order.Status != OrderStatus.Completed && order.Status != OrderStatus.Shipping)
                 throw new InvalidOperationException("Chỉ có thể yêu cầu trả hàng đối với đơn hàng đã hoặc đang giao.");
 
+            // Kiểm tra thời hạn đổi trả trong vòng 12 giờ (Chính sách nông sản tươi sống)
+            var orderTime = order.OrderDate;
+            if ((DateTime.UtcNow - orderTime).TotalHours > 12)
+            {
+                throw new InvalidOperationException("Chính sách nông sản tươi Solaris chỉ hỗ trợ đổi/trả trong vòng 12 giờ kể từ khi đặt hàng. Đơn hàng này đã quá thời hạn 12 giờ.");
+            }
+
             if (request.Items == null || !request.Items.Any())
                 throw new ArgumentException("Vui lòng chọn ít nhất một sản phẩm cần đổi/trả.");
 

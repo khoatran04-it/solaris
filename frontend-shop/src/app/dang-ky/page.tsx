@@ -71,9 +71,9 @@ function DangKyContent() {
     };
 
     return (
-        <div className="max-w-md w-full bg-white rounded-3xl border border-slate-200 p-8 sm:p-10 shadow-xl space-y-6">
+        <div className="max-w-md w-full bg-white rounded-3xl shadow-[0_2px_20px_-4px_rgba(0,0,0,0.05)] border border-slate-100 p-8 space-y-6">
             <div className="text-center space-y-2">
-                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white flex items-center justify-center text-2xl mx-auto shadow-lg shadow-emerald-600/30">
+                <div className="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-2xl mx-auto shadow-sm border border-emerald-100">
                     🌱
                 </div>
                 <h1 className="text-2xl font-black text-slate-900 tracking-tight">
@@ -85,7 +85,7 @@ function DangKyContent() {
             </div>
 
             {errorMsg && (
-                <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-2xl flex items-center gap-2.5 text-rose-700 text-xs font-semibold">
+                <div className="flex items-center gap-2 mt-1 text-red-500 text-xs font-medium">
                     <AlertCircle className="w-4 h-4 shrink-0" />
                     <span>{errorMsg}</span>
                 </div>
@@ -93,85 +93,85 @@ function DangKyContent() {
 
             <form onSubmit={handleRegister} className="space-y-3.5">
                 <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-700 block">Họ và tên *</label>
+                    <label className="font-bold text-[13px] text-slate-700 uppercase tracking-wide mb-2 block">Họ và tên *</label>
                     <div className="relative">
                         <input
                             type="text"
                             placeholder="Nguyễn Văn A"
                             value={name}
                             onChange={(e) => setName(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs focus:ring-2 focus:ring-emerald-500 font-medium"
+                            className="w-full pl-10 pr-4 h-[46px] rounded-xl border border-slate-200 text-sm bg-slate-50/50 hover:bg-white focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20 focus:outline-none transition-all text-slate-800 placeholder-slate-400 font-medium"
                             required
                         />
-                        <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                        <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
                     </div>
                 </div>
 
                 <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-700 block">Số điện thoại *</label>
+                    <label className="font-bold text-[13px] text-slate-700 uppercase tracking-wide mb-2 block">Số điện thoại *</label>
                     <div className="relative">
                         <input
                             type="tel"
                             placeholder="0912345678"
                             value={phoneNumber}
                             onChange={(e) => setPhoneNumber(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs focus:ring-2 focus:ring-emerald-500 font-medium"
+                            className="w-full pl-10 pr-4 h-[46px] rounded-xl border border-slate-200 text-sm bg-slate-50/50 hover:bg-white focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20 focus:outline-none transition-all text-slate-800 placeholder-slate-400 font-medium"
                             required
                         />
-                        <Phone className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                        <Phone className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
                     </div>
                 </div>
 
                 <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-700 block">Email (Tùy chọn)</label>
+                    <label className="font-bold text-[13px] text-slate-700 uppercase tracking-wide mb-2 block">Email (Tùy chọn)</label>
                     <div className="relative">
                         <input
                             type="email"
                             placeholder="email@example.com"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs focus:ring-2 focus:ring-emerald-500 font-medium"
+                            className="w-full pl-10 pr-4 h-[46px] rounded-xl border border-slate-200 text-sm bg-slate-50/50 hover:bg-white focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20 focus:outline-none transition-all text-slate-800 placeholder-slate-400 font-medium"
                         />
-                        <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                        <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
                     </div>
                 </div>
 
 
 
                 <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-700 block">Mật khẩu (tối thiểu 6 ký tự) *</label>
+                    <label className="font-bold text-[13px] text-slate-700 uppercase tracking-wide mb-2 block">Mật khẩu (tối thiểu 6 ký tự) *</label>
                     <div className="relative">
                         <input
                             type="password"
                             placeholder="••••••••"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs focus:ring-2 focus:ring-emerald-500 font-medium"
+                            className="w-full pl-10 pr-4 h-[46px] rounded-xl border border-slate-200 text-sm bg-slate-50/50 hover:bg-white focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20 focus:outline-none transition-all text-slate-800 placeholder-slate-400 font-medium"
                             required
                         />
-                        <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                        <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
                     </div>
                 </div>
 
                 <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-700 block">Xác nhận mật khẩu *</label>
+                    <label className="font-bold text-[13px] text-slate-700 uppercase tracking-wide mb-2 block">Xác nhận mật khẩu *</label>
                     <div className="relative">
                         <input
                             type="password"
                             placeholder="••••••••"
                             value={confirmPassword}
                             onChange={(e) => setConfirmPassword(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs focus:ring-2 focus:ring-emerald-500 font-medium"
+                            className="w-full pl-10 pr-4 h-[46px] rounded-xl border border-slate-200 text-sm bg-slate-50/50 hover:bg-white focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20 focus:outline-none transition-all text-slate-800 placeholder-slate-400 font-medium"
                             required
                         />
-                        <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                        <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
                     </div>
                 </div>
 
                 <button
                     type="submit"
                     disabled={isLoading}
-                    className="w-full py-3.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-2xl text-xs font-bold transition-all shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-2 active:scale-98 disabled:opacity-50 pt-2"
+                    className="w-full h-[46px] bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-sm transition-all shadow-md flex items-center justify-center gap-2 active:scale-98 disabled:opacity-50"
                 >
                     <span>{isLoading ? 'Đang khởi tạo tài khoản...' : 'Hoàn Tất Đăng Ký'}</span>
                     <ArrowRight className="w-4 h-4" />
@@ -181,7 +181,7 @@ function DangKyContent() {
             <div className="text-center pt-2 border-t border-slate-100 text-xs text-slate-600">
                 <p>
                     Đã có tài khoản?{' '}
-                    <Link href={`/dang-nhap?redirect=${encodeURIComponent(redirectUrl)}`} className="font-bold text-emerald-600 hover:text-emerald-700">
+                    <Link href={`/dang-nhap?redirect=${encodeURIComponent(redirectUrl)}`} className="text-emerald-600 hover:text-emerald-700 font-semibold">
                         Đăng nhập ngay
                     </Link>
                 </p>
@@ -192,7 +192,7 @@ function DangKyContent() {
 
 export default function DangKyPage() {
     return (
-        <div className="min-h-[85vh] flex items-center justify-center px-4 py-12">
+        <div className="min-h-[85vh] flex items-center justify-center px-4 py-12 bg-slate-50">
             <Suspense fallback={<div className="text-xs text-slate-500">Đang tải...</div>}>
                 <DangKyContent />
             </Suspense>

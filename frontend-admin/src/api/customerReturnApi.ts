@@ -20,6 +20,21 @@ export const customerReturnApi = {
     return axiosClient.post('/CustomerReturns', data);
   },
 
+  approve: (id: number): Promise<{ message?: string }> => {
+    return axiosClient.post(`/CustomerReturns/${id}/approve`);
+  },
+
+  inspect: (
+    id: number,
+    data: CustomerReturnInspectionPayload
+  ): Promise<{ message?: string }> => {
+    return axiosClient.post(`/CustomerReturns/${id}/inspect`, data);
+  },
+
+  complete: (id: number): Promise<{ message?: string }> => {
+    return axiosClient.post(`/CustomerReturns/${id}/complete`);
+  },
+
   inspectAndComplete: (
     id: number,
     data: CustomerReturnInspectionPayload

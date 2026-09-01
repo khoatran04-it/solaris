@@ -586,5 +586,306 @@ namespace backend.Tests.Modules.Module13_OrderAndReturn
             deleted.DeletedAt.Should().NotBeNull();
         }
         #endregion
+
+        #region TC11: DUYỆT PHIẾU TRẢ HÀNG (PENDING -> APPROVED)
+        /// <summary>
+        /// TC11: Kiểm tra hàm ApproveAsync chuyển trạng thái từ Pending sang Approved và gán Người duyệt.
+        /// </summary>
+        [Fact]
+        public async Task ApproveAsync_WhenPending_ShouldSetStatusToApproved()
+        {
+            // Arrange
+            using var context = TestFactories.CreateInMemoryDbContext();
+            var now = DateTime.UtcNow;
+
+            var user = new IAUser
+            {
+                Id = 5,
+                CitizenId = "001200000005",
+                Username = "approver",
+                FullName = "Quản lý kho",
+                Email = "manager@solaris.vn",
+                PhoneNumber = "0908887777",
+                PasswordHash = "hash",
+                IsActive = true
+            };
+
+            var ret = new CustomerReturn
+            {
+                Id = 1,
+                ReturnCode = "RET-APPROVE-01",
+                OrderId = 1,
+                CustomerId = 1,
+                WarehouseId = 1,
+                Status = CustomerReturnStatus.Pending,
+                ReturnDate = now,
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+
+            context.IAUsers.Add(user);
+            context.CustomerReturns.Add(ret);
+            await context.SaveChangesAsync();
+
+            var service = new CustomerReturnService(context, _mapper);
+
+            // Act
+            bool result = await service.ApproveAsync(1, approvedById: 5);
+
+            // Assert
+            result.Should().BeTrue();
+            var updated = await context.CustomerReturns.FindAsync(1);
+            updated!.Status.Should().Be(CustomerReturnStatus.Approved);
+            updated.ReceivedById.Should().Be(5);
+        }
+        #endregion
+
+        #region TC12: SHIELD CHẶN DUYỆT PHIẾU KHÔNG Ở TRẠNG THÁI PENDING
+        /// <summary>
+        /// TC12: Kiểm tra hàm ApproveAsync ném InvalidOperationException nếu phiếu không ở trạng thái Pending.
+        /// </summary>
+        [Fact]
+        public async Task ApproveAsync_WhenNotPending_ShouldThrowInvalidOperationException()
+        {
+            // Arrange
+            using var context = TestFactories.CreateInMemoryDbContext();
+            var now = DateTime.UtcNow;
+
+            var ret = new CustomerReturn
+            {
+                Id = 1,
+                ReturnCode = "RET-ALREADY-APPROVED",
+                OrderId = 1,
+                CustomerId = 1,
+                WarehouseId = 1,
+                Status = CustomerReturnStatus.Approved,
+                ReturnDate = now,
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+            context.CustomerReturns.Add(ret);
+            await context.SaveChangesAsync();
+
+            var service = new CustomerReturnService(context, _mapper);
+
+            // Act & Assert
+            var act = async () => await service.ApproveAsync(1, 1);
+            await act.Should().ThrowAsync<InvalidOperationException>()
+                .WithMessage("*Chỉ có thể duyệt Phiếu trả hàng đang ở trạng thái Chờ tiếp nhận*");
+        }
+        #endregion
+
+        #region TC13: BƯỚC KIỂM ĐỊNH QC TẠI KHO (APPROVED -> INSPECTING)
+        /// <summary>
+        /// TC13: Kiểm tra hàm InspectQCAsync phân loại hàng tốt (Accepted) và hàng hỏng (Damaged),
+        /// chuyển trạng thái sang Inspecting và tính RefundAmount, nhưng CHƯA làm thay đổi tồn kho.
+        /// </summary>
+        [Fact]
+        public async Task InspectQCAsync_ShouldClassifyQuantitiesAndSetStatusToInspecting()
+        {
+            // Arrange
+            using var context = TestFactories.CreateInMemoryDbContext();
+            var now = DateTime.UtcNow;
+
+            var user = new IAUser
+            {
+                Id = 2,
+                CitizenId = "001200000006",
+                Username = "qc_worker",
+                FullName = "KCS Kho A",
+                Email = "kcsA@solaris.vn",
+                PhoneNumber = "0907778888",
+                PasswordHash = "hash",
+                IsActive = true
+            };
+
+            var ret = new CustomerReturn
+            {
+                Id = 10,
+                ReturnCode = "RET-QC-STEP",
+                OrderId = 1,
+                CustomerId = 1,
+                WarehouseId = 1,
+                Status = CustomerReturnStatus.Approved,
+                ReturnDate = now,
+                CreatedAt = now,
+                UpdatedAt = now,
+                Details = new List<CustomerReturnDetail>
+                {
+                    new CustomerReturnDetail
+                    {
+                        Id = 101,
+                        CustomerReturnId = 10,
+                        VariantId = 1,
+                        BatchId = 1,
+                        UoMId = 1,
+                        ReturnedQuantity = 10,
+                        UnitPrice = 50000m
+                    }
+                }
+            };
+
+            context.IAUsers.Add(user);
+            context.CustomerReturns.Add(ret);
+            await context.SaveChangesAsync();
+
+            var service = new CustomerReturnService(context, _mapper);
+
+            var inspectionDto = new CustomerReturnInspectionDto
+            {
+                InspectionNotes = "Nghiệm thu: 7kg đạt chuẩn, 3kg thối hỏng do nhiệt độ",
+                Items = new List<CustomerReturnItemInspectionDto>
+                {
+                    new CustomerReturnItemInspectionDto
+                    {
+                        DetailId = 101,
+                        AcceptedQuantity = 7,
+                        DamagedQuantity = 3,
+                        RejectReason = "3kg thối hỏng"
+                    }
+                }
+            };
+
+            // Act
+            bool result = await service.InspectQCAsync(10, receivedById: 2, inspectionDto);
+
+            // Assert
+            result.Should().BeTrue();
+
+            var updated = await context.CustomerReturns.Include(r => r.Details).FirstOrDefaultAsync(r => r.Id == 10);
+            updated!.Status.Should().Be(CustomerReturnStatus.Inspecting);
+            updated.RefundAmount.Should().Be(500000m); // (7 + 3) * 50,000 = 500,000
+            updated.InspectionNotes.Should().Be("Nghiệm thu: 7kg đạt chuẩn, 3kg thối hỏng do nhiệt độ");
+
+            var detail = updated.Details.First();
+            detail.AcceptedQuantity.Should().Be(7);
+            detail.DamagedQuantity.Should().Be(3);
+
+            // Tồn kho chưa thay đổi
+            var txns = await context.InventoryTransactions.ToListAsync();
+            txns.Should().BeEmpty();
+        }
+        #endregion
+
+        #region TC14: HOÀN TẤT PHIẾU TRẢ HÀNG & GIẢI PHÓNG GIỮ CHỖ (COMPLETE RETURN)
+        /// <summary>
+        /// TC14: Kiểm tra hàm CompleteReturnAsync:
+        /// 1. Cập nhật tồn kho (QuantityAvailable += 6, QuantityDamaged += 4).
+        /// 2. Giải phóng giữ chỗ tồn kho (QuantityReserved) của đơn hàng gốc nếu đơn chưa từng xuất kho (Confirmed/Processing).
+        /// 3. Ghi sổ cái InventoryTransaction với Type = CustomerReturn.
+        /// 4. Đổi Order.PaymentStatus = Refunded và Return.Status = Completed.
+        /// </summary>
+        [Fact]
+        public async Task CompleteReturnAsync_ShouldUpdateInventory_ReleaseReservedStock_AndLogLedger()
+        {
+            // Arrange
+            using var context = TestFactories.CreateInMemoryDbContext();
+            var now = DateTime.UtcNow;
+
+            var order = new Order
+            {
+                Id = 1,
+                OrderCode = "ORD-WITH-RESERVE",
+                CustomerId = 1,
+                WarehouseId = 1,
+                Status = OrderStatus.Confirmed,
+                PaymentStatus = PaymentStatus.Paid,
+                OrderDate = now,
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+
+            var inventory = new WarehouseInventory
+            {
+                Id = 1,
+                WarehouseId = 1,
+                VariantId = 10,
+                BatchId = 1,
+                QuantityAvailable = 20,
+                QuantityReserved = 10, // Đang bị giữ chỗ 10
+                QuantityDamaged = 0
+            };
+
+            var ret = new CustomerReturn
+            {
+                Id = 1,
+                ReturnCode = "RET-COMPLETE-TEST",
+                OrderId = 1,
+                CustomerId = 1,
+                WarehouseId = 1,
+                ReceivedById = 1,
+                Status = CustomerReturnStatus.Inspecting,
+                ReturnDate = now,
+                CreatedAt = now,
+                UpdatedAt = now,
+                Details = new List<CustomerReturnDetail>
+                {
+                    new CustomerReturnDetail
+                    {
+                        Id = 1,
+                        CustomerReturnId = 1,
+                        VariantId = 10,
+                        BatchId = 1,
+                        UoMId = 1,
+                        ReturnedQuantity = 10,
+                        UnitPrice = 30000m,
+                        AcceptedQuantity = 6,
+                        DamagedQuantity = 4,
+                        RefundAmount = 300000m
+                    }
+                }
+            };
+
+            context.Orders.Add(order);
+            context.WarehouseInventories.Add(inventory);
+            context.CustomerReturns.Add(ret);
+            await context.SaveChangesAsync();
+
+            var service = new CustomerReturnService(context, _mapper);
+
+            // Act
+            bool result = await service.CompleteReturnAsync(1);
+
+            // Assert
+            result.Should().BeTrue();
+
+            // 1. Kiểm tra tồn kho
+            var updatedInv = await context.WarehouseInventories.FindAsync(1);
+            updatedInv!.QuantityAvailable.Should().Be(26); // 20 + 6 (Accepted) = 26
+            updatedInv.QuantityDamaged.Should().Be(4);     // 0 + 4 (Damaged) = 4
+            updatedInv.QuantityReserved.Should().Be(0);   // Đã giải phóng giữ chỗ 10 - 10 = 0
+
+            // 2. Kiểm tra sổ cái bất biến
+            var txn = await context.InventoryTransactions.FirstOrDefaultAsync(t => t.ReferenceCode == "RET-COMPLETE-TEST");
+            txn.Should().NotBeNull();
+            txn!.Type.Should().Be(TransactionType.CustomerReturn);
+            txn.Quantity.Should().Be(10); // 6 + 4 = 10
+
+            // 3. Kiểm tra Order & Return
+            var updatedOrder = await context.Orders.FindAsync(1);
+            updatedOrder!.PaymentStatus.Should().Be(PaymentStatus.Refunded);
+
+            var updatedRet = await context.CustomerReturns.FindAsync(1);
+            updatedRet!.Status.Should().Be(CustomerReturnStatus.Completed);
+        }
+        #endregion
+
+        #region TC15: SHIELD HOÀN TẤT PHIẾU KHÔNG TỒN TẠI
+        /// <summary>
+        /// TC15: Kiểm tra gọi CompleteReturnAsync với ID không tồn tại sẽ ném KeyNotFoundException.
+        /// </summary>
+        [Fact]
+        public async Task CompleteReturnAsync_WhenNotFound_ShouldThrowKeyNotFoundException()
+        {
+            // Arrange
+            using var context = TestFactories.CreateInMemoryDbContext();
+            var service = new CustomerReturnService(context, _mapper);
+
+            // Act & Assert
+            var act = async () => await service.CompleteReturnAsync(999);
+            await act.Should().ThrowAsync<KeyNotFoundException>()
+                .WithMessage("*Không tìm thấy Phiếu trả hàng*");
+        }
+        #endregion
     }
 }

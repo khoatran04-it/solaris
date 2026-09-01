@@ -341,7 +341,7 @@ const CustomerReturnForm: React.FC = () => {
       <Toast {...toast} />
 
       <FormHeader
-        title="Tạo Phiếu Trả Hàng (RMA)"
+        title="Tạo Phiếu Đổi Trả Hàng (RMA)"
         subtitle="Liên kết đơn bán hàng & Tự động trích xuất thông tin khách hàng, kho và mặt hàng hoàn trả"
         icon={RotateCcw}
         onBack={() => navigate('/customer-returns')}
@@ -360,45 +360,48 @@ const CustomerReturnForm: React.FC = () => {
                 error={errors.orderId}
                 required
                 showSearch
-                placeholder="Tìm kiếm theo mã đơn (Ví dụ: ORD-20260817...), tên khách hàng..."
+                searchPlaceholder="Tìm kiếm theo mã đơn (Ví dụ: ORD-20260817...), tên khách hàng..."
+                placeholder="-- Chọn Đơn Bán Hàng gốc để tự động điền --"
               />
 
               {/* THẺ TỔNG QUAN ĐƠN HÀNG GỐC KHI ĐƯỢC CHỌN */}
               {selectedOrder && (
-                <div className="p-4 bg-indigo-50/60 border border-indigo-200 rounded-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 animate-in fade-in duration-300">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2.5 bg-indigo-600 text-white rounded-lg shadow-sm">
-                      <ShoppingBag size={22} />
+                <div className="p-4 bg-amber-50/50 border border-amber-200/80 rounded-2xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 animate-in fade-in duration-300 shadow-2xs">
+                  <div className="flex items-center gap-3.5">
+                    <div className="p-3 bg-amber-500 text-slate-900 rounded-xl shadow-xs">
+                      <ShoppingBag size={22} strokeWidth={2.5} />
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="font-black text-indigo-900 text-[15px]">
+                        <span className="font-black text-slate-900 text-base">
                           {selectedOrder.orderCode}
                         </span>
-                        <span className="px-2 py-0.5 bg-indigo-100 text-indigo-700 text-xs font-bold rounded-md">
+                        <span className="px-2.5 py-0.5 bg-amber-100 text-amber-900 border border-amber-300 text-xs font-bold rounded-lg">
                           {OrderStatusLabels[selectedOrder.status]}
                         </span>
                       </div>
-                      <div className="text-xs text-indigo-700/80 mt-0.5">
-                        Khách:{' '}
-                        <strong className="text-indigo-950">{selectedOrder.customerName}</strong> (
-                        {selectedOrder.customerPhone || 'Không có SĐT'})
+                      <div className="text-xs text-slate-600 mt-1">
+                        Khách hàng:{' '}
+                        <strong className="text-slate-900 font-bold">{selectedOrder.customerName}</strong>
+                        {selectedOrder.customerPhone && (
+                          <span className="text-slate-500 font-medium"> • SĐT: {selectedOrder.customerPhone}</span>
+                        )}
                       </div>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-6 text-right">
+                  <div className="flex items-center gap-8 text-right pr-2">
                     <div>
-                      <div className="text-[11px] font-bold text-slate-500 uppercase">Kho xuất</div>
-                      <div className="text-xs font-bold text-slate-800">
+                      <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Kho xuất hàng</div>
+                      <div className="text-xs font-bold text-slate-800 mt-0.5">
                         {selectedOrder.warehouseName || 'Chưa gán kho'}
                       </div>
                     </div>
-                    <div>
-                      <div className="text-[11px] font-bold text-slate-500 uppercase">
+                    <div className="border-l border-amber-200 pl-8">
+                      <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                         Tổng tiền đơn gốc
                       </div>
-                      <div className="text-sm font-black text-emerald-600">
+                      <div className="text-base font-black text-slate-900 mt-0.5">
                         {formatCurrency(selectedOrder.totalAmount)}
                       </div>
                     </div>
@@ -410,7 +413,7 @@ const CustomerReturnForm: React.FC = () => {
 
           {/* ================= SECTION 2: THÔNG TIN PHIẾU TIẾP NHẬN ================= */}
           <FormSection title="2. Thông Tin Phiếu Tiếp Nhận">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               <FormSelect
                 label="Khách hàng hoàn trả"
                 value={formData.customerId}
@@ -419,6 +422,7 @@ const CustomerReturnForm: React.FC = () => {
                 error={errors.customerId}
                 required
                 showSearch
+                searchPlaceholder="Tìm khách hàng..."
                 placeholder="-- Chọn khách hàng --"
               />
 
@@ -429,6 +433,8 @@ const CustomerReturnForm: React.FC = () => {
                 options={warehouses}
                 error={errors.warehouseId}
                 required
+                showSearch
+                searchPlaceholder="Tìm kho..."
                 placeholder="-- Chọn kho tiếp nhận --"
               />
 
@@ -440,7 +446,7 @@ const CustomerReturnForm: React.FC = () => {
                 required
               />
 
-              <div className="md:col-span-2">
+              <div className="md:col-span-2 lg:col-span-3">
                 <FormTextarea
                   label="Lý do khách trả hàng"
                   value={formData.reason}
@@ -457,31 +463,31 @@ const CustomerReturnForm: React.FC = () => {
           {/* ================= SECTION 3: CHI TIẾT MẶT HÀNG HOÀN TRẢ ================= */}
           <FormSection title="3. Chi Tiết Mặt Hàng Hoàn Trả">
             {errors.details && (
-              <div className="mb-4 text-rose-500 text-sm font-bold flex items-center gap-1.5">
+              <div className="mb-4 text-rose-600 font-bold bg-rose-50 p-3.5 rounded-xl border border-rose-200 text-xs flex items-center gap-1.5">
                 <AlertCircle size={16} /> {errors.details}
               </div>
             )}
 
-            <div className="overflow-x-auto border border-slate-200 rounded-xl bg-white shadow-sm mb-2">
-              <table className="w-full text-left text-sm whitespace-nowrap">
-                <thead className="bg-slate-50 text-slate-500 font-bold text-xs uppercase tracking-wider border-b border-slate-200">
+            <div className="overflow-x-auto border border-slate-200 rounded-2xl bg-white shadow-2xs mb-4 min-h-[300px]">
+              <table className="w-full text-sm text-left border-collapse min-w-[850px]">
+                <thead className="bg-slate-50/80 border-b border-slate-200 font-bold text-slate-500 uppercase text-xs">
                   <tr>
-                    <th className="px-4 py-3 text-center w-12">#</th>
-                    <th className="px-4 py-3 min-w-60">
+                    <th className="px-3 py-3.5 w-10 text-center">#</th>
+                    <th className="px-3 py-3.5 w-[30%] min-w-[190px]">
                       Sản phẩm <span className="text-red-500">*</span>
                     </th>
-                    <th className="px-4 py-3 min-w-50">
+                    <th className="px-3 py-3.5 w-[26%] min-w-[170px]">
                       Lô Hàng (Batch) <span className="text-red-500">*</span>
                     </th>
-                    <th className="px-4 py-3 min-w-30">
+                    <th className="px-2 py-3.5 w-24 min-w-[85px]">
                       ĐVT <span className="text-red-500">*</span>
                     </th>
-                    <th className="px-4 py-3 w-32 text-center bg-indigo-50/40">
+                    <th className="px-3 py-3.5 w-28 text-center bg-amber-50/70 text-amber-900">
                       SL Trả <span className="text-red-500">*</span>
                     </th>
-                    <th className="px-4 py-3 w-36 text-right">Đơn giá</th>
-                    <th className="px-4 py-3 w-36 text-right">Thành tiền</th>
-                    <th className="px-4 py-3 w-16 text-center">Xóa</th>
+                    <th className="px-3 py-3.5 w-36 text-right">Đơn giá</th>
+                    <th className="px-4 py-3.5 w-40 text-right">Thành tiền</th>
+                    <th className="px-2 py-3.5 w-10 text-center"></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -491,8 +497,12 @@ const CustomerReturnForm: React.FC = () => {
                       (Number(row.returnedQuantity) || 0) * (Number(row.unitPrice) || 0);
 
                     return (
-                      <tr key={row.id} className="hover:bg-slate-50/50 transition-colors">
-                        <td className="px-4 py-2 text-center text-slate-400 font-medium">
+                      <tr
+                        key={row.id}
+                        className="hover:bg-slate-50/60 transition-colors"
+                        style={{ zIndex: 50 - idx }}
+                      >
+                        <td className="px-3 py-3 text-center text-slate-400 font-medium">
                           {idx + 1}
                         </td>
 
@@ -500,6 +510,7 @@ const CustomerReturnForm: React.FC = () => {
                           <FormSelect
                             label=""
                             showSearch
+                            searchPlaceholder="Tìm sản phẩm..."
                             placeholder="Chọn sản phẩm..."
                             options={variants}
                             value={row.variantId}
@@ -515,6 +526,8 @@ const CustomerReturnForm: React.FC = () => {
                           <FormSelect
                             label=""
                             placeholder="-- Chọn Lô --"
+                            showSearch
+                            searchPlaceholder="Tìm mã lô..."
                             options={rowBatches.map((b) => ({ value: b.id, label: b.batchCode }))}
                             value={row.batchId}
                             error={errors[`batchId_${row.id}`]}
@@ -538,41 +551,53 @@ const CustomerReturnForm: React.FC = () => {
                           />
                         </td>
 
-                        <td className="p-2 bg-indigo-50/20 border-l border-indigo-100">
-                          <FormInput
-                            label=""
+                        <td className="p-2 bg-amber-50/30 border-l border-amber-100 text-center">
+                          <input
                             type="number"
-                            className="text-center font-bold text-indigo-700"
+                            min="1"
+                            className="w-full text-center font-bold text-amber-950 bg-white border border-amber-300 rounded-xl py-2 px-2 text-xs focus:ring-2 focus:ring-amber-400 outline-none shadow-2xs"
                             value={row.returnedQuantity}
-                            error={errors[`quantity_${row.id}`]}
                             onChange={(e) =>
-                              handleDetailChange(row.id, 'returnedQuantity', Number(e.target.value))
+                              handleDetailChange(
+                                row.id,
+                                'returnedQuantity',
+                                Math.max(1, parseFloat(e.target.value) || 0)
+                              )
                             }
                           />
+                          {errors[`quantity_${row.id}`] && (
+                            <span className="text-red-500 text-[10px] block mt-1">
+                              {errors[`quantity_${row.id}`]}
+                            </span>
+                          )}
                         </td>
 
                         <td className="p-2 text-right">
-                          <FormInput
-                            label=""
+                          <input
                             type="number"
-                            className="text-right font-medium text-slate-700"
+                            min="0"
+                            className="w-full text-right font-medium text-slate-800 bg-white border border-slate-200 rounded-xl py-2 px-3 text-xs focus:ring-2 focus:ring-amber-400 outline-none shadow-2xs"
                             value={row.unitPrice}
                             onChange={(e) =>
-                              handleDetailChange(row.id, 'unitPrice', Number(e.target.value))
+                              handleDetailChange(
+                                row.id,
+                                'unitPrice',
+                                Math.max(0, parseFloat(e.target.value) || 0)
+                              )
                             }
                           />
                         </td>
 
-                        <td className="px-4 py-2 text-right font-bold text-slate-800">
+                        <td className="px-4 py-2 text-right font-black text-slate-900 text-xs">
                           {formatCurrency(rowTotal)}
                         </td>
 
-                        <td className="px-4 py-2 text-center">
+                        <td className="px-2 py-2 text-center">
                           <button
                             type="button"
                             onClick={() => handleRemoveRow(row.id)}
                             disabled={details.length === 1}
-                            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors disabled:opacity-30 cursor-pointer"
+                            className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors disabled:opacity-20 cursor-pointer"
                             title="Xóa dòng"
                           >
                             <Trash2 size={16} />
@@ -582,12 +607,12 @@ const CustomerReturnForm: React.FC = () => {
                     );
                   })}
                 </tbody>
-                <tfoot className="bg-slate-50 border-t border-slate-200">
+                <tfoot className="bg-slate-50/80 border-t border-slate-200">
                   <tr>
-                    <td colSpan={6} className="px-4 py-3 text-right font-bold text-slate-600">
-                      TỔNG TIỀN DỰ KIẾN HOÀN:
+                    <td colSpan={5} className="px-4 py-3.5 text-right font-bold text-slate-600 uppercase text-xs tracking-wider">
+                      Tổng tiền dự kiến hoàn trả:
                     </td>
-                    <td className="px-4 py-3 text-right font-black text-rose-600 text-base">
+                    <td colSpan={2} className="px-4 py-3.5 text-right font-black text-rose-600 text-base">
                       {formatCurrency(totalEstimatedRefund)}
                     </td>
                     <td></td>
@@ -600,7 +625,7 @@ const CustomerReturnForm: React.FC = () => {
               <button
                 type="button"
                 onClick={handleAddRow}
-                className="flex items-center gap-1.5 px-4 py-2 bg-indigo-50 text-indigo-600 rounded-lg text-sm font-bold hover:bg-indigo-100 transition-colors cursor-pointer"
+                className="flex items-center gap-2 px-4 py-2.5 border border-dashed border-amber-300 bg-amber-50/50 text-amber-800 rounded-xl text-xs font-bold hover:bg-amber-100/60 hover:border-amber-400 transition-all cursor-pointer shadow-2xs"
               >
                 <Plus size={16} strokeWidth={2.5} /> Thêm Mặt Hàng Khác
               </button>
@@ -612,15 +637,14 @@ const CustomerReturnForm: React.FC = () => {
             <button
               type="button"
               onClick={() => navigate('/customer-returns')}
-              className="px-5 py-2.5 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200 transition-colors text-sm cursor-pointer"
+              className="px-6 py-3 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200 transition-colors text-sm cursor-pointer"
             >
               Hủy Bỏ
             </button>
 
             <SubmitButton
               loading={loading}
-              label="Tạo Phiếu Trả Hàng"
-              loadingLabel="Đang xử lý..."
+              isEditMode={false}
             />
           </div>
         </form>

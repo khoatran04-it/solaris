@@ -173,7 +173,7 @@ namespace backend.Tests.Modules.Module13_OrderAndReturn
 
             // Assert
             orderResult.Should().NotBeNull();
-            orderResult.Status.Should().Be(OrderStatus.Confirmed);
+            orderResult.Status.Should().Be(OrderStatus.Pending);
             orderResult.ReceiverName.Should().Be("Khách Hàng VIP");
             orderResult.DeliveryAddress.Should().Be("456 Nguyễn Huệ, Bến Nghé, Quận 1, TP.HCM");
             orderResult.ShippingFee.Should().Be(20000m);
@@ -457,6 +457,188 @@ namespace backend.Tests.Modules.Module13_OrderAndReturn
 
             // Act & Assert
             await Assert.ThrowsAsync<InvalidOperationException>(() => service.CancelOrderAsync(10, "ORD-SHIPPING-NOW", "Hủy"));
+        }
+        #endregion
+
+        #region TC08: KHÁCH HÀNG HỦY ĐƠN HÀNG Ở TRẠNG THÁI CHỜ DUYỆT (PENDING) VÀ HOÀN TRẢ TỒN KHO
+        /// <summary>
+        /// TC08: Kiểm tra hàm CancelOrderAsync cho phép khách hủy đơn ở trạng thái Pending và tự động trả lại tồn kho đã giữ chỗ.
+        /// </summary>
+        [Fact]
+        public async Task CancelOrderAsync_WhenPending_ShouldCancelAndUnreserveStock()
+        {
+            // Arrange
+            using var context = TestFactories.CreateInMemoryDbContext();
+            var now = DateTime.UtcNow;
+
+            var user = new IAUser
+            {
+                Id = 1,
+                CitizenId = "001200000005",
+                Username = "sys",
+                FullName = "System",
+                Email = "sys@solaris.vn",
+                PhoneNumber = "0905556666",
+                PasswordHash = "hash",
+                IsActive = true
+            };
+            var order = new Order
+            {
+                Id = 2,
+                OrderCode = "ORD-PENDING-CANCEL",
+                CustomerId = 10,
+                WarehouseId = 1,
+                Status = OrderStatus.Pending,
+                OrderDate = now,
+                CreatedAt = now,
+                UpdatedAt = now,
+                Details = new List<OrderDetail>
+                {
+                    new OrderDetail { Id = 1, VariantId = 10, UoMId = 1, Quantity = 2 }
+                }
+            };
+
+            var inventory = new WarehouseInventory
+            {
+                Id = 1,
+                WarehouseId = 1,
+                VariantId = 10,
+                BatchId = 1,
+                QuantityAvailable = 8,
+                QuantityReserved = 2
+            };
+
+            context.IAUsers.Add(user);
+            context.Orders.Add(order);
+            context.WarehouseInventories.Add(inventory);
+            await context.SaveChangesAsync();
+
+            var service = new ShopOrderService(context, _mapper, CreateRoutingService(context));
+
+            // Act
+            bool result = await service.CancelOrderAsync(10, "ORD-PENDING-CANCEL", "Đổi ý không mua nữa");
+
+            // Assert
+            result.Should().BeTrue();
+
+            var updatedOrder = await context.Orders.FindAsync(2);
+            updatedOrder!.Status.Should().Be(OrderStatus.Cancelled);
+            updatedOrder.CancellationReason.Should().Be("Đổi ý không mua nữa");
+
+            var updatedInv = await context.WarehouseInventories.FindAsync(1);
+            updatedInv!.QuantityReserved.Should().Be(0);
+            updatedInv.QuantityAvailable.Should().Be(10);
+        }
+        #endregion
+
+        #region TC09: KHÁCH HÀNG XÁC NHẬN ĐÃ NHẬN HÀNG (CONFIRM DELIVERY) VÀ TỰ ĐỘNG XÉT NÂNG HẠNG THÀNH VIÊN
+        /// <summary>
+        /// TC09: Kiểm tra hàm ConfirmDeliveryAsync:
+        /// 1. Chuyển trạng thái Order sang Completed.
+        /// 2. Cập nhật PaymentStatus sang Paid nếu chưa thanh toán (COD).
+        /// 3. Tính tổng chi tiêu và tự động nâng CustomerTier nếu đạt ngưỡng MinSpending.
+        /// </summary>
+        [Fact]
+        public async Task ConfirmDeliveryAsync_ShouldCompleteOrderMarkPaidAndUpgradeCustomerTier()
+        {
+            // Arrange
+            using var context = TestFactories.CreateInMemoryDbContext();
+            var now = DateTime.UtcNow;
+
+            var normalTier = new CustomerTier { Id = 1, Code = "TIER-BRONZE", Name = "Đồng", MinSpending = 0, DiscountPercent = 0, IsActive = true };
+            var silverTier = new CustomerTier { Id = 2, Code = "TIER-SILVER", Name = "Bạc", MinSpending = 1000000, DiscountPercent = 5, IsActive = true };
+            var goldTier = new CustomerTier { Id = 3, Code = "TIER-GOLD", Name = "Vàng", MinSpending = 3000000, DiscountPercent = 10, IsActive = true };
+
+            var customer = new Customer
+            {
+                Id = 50,
+                Code = "CUST-TIER-TEST",
+                Name = "Khách Hàng Nâng Hạng",
+                PhoneNumber = "0901239999",
+                CustomerTierId = 1,
+                IsActive = true
+            };
+
+            var product = new Product { Id = 1, Code = "PROD-1", Name = "Sầu Riêng", Slug = "sau-rieng", BaseUoMId = 1, IsActive = true };
+            var variant = new ProductVariant { Id = 1, Code = "SKU-SR", Name = "Sầu Riêng Ri6", ProductId = 1, IsActive = true };
+            var uom = new UoM { Id = 1, Code = "TRAI", Name = "Trái", IsActive = true };
+
+            var order = new Order
+            {
+                Id = 10,
+                OrderCode = "ORD-DELIVERY-TEST",
+                CustomerId = 50,
+                WarehouseId = 1,
+                Status = OrderStatus.Shipping,
+                PaymentStatus = PaymentStatus.Unpaid,
+                PaymentMethod = PaymentMethod.COD,
+                SubTotal = 1500000m,
+                TotalAmount = 1500000m,
+                OrderDate = now,
+                CreatedAt = now,
+                UpdatedAt = now,
+                Details = new List<OrderDetail>
+                {
+                    new OrderDetail { Id = 1, VariantId = 1, UoMId = 1, Quantity = 3, UnitPrice = 500000m, TotalPrice = 1500000m }
+                }
+            };
+
+            context.CustomerTiers.AddRange(normalTier, silverTier, goldTier);
+            context.Customers.Add(customer);
+            context.Products.Add(product);
+            context.ProductVariants.Add(variant);
+            context.UoMs.Add(uom);
+            context.Orders.Add(order);
+            await context.SaveChangesAsync();
+
+            var service = new ShopOrderService(context, _mapper, CreateRoutingService(context));
+
+            // Act
+            var result = await service.ConfirmDeliveryAsync(50, "ORD-DELIVERY-TEST");
+
+            // Assert
+            result.Should().NotBeNull();
+            result.StatusName.Should().Be("Giao thành công");
+            result.PaymentStatusName.Should().Be("Đã thanh toán");
+
+            var updatedOrder = await context.Orders.FindAsync(10);
+            updatedOrder!.Status.Should().Be(OrderStatus.Completed);
+            updatedOrder.PaymentStatus.Should().Be(PaymentStatus.Paid);
+
+            // Kiểm tra khách hàng tự động được nâng lên Hạng Bạc (SilverTierId = 2) vì chi tiêu 1,500,000 >= 1,000,000
+            var updatedCustomer = await context.Customers.FindAsync(50);
+            updatedCustomer!.CustomerTierId.Should().Be(2);
+        }
+        #endregion
+
+        #region TC10: SHIELD XÁC NHẬN NHẬN HÀNG CHO ĐƠN ĐÃ BỊ HỦY
+        /// <summary>
+        /// TC10: Kiểm tra gọi ConfirmDeliveryAsync cho đơn đã bị Cancelled sẽ ném InvalidOperationException.
+        /// </summary>
+        [Fact]
+        public async Task ConfirmDeliveryAsync_WhenOrderCancelled_ShouldThrowInvalidOperationException()
+        {
+            // Arrange
+            using var context = TestFactories.CreateInMemoryDbContext();
+            var now = DateTime.UtcNow;
+
+            var order = new Order
+            {
+                Id = 11,
+                OrderCode = "ORD-CANCELLED-TEST",
+                CustomerId = 50,
+                Status = OrderStatus.Cancelled,
+                OrderDate = now,
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+            context.Orders.Add(order);
+            await context.SaveChangesAsync();
+
+            var service = new ShopOrderService(context, _mapper, CreateRoutingService(context));
+
+            // Act & Assert
+            await Assert.ThrowsAsync<InvalidOperationException>(() => service.ConfirmDeliveryAsync(50, "ORD-CANCELLED-TEST"));
         }
         #endregion
     }

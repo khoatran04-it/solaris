@@ -57,7 +57,7 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
     }
 
     return (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-12">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-12">
             
             {/* JSON-LD Schema Structured Data */}
             <JsonLdProduct product={product} />
@@ -84,7 +84,7 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
                 
                 {/* Left: Product Image */}
                 <div className="space-y-4">
-                    <div className="relative aspect-square bg-white rounded-3xl border border-slate-200/80 shadow-xs overflow-hidden flex items-center justify-center">
+                    <div className="relative aspect-square bg-white rounded-2xl border border-slate-100 overflow-hidden flex items-center justify-center">
                         {product.imagePath ? (
                             <img
                                 src={product.imagePath}
@@ -98,7 +98,7 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
                 </div>
 
                 {/* Right: Product Info & Purchase Controls */}
-                <div className="space-y-6">
+                <div className="bg-white rounded-2xl shadow-[0_2px_20px_-4px_rgba(0,0,0,0.05)] border border-slate-100 p-6 space-y-6">
                     
                     <div className="space-y-2">
                         {/* SKU Code */}
@@ -107,7 +107,7 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
                         </span>
 
                         {/* H1 Title (Mandatory for SEOQuake 100%) */}
-                        <h1 className="text-2xl sm:text-3xl font-black text-slate-900 leading-tight">
+                        <h1 className="text-2xl font-black text-slate-900 leading-tight">
                             {product.name}
                         </h1>
 
@@ -135,7 +135,7 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 pt-8 border-t border-slate-200">
                 
                 {/* Left: Description */}
-                <div className="lg:col-span-2 space-y-6 bg-white p-6 sm:p-8 rounded-3xl border border-slate-200/80 shadow-xs">
+                <div className="lg:col-span-2 space-y-6 bg-white p-6 rounded-2xl border border-slate-100">
                     <div className="flex items-center gap-2 pb-4 border-b border-slate-100">
                         <FileText className="w-5 h-5 text-emerald-600" />
                         <h2 className="text-lg font-bold text-slate-900">Mô Tả & Thông Tin Chi Tiết</h2>
@@ -168,7 +168,7 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
                 </div>
 
                 {/* Right: EAV Nutrition & Storage Table */}
-                <div className="space-y-4 bg-white p-6 sm:p-8 rounded-3xl border border-slate-200/80 shadow-xs">
+                <div className="space-y-4 bg-white p-6 rounded-2xl border border-slate-100">
                     <div className="flex items-center gap-2 pb-4 border-b border-slate-100">
                         <Info className="w-5 h-5 text-emerald-600" />
                         <h2 className="text-lg font-bold text-slate-900">Thông Số Nông Sản</h2>

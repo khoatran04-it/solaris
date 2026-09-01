@@ -16,11 +16,19 @@ export interface Customer {
   createdAt: string;
   updatedAt: string;
   isActive: boolean;
+  hasOnlineAccount?: boolean;
 
   customerTypeId: number;
   customerTypeName?: string;
   customerTierId: number;
   customerTierName?: string;
+  discountPercent?: number;
+  totalSpent?: number;
+  totalOrders?: number;
+  nextTierName?: string;
+  nextTierMinSpending?: number;
+  amountToNextTier?: number;
+  tierProgressPercent?: number;
   groupIds: number[];
   groups: string[];
   addresses: CustomerAddress[];
@@ -32,6 +40,7 @@ export interface CustomerPayload {
   name: string;
   phoneNumber: string;
   email?: string | null;
+  password?: string | null;
   taxCode?: string | null;
   avatarPath?: string | null;
   birthday?: string | null;

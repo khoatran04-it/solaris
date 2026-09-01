@@ -16,7 +16,10 @@ import {
 import { productVariantApi } from '../../api/productVariantApi';
 import { productApi } from '../../api/productApi';
 import { uomApi } from '../../api/uomApi';
+import { uomConversionApi } from '../../api/uomConversionApi';
 import { ProductVariantPayload, VariantPriceInput } from '../../types/productVariant';
+import { Product } from '../../types/product';
+import { UoMConversion } from '../../types/uomConversion';
 
 // Shared UI Components
 import { Toast } from '../../components/commons/Toast';
@@ -69,8 +72,10 @@ const ProductVariantForm: React.FC = () => {
 
   // --- TABS & DROPDOWN OPTIONS ---
   const [activeTab, setActiveTab] = useState<TabType>('info');
+  const [rawProducts, setRawProducts] = useState<Product[]>([]);
   const [productOptions, setProductOptions] = useState<{ label: string; value: number }[]>([]);
   const [uomOptions, setUomOptions] = useState<{ label: string; value: number }[]>([]); // Data Đơn vị tính
+  const [uomConversions, setUomConversions] = useState<UoMConversion[]>([]);
   const [dynamicAttributes, setDynamicAttributes] = useState<AttributeDef[]>([]);
 
   const [toast, setToast] = useState<{
@@ -85,16 +90,19 @@ const ProductVariantForm: React.FC = () => {
 
   // --- EFFECT 1: Init Data ---
   useEffect(() => {
-    // Tải SP gốc và Đơn vị tính song song
+    // Tải SP gốc, Đơn vị tính và Quy đổi UoM song song
     Promise.all([
       productApi.getAllList(),
       uomApi.getAllList(), // API lấy danh sách UoM (Kg, Thùng, Hộp...)
+      uomConversionApi.getAllList(true).catch(() => []), // API lấy danh sách Quy đổi ĐVT đang hoạt động
     ])
-      .then(([products, uoms]) => {
-        setProductOptions(products.map((p: any) => ({ label: p.name, value: p.id })));
-        setUomOptions(uoms.map((u: any) => ({ label: u.name, value: u.id })));
+      .then(([products, uoms, conversions]) => {
+        setRawProducts(products || []);
+        setProductOptions((products || []).map((p: any) => ({ label: p.name, value: p.id })));
+        setUomOptions((uoms || []).map((u: any) => ({ label: u.name, value: u.id })));
+        setUomConversions(conversions || []);
       })
-      .catch(() => showToast('warning', 'Không tải được danh mục bổ trợ (Sản phẩm / Đơn vị tính)'));
+      .catch(() => showToast('warning', 'Không tải được danh mục bổ trợ (Sản phẩm / Đơn vị tính / Quy đổi)'));
 
     // Lấy chi tiết Edit
     if (isEditMode && id) {
@@ -528,6 +536,47 @@ const ProductVariantForm: React.FC = () => {
                               onSelect={(val) => handleUpdatePriceRow(idx, 'uoMId', val)}
                               placeholder="Chọn ĐVT..."
                             />
+                            {/* Chú thích quy cách / Quy đổi ĐVT */}
+                            {(() => {
+                              if (!row.uoMId) return null;
+                              const currentProd = rawProducts.find((p) => p.id === formData.productId);
+                              if (currentProd && row.uoMId === currentProd.baseUoMId) {
+                                return (
+                                  <div className="mt-1.5 inline-flex items-center gap-1.5 text-[11px] font-bold text-amber-800 bg-amber-50/90 px-2.5 py-1 rounded-lg border border-amber-200 shadow-2xs">
+                                    <Star size={11} className="fill-amber-500 text-amber-500" />
+                                    <span>Đơn vị cơ sở ({currentProd.baseUoMName || 'Kg'})</span>
+                                  </div>
+                                );
+                              }
+                              const conv =
+                                uomConversions.find(
+                                  (c) => c.productId === formData.productId && c.fromUoMId === row.uoMId
+                                ) ||
+                                uomConversions.find(
+                                  (c) => !c.productId && c.fromUoMId === row.uoMId
+                                );
+                              if (conv) {
+                                const fromName =
+                                  conv.fromUoMName ||
+                                  uomOptions.find((u) => u.value === row.uoMId)?.label ||
+                                  'ĐVT';
+                                const toName =
+                                  conv.toUoMName ||
+                                  currentProd?.baseUoMName ||
+                                  'Kg';
+                                return (
+                                  <div className="mt-1.5 inline-flex items-center gap-1.5 text-[11px] font-bold text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200/90 shadow-2xs">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                    <span>💡 1 {fromName} = {conv.conversionFactor} {toName}</span>
+                                  </div>
+                                );
+                              }
+                              return (
+                                <div className="mt-1.5 inline-flex items-center gap-1.5 text-[11px] font-medium text-slate-400 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-200">
+                                  <span>⚠️ Chưa cấu hình quy đổi</span>
+                                </div>
+                              );
+                            })()}
                           </td>
                           <td className="p-3 align-top">
                             <div className="relative">

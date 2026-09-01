@@ -237,7 +237,7 @@ namespace backend.Services
 
                     _context.InventoryTransactions.Add(new InventoryTransaction
                     {
-                        TransactionCode = $"TXN-{DateTime.UtcNow:yyyyMMddHHmmss}-{Guid.NewGuid().ToString()[..4].ToUpper()}",
+                        TransactionCode = $"TXN-{DateTimeHelper.VietnamNow:yyyyMMddHHmmss}-{Guid.NewGuid().ToString()[..4].ToUpper()}",
                         WarehouseId = transfer.FromWarehouseId,
                         VariantId = detail.VariantId,
                         BatchId = detail.BatchId,
@@ -314,7 +314,7 @@ namespace backend.Services
 
                     _context.InventoryTransactions.Add(new InventoryTransaction
                     {
-                        TransactionCode = $"TXN-{DateTime.UtcNow:yyyyMMddHHmmss}-{Guid.NewGuid().ToString()[..4].ToUpper()}",
+                        TransactionCode = $"TXN-{DateTimeHelper.VietnamNow:yyyyMMddHHmmss}-{Guid.NewGuid().ToString()[..4].ToUpper()}",
                         WarehouseId = transfer.ToWarehouseId,
                         VariantId = detail.VariantId,
                         BatchId = detail.BatchId,

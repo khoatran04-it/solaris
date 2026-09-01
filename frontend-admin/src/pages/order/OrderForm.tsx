@@ -445,24 +445,24 @@ const OrderForm: React.FC = () => {
               </div>
             )}
 
-            <div className="overflow-x-auto border border-slate-200 rounded-xl bg-white shadow-sm mb-2">
+            <div className="overflow-x-auto border border-slate-200 rounded-2xl bg-white shadow-sm mb-2">
               <table className="w-full text-left text-sm whitespace-nowrap">
                 <thead className="bg-slate-50 text-slate-500 font-bold text-xs uppercase tracking-wider border-b border-slate-200">
                   <tr>
-                    <th className="px-4 py-3 w-10 text-center">#</th>
-                    <th className="px-4 py-3 min-w-60">
+                    <th className="px-4 py-3.5 w-10 text-center">#</th>
+                    <th className="px-4 py-3.5 min-w-60">
                       Sản phẩm <span className="text-red-500">*</span>
                     </th>
-                    <th className="px-4 py-3 min-w-30">
+                    <th className="px-4 py-3.5 min-w-30">
                       ĐVT <span className="text-red-500">*</span>
                     </th>
-                    <th className="px-3 py-3 w-28 text-center bg-indigo-50/40">
+                    <th className="px-3 py-3.5 w-28 text-center bg-amber-50/50">
                       Số lượng <span className="text-red-500">*</span>
                     </th>
-                    <th className="px-3 py-3 w-36 text-right">Đơn giá</th>
-                    <th className="px-3 py-3 w-32 text-right">Chiết khấu</th>
-                    <th className="px-4 py-3 w-36 text-right">Thành tiền</th>
-                    <th className="px-4 py-3 w-12 text-center">Xóa</th>
+                    <th className="px-3 py-3.5 w-36 text-right">Đơn giá</th>
+                    <th className="px-3 py-3.5 w-32 text-right">Chiết khấu</th>
+                    <th className="px-4 py-3.5 w-36 text-right">Thành tiền</th>
+                    <th className="px-4 py-3.5 w-12 text-center">Xóa</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -503,11 +503,11 @@ const OrderForm: React.FC = () => {
                           />
                         </td>
 
-                        <td className="p-2 bg-indigo-50/20 border-l border-indigo-100">
+                        <td className="p-2 bg-amber-50/30 border-l border-amber-100/80">
                           <FormInput
                             label=""
                             type="number"
-                            className="text-center font-bold text-indigo-700"
+                            className="text-center font-black text-amber-950"
                             value={row.quantity}
                             error={errors[`quantity_${row.id}`]}
                             onChange={(e) =>
@@ -560,7 +560,7 @@ const OrderForm: React.FC = () => {
                           <button
                             type="button"
                             onClick={() => handleRemoveRow(row.id)}
-                            className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors disabled:opacity-20 mx-auto"
+                            className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors disabled:opacity-20 mx-auto cursor-pointer"
                             disabled={details.length === 1}
                             title="Xóa dòng"
                           >
@@ -576,9 +576,10 @@ const OrderForm: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleAddRow}
-                  className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-indigo-600 hover:bg-indigo-100 rounded-lg transition-colors"
+                  className="flex items-center gap-2 px-5 py-2.5 text-xs font-bold uppercase tracking-wider text-amber-950 bg-amber-50 hover:bg-amber-100 border border-amber-200/80 rounded-xl transition-all shadow-2xs cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
                 >
-                  <Plus size={16} /> THÊM MẶT HÀNG
+                  <Plus size={16} className="text-amber-600" />
+                  <span>Thêm Mặt Hàng</span>
                 </button>
               </div>
             </div>
@@ -588,20 +589,20 @@ const OrderForm: React.FC = () => {
           <FormSection title="3. Định Tuyến Kho & Thanh Toán">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Cột Trái: Smart Routing Box */}
-              <div className="p-6 bg-indigo-50/40 border border-indigo-100 rounded-2xl flex flex-col justify-between">
+              <div className="p-6 bg-gradient-to-br from-amber-50/40 via-yellow-50/20 to-slate-50/50 border-2 border-amber-200/80 rounded-3xl flex flex-col justify-between shadow-sm">
                 <div>
                   <div className="flex items-center justify-between mb-3">
-                    <h4 className="font-bold text-indigo-900 flex items-center gap-2 text-sm uppercase tracking-wide">
-                      <Compass size={18} className="text-indigo-600" />
+                    <h4 className="font-extrabold text-amber-950 flex items-center gap-2 text-sm uppercase tracking-wide">
+                      <Compass size={18} className="text-amber-600" />
                       Định Tuyến Kho Tự Động (Smart Routing)
                     </h4>
                     <button
                       type="button"
                       onClick={handlePreviewRouting}
                       disabled={isRoutingLoading}
-                      className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold transition-all shadow-sm disabled:opacity-50"
+                      className="px-4 py-2 bg-yellow-400 hover:bg-yellow-500 text-slate-950 rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-sm shadow-yellow-400/25 border border-yellow-400 disabled:opacity-50 flex items-center gap-1.5 cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
                     >
-                      {isRoutingLoading ? 'Đang tính...' : '🧠 Chạy Định Tuyến'}
+                      <span>🧠 {isRoutingLoading ? 'Đang tính...' : 'Chạy Định Tuyến'}</span>
                     </button>
                   </div>
                   <p className="text-xs text-slate-600 mb-4 leading-relaxed">
@@ -610,30 +611,30 @@ const OrderForm: React.FC = () => {
                   </p>
 
                   {routingPreview && (
-                    <div className="p-4 bg-white rounded-xl border border-indigo-200 text-xs flex flex-col gap-2.5 shadow-sm">
+                    <div className="p-4 bg-white/95 rounded-2xl border border-amber-200/90 text-xs flex flex-col gap-2.5 shadow-sm">
                       <div className="flex items-center justify-between">
                         <span className="font-bold text-slate-600">Kho tối ưu được chọn:</span>
-                        <span className="font-black text-indigo-700 text-sm">
+                        <span className="font-black text-amber-950 text-sm">
                           {routingPreview.warehouseName} ({routingPreview.distanceKm} km)
                         </span>
                       </div>
                       <div className="flex items-center justify-between">
                         <span className="font-bold text-slate-600">Tình trạng tồn kho:</span>
                         {routingPreview.isFullyStocked ? (
-                          <span className="text-emerald-700 font-bold flex items-center gap-1 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
-                            <CheckCircle size={13} /> Đủ 100% hàng
+                          <span className="text-emerald-700 font-bold flex items-center gap-1 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
+                            <CheckCircle size={13} /> Đủ 100% hàng xuất
                           </span>
                         ) : (
-                          <span className="text-amber-700 font-bold flex items-center gap-1 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
+                          <span className="text-rose-700 font-bold flex items-center gap-1 bg-rose-50 px-2.5 py-1 rounded-lg border border-rose-200">
                             <AlertTriangle size={13} /> Thiếu {routingPreview.missingItems.length}{' '}
                             mặt hàng
                           </span>
                         )}
                       </div>
                       {routingPreview.suggestedSourceWarehouseName && (
-                        <div className="pt-2 border-t border-slate-100 text-indigo-900 font-medium">
+                        <div className="pt-2 border-t border-amber-100 text-amber-950 font-medium bg-amber-50/50 p-2 rounded-xl">
                           💡 Gợi ý điều phối: Có thể lập lệnh chuyển kho từ{' '}
-                          <strong>{routingPreview.suggestedSourceWarehouseName}</strong> về.
+                          <strong className="text-amber-950 font-extrabold">{routingPreview.suggestedSourceWarehouseName}</strong> về.
                         </div>
                       )}
                     </div>
@@ -653,13 +654,13 @@ const OrderForm: React.FC = () => {
               </div>
 
               {/* Cột Phải: Thanh toán & Tổng tiền */}
-              <div className="p-6 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col justify-between">
+              <div className="p-6 bg-slate-50/70 border border-slate-200 rounded-3xl flex flex-col justify-between shadow-sm">
                 <div className="flex flex-col gap-4">
                   <div>
                     <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
                       Phương thức thanh toán
                     </label>
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-2 gap-2.5">
                       {Object.keys(PaymentMethodLabels).map((key) => {
                         const m = Number(key) as PaymentMethod;
                         const isSelected = formData.paymentMethod === m;
@@ -668,9 +669,9 @@ const OrderForm: React.FC = () => {
                             key={m}
                             type="button"
                             onClick={() => handleFieldChange('paymentMethod', m)}
-                            className={`px-3 py-2.5 rounded-xl text-xs font-bold border transition-all text-center ${
+                            className={`px-3 py-2.5 rounded-xl text-xs font-bold border transition-all text-center cursor-pointer ${
                               isSelected
-                                ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                                ? 'bg-yellow-400 text-slate-950 border-yellow-400 font-black shadow-xs'
                                 : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
                             }`}
                           >
@@ -712,9 +713,9 @@ const OrderForm: React.FC = () => {
                       {Number(formData.shippingFee || 0).toLocaleString('vi-VN')} đ
                     </span>
                   </div>
-                  <div className="flex justify-between text-base font-black text-emerald-600 pt-2 border-t border-slate-200">
+                  <div className="flex justify-between text-base font-black text-slate-900 pt-2 border-t border-slate-200">
                     <span>TỔNG THANH TOÁN:</span>
-                    <span className="text-lg">{totalAmount.toLocaleString('vi-VN')} đ</span>
+                    <span className="text-xl text-emerald-600 font-black">{totalAmount.toLocaleString('vi-VN')} đ</span>
                   </div>
                 </div>
               </div>
@@ -726,7 +727,7 @@ const OrderForm: React.FC = () => {
             <button
               type="button"
               onClick={() => navigate('/orders')}
-              className="px-6 py-2.5 text-sm font-bold text-slate-600 bg-white border border-slate-300 rounded-xl hover:bg-slate-50 transition-colors shadow-sm"
+              className="px-6 py-2.5 text-sm font-bold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 hover:text-slate-900 transition-colors shadow-2xs cursor-pointer"
             >
               Hủy Bỏ
             </button>

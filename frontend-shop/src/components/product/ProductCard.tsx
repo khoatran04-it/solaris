@@ -10,11 +10,11 @@ interface ProductCardProps {
 
 export default function ProductCard({ product }: ProductCardProps) {
     return (
-        <div className="group relative bg-white rounded-2xl border border-slate-100 shadow-xs hover:shadow-xl hover:border-emerald-200 transition-all duration-300 flex flex-col overflow-hidden">
+        <div className="group relative bg-white rounded-2xl shadow-[0_2px_20px_-4px_rgba(0,0,0,0.05)] border border-slate-100 hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 flex flex-col overflow-hidden">
             
             {/* Discount Badge */}
             {product.hasPromotion && product.discountPercent > 0 && (
-                <div className="absolute top-3 left-3 z-10 bg-gradient-to-r from-rose-500 to-pink-600 text-white text-[11px] font-black px-2 py-0.5 rounded-full shadow-md">
+                <div className="absolute top-3 left-3 z-10 bg-rose-500 text-white text-[11px] font-black px-2 py-0.5 rounded-lg shadow-sm">
                     -{product.discountPercent}%
                 </div>
             )}
@@ -96,10 +96,10 @@ export default function ProductCard({ product }: ProductCardProps) {
                     <Link
                         href={`/san-pham/${product.slug}`}
                         title={product.isInStock ? 'Xem chi tiết & Chọn mua' : 'Hết hàng'}
-                        className={`p-2.5 rounded-full transition-all duration-200 shadow-xs flex items-center justify-center ${
+                        className={`p-2.5 shadow-md flex items-center justify-center transition-all duration-200 ${
                             !product.isInStock
-                                ? 'bg-slate-100 text-slate-400 pointer-events-none'
-                                : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-600 hover:text-white active:scale-95'
+                                ? 'bg-slate-100 text-slate-400 pointer-events-none rounded-xl'
+                                : 'bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl active:scale-95'
                         }`}
                     >
                         <ArrowRight className="w-4 h-4" />

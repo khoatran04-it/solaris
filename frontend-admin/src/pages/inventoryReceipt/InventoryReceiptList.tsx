@@ -205,24 +205,24 @@ const InventoryReceiptList: React.FC = () => {
                 <th className="w-[12%] py-4 px-2 text-xs font-bold text-slate-500 uppercase tracking-wider">
                   <div className="flex justify-center">
                     <CustomDateFilter
-                      title="TỪ NGÀY"
+                      title="NGÀY NHẬN"
                       selectedDate={startDateFilter}
                       onApply={setStartDateFilter}
                     />
                   </div>
                 </th>
 
-                <th className="w-[12%] py-4 px-2 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                <th className="w-[13%] py-4 px-2 text-xs font-bold text-slate-500 uppercase tracking-wider">
                   <div className="flex justify-center">
                     <CustomDateFilter
-                      title="ĐẾN NGÀY"
+                      title="THỜI GIAN LẬP"
                       selectedDate={endDateFilter}
                       onApply={setEndDateFilter}
                     />
                   </div>
                 </th>
 
-                <th className="w-[12%] py-4 px-2 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                <th className="w-[11%] py-4 px-2 text-xs font-bold text-slate-500 uppercase tracking-wider">
                   <div className="flex justify-center">
                     <CustomFilter
                       title="TRẠNG THÁI"
@@ -233,8 +233,8 @@ const InventoryReceiptList: React.FC = () => {
                   </div>
                 </th>
 
-                <th className="w-[10%] py-4 px-2 text-xs font-bold text-slate-500 uppercase tracking-wider hidden lg:table-cell">
-                  Người Kiểm
+                <th className="w-[11%] py-4 px-2 text-xs font-bold text-slate-500 uppercase tracking-wider hidden lg:table-cell">
+                  Thủ Kho Kiểm
                 </th>
 
                 <th className="w-[8%] py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">
@@ -278,9 +278,14 @@ const InventoryReceiptList: React.FC = () => {
                       </div>
                     </td>
 
-                    {/* CELL 4 & 5: NGÀY NHẬP */}
-                    <td className="py-3 px-2 text-center" colSpan={2}>
+                    {/* CELL 4: NGÀY NHẬN HÀNG */}
+                    <td className="py-3 px-2 text-center">
                       <DateCell isoString={receipt.receiptDate} />
+                    </td>
+
+                    {/* CELL 5: THỜI GIAN LẬP PHIẾU */}
+                    <td className="py-3 px-2 text-center">
+                      <DateTimeCell isoString={receipt.createdAt} />
                     </td>
 
                     {/* CELL 6: TRẠNG THÁI */}

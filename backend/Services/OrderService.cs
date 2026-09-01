@@ -295,7 +295,7 @@ namespace backend.Services
                             // Ghi sổ cái Reserve
                             _context.InventoryTransactions.Add(new InventoryTransaction
                             {
-                                TransactionCode = $"TXN-{DateTime.UtcNow:yyyyMMddHHmmss}-{Guid.NewGuid().ToString()[..4].ToUpper()}",
+                                TransactionCode = $"TXN-{DateTimeHelper.VietnamNow:yyyyMMddHHmmss}-{Guid.NewGuid().ToString()[..4].ToUpper()}",
                                 WarehouseId = assignedWarehouseId.Value,
                                 VariantId = item.VariantId,
                                 BatchId = inv.BatchId,
@@ -385,7 +385,7 @@ namespace backend.Services
 
                             _context.InventoryTransactions.Add(new InventoryTransaction
                             {
-                                TransactionCode = $"TXN-{DateTime.UtcNow:yyyyMMddHHmmss}-{Guid.NewGuid().ToString()[..4].ToUpper()}",
+                                TransactionCode = $"TXN-{DateTimeHelper.VietnamNow:yyyyMMddHHmmss}-{Guid.NewGuid().ToString()[..4].ToUpper()}",
                                 WarehouseId = order.WarehouseId.Value,
                                 VariantId = item.VariantId,
                                 BatchId = inv.BatchId,

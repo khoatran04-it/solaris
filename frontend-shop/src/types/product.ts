@@ -41,6 +41,8 @@ export interface ShopVariantPrice {
     discountedPrice: number;
     discountPercent: number;
     isDefault: boolean;
+    conversionFactor?: number;
+    conversionText?: string;
 }
 
 export interface ShopProductVariant {

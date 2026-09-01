@@ -271,6 +271,13 @@ namespace backend.Services
             var activeVariants = product.Variants.Where(v => v.IsActive && !v.IsDeleted).ToList();
             var variantIds = activeVariants.Select(v => v.Id).ToList();
 
+            // Lấy danh sách quy đổi đơn vị tính đặc thù của sản phẩm hoặc toàn hệ thống
+            var conversions = await _context.UoMConversions
+                .Include(c => c.FromUoM)
+                .Include(c => c.ToUoM)
+                .Where(c => (c.ProductId == product.Id || c.ProductId == null) && c.IsActive && !c.IsDeleted)
+                .ToListAsync();
+
             // Lấy tồn kho khả dụng cho các biến thể
             var inventories = await _context.WarehouseInventories
                 .Include(wi => wi.Batch)
@@ -336,6 +343,29 @@ namespace backend.Services
                         }
                     }
 
+                    // Tìm tỷ lệ quy đổi từ ĐVT này (pr.UoMId) sang ĐVT cơ sở (product.BaseUoMId)
+                    decimal factor = 1;
+                    string? convText = null;
+
+                    if (pr.UoMId == product.BaseUoMId)
+                    {
+                        factor = 1;
+                        convText = null;
+                    }
+                    else
+                    {
+                        // Ưu tiên quy đổi đặc thù theo sản phẩm trước, sau đó tới quy đổi toàn cục
+                        var conv = conversions.FirstOrDefault(c => c.ProductId == product.Id && c.FromUoMId == pr.UoMId)
+                                ?? conversions.FirstOrDefault(c => c.ProductId == null && c.FromUoMId == pr.UoMId);
+
+                        if (conv != null && conv.ConversionFactor > 0)
+                        {
+                            factor = conv.ConversionFactor;
+                            string targetUom = conv.ToUoM?.Name ?? product.BaseUoM?.Name ?? "Kg";
+                            convText = $"1 {pr.UoM?.Name} = {conv.ConversionFactor:#,##0.##} {targetUom}";
+                        }
+                    }
+
                     return new ShopVariantPriceDto
                     {
                         PriceId = pr.Id,
@@ -344,7 +374,9 @@ namespace backend.Services
                         Price = pr.Price,
                         DiscountedPrice = discPrice,
                         DiscountPercent = discPercent,
-                        IsDefault = pr.IsDefault
+                        IsDefault = pr.IsDefault,
+                        ConversionFactor = factor,
+                        ConversionText = convText
                     };
                 }).ToList();
 

@@ -140,7 +140,7 @@ describe('Module 13 - CustomerReturnForm Component', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText('Tạo Phiếu Trả Hàng (RMA)')).toBeInTheDocument();
+      expect(screen.getByText(/Tạo Phiếu.*Trả Hàng/i)).toBeInTheDocument();
       expect(screen.getByText('1. Đơn Bán Hàng Gốc (Sales Order Reference)')).toBeInTheDocument();
       expect(screen.getByText('2. Thông Tin Phiếu Tiếp Nhận')).toBeInTheDocument();
       expect(screen.getByText('3. Chi Tiết Mặt Hàng Hoàn Trả')).toBeInTheDocument();
@@ -191,11 +191,11 @@ describe('Module 13 - CustomerReturnForm Component', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText(/Tìm kiếm theo mã đơn/i)).toBeInTheDocument();
+      expect(screen.getByText(/-- Chọn Đơn Bán Hàng gốc để tự động điền --/i)).toBeInTheDocument();
     });
 
     // 1. Chọn đơn hàng gốc
-    const orderSelect = screen.getByText(/Tìm kiếm theo mã đơn/i);
+    const orderSelect = screen.getByText(/-- Chọn Đơn Bán Hàng gốc để tự động điền --/i);
     fireEvent.click(orderSelect);
     const orderOption = await screen.findByText(/ORD-20260830-010/i);
     fireEvent.click(orderOption);

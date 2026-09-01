@@ -187,27 +187,27 @@ const CustomerReturnList: React.FC = () => {
                   />
                 </th>
 
-                <th className="w-[10%] py-4 px-2 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                <th className="w-[11%] py-4 px-2 text-xs font-bold text-slate-500 uppercase tracking-wider">
                   <div className="flex justify-center">
                     <CustomDateFilter
-                      title="TỪ NGÀY"
+                      title="NGÀY TIẾP NHẬN"
                       selectedDate={fromDateFilter}
                       onApply={setFromDateFilter}
                     />
                   </div>
                 </th>
 
-                <th className="w-[10%] py-4 px-2 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                <th className="w-[12%] py-4 px-2 text-xs font-bold text-slate-500 uppercase tracking-wider">
                   <div className="flex justify-center">
                     <CustomDateFilter
-                      title="ĐẾN NGÀY"
+                      title="THỜI GIAN LẬP"
                       selectedDate={toDateFilter}
                       onApply={setToDateFilter}
                     />
                   </div>
                 </th>
 
-                <th className="w-[14%] py-4 px-2 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                <th className="w-[12%] py-4 px-2 text-xs font-bold text-slate-500 uppercase tracking-wider">
                   <div className="flex justify-center">
                     <CustomFilter
                       title="TRẠNG THÁI"
@@ -266,9 +266,14 @@ const CustomerReturnList: React.FC = () => {
                     {/* CELL 5: KHO TIẾP NHẬN */}
                     <td className="px-4 py-3.5 text-slate-600">{ret.warehouseName}</td>
 
-                    {/* CELL 6 & 7: NGÀY TIẾP NHẬN (Gộp Từ ngày - Đến ngày) */}
-                    <td className="py-3 px-2 text-center" colSpan={2}>
+                    {/* CELL 6: NGÀY TIẾP NHẬN */}
+                    <td className="py-3 px-2 text-center">
                       <DateCell isoString={ret.returnDate} />
+                    </td>
+
+                    {/* CELL 7: THỜI GIAN LẬP */}
+                    <td className="py-3 px-2 text-center">
+                      <DateTimeCell isoString={ret.createdAt} />
                     </td>
 
                     {/* CELL 8: TRẠNG THÁI */}

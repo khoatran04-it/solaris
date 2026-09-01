@@ -374,7 +374,7 @@ namespace backend.Services
                         // Ghi Sổ cái giao dịch InventoryTransaction
                         _context.InventoryTransactions.Add(new InventoryTransaction
                         {
-                            TransactionCode = $"TXN-{DateTime.UtcNow:yyyyMMddHHmmss}-{Guid.NewGuid().ToString()[..4].ToUpper()}",
+                            TransactionCode = $"TXN-{DateTimeHelper.VietnamNow:yyyyMMddHHmmss}-{Guid.NewGuid().ToString()[..4].ToUpper()}",
                             WarehouseId = audit.WarehouseId,
                             VariantId = detail.VariantId,
                             BatchId = detail.BatchId,

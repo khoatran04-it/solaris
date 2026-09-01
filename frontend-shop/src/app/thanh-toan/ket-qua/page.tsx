@@ -72,12 +72,12 @@ function KetQuaContent() {
 
     return (
         <div className="max-w-xl mx-auto py-12 px-4 sm:px-6">
-            <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-xs text-center space-y-6">
+            <div className="bg-white rounded-3xl shadow-[0_2px_20px_-4px_rgba(0,0,0,0.05)] border border-slate-100 p-8 text-center space-y-6">
                 
                 {/* Icon Header */}
                 <div className="flex justify-center">
                     {isSuccess ? (
-                        <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 shadow-lg shadow-emerald-600/20">
+                        <div className="w-16 h-16 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600">
                             <CheckCircle2 className="w-10 h-10" />
                         </div>
                     ) : (
@@ -89,7 +89,7 @@ function KetQuaContent() {
 
                 {/* Status Message */}
                 <div className="space-y-1">
-                    <h1 className="text-xl sm:text-2xl font-black text-slate-900">
+                    <h1 className="text-xl font-black text-slate-900">
                         {isSuccess ? 'Thanh Toán Thành Công!' : 'Thanh Toán Không Thành Công'}
                     </h1>
                     <p className="text-xs text-slate-500">
@@ -104,7 +104,7 @@ function KetQuaContent() {
                     {orderCode && (
                         <div className="flex justify-between text-slate-600">
                             <span>Mã đơn hàng:</span>
-                            <span className="font-bold text-slate-900">{orderCode}</span>
+                            <span className="font-mono font-bold text-emerald-600">{orderCode}</span>
                         </div>
                     )}
                     {amount > 0 && (
@@ -136,7 +136,7 @@ function KetQuaContent() {
                     {orderCode && (
                         <Link
                             href={`/tai-khoan/don-hang/${orderCode}`}
-                            className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl text-xs font-bold transition-all shadow-md flex items-center justify-center gap-2"
+                            className="w-full h-[46px] bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold transition-all shadow-md flex items-center justify-center gap-2"
                         >
                             <FileText className="w-4 h-4" />
                             <span>Xem Chi Tiết Đơn Hàng</span>

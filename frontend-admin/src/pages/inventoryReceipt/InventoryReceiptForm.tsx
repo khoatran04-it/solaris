@@ -25,6 +25,7 @@ import { productVariantApi } from '../../api/productVariantApi';
 import { uomApi } from '../../api/uomApi';
 import { productBatchApi } from '../../api/productBatchApi';
 import { purchaseOrderApi } from '../../api/purchaseOrderApi';
+import { customerReturnApi } from '../../api/customerReturnApi';
 import { useAuthStore } from '../../stores/useAuthStore';
 
 import { InventoryReceiptCreatePayload } from '../../types/inventoryReceipt';
@@ -52,6 +53,7 @@ const InventoryReceiptForm: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const poIdParam = searchParams.get('poId');
+  const returnIdParam = searchParams.get('returnId');
   const { userInfo } = useAuthStore();
 
   const [loading, setLoading] = useState(false);
@@ -203,6 +205,53 @@ const InventoryReceiptForm: React.FC = () => {
     [warehouses]
   );
 
+  const loadCustomerReturn = useCallback(
+    async (id: number) => {
+      try {
+        const data = await customerReturnApi.getById(id);
+        if (data) {
+          setWarehouseId(data.warehouseId || '');
+          setNotes(
+            `Phiếu nhập kho thu hồi theo yêu cầu trả hàng ${data.returnCode} (Đơn hàng: ${data.orderCode})`
+          );
+
+          if (data.details && data.details.length > 0) {
+            const loadedDetails = data.details.map((d: any): DetailRow => {
+              const accepted =
+                d.acceptedQuantity > 0
+                  ? d.acceptedQuantity
+                  : d.damagedQuantity === 0
+                  ? d.returnedQuantity
+                  : 0;
+              const damaged = d.damagedQuantity;
+              const reason =
+                damaged > 0 ? d.rejectReason || 'Hàng dập nát/hỏng khi khách trả' : '';
+
+              return {
+                id: crypto.randomUUID(),
+                variantId: d.variantId || '',
+                batchId: d.batchId || '',
+                uoMId: d.uoMId || '',
+                expectedQuantity: d.returnedQuantity,
+                acceptedQuantity: accepted,
+                rejectedQuantity: damaged,
+                rejectReason: reason,
+              };
+            });
+            setDetails(loadedDetails);
+            showToast(
+              'success',
+              `Đã tải ${loadedDetails.length} mặt hàng từ Phiếu trả hàng ${data.returnCode}!`
+            );
+          }
+        }
+      } catch (error) {
+        showToast('error', 'Không thể tải thông tin Phiếu trả hàng!');
+      }
+    },
+    []
+  );
+
   useEffect(() => {
     loadOptions();
   }, [loadOptions]);
@@ -212,6 +261,12 @@ const InventoryReceiptForm: React.FC = () => {
       loadPurchaseOrder(parseInt(poIdParam));
     }
   }, [poIdParam, loadPurchaseOrder]);
+
+  useEffect(() => {
+    if (returnIdParam) {
+      loadCustomerReturn(parseInt(returnIdParam));
+    }
+  }, [returnIdParam, loadCustomerReturn]);
 
   // Khi người dùng chọn PO từ Dropdown
   const handleSelectPO = (poId: number | '') => {

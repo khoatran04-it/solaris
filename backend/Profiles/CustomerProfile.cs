@@ -43,7 +43,11 @@ namespace backend.Profiles
                 .ForMember(dest => dest.Addresses, opt =>
                     opt.MapFrom(src => src.Addresses != null
                         ? src.Addresses.Where(a => !a.IsDeleted).ToList()
-                        : new List<CustomerAddress>()));
+                        : new List<CustomerAddress>()))
+
+                // 6. Kiểm tra tài khoản Online (có PasswordHash hay chưa)
+                .ForMember(dest => dest.HasOnlineAccount, opt =>
+                    opt.MapFrom(src => !string.IsNullOrEmpty(src.PasswordHash)));
             #endregion
 
             #region Create DTO -> Entity (Thêm mới)

@@ -81,7 +81,7 @@ namespace backend.Controllers
             }
             catch (Exception ex)
             {
-                return BadRequest(new { message = "Lỗi khi đẩy đơn sang GHN.", details = ex.Message });
+                return BadRequest(new { message = ex.Message });
             }
         }
     }

@@ -292,5 +292,88 @@ namespace backend.Tests.Modules.Module13_OrderAndReturn
             result.Details.First().VariantName.Should().Be("Mận Hậu");
         }
         #endregion
+
+        #region TC06: SHIELD CHẶN TRẢ HÀNG KHI ĐƠN HÀNG QUÁ THỜI HẠN 12 GIỜ (NÔNG SẢN TƯƠI SỐNG)
+        /// <summary>
+        /// TC06: Kiểm tra chính sách nông sản tươi sống - Chặn tạo phiếu đổi trả nếu đơn hàng đã đặt quá 12 giờ.
+        /// </summary>
+        [Fact]
+        public async Task CreateReturnRequestAsync_WhenOrderExceeds12Hours_ShouldThrowInvalidOperationException()
+        {
+            // Arrange
+            using var context = TestFactories.CreateInMemoryDbContext();
+            var now = DateTime.UtcNow;
+
+            var order = new Order
+            {
+                Id = 1,
+                OrderCode = "ORD-EXPIRED-12H",
+                CustomerId = 10,
+                Status = OrderStatus.Completed,
+                OrderDate = now.AddHours(-13), // Đã đặt 13 tiếng trước (> 12h)
+                CreatedAt = now.AddHours(-13),
+                UpdatedAt = now.AddHours(-1)
+            };
+            context.Orders.Add(order);
+            await context.SaveChangesAsync();
+
+            var service = new ShopReturnService(context, _mapper);
+
+            var request = new ShopReturnCreateRequestDto
+            {
+                OrderCode = "ORD-EXPIRED-12H",
+                Reason = "Hàng dập",
+                Items = new List<ShopReturnItemRequestDto>
+                {
+                    new() { VariantId = 1, UoMId = 1, ReturnedQuantity = 1 }
+                }
+            };
+
+            // Act & Assert
+            var act = async () => await service.CreateReturnRequestAsync(10, request);
+            await act.Should().ThrowAsync<InvalidOperationException>()
+                .WithMessage("*quá thời hạn 12 giờ*");
+        }
+        #endregion
+
+        #region TC07: SHIELD CHẶN TẠO YÊU CẦU TRẢ HÀNG VỚI DANH SÁCH SẢN PHẨM RỖNG
+        /// <summary>
+        /// TC07: Kiểm tra khi request.Items rỗng sẽ ném ArgumentException yêu cầu chọn ít nhất 1 sản phẩm.
+        /// </summary>
+        [Fact]
+        public async Task CreateReturnRequestAsync_WhenItemsEmpty_ShouldThrowArgumentException()
+        {
+            // Arrange
+            using var context = TestFactories.CreateInMemoryDbContext();
+            var now = DateTime.UtcNow;
+
+            var order = new Order
+            {
+                Id = 1,
+                OrderCode = "ORD-EMPTY-ITEMS",
+                CustomerId = 10,
+                Status = OrderStatus.Completed,
+                OrderDate = now.AddHours(-2), // Trong vòng 12h
+                CreatedAt = now.AddHours(-2),
+                UpdatedAt = now
+            };
+            context.Orders.Add(order);
+            await context.SaveChangesAsync();
+
+            var service = new ShopReturnService(context, _mapper);
+
+            var request = new ShopReturnCreateRequestDto
+            {
+                OrderCode = "ORD-EMPTY-ITEMS",
+                Reason = "Không ưng",
+                Items = new List<ShopReturnItemRequestDto>()
+            };
+
+            // Act & Assert
+            var act = async () => await service.CreateReturnRequestAsync(10, request);
+            await act.Should().ThrowAsync<ArgumentException>()
+                .WithMessage("*ít nhất một sản phẩm*");
+        }
+        #endregion
     }
 }
