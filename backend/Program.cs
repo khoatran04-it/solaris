@@ -187,17 +187,28 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-// Khởi tạo và đồng bộ dữ liệu mầm khi khởi động
+// Tự động cập nhật Migration và đồng bộ dữ liệu mầm khi khởi động
 using (var scope = app.Services.CreateScope())
 {
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
     try
     {
         var db = scope.ServiceProvider.GetRequiredService<SolarisDbContext>();
+
+        // Tự động áp dụng tất cả các Migration còn thiếu lên Database Server
+        if (db.Database.IsRelational())
+        {
+            logger.LogInformation("Đang kiểm tra và tự động áp dụng EF Core Migrations lên Database...");
+            await db.Database.MigrateAsync();
+            logger.LogInformation("Database Migrations đã được cập nhật thành công!");
+        }
+
+        // Khởi tạo dữ liệu mầm (Roles, Permissions, Super Admin, EAV Attributes, Slugs)
         await DbInitializer.SeedAsync(db);
     }
-    catch
+    catch (Exception ex)
     {
-        // Bỏ qua nếu database chưa sẵn sàng trong quá trình khởi tạo migration
+        logger.LogError(ex, "Đã xảy ra lỗi trong quá trình tự động cập nhật Database hoặc Seed data.");
     }
 }
 
