@@ -1,4 +1,4 @@
-﻿using backend.DTOs;
+using backend.DTOs;
 using backend.DTOs.CategoryAttributeDTOs;
 
 namespace backend.Services.Interfaces
@@ -36,9 +36,20 @@ namespace backend.Services.Interfaces
         /// </summary>
         /// <param name="id">Mã định danh của bản ghi cấu hình (CategoryAttribute ID).</param>
         Task<CategoryAttributeReadDto> GetByIdAsync(int id);
+
+        /// <summary>
+        /// Lấy danh sách cấu hình thuộc tính thuộc về một Danh mục cụ thể.
+        /// </summary>
+        /// <param name="categoryId">Mã định danh danh mục.</param>
+        Task<IEnumerable<CategoryAttributeReadDto>> GetByCategoryIdAsync(int categoryId);
         #endregion
 
         #region Thao tác Dữ liệu (Command)
+        /// <summary>
+        /// Đồng bộ hàng loạt cấu hình thuộc tính cho một Danh mục sản phẩm (Bulk Sync).
+        /// </summary>
+        Task<bool> SyncCategoryAttributesAsync(CategoryAttributeSyncDto dto);
+
         /// <summary>
         /// Thiết lập mới cấu hình: Gán một thuộc tính từ Từ điển hệ thống vào một Danh mục sản phẩm.
         /// </summary>

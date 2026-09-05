@@ -1,16 +1,19 @@
 import React from 'react';
 import { Metadata } from 'next';
+import Link from 'next/link';
+import { Sparkles, Search, RotateCcw } from 'lucide-react';
 import ProductCard from '@/components/product/ProductCard';
 import ProductFilter from '@/components/product/ProductFilter';
 import shopProductApi from '@/api/shopProductApi';
 import { PagedResult } from '@/types/common';
 import { ShopProductCard, ShopCategoryTree, ShopProductFilterParams } from '@/types/product';
-import Link from 'next/link';
 
 export const metadata: Metadata = {
-    title: 'Danh Sách Nông Sản Sạch',
+    title: 'Tất Cả Nông Sản Sạch',
     description: 'Khám phá tất cả các loại rau củ quả, trái cây tươi sạch đạt chuẩn VietGAP, GlobalGAP tại Solaris Farm.',
 };
+
+export const dynamic = 'force-dynamic';
 
 interface SanPhamPageProps {
     searchParams: Promise<{
@@ -34,7 +37,6 @@ export default async function SanPhamPage({ searchParams }: SanPhamPageProps) {
     const cert = params.cert || '';
     const sort = params.sort || 'newest';
 
-    // Fetch products, categories, origins and certs in parallel
     const filterParams: ShopProductFilterParams = {
         pageIndex: page,
         pageSize: 12,
@@ -69,38 +71,44 @@ export default async function SanPhamPage({ searchParams }: SanPhamPageProps) {
 
     return (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-            
-            {/* Breadcrumb & Header */}
-            <div className="space-y-2">
-                <div className="flex items-center gap-2 text-xs text-slate-500">
-                    <Link href="/" className="hover:text-emerald-600">Trang chủ</Link>
-                    <span>/</span>
-                    <span className="font-semibold text-slate-800">Sản phẩm</span>
-                    {search && (
-                        <>
-                            <span>/</span>
-                            <span className="text-emerald-600 font-bold">Tìm: &quot;{search}&quot;</span>
-                        </>
-                    )}
-                </div>
+            {/* 1. Header Banner & Breadcrumbs */}
+            <div className="bg-gradient-to-r from-emerald-800 via-emerald-700 to-teal-800 rounded-3xl p-6 sm:p-10 text-white shadow-lg relative overflow-hidden">
+                <div className="relative z-10 space-y-3 max-w-3xl">
+                    <nav className="flex items-center gap-2 text-xs text-emerald-200 font-medium">
+                        <Link href="/" className="hover:text-white transition-colors">Trang chủ</Link>
+                        <span>/</span>
+                        <span className="text-white font-bold">Tất cả sản phẩm</span>
+                        {search && (
+                            <>
+                                <span>/</span>
+                                <span className="text-amber-300 font-bold">Từ khóa: &quot;{search}&quot;</span>
+                            </>
+                        )}
+                    </nav>
 
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div>
-                        <h1 className="text-2xl sm:text-3xl font-black text-slate-900">
-                            Nông Sản Tươi Ngon
+                    <div className="space-y-1">
+                        <h1 className="text-2xl sm:text-3xl font-black tracking-tight">
+                            {search ? `Kết quả tìm kiếm cho "${search}"` : 'Tất Cả Nông Sản Sạch'}
                         </h1>
-                        <p className="text-xs text-slate-500 mt-1">
-                            Hiển thị {productsResult.totalRecords} sản phẩm đạt chuẩn chất lượng
+                        <p className="text-xs text-emerald-100/90 leading-relaxed">
+                            Tuyển chọn nông sản hữu cơ, trái cây nhập khẩu và rau củ Đà Lạt thu hoạch mỗi sớm mai với cam kết an toàn thực phẩm.
                         </p>
+                    </div>
+
+                    <div className="flex items-center gap-3 pt-1">
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-white/15 rounded-full text-[11px] font-bold text-white backdrop-blur-xs">
+                            <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                            Hiển thị {productsResult.totalRecords} sản phẩm
+                        </span>
                     </div>
                 </div>
             </div>
 
-            {/* Layout: Sidebar Filter + Product Grid */}
+            {/* 2. Layout: Sidebar Filter + Product Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 items-start">
                 
                 {/* Left Sidebar Filter */}
-                <div className="lg:col-span-1 sticky top-24">
+                <div className="lg:col-span-1 sticky top-28">
                     <ProductFilter
                         categories={categories}
                         origins={origins}
@@ -130,7 +138,7 @@ export default async function SanPhamPage({ searchParams }: SanPhamPageProps) {
                                             <Link
                                                 key={p}
                                                 href={`/san-pham?${pUrl.toString()}`}
-                                                className={`w-9 h-9 rounded-xl flex items-center justify-center text-xs font-bold transition-all ${
+                                                className={`w-10 h-10 rounded-2xl flex items-center justify-center text-xs font-bold transition-all ${
                                                     isCurrent
                                                         ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30'
                                                         : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
@@ -144,17 +152,20 @@ export default async function SanPhamPage({ searchParams }: SanPhamPageProps) {
                             )}
                         </>
                     ) : (
-                        <div className="bg-white rounded-3xl border border-slate-200 p-12 text-center space-y-4">
-                            <div className="text-6xl">🌾</div>
-                            <h3 className="text-lg font-bold text-slate-800">Không tìm thấy sản phẩm phù hợp</h3>
-                            <p className="text-xs text-slate-500 max-w-md mx-auto">
-                                Hãy thử thay đổi từ khóa tìm kiếm hoặc chọn lại các tiêu chí lọc vùng trồng, chứng nhận.
+                        <div className="bg-white rounded-3xl border border-slate-200 p-16 text-center space-y-4 shadow-sm">
+                            <div className="w-16 h-16 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto">
+                                <Search className="w-8 h-8" />
+                            </div>
+                            <h3 className="text-lg font-bold text-slate-900">Không tìm thấy sản phẩm phù hợp</h3>
+                            <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
+                                Vui lòng thử tìm kiếm với từ khóa khác hoặc xóa bớt các điều kiện lọc đang áp dụng.
                             </p>
                             <Link
                                 href="/san-pham"
-                                className="inline-block px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-full transition-colors"
+                                className="inline-flex items-center gap-1.5 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-2xl transition-all shadow-md"
                             >
-                                Xóa tất cả bộ lọc
+                                <RotateCcw className="w-4 h-4" />
+                                <span>Xóa tất cả bộ lọc</span>
                             </Link>
                         </div>
                     )}
@@ -165,6 +176,3 @@ export default async function SanPhamPage({ searchParams }: SanPhamPageProps) {
         </div>
     );
 }
-
-
-

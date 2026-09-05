@@ -1,4 +1,4 @@
-﻿using FluentValidation;
+using FluentValidation;
 using backend.DTOs.CustomerDTOs;
 
 namespace backend.DTOs.Validators
@@ -30,6 +30,10 @@ namespace backend.DTOs.Validators
             RuleFor(x => x.TaxCode)
                 .MaximumLength(20).WithMessage("Mã số thuế không được vượt quá 20 ký tự.")
                 .When(x => !string.IsNullOrWhiteSpace(x.TaxCode));
+
+            RuleFor(x => x.Password)
+                .MinimumLength(6).WithMessage("Mật khẩu phải có ít nhất 6 ký tự.")
+                .When(x => !string.IsNullOrWhiteSpace(x.Password));
 
             /* 
              * Nếu DTO của sếp có: public List<int> GroupIds { get; set; }

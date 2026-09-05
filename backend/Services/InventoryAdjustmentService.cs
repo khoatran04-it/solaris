@@ -152,7 +152,7 @@ namespace backend.Services
                 if (firstUser != null) creatorId = firstUser.Id;
             }
 
-            var adjustmentCode = $"ADJ-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString()[..6].ToUpper()}";
+            var adjustmentCode = $"ADJ-{DateTimeHelper.VietnamDateString}-{Guid.NewGuid().ToString()[..6].ToUpper()}";
 
             var adjustment = new InventoryAdjustment
             {
@@ -288,7 +288,7 @@ namespace backend.Services
 
                     _context.InventoryTransactions.Add(new InventoryTransaction
                     {
-                        TransactionCode = $"TXN-{DateTime.UtcNow:yyyyMMddHHmmss}-{Guid.NewGuid().ToString()[..4].ToUpper()}",
+                        TransactionCode = $"TXN-{DateTimeHelper.VietnamNow:yyyyMMddHHmmss}-{Guid.NewGuid().ToString()[..4].ToUpper()}",
                         WarehouseId = adj.WarehouseId,
                         VariantId = detail.VariantId,
                         BatchId = detail.BatchId,

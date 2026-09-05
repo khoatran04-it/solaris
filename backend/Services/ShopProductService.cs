@@ -2,6 +2,7 @@ using AutoMapper;
 using backend.Data;
 using backend.DTOs;
 using backend.DTOs.ShopDTOs;
+using backend.Helpers;
 using backend.Models;
 using backend.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
@@ -60,8 +61,8 @@ namespace backend.Services
                 string groupSlug = filter.CategoryGroupSlug.Trim().ToLower();
                 query = query.Where(p => p.Category != null &&
                                          p.Category.CategoryGroup != null &&
-                                         p.Category.CategoryGroup.Slug != null &&
-                                         p.Category.CategoryGroup.Slug.ToLower() == groupSlug);
+                                         ((p.Category.CategoryGroup.Slug != null && p.Category.CategoryGroup.Slug.ToLower() == groupSlug) ||
+                                          p.Category.CategoryGroup.Id.ToString() == groupSlug));
             }
 
             // 4. Lọc theo Danh Mục (Category Slug)
@@ -69,8 +70,8 @@ namespace backend.Services
             {
                 string catSlug = filter.CategorySlug.Trim().ToLower();
                 query = query.Where(p => p.Category != null &&
-                                         p.Category.Slug != null &&
-                                         p.Category.Slug.ToLower() == catSlug);
+                                         ((p.Category.Slug != null && p.Category.Slug.ToLower() == catSlug) ||
+                                          p.Category.Id.ToString() == catSlug));
             }
 
             // 5. Lọc theo Xuất xứ / Vùng trồng
@@ -188,13 +189,13 @@ namespace backend.Services
                     Id = p.Id,
                     Code = p.Code,
                     Name = p.Name,
-                    Slug = p.Slug ?? p.Id.ToString(),
+                    Slug = !string.IsNullOrEmpty(p.Slug) ? p.Slug : SlugHelper.GenerateSlug(p.Name),
                     ImagePath = p.ImagePath ?? activeVariants.FirstOrDefault(v => !string.IsNullOrEmpty(v.ImagePath))?.ImagePath,
                     CategoryId = p.CategoryId,
                     CategoryName = p.Category?.Name,
-                    CategorySlug = p.Category?.Slug,
+                    CategorySlug = !string.IsNullOrEmpty(p.Category?.Slug) ? p.Category.Slug : (p.Category != null ? SlugHelper.GenerateSlug(p.Category.Name) : null),
                     CategoryGroupName = p.Category?.CategoryGroup?.Name,
-                    CategoryGroupSlug = p.Category?.CategoryGroup?.Slug,
+                    CategoryGroupSlug = !string.IsNullOrEmpty(p.Category?.CategoryGroup?.Slug) ? p.Category.CategoryGroup.Slug : (p.Category?.CategoryGroup != null ? SlugHelper.GenerateSlug(p.Category.CategoryGroup.Name) : null),
                     BaseUoMName = p.BaseUoM?.Name ?? "Kg",
                     MinPrice = minPrice,
                     MaxPrice = maxPrice,
@@ -266,10 +267,38 @@ namespace backend.Services
                 .FirstOrDefaultAsync(p => (p.Slug == slug || p.Id.ToString() == slug) && p.IsActive && !p.IsDeleted);
 
             if (product == null)
+            {
+                var allProds = await _context.Products
+                    .Include(p => p.Category)
+                        .ThenInclude(c => c!.CategoryGroup)
+                    .Include(p => p.BaseUoM)
+                    .Include(p => p.Variants)
+                        .ThenInclude(v => v.Prices.Where(pr => pr.IsActive && !pr.IsDeleted))
+                            .ThenInclude(pr => pr.UoM)
+                    .Include(p => p.Variants)
+                        .ThenInclude(v => v.Attributes)
+                            .ThenInclude(a => a.AttributeDefinition)
+                    .Include(p => p.Variants)
+                        .ThenInclude(v => v.PromotionVariants)
+                            .ThenInclude(pv => pv.PromotionCampaign)
+                    .Where(p => p.IsActive && !p.IsDeleted)
+                    .ToListAsync();
+
+                product = allProds.FirstOrDefault(p => SlugHelper.GenerateSlug(p.Name) == slug);
+            }
+
+            if (product == null)
                 return null;
 
             var activeVariants = product.Variants.Where(v => v.IsActive && !v.IsDeleted).ToList();
             var variantIds = activeVariants.Select(v => v.Id).ToList();
+
+            // Lấy danh sách quy đổi đơn vị tính đặc thù của sản phẩm hoặc toàn hệ thống
+            var conversions = await _context.UoMConversions
+                .Include(c => c.FromUoM)
+                .Include(c => c.ToUoM)
+                .Where(c => (c.ProductId == product.Id || c.ProductId == null) && c.IsActive && !c.IsDeleted)
+                .ToListAsync();
 
             // Lấy tồn kho khả dụng cho các biến thể
             var inventories = await _context.WarehouseInventories
@@ -336,6 +365,29 @@ namespace backend.Services
                         }
                     }
 
+                    // Tìm tỷ lệ quy đổi từ ĐVT này (pr.UoMId) sang ĐVT cơ sở (product.BaseUoMId)
+                    decimal factor = 1;
+                    string? convText = null;
+
+                    if (pr.UoMId == product.BaseUoMId)
+                    {
+                        factor = 1;
+                        convText = null;
+                    }
+                    else
+                    {
+                        // Ưu tiên quy đổi đặc thù theo sản phẩm trước, sau đó tới quy đổi toàn cục
+                        var conv = conversions.FirstOrDefault(c => c.ProductId == product.Id && c.FromUoMId == pr.UoMId)
+                                ?? conversions.FirstOrDefault(c => c.ProductId == null && c.FromUoMId == pr.UoMId);
+
+                        if (conv != null && conv.ConversionFactor > 0)
+                        {
+                            factor = conv.ConversionFactor;
+                            string targetUom = conv.ToUoM?.Name ?? product.BaseUoM?.Name ?? "Kg";
+                            convText = $"1 {pr.UoM?.Name} = {conv.ConversionFactor:#,##0.##} {targetUom}";
+                        }
+                    }
+
                     return new ShopVariantPriceDto
                     {
                         PriceId = pr.Id,
@@ -344,7 +396,9 @@ namespace backend.Services
                         Price = pr.Price,
                         DiscountedPrice = discPrice,
                         DiscountPercent = discPercent,
-                        IsDefault = pr.IsDefault
+                        IsDefault = pr.IsDefault,
+                        ConversionFactor = factor,
+                        ConversionText = convText
                     };
                 }).ToList();
 
@@ -371,14 +425,14 @@ namespace backend.Services
                 Id = product.Id,
                 Code = product.Code,
                 Name = product.Name,
-                Slug = product.Slug ?? product.Id.ToString(),
+                Slug = !string.IsNullOrEmpty(product.Slug) ? product.Slug : SlugHelper.GenerateSlug(product.Name),
                 Description = product.Description,
                 ImagePath = product.ImagePath,
                 CategoryId = product.CategoryId,
                 CategoryName = product.Category?.Name,
-                CategorySlug = product.Category?.Slug,
+                CategorySlug = !string.IsNullOrEmpty(product.Category?.Slug) ? product.Category.Slug : (product.Category != null ? SlugHelper.GenerateSlug(product.Category.Name) : null),
                 CategoryGroupName = product.Category?.CategoryGroup?.Name,
-                CategoryGroupSlug = product.Category?.CategoryGroup?.Slug,
+                CategoryGroupSlug = !string.IsNullOrEmpty(product.Category?.CategoryGroup?.Slug) ? product.Category.CategoryGroup.Slug : (product.Category?.CategoryGroup != null ? SlugHelper.GenerateSlug(product.Category.CategoryGroup.Name) : null),
                 BaseUoMId = product.BaseUoMId,
                 BaseUoMName = product.BaseUoM?.Name ?? "Kg",
                 Attributes = productAttrs,

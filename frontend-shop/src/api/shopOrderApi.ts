@@ -14,6 +14,9 @@ const shopOrderApi = {
 
     cancel: (orderCode: string, data: ShopOrderCancelPayload) =>
         axiosClient.post(`/orders/${orderCode}/cancel`, data),
+
+    confirmDelivery: (orderCode: string) =>
+        axiosClient.post<ShopOrder>(`/orders/${orderCode}/confirm-delivery`),
 };
 
 export default shopOrderApi;

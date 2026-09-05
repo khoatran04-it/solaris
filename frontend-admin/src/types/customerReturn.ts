@@ -5,23 +5,26 @@ import { PaginationParams } from './common';
 // =========================================================
 export enum CustomerReturnStatus {
   Pending = 1,
-  Inspecting = 2,
-  Completed = 3,
-  Rejected = 4,
+  Approved = 2,
+  Inspecting = 3,
+  Completed = 4,
+  Rejected = 5,
 }
 
 export const CustomerReturnStatusLabels: Record<CustomerReturnStatus, string> = {
   [CustomerReturnStatus.Pending]: 'Chờ tiếp nhận',
-  [CustomerReturnStatus.Inspecting]: 'Đang kiểm định QC',
+  [CustomerReturnStatus.Approved]: 'Đã duyệt',
+  [CustomerReturnStatus.Inspecting]: 'Đang xử lý',
   [CustomerReturnStatus.Completed]: 'Đã hoàn tất',
   [CustomerReturnStatus.Rejected]: 'Từ chối trả hàng',
 };
 
 export const CustomerReturnStatusColors: Record<CustomerReturnStatus, string> = {
-  [CustomerReturnStatus.Pending]: 'bg-slate-100 text-slate-600 border-slate-200',
-  [CustomerReturnStatus.Inspecting]: 'bg-amber-100 text-amber-700 border-amber-200',
-  [CustomerReturnStatus.Completed]: 'bg-emerald-100 text-emerald-800 border-emerald-200',
-  [CustomerReturnStatus.Rejected]: 'bg-rose-100 text-rose-700 border-rose-200',
+  [CustomerReturnStatus.Pending]: 'bg-amber-50 text-amber-700 border-amber-200',
+  [CustomerReturnStatus.Approved]: 'bg-blue-50 text-blue-700 border-blue-200',
+  [CustomerReturnStatus.Inspecting]: 'bg-purple-50 text-purple-700 border-purple-200',
+  [CustomerReturnStatus.Completed]: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  [CustomerReturnStatus.Rejected]: 'bg-rose-50 text-rose-700 border-rose-200',
 };
 
 // =========================================================

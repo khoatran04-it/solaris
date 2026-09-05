@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Edit3, Trash2, Settings2, ShieldAlert, ShieldCheck } from 'lucide-react';
+import { Edit3, Trash2, Settings2, Tag, Layers } from 'lucide-react';
 
 // API & Types
 import { categoryAttributeApi } from '../../api/categoryAttributeApi';
@@ -23,15 +23,24 @@ import {
   ListPagination,
 } from '../../components/commons/ListUI';
 
+interface GroupedCategoryRow {
+  categoryId: number;
+  categoryName: string;
+  attributes: {
+    id: number;
+    attributeDefinitionId?: number;
+    attributeDefinitionName?: string;
+    isRequired: boolean;
+  }[];
+}
+
 const CategoryAttributeList: React.FC = () => {
   const navigate = useNavigate();
 
-  // --- STATE QUẢN LÝ DỮ LIỆU & PHÂN TRANG ---
-  const [data, setData] = useState<CategoryAttribute[]>([]);
+  // --- STATE QUẢN LÝ DỮ LIỆU ---
+  const [rawData, setRawData] = useState<CategoryAttribute[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(0);
-  const [totalItems, setTotalItems] = useState(0);
   const pageSize = 10;
 
   // --- STATE QUẢN LÝ TÌM KIẾM & BỘ LỌC (FILTERS) ---
@@ -46,7 +55,12 @@ const CategoryAttributeList: React.FC = () => {
 
   // --- STATE MODAL & TOAST ---
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [deletingRecord, setDeletingRecord] = useState<CategoryAttribute | null>(null);
+  const [deletingCategory, setDeletingCategory] = useState<{
+    categoryId: number;
+    categoryName: string;
+    firstRecordId?: number;
+  } | null>(null);
+
   const [toast, setToast] = useState<{
     show: boolean;
     type: 'success' | 'error' | 'warning';
@@ -84,15 +98,13 @@ const CategoryAttributeList: React.FC = () => {
     try {
       const response = await categoryAttributeApi.getAll({
         search: debouncedSearch,
-        pageIndex: currentPage,
-        pageSize: pageSize,
+        pageIndex: 1,
+        pageSize: 1000, // Lấy toàn bộ để nhóm theo danh mục
         categoryId: categoryFilter.length > 0 ? categoryFilter.join(',') : undefined,
         attributeDefinitionId: attributeFilter.length > 0 ? attributeFilter.join(',') : undefined,
       });
 
-      setData(response.items || []);
-      setTotalPages(response.totalPages || 0);
-      setTotalItems(response.totalRecords || 0);
+      setRawData(response.items || []);
     } catch (error) {
       showToast('error', 'CÓ LỖI XẢY RA KHI TẢI DỮ LIỆU');
     } finally {
@@ -103,7 +115,39 @@ const CategoryAttributeList: React.FC = () => {
   useEffect(() => {
     fetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentPage, debouncedSearch, categoryFilter, attributeFilter]);
+  }, [debouncedSearch, categoryFilter, attributeFilter]);
+
+  // --- NHÓM DỮ LIỆU THEO DANH MỤC (1 DÒNG / 1 DANH MỤC) ---
+  const groupedData: GroupedCategoryRow[] = useMemo(() => {
+    const map = new Map<number, GroupedCategoryRow>();
+
+    rawData.forEach((item) => {
+      if (!map.has(item.categoryId)) {
+        map.set(item.categoryId, {
+          categoryId: item.categoryId,
+          categoryName: item.categoryName || `Danh mục #${item.categoryId}`,
+          attributes: [],
+        });
+      }
+
+      map.get(item.categoryId)!.attributes.push({
+        id: item.id,
+        attributeDefinitionId: item.attributeDefinitionId,
+        attributeDefinitionName: item.attributeDefinitionName || `Thuộc tính #${item.attributeDefinitionId}`,
+        isRequired: item.isRequired,
+      });
+    });
+
+    return Array.from(map.values());
+  }, [rawData]);
+
+  // Phân trang trên groupedData
+  const totalItems = groupedData.length;
+  const totalPages = Math.ceil(totalItems / pageSize) || 1;
+  const paginatedData = useMemo(() => {
+    const startIndex = (currentPage - 1) * pageSize;
+    return groupedData.slice(startIndex, startIndex + pageSize);
+  }, [groupedData, currentPage, pageSize]);
 
   // --- HANDLERS ---
   const showToast = (type: 'success' | 'error' | 'warning', message: string) => {
@@ -112,12 +156,20 @@ const CategoryAttributeList: React.FC = () => {
   };
 
   const confirmDelete = async () => {
-    if (!deletingRecord) return;
+    if (!deletingCategory) return;
     try {
-      await categoryAttributeApi.delete(deletingRecord.id);
+      if (deletingCategory.firstRecordId) {
+        // Hỗ trợ xóa qua delete API nếu có
+        await categoryAttributeApi.delete(deletingCategory.firstRecordId);
+      } else {
+        await categoryAttributeApi.sync({
+          categoryId: deletingCategory.categoryId,
+          attributes: [],
+        });
+      }
       setIsModalOpen(false);
       fetchData();
-      showToast('success', `Gỡ thuộc tính thành công!`);
+      showToast('success', `Đã gỡ tất cả thuộc tính khỏi danh mục!`);
     } catch (error: any) {
       showToast('error', error?.response?.data?.message || 'Lỗi khi thực hiện xóa dữ liệu');
     }
@@ -129,7 +181,7 @@ const CategoryAttributeList: React.FC = () => {
 
       <ListHeader
         title="Cấu Hình Thuộc Tính Danh Mục"
-        subtitle="Gắn kết từ điển thuộc tính vào từng danh mục cụ thể (VD: Rau củ phải có độ tươi, Thịt cá phải có quy cách sơ chế)"
+        subtitle="Quản lý và gán các thuộc tính chất lượng (Brix, Vùng trồng, Tiêu chuẩn) cho từng danh mục nông sản"
         searchTerm={searchTerm}
         onSearchChange={setSearchTerm}
         onAdd={() => navigate('/category-attributes/create')}
@@ -152,105 +204,129 @@ const CategoryAttributeList: React.FC = () => {
                   />
                 </th>
 
-                {/* Cột 2: Thuộc tính gắn kèm (Có Filter) */}
-                <th className="w-[30%] py-4 px-2 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                {/* Cột 2: Thuộc tính gắn kèm (Tags chung 1 hàng) */}
+                <th className="w-[55%] py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">
                   <CustomFilter
-                    title="THUỘC TÍNH (ATTRIBUTE)"
+                    title="CÁC THUỘC TÍNH ÁP DỤNG (TAGS)"
                     options={attributeOptions}
                     selectedValues={attributeFilter}
                     onApply={setAttributeFilter}
                   />
                 </th>
 
-                {/* Cột 3: Trạng thái bắt buộc */}
-                <th className="w-[20%] py-4 px-2 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">
-                  YÊU CẦU NHẬP LIỆU
-                </th>
-
-                {/* Cột 4: Thao tác */}
-                <th className="w-[20%] py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">
+                {/* Cột 3: Thao tác */}
+                <th className="w-[15%] py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">
                   THAO TÁC
                 </th>
               </tr>
             </thead>
 
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-slate-100 text-sm">
               {isLoading ? (
-                <TableLoading colSpan={4} />
-              ) : data.length > 0 ? (
-                data.map((item) => (
-                  <tr
-                    key={item.id}
-                    className="hover:bg-slate-50/80 transition-colors duration-200 group"
-                  >
-                    {/* TÊN DANH MỤC */}
-                    <td className="py-3 px-6">
-                      <div className="font-extrabold text-slate-800 text-[14px]">
-                        {item.categoryName || (
-                          <span className="text-slate-400 italic">Lỗi: Danh mục đã bị xóa</span>
-                        )}
-                      </div>
-                    </td>
+                <TableLoading colSpan={3} />
+              ) : paginatedData.length > 0 ? (
+                paginatedData.map((group) => {
+                  const visibleAttrs = group.attributes.slice(0, 4);
+                  const extraCount = group.attributes.length - 4;
+                  const extraAttrsText = group.attributes
+                    .slice(4)
+                    .map((a) => `${a.isRequired ? '*' : ''}${a.attributeDefinitionName}`)
+                    .join(', ');
 
-                    {/* TÊN THUỘC TÍNH */}
-                    <td className="py-3 px-2">
-                      <div className="inline-flex items-center px-2.5 py-1 rounded bg-indigo-50 text-indigo-700 border border-indigo-100 font-semibold text-[12px]">
-                        {item.attributeDefinitionName || (
-                          <span className="italic text-slate-400">---</span>
-                        )}
-                      </div>
-                    </td>
-
-                    {/* IS REQUIRED */}
-                    <td className="py-3 px-2 text-center">
-                      <div className="flex justify-center">
-                        {item.isRequired ? (
-                          <span
-                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-rose-50 text-rose-600 border border-rose-200/50 font-bold text-[11px]"
-                            title="Bắt buộc nhập khi tạo Biến thể"
-                          >
-                            <ShieldAlert size={14} />
-                            Bắt buộc
+                  return (
+                    <tr
+                      key={group.categoryId}
+                      className="hover:bg-slate-50/80 transition-colors duration-200 group"
+                    >
+                      {/* DANH MỤC */}
+                      <td className="py-4 px-6 align-middle">
+                        <div className="flex flex-col gap-1">
+                          <span className="font-bold text-slate-900 text-sm">
+                            {group.categoryName}
                           </span>
-                        ) : (
-                          <span
-                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-100 text-slate-500 border border-slate-200 font-medium text-[11px]"
-                            title="Không bắt buộc nhập khi tạo Biến thể"
-                          >
-                            <ShieldCheck size={14} />
-                            Tùy chọn
+                          <span className="text-[11px] font-semibold text-amber-700 bg-amber-50 border border-amber-200/60 px-2.5 py-0.5 rounded-md w-fit inline-flex items-center gap-1">
+                            <Layers size={12} className="text-amber-500" />
+                            {group.attributes.length} thuộc tính
                           </span>
-                        )}
-                      </div>
-                    </td>
+                        </div>
+                      </td>
 
-                    {/* ACTIONS */}
-                    <td className="py-3 px-6">
-                      <div className="flex justify-center gap-1.5 opacity-40 group-hover:opacity-100 transition-all duration-300">
-                        <button
-                          onClick={() => navigate(`/category-attributes/edit/${item.id}`)}
-                          className="p-1.5 text-slate-400 hover:text-yellow-600 hover:bg-yellow-50 rounded-lg transition-colors"
-                          title="Chỉnh sửa"
-                        >
-                          <Edit3 size={17} strokeWidth={2.5} />
-                        </button>
-                        <button
-                          onClick={() => {
-                            setDeletingRecord(item);
-                            setIsModalOpen(true);
-                          }}
-                          className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                          title="Xóa"
-                        >
-                          <Trash2 size={17} strokeWidth={2.5} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                      {/* DANH SÁCH THẺ THUỘC TÍNH (GOM 1 HÀNG) */}
+                      <td className="py-4 px-4 align-middle">
+                        <div className="flex flex-wrap items-center gap-2">
+                          {visibleAttrs.map((attr) => (
+                            <span
+                              key={attr.id}
+                              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${
+                                attr.isRequired
+                                  ? 'bg-rose-50 text-rose-700 border-rose-200 shadow-2xs'
+                                  : 'bg-slate-50 text-slate-700 border-slate-200'
+                              }`}
+                              title={
+                                attr.isRequired
+                                  ? 'Bắt buộc nhập khi tạo sản phẩm'
+                                  : 'Tùy chọn nhập'
+                              }
+                            >
+                              <Tag
+                                size={12}
+                                className={attr.isRequired ? 'text-rose-500' : 'text-slate-400'}
+                              />
+                              {attr.attributeDefinitionName}
+                              {attr.isRequired && (
+                                <span className="text-rose-600 font-black text-xs">*</span>
+                              )}
+                            </span>
+                          ))}
+
+                          {/* THẺ +N NẾU VƯỢT QUÁ */}
+                          {extraCount > 0 && (
+                            <span
+                              className="inline-flex items-center px-2.5 py-1.5 rounded-xl text-xs font-bold bg-amber-100 text-amber-900 border border-amber-300/80 cursor-help hover:bg-amber-200 transition-colors"
+                              title={`Các thuộc tính khác: ${extraAttrsText}`}
+                            >
+                              +{extraCount} thuộc tính
+                            </span>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* THAO TÁC */}
+                      <td className="py-4 px-6 text-center align-middle">
+                        <div className="flex justify-center gap-1.5 opacity-60 group-hover:opacity-100 transition-all duration-300">
+                          <button
+                            onClick={() =>
+                              navigate(
+                                `/category-attributes/create?categoryId=${group.categoryId}`
+                              )
+                            }
+                            className="p-2 text-slate-400 hover:text-yellow-600 hover:bg-yellow-50 rounded-xl transition-colors cursor-pointer"
+                            title="Chỉnh sửa ma trận thuộc tính của danh mục này"
+                          >
+                            <Edit3 size={17} strokeWidth={2.5} />
+                          </button>
+                          <button
+                            onClick={() => {
+                              setDeletingCategory({
+                                categoryId: group.categoryId,
+                                categoryName: group.categoryName,
+                                firstRecordId: group.attributes[0]?.id,
+                              });
+                              setIsModalOpen(true);
+                            }}
+                            className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors cursor-pointer"
+                            title="Xóa"
+                          >
+                            <Trash2 size={17} strokeWidth={2.5} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               ) : (
                 <TableEmpty
-                  colSpan={4}
+                  colSpan={3}
                   message="Chưa có cấu hình nào khớp với tìm kiếm. Hãy thêm mới!"
                 />
               )}
@@ -270,8 +346,8 @@ const CategoryAttributeList: React.FC = () => {
       <ConfirmDeleteModal
         isOpen={isModalOpen}
         itemName={
-          deletingRecord
-            ? `thuộc tính ${deletingRecord.attributeDefinitionName} khỏi ${deletingRecord.categoryName}`
+          deletingCategory
+            ? `toàn bộ thuộc tính của danh mục "${deletingCategory.categoryName}"`
             : ''
         }
         onClose={() => setIsModalOpen(false)}

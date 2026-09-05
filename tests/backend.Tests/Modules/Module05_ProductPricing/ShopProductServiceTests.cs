@@ -408,5 +408,121 @@ namespace backend.Tests.Modules.Module05_ProductPricing
             certs.Should().Contain(new[] { "VietGAP", "GlobalGAP" });
         }
         #endregion
+
+        #region TC07: TRUY VẤN CHI TIẾT SẢN PHẨM THEO SLUG KÈM TỶ LỆ QUY ĐỔI ĐƠN VỊ TÍNH (UOM CONVERSIONS)
+        /// <summary>
+        /// TC07: Kiểm tra hàm GetBySlugAsync lấy thông tin chi tiết sản phẩm theo slug,
+        /// bao gồm: Biến thể, Bảng giá, Khuyến mãi, Tồn kho khả dụng và Tỷ lệ quy đổi ĐVT (ConversionFactor / ConversionText).
+        /// </summary>
+        [Fact]
+        public async Task GetBySlugAsync_ShouldReturnProductDetailWithUoMConversionsAndStock()
+        {
+            // Arrange
+            using var context = TestFactories.CreateInMemoryDbContext();
+            var now = DateTime.UtcNow;
+
+            var baseUoM = new UoM { Id = 1, Code = "KG", Name = "Kg", IsActive = true };
+            var boxUoM = new UoM { Id = 2, Code = "THUNG", Name = "Thùng", IsActive = true };
+            context.UoMs.AddRange(baseUoM, boxUoM);
+
+            var product = new Product
+            {
+                Id = 100,
+                Code = "PROD-BUOI",
+                Name = "Bưởi Da Xanh Bến Tre",
+                Slug = "buoi-da-xanh-ben-tre",
+                Description = "Bưởi ngon đặc sản",
+                BaseUoMId = 1,
+                BaseUoM = baseUoM,
+                IsActive = true
+            };
+            context.Products.Add(product);
+
+            var variant = new ProductVariant
+            {
+                Id = 50,
+                ProductId = 100,
+                Code = "SKU-BUOI-DX",
+                Name = "Bưởi Da Xanh Loại 1",
+                IsActive = true
+            };
+            context.ProductVariants.Add(variant);
+
+            // Bảng giá: Giá theo Kg (cơ sở) và Giá theo Thùng (quy đổi)
+            var priceKg = new ProductVariantPrice
+            {
+                Id = 1,
+                VariantId = 50,
+                UoMId = 1,
+                UoM = baseUoM,
+                Price = 60000m,
+                IsDefault = true,
+                IsActive = true
+            };
+            var priceBox = new ProductVariantPrice
+            {
+                Id = 2,
+                VariantId = 50,
+                UoMId = 2,
+                UoM = boxUoM,
+                Price = 550000m,
+                IsDefault = false,
+                IsActive = true
+            };
+            context.ProductVariantPrices.AddRange(priceKg, priceBox);
+
+            // Quy đổi: 1 Thùng = 10 Kg
+            var conversion = new UoMConversion
+            {
+                Id = 1,
+                ProductId = 100,
+                FromUoMId = 2,
+                FromUoM = boxUoM,
+                ToUoMId = 1,
+                ToUoM = baseUoM,
+                ConversionFactor = 10m,
+                IsActive = true
+            };
+            context.UoMConversions.Add(conversion);
+
+            // Tồn kho: 100 Kg khả dụng
+            var batch = new ProductBatch { Id = 1, BatchCode = "BATCH-BUOI-01", VariantId = 50, ExpiryDate = now.AddDays(20) };
+            var inventory = new WarehouseInventory { Id = 1, WarehouseId = 1, VariantId = 50, BatchId = 1, QuantityAvailable = 100 };
+            context.ProductBatches.Add(batch);
+            context.WarehouseInventories.Add(inventory);
+
+            await context.SaveChangesAsync();
+
+            var service = new ShopProductService(context, _mapper);
+
+            // Act
+            var result = await service.GetProductBySlugAsync("buoi-da-xanh-ben-tre");
+
+            // Assert
+            result.Should().NotBeNull();
+            result!.Name.Should().Be("Bưởi Da Xanh Bến Tre");
+            result.Slug.Should().Be("buoi-da-xanh-ben-tre");
+            result.BaseUoMName.Should().Be("Kg");
+            result.Variants.Should().HaveCount(1);
+
+            var variantDto = result.Variants.First();
+            variantDto.Name.Should().Be("Bưởi Da Xanh Loại 1");
+            variantDto.QuantityAvailable.Should().Be(100);
+            variantDto.IsInStock.Should().BeTrue();
+            variantDto.Prices.Should().HaveCount(2);
+
+            // Kiểm tra ĐVT cơ sở (Kg): ConversionFactor = 1, ConversionText = null
+            var kgPriceDto = variantDto.Prices.First(p => p.UoMId == 1);
+            kgPriceDto.Price.Should().Be(60000m);
+            kgPriceDto.ConversionFactor.Should().Be(1m);
+            kgPriceDto.ConversionText.Should().BeNull();
+
+            // Kiểm tra ĐVT phụ (Thùng): ConversionFactor = 10, ConversionText = "1 Thùng = 10 Kg"
+            var boxPriceDto = variantDto.Prices.First(p => p.UoMId == 2);
+            boxPriceDto.Price.Should().Be(550000m);
+            boxPriceDto.ConversionFactor.Should().Be(10m);
+            boxPriceDto.ConversionText.Should().Be("1 Thùng = 10 Kg");
+        }
+        #endregion
     }
 }

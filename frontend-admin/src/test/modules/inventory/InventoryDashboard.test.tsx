@@ -130,9 +130,12 @@ describe('Module 10 - InventoryDashboard Component', () => {
       );
     });
 
-    // Thay đổi kho sang Kho 2
-    const warehouseSelect = screen.getByRole('combobox');
-    fireEvent.change(warehouseSelect, { target: { value: '2' } });
+    // Mở dropdown chọn kho và chuyển đổi sang Kho 2
+    const whTrigger = screen.getByText(/Tổng Kho Hà Nội/i);
+    fireEvent.click(whTrigger);
+
+    const whOption = await screen.findByText(/Kho Nam Sài Gòn/i);
+    fireEvent.click(whOption);
 
     await waitFor(() => {
       expect(inventoryApi.getAll).toHaveBeenCalledWith(

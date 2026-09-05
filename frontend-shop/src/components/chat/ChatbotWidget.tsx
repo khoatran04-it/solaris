@@ -90,7 +90,7 @@ export default function ChatbotWidget() {
                 {
                     id: 0,
                     role: 'model',
-                    content: 'Dạ Solaris AI xin chào bạn! 🥑\nEm có thể giúp bạn **tư vấn nông sản sạch VietGAP**, **tra cứu tiến độ giao hàng GHN**, **tự động lên đơn đặt hàng nhanh**, hoặc **đặt lại đơn quen thuộc** ngay tại đây ạ!',
+                    content: 'Dạ Solaris AI xin chào bạn!\nEm có thể giúp bạn **tư vấn nông sản sạch VietGAP**, **tra cứu tiến độ giao hàng GHN**, **tự động lên đơn đặt hàng nhanh**, hoặc **đặt lại đơn quen thuộc** ngay tại đây ạ!',
                     payloadType: 'none',
                     createdAt: new Date().toISOString()
                 }
@@ -335,8 +335,8 @@ export default function ChatbotWidget() {
                                         {/* Render Payload: Product Cards */}
                                         {m.payloadType === 'product_cards' && Array.isArray(m.payload) && m.payload.length > 0 && (
                                             <div className="space-y-2 w-full pt-1">
-                                                {m.payload.map((prod: any) => (
-                                                    <ProductCardMini key={prod.id || prod.variantId} product={prod} />
+                                                {m.payload.map((prod: any, pIdx: number) => (
+                                                    <ProductCardMini key={prod.id || prod.variantId || prod.slug || `prod-${pIdx}`} product={prod} />
                                                 ))}
                                             </div>
                                         )}
@@ -381,7 +381,7 @@ export default function ChatbotWidget() {
                         <div className="px-3 py-1.5 bg-slate-50 border-t border-slate-100 flex items-center gap-1.5 overflow-x-auto no-scrollbar">
                             {quickPrompts.map((prompt, i) => (
                                 <button
-                                    key={i}
+                                    key={`prompt-${i}-${prompt}`}
                                     onClick={() => handleSendMessage(prompt)}
                                     className="whitespace-nowrap px-2.5 py-1 bg-white hover:bg-emerald-50 hover:border-emerald-300 border border-slate-200 rounded-full text-[10px] text-slate-600 hover:text-emerald-700 transition-all shrink-0 font-medium"
                                 >

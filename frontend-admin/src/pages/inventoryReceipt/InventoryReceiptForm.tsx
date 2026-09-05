@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Plus, Trash2, X, Save, PackageCheck } from 'lucide-react';
+import { Plus, Trash2, Save, PackageCheck } from 'lucide-react';
 
 // Common UI
 import {
@@ -13,7 +13,9 @@ import {
   FormHeader,
   FormSection,
 } from '../../components/commons/FormUI';
+import DatePicker from '../../components/commons/CustomDatePicker';
 import { Toast } from '../../components/commons/Toast';
+import { ModalCreateBatch } from '../../components/modals/ModalCreateBatch';
 
 // API & Types
 import { inventoryReceiptApi } from '../../api/inventoryReceiptApi';
@@ -23,9 +25,11 @@ import { productVariantApi } from '../../api/productVariantApi';
 import { uomApi } from '../../api/uomApi';
 import { productBatchApi } from '../../api/productBatchApi';
 import { purchaseOrderApi } from '../../api/purchaseOrderApi';
+import { customerReturnApi } from '../../api/customerReturnApi';
 import { useAuthStore } from '../../stores/useAuthStore';
 
 import { InventoryReceiptCreatePayload } from '../../types/inventoryReceipt';
+import { PurchaseOrder, PurchaseOrderStatus } from '../../types/purchaseOrder';
 
 // Types cho Dropdown
 interface SelectOption {
@@ -34,7 +38,7 @@ interface SelectOption {
 }
 
 interface DetailRow {
-  id: string; // Sử dụng UUID để tránh trùng lặp key
+  id: string;
   variantId: number | '';
   batchId: number | '';
   uoMId: number | '';
@@ -49,6 +53,7 @@ const InventoryReceiptForm: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const poIdParam = searchParams.get('poId');
+  const returnIdParam = searchParams.get('returnId');
   const { userInfo } = useAuthStore();
 
   const [loading, setLoading] = useState(false);
@@ -62,15 +67,20 @@ const InventoryReceiptForm: React.FC = () => {
   const [warehouses, setWarehouses] = useState<SelectOption[]>([]);
   const [suppliers, setSuppliers] = useState<SelectOption[]>([]);
   const [variants, setVariants] = useState<SelectOption[]>([]);
+  const [rawVariants, setRawVariants] = useState<any[]>([]);
   const [uoms, setUoms] = useState<SelectOption[]>([]);
   const [batches, setBatches] = useState<{ id: number; variantId: number; batchCode: string }[]>(
     []
   );
+  const [purchaseOrders, setPurchaseOrders] = useState<
+    { value: number; label: string; data: PurchaseOrder }[]
+  >([]);
 
   // --- FORM STATES ---
+  const [selectedPoId, setSelectedPoId] = useState<number | ''>('');
   const [warehouseId, setWarehouseId] = useState<number | ''>('');
   const [supplierId, setSupplierId] = useState<number | ''>('');
-  const [receiptDate, setReceiptDate] = useState(new Date().toLocaleDateString('en-CA'));
+  const [receiptDate, setReceiptDate] = useState<Date | null>(new Date());
   const [notes, setNotes] = useState('');
 
   const [details, setDetails] = useState<DetailRow[]>([
@@ -90,11 +100,11 @@ const InventoryReceiptForm: React.FC = () => {
   // --- BATCH MODAL STATES ---
   const [showBatchModal, setShowBatchModal] = useState(false);
   const [batchModalRowId, setBatchModalRowId] = useState('');
-  const [newBatch, setNewBatch] = useState({
-    batchCode: '',
-    manufactureDate: new Date().toLocaleDateString('en-CA'),
-    expiryDate: '',
-  });
+  const [batchModalVariant, setBatchModalVariant] = useState<{
+    id: number;
+    code?: string;
+    name?: string;
+  } | null>(null);
 
   const showToast = (type: 'success' | 'warning' | 'error', message: string) => {
     setToast({ show: true, type, message });
@@ -104,15 +114,14 @@ const InventoryReceiptForm: React.FC = () => {
   // --- EFFECTS ---
   const loadOptions = useCallback(async () => {
     try {
-      // 🔥 FIX BUG CHẾT CHÙM API: Bắt lỗi độc lập từng cái bằng .catch(() => [])
-      const [whRes, supRes, varRes, uomRes] = await Promise.all([
+      const [whRes, supRes, varRes, uomRes, poRes] = await Promise.all([
         warehouseApi.getAllList().catch(() => []),
         supplierApi.getAllList().catch(() => []),
         productVariantApi.getAllList().catch(() => []),
         uomApi.getAllList().catch(() => []),
+        purchaseOrderApi.getAllList?.().catch(() => []) || Promise.resolve([]),
       ]);
 
-      // Riêng API Lô hàng (Batch) gọi riêng để tránh sập
       let batchRes: any[] = [];
       try {
         const bData = await productBatchApi.getAllList();
@@ -123,50 +132,163 @@ const InventoryReceiptForm: React.FC = () => {
 
       setWarehouses(whRes.map((w: any) => ({ value: w.id, label: w.name })));
       setSuppliers(supRes.map((s: any) => ({ value: s.id, label: s.name })));
+      setRawVariants(varRes);
       setVariants(varRes.map((v: any) => ({ value: v.id, label: `${v.code} - ${v.name}` })));
       setUoms(uomRes.map((u: any) => ({ value: u.id, label: u.name })));
       setBatches(
         batchRes.map((b) => ({ id: b.id, variantId: b.variantId, batchCode: b.batchCode }))
+      );
+
+      // Lọc các Đơn Mua Hàng đã duyệt hoặc đang giao từng phần
+      const validPOs = (poRes || []).filter(
+        (p: PurchaseOrder) =>
+          p.status === PurchaseOrderStatus.Approved ||
+          p.status === PurchaseOrderStatus.PartiallyReceived
+      );
+      setPurchaseOrders(
+        validPOs.map((p: PurchaseOrder) => ({
+          value: p.id,
+          label: `${p.orderCode} - ${p.supplierName || 'NCC'} (${(p.totalAmount || 0).toLocaleString('vi-VN')} ₫)`,
+          data: p,
+        }))
       );
     } catch (error) {
       showToast('error', 'Lỗi hệ thống khi tải danh mục bổ trợ!');
     }
   }, []);
 
-  const loadPurchaseOrder = useCallback(async (id: number) => {
-    try {
-      const data = await purchaseOrderApi.getById(id);
-      if (data) {
-        setSupplierId(data.supplierId || '');
-        if (data.details && data.details.length > 0) {
-          const loadedDetails = data.details.map((d: any): DetailRow => {
-            const remainingQty = Math.max(0, d.orderQuantity - (d.receivedQuantity || 0));
-            return {
-              id: crypto.randomUUID(),
-              variantId: d.variantId || '',
-              batchId: '',
-              uoMId: d.uoMId || '',
-              purchaseOrderDetailId: d.id,
-              expectedQuantity: remainingQty,
-              acceptedQuantity: remainingQty,
-              rejectedQuantity: 0,
-              rejectReason: '',
-            };
-          });
-          setDetails(loadedDetails);
+  const loadPurchaseOrder = useCallback(
+    async (id: number) => {
+      try {
+        const data = await purchaseOrderApi.getById(id);
+        if (data) {
+          setSelectedPoId(data.id);
+          setSupplierId(data.supplierId || '');
+
+          // Tự động tìm và gán kho lưu trữ nếu có trong ghi chú PO
+          if (data.note) {
+            const match = data.note.match(/\[Kho nhận:\s*([^\]]+)\]/i);
+            if (match) {
+              const whSearch = match[1].trim();
+              const found = warehouses.find(
+                (w) => whSearch.includes(w.label) || w.label.includes(whSearch)
+              );
+              if (found) {
+                setWarehouseId(found.value);
+              }
+            }
+          }
+
+          if (data.details && data.details.length > 0) {
+            const loadedDetails = data.details.map((d: any): DetailRow => {
+              const remainingQty = Math.max(0, d.orderQuantity - (d.receivedQuantity || 0));
+              return {
+                id: crypto.randomUUID(),
+                variantId: d.variantId || '',
+                batchId: '',
+                uoMId: d.uoMId || '',
+                purchaseOrderDetailId: d.id,
+                expectedQuantity: remainingQty,
+                acceptedQuantity: remainingQty,
+                rejectedQuantity: 0,
+                rejectReason: '',
+              };
+            });
+            setDetails(loadedDetails);
+            showToast('success', `Đã tải ${loadedDetails.length} mặt hàng từ đơn mua ${data.orderCode}!`);
+          }
         }
+      } catch (error) {
+        showToast('error', 'Không thể tải thông tin Đơn mua hàng gốc');
       }
-    } catch (error) {
-      showToast('error', 'Không thể tải thông tin Đơn mua hàng gốc');
-    }
-  }, []);
+    },
+    [warehouses]
+  );
+
+  const loadCustomerReturn = useCallback(
+    async (id: number) => {
+      try {
+        const data = await customerReturnApi.getById(id);
+        if (data) {
+          setWarehouseId(data.warehouseId || '');
+          setNotes(
+            `Phiếu nhập kho thu hồi theo yêu cầu trả hàng ${data.returnCode} (Đơn hàng: ${data.orderCode})`
+          );
+
+          if (data.details && data.details.length > 0) {
+            const loadedDetails = data.details.map((d: any): DetailRow => {
+              const accepted =
+                d.acceptedQuantity > 0
+                  ? d.acceptedQuantity
+                  : d.damagedQuantity === 0
+                  ? d.returnedQuantity
+                  : 0;
+              const damaged = d.damagedQuantity;
+              const reason =
+                damaged > 0 ? d.rejectReason || 'Hàng dập nát/hỏng khi khách trả' : '';
+
+              return {
+                id: crypto.randomUUID(),
+                variantId: d.variantId || '',
+                batchId: d.batchId || '',
+                uoMId: d.uoMId || '',
+                expectedQuantity: d.returnedQuantity,
+                acceptedQuantity: accepted,
+                rejectedQuantity: damaged,
+                rejectReason: reason,
+              };
+            });
+            setDetails(loadedDetails);
+            showToast(
+              'success',
+              `Đã tải ${loadedDetails.length} mặt hàng từ Phiếu trả hàng ${data.returnCode}!`
+            );
+          }
+        }
+      } catch (error) {
+        showToast('error', 'Không thể tải thông tin Phiếu trả hàng!');
+      }
+    },
+    []
+  );
 
   useEffect(() => {
     loadOptions();
+  }, [loadOptions]);
+
+  useEffect(() => {
     if (poIdParam) {
       loadPurchaseOrder(parseInt(poIdParam));
     }
-  }, [poIdParam, loadOptions, loadPurchaseOrder]);
+  }, [poIdParam, loadPurchaseOrder]);
+
+  useEffect(() => {
+    if (returnIdParam) {
+      loadCustomerReturn(parseInt(returnIdParam));
+    }
+  }, [returnIdParam, loadCustomerReturn]);
+
+  // Khi người dùng chọn PO từ Dropdown
+  const handleSelectPO = (poId: number | '') => {
+    if (!poId || poId === 0) {
+      setSelectedPoId('');
+      setSupplierId('');
+      setDetails([
+        {
+          id: crypto.randomUUID(),
+          variantId: '',
+          batchId: '',
+          uoMId: '',
+          expectedQuantity: 0,
+          acceptedQuantity: 0,
+          rejectedQuantity: 0,
+          rejectReason: '',
+        },
+      ]);
+      return;
+    }
+    loadPurchaseOrder(Number(poId));
+  };
 
   // --- HANDLERS ---
   const handleAddRow = () => {
@@ -218,74 +340,27 @@ const InventoryReceiptForm: React.FC = () => {
   // --- BATCH (LÔ HÀNG) HANDLERS ---
   const openBatchModal = (rowId: string, variantId: number | '') => {
     if (!variantId) {
-      showToast('warning', 'Vui lòng chọn Sản phẩm trước khi sinh Lô mới!');
+      showToast('warning', 'Vui lòng chọn Sản phẩm trước khi tạo Lô mới!');
       return;
     }
+    if (!supplierId) {
+      showToast('warning', 'Vui lòng chọn Nhà Cung Cấp hoặc Đơn Mua Hàng trước khi tạo Lô!');
+      return;
+    }
+    const variantObj = rawVariants.find((v) => v.id === Number(variantId));
     setBatchModalRowId(rowId);
-
-    const todayStr = new Date().toLocaleDateString('en-CA').replace(/-/g, '');
-    const randomNum = Math.floor(Math.random() * 1000)
-      .toString()
-      .padStart(3, '0');
-
-    setNewBatch({
-      batchCode: `L${todayStr}-${randomNum}`,
-      manufactureDate: new Date().toLocaleDateString('en-CA'),
-      expiryDate: '',
-    });
+    setBatchModalVariant(
+      variantObj
+        ? { id: variantObj.id, code: variantObj.code, name: variantObj.name }
+        : { id: Number(variantId) }
+    );
     setShowBatchModal(true);
   };
 
-  const handleSaveBatch = async () => {
-    if (!supplierId) {
-      showToast(
-        'warning',
-        'KỶ LUẬT THÉP: Bắt buộc chọn Nhà Cung Cấp ở thông tin chung trước khi tạo Lô!'
-      );
-      return;
-    }
-
-    if (!newBatch.batchCode || !newBatch.manufactureDate || !newBatch.expiryDate) {
-      showToast('warning', 'Vui lòng nhập đầy đủ Mã Lô, Ngày SX và Hạn sử dụng!');
-      return;
-    }
-
-    const targetRow = details.find((d) => d.id === batchModalRowId);
-    if (!targetRow || !targetRow.variantId) return;
-
-    try {
-      // Lót múi giờ trưa UTC để an toàn khi lưu vào DB (tránh bị lùi 1 ngày)
-      const safeMfgDate = new Date(`${newBatch.manufactureDate}T12:00:00Z`).toISOString();
-      const safeExpDate = new Date(`${newBatch.expiryDate}T12:00:00Z`).toISOString();
-
-      const res = await productBatchApi.create({
-        batchCode: newBatch.batchCode,
-        variantId: targetRow.variantId as number,
-        supplierId: Number(supplierId),
-        manufactureDate: safeMfgDate,
-        expiryDate: safeExpDate,
-        isActive: true,
-      });
-
-      if (res) {
-        // 🔥 Ép kiểu về number để giải quyết triệt để lỗi TypeScript "Type number | undefined"
-        const newBatchId = (res.id || res.Id) as number;
-
-        const newBatchObj = {
-          id: newBatchId,
-          variantId: targetRow.variantId as number,
-          batchCode: newBatch.batchCode,
-        };
-
-        setBatches((prev) => [...prev, newBatchObj]);
-        handleDetailChange(batchModalRowId, 'batchId', newBatchId);
-
-        setShowBatchModal(false);
-        showToast('success', 'Tạo Lô thành công!');
-      }
-    } catch (error) {
-      showToast('error', 'Lỗi server: Không thể tạo Lô hàng!');
-    }
+  const handleBatchCreated = (newBatch: { id: number; variantId: number; batchCode: string }) => {
+    setBatches((prev) => [...prev, newBatch]);
+    handleDetailChange(batchModalRowId, 'batchId', newBatch.id);
+    showToast('success', `Đã tạo thành công Lô ${newBatch.batchCode}!`);
   };
 
   // --- VALIDATION & SUBMIT ---
@@ -319,7 +394,7 @@ const InventoryReceiptForm: React.FC = () => {
 
     setLoading(true);
     try {
-      const safeReceiptDate = new Date(`${receiptDate}T12:00:00Z`).toISOString();
+      const safeReceiptDate = receiptDate ? receiptDate.toISOString() : new Date().toISOString();
 
       const payload: InventoryReceiptCreatePayload = {
         warehouseId: warehouseId as number,
@@ -343,7 +418,7 @@ const InventoryReceiptForm: React.FC = () => {
 
       await inventoryReceiptApi.create(payload);
       showToast('success', 'NHẬP KHO THÀNH CÔNG!');
-      setTimeout(() => navigate('/inventory-receipts'), 1500);
+      setTimeout(() => navigate('/inventory-receipts'), 1200);
     } catch (error) {
       showToast('error', 'Không thể lưu phiếu nhập. Kiểm tra lại kết nối!');
     } finally {
@@ -356,83 +431,140 @@ const InventoryReceiptForm: React.FC = () => {
       <Toast {...toast} />
       <FormHeader
         title="Phiếu Nhập Kho"
-        subtitle="Kiểm đếm thực tế và phân loại Lô/Hạn sử dụng"
+        subtitle="Kiểm đếm thực tế hàng giao tại cửa kho và phân loại Lô/Hạn sử dụng (FEFO)"
         icon={PackageCheck}
         onBack={() => navigate('/inventory-receipts')}
       />
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-6">
         <FormCard>
+          {/* --- SECTION 1: THÔNG TIN CHUNG --- */}
           <FormSection title="1. Thông Tin Chung">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-4">
+              {/* CHỌN ĐƠN MUA HÀNG (PO) - AUTO FILL TOÀN BỘ */}
+              <div className="lg:col-span-2">
+                <FormSelect
+                  label="Đơn Mua Hàng (PO) Tham Chiếu"
+                  value={selectedPoId}
+                  onSelect={(val) => handleSelectPO(val)}
+                  options={[
+                    { value: 0, label: '-- Nhập tự do (Không theo đơn PO) --' },
+                    ...purchaseOrders,
+                  ]}
+                  showSearch
+                  searchPlaceholder="Tìm mã đơn PO hoặc Nhà cung cấp..."
+                  placeholder="-- Chọn Đơn Mua Hàng PO để tự động điền --"
+                />
+              </div>
+
               <FormSelect
                 label="Kho Lưu Trữ"
                 value={warehouseId}
-                onSelect={(val) => setWarehouseId(val)}
+                onSelect={(val) => {
+                  setWarehouseId(val);
+                  setErrors((prev) => ({ ...prev, warehouseId: '' }));
+                }}
                 options={warehouses}
                 required
                 error={errors.warehouseId}
+                showSearch
+                searchPlaceholder="Tìm kho..."
+                placeholder="-- Chọn kho nhận hàng --"
               />
+
               <FormSelect
                 label="Nhà Cung Cấp"
                 value={supplierId}
                 onSelect={(val) => setSupplierId(val)}
                 options={suppliers}
                 showSearch
-                disabled={Boolean(poIdParam)}
+                searchPlaceholder="Tìm NCC..."
+                placeholder="-- Chọn Nhà cung cấp --"
+                disabled={Boolean(selectedPoId && selectedPoId !== 0)}
               />
-              <FormInput
-                label="Ngày Nhận Hàng"
-                type="date"
-                value={receiptDate}
-                onChange={(e) => setReceiptDate(e.target.value)}
-                required
-                error={errors.receiptDate}
-              />
+
+              <div className="lg:col-span-2">
+                <DatePicker
+                  label="Ngày Nhận Hàng"
+                  required
+                  value={receiptDate}
+                  onChange={(date) => {
+                    setReceiptDate(date);
+                    setErrors((prev) => ({ ...prev, receiptDate: '' }));
+                  }}
+                  error={errors.receiptDate}
+                  placeholder="Chọn ngày nhận hàng..."
+                />
+              </div>
+
+              <div className="lg:col-span-2">
+                <FormTextarea
+                  label="Ghi chú đợt nhận hàng"
+                  placeholder="Tình trạng xe tải bảo ôn, độ tươi nông sản, bao bì đóng gói..."
+                  value={notes}
+                  onChange={(e: any) => setNotes(e.target.value)}
+                  rows={2}
+                />
+              </div>
             </div>
-            <FormTextarea
-              label="Ghi chú"
-              placeholder="Thông tin thêm về tình trạng xe, bao bì..."
-              value={notes}
-              onChange={(e: any) => setNotes(e.target.value)}
-              rows={2}
-            />
           </FormSection>
 
+          {/* --- SECTION 2: CHI TIẾT MẶT HÀNG --- */}
           <FormSection title="2. Chi Tiết Mặt Hàng">
             {errors.details && (
-              <div className="mb-4 text-rose-600 font-bold bg-rose-50 p-3 rounded-lg border border-rose-200">
+              <div className="mb-4 text-rose-600 font-bold bg-rose-50 p-3.5 rounded-xl border border-rose-200 text-xs">
                 {errors.details}
               </div>
             )}
 
-            <div className="overflow-x-auto border border-slate-200 rounded-xl bg-white shadow-sm mb-4">
-              <table className="w-full text-sm text-left">
-                <thead className="bg-slate-50 border-b border-slate-200 font-bold text-slate-500 uppercase text-xs">
+            <div className="overflow-x-auto border border-slate-200 rounded-2xl bg-white shadow-2xs mb-4 min-h-[320px]">
+              <table className="w-full text-sm text-left border-collapse min-w-[760px]">
+                <thead className="bg-slate-50/80 border-b border-slate-200 font-bold text-slate-500 uppercase text-xs">
                   <tr>
-                    <th className="px-4 py-3 w-10 text-center">#</th>
-                    <th className="px-4 py-3 min-w-50">Sản phẩm</th>
-                    <th className="px-4 py-3 min-w-30">ĐVT</th>
-                    <th className="px-4 py-3 min-w-55">Lô hàng</th>
-                    <th className="px-3 py-3 w-24 text-center bg-slate-100">Dự kiến</th>
-                    <th className="px-3 py-3 w-24 text-center bg-emerald-50">Thực nhận</th>
-                    <th className="px-3 py-3 w-24 text-center bg-rose-50">Trả về</th>
-                    <th className="px-4 py-3 min-w-50">Lý do lỗi</th>
-                    <th className="px-4 py-3 w-12 text-center"></th>
+                    <th className="px-3 py-3.5 w-10 text-center">#</th>
+                    <th className="px-3 py-3.5 w-[30%] min-w-[170px]">
+                      Sản phẩm <span className="text-red-500">*</span>
+                    </th>
+                    <th className="px-2 py-3.5 w-24 min-w-[85px]">
+                      ĐVT <span className="text-red-500">*</span>
+                    </th>
+                    <th className="px-3 py-3.5 w-[36%] min-w-[220px]">
+                      Lô hàng (FEFO) <span className="text-red-500">*</span>
+                    </th>
+                    <th className="px-2 py-3.5 w-20 text-center bg-slate-100/70 whitespace-nowrap">
+                      Dự kiến
+                    </th>
+                    <th className="px-2 py-3.5 w-20 text-center bg-emerald-50/70 text-emerald-800 whitespace-nowrap">
+                      Thực nhận <span className="text-red-500">*</span>
+                    </th>
+                    <th className="px-2 py-3.5 w-18 text-center bg-rose-50/70 text-rose-800 whitespace-nowrap">
+                      Trả về
+                    </th>
+                    <th className="px-3 py-3.5 w-36 min-w-[120px] whitespace-nowrap">
+                      Lý do lỗi
+                    </th>
+                    <th className="px-2 py-3.5 w-10 text-center"></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {details.map((row, index) => {
                     const rowBatches = batches.filter((b) => b.variantId === row.variantId);
                     return (
-                      <tr key={row.id} className="hover:bg-slate-50/50">
-                        <td className="px-4 py-2 text-slate-400 text-center">{index + 1}</td>
+                      <tr
+                        key={row.id}
+                        className="hover:bg-slate-50/60 transition-colors"
+                        style={{ zIndex: 50 - index }}
+                      >
+                        <td className="px-3 py-3 text-slate-400 text-center font-medium">
+                          {index + 1}
+                        </td>
                         <td className="p-2">
                           <FormSelect
                             label=""
                             options={variants}
                             value={row.variantId}
                             showSearch
+                            searchPlaceholder="Tìm sản phẩm..."
                             placeholder="Chọn SP..."
                             onSelect={(val) => {
                               handleDetailChange(row.id, 'variantId', val);
@@ -450,11 +582,12 @@ const InventoryReceiptForm: React.FC = () => {
                             placeholder="ĐVT"
                             onSelect={(val) => handleDetailChange(row.id, 'uoMId', val)}
                             error={errors[`uoMId_${row.id}`]}
+                            disabled={Boolean(row.purchaseOrderDetailId)}
                           />
                         </td>
                         <td className="p-2">
-                          <div className="flex gap-1 items-center">
-                            <div className="flex-1">
+                          <div className="flex gap-1.5 items-center">
+                            <div className="flex-1 min-w-0">
                               <FormSelect
                                 label=""
                                 options={rowBatches.map((b) => ({
@@ -463,52 +596,62 @@ const InventoryReceiptForm: React.FC = () => {
                                 }))}
                                 value={row.batchId}
                                 placeholder="Lô..."
+                                showSearch
+                                searchPlaceholder="Tìm mã lô..."
                                 onSelect={(val) => handleDetailChange(row.id, 'batchId', val)}
                                 error={errors[`batchId_${row.id}`]}
                               />
                             </div>
-                            <button
-                              type="button"
-                              onClick={() => openBatchModal(row.id, row.variantId)}
-                              className="px-2 py-1.5 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-lg text-[10px] font-black hover:bg-indigo-100 uppercase shrink-0"
-                            >
-                              + Lô
-                            </button>
+                            {!row.batchId && (
+                              <button
+                                type="button"
+                                onClick={() => openBatchModal(row.id, row.variantId)}
+                                className="px-2.5 py-2.5 bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100 rounded-xl text-xs font-bold transition-all shadow-2xs shrink-0 cursor-pointer flex items-center gap-1"
+                                title="Tạo Lô Hàng Mới Cho Mặt Hàng Này"
+                              >
+                                + Lô
+                              </button>
+                            )}
                           </div>
                         </td>
-                        <td className="p-2 bg-slate-50/50 border-l border-slate-100">
-                          <FormInput
-                            label=""
+                        <td className="p-2 bg-slate-50/50 border-l border-slate-100 text-center">
+                          <input
                             type="number"
+                            min="0"
                             value={row.expectedQuantity}
-                            onChange={(e) =>
-                              handleDetailChange(row.id, 'expectedQuantity', Number(e.target.value))
-                            }
-                            className="text-center"
+                            onFocus={(e) => e.target.select()}
+                            onChange={(e) => {
+                              const val = e.target.value === '' ? 0 : Math.max(0, parseInt(e.target.value, 10) || 0);
+                              handleDetailChange(row.id, 'expectedQuantity', val);
+                            }}
+                            className="w-16 h-10 mx-auto block text-center font-bold text-slate-600 bg-slate-100 border border-slate-200 rounded-xl text-sm outline-none"
                             disabled={Boolean(row.purchaseOrderDetailId)}
                           />
                         </td>
-                        <td className="p-2 bg-emerald-50/20 border-l border-emerald-100">
-                          <FormInput
-                            label=""
+                        <td className="p-2 bg-emerald-50/20 border-l border-emerald-100 text-center">
+                          <input
                             type="number"
+                            min="0"
                             value={row.acceptedQuantity}
-                            onChange={(e) =>
-                              handleDetailChange(row.id, 'acceptedQuantity', Number(e.target.value))
-                            }
-                            className="text-center font-bold text-emerald-700"
-                            error={errors[`acceptedQuantity_${row.id}`]}
+                            onFocus={(e) => e.target.select()}
+                            onChange={(e) => {
+                              const val = e.target.value === '' ? 0 : Math.max(0, parseInt(e.target.value, 10) || 0);
+                              handleDetailChange(row.id, 'acceptedQuantity', val);
+                            }}
+                            className="w-16 h-10 mx-auto block text-center font-black text-emerald-700 bg-white border border-emerald-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-400 outline-none shadow-2xs"
                           />
                         </td>
-                        <td className="p-2 bg-rose-50/20 border-l border-rose-100">
-                          <FormInput
-                            label=""
+                        <td className="p-2 bg-rose-50/20 border-l border-rose-100 text-center">
+                          <input
                             type="number"
+                            min="0"
                             value={row.rejectedQuantity}
-                            onChange={(e) =>
-                              handleDetailChange(row.id, 'rejectedQuantity', Number(e.target.value))
-                            }
-                            className="text-center font-bold text-rose-700"
+                            onFocus={(e) => e.target.select()}
+                            onChange={(e) => {
+                              const val = e.target.value === '' ? 0 : Math.max(0, parseInt(e.target.value, 10) || 0);
+                              handleDetailChange(row.id, 'rejectedQuantity', val);
+                            }}
+                            className="w-16 h-10 mx-auto block text-center font-bold text-rose-700 bg-white border border-rose-300 rounded-xl text-sm focus:ring-2 focus:ring-rose-400 outline-none shadow-2xs"
                           />
                         </td>
                         <td className="p-2 border-l border-slate-100">
@@ -528,8 +671,9 @@ const InventoryReceiptForm: React.FC = () => {
                           <button
                             type="button"
                             onClick={() => handleRemoveRow(row.id)}
-                            className="p-2 text-slate-400 hover:text-rose-600 rounded-lg transition-colors disabled:opacity-20"
+                            className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors disabled:opacity-20 cursor-pointer"
                             disabled={details.length === 1}
+                            title="Xóa dòng"
                           >
                             <Trash2 size={16} />
                           </button>
@@ -539,13 +683,13 @@ const InventoryReceiptForm: React.FC = () => {
                   })}
                 </tbody>
               </table>
-              <div className="p-3 bg-slate-50/80 border-t border-slate-200 flex justify-center">
+              <div className="p-3.5 bg-slate-50/50 border-t border-slate-200 flex justify-center">
                 <button
                   type="button"
                   onClick={handleAddRow}
-                  className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-indigo-600 hover:bg-indigo-100 rounded-lg transition-colors"
+                  className="flex items-center gap-2 px-5 py-2.5 text-sm font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-xl transition-all cursor-pointer shadow-2xs hover:shadow-xs active:scale-98"
                 >
-                  <Plus size={16} /> THÊM DÒNG MỚI
+                  <Plus size={16} strokeWidth={3} /> THÊM DÒNG MỚI
                 </button>
               </div>
             </div>
@@ -555,7 +699,7 @@ const InventoryReceiptForm: React.FC = () => {
             <button
               type="button"
               onClick={() => navigate('/inventory-receipts')}
-              className="px-6 py-2.5 text-sm font-bold text-slate-600 bg-white border border-slate-300 rounded-xl hover:bg-slate-50 transition-colors shadow-sm"
+              className="px-6 py-2.5 text-sm font-bold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors shadow-2xs cursor-pointer"
             >
               Hủy Bỏ
             </button>
@@ -564,60 +708,16 @@ const InventoryReceiptForm: React.FC = () => {
         </FormCard>
       </form>
 
-      {/* --- BATCH MODAL --- */}
-      {showBatchModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="flex justify-between items-center px-6 py-4 bg-indigo-50 border-b border-indigo-100">
-              <h3 className="text-lg font-black text-indigo-800">Khai Báo Lô Hàng Mới</h3>
-              <button
-                onClick={() => setShowBatchModal(false)}
-                className="text-slate-400 hover:text-slate-600 bg-white rounded-full p-1 shadow-sm"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="p-6 space-y-4">
-              <FormInput
-                label="Mã Lô (Batch Code) *"
-                value={newBatch.batchCode}
-                onChange={(e) => setNewBatch({ ...newBatch, batchCode: e.target.value })}
-                required
-              />
-              <FormInput
-                label="Ngày Sản Xuất *"
-                type="date"
-                value={newBatch.manufactureDate}
-                onChange={(e) => setNewBatch({ ...newBatch, manufactureDate: e.target.value })}
-                required
-              />
-              <FormInput
-                label="Hạn Sử Dụng (Expiry) *"
-                type="date"
-                value={newBatch.expiryDate}
-                onChange={(e) => setNewBatch({ ...newBatch, expiryDate: e.target.value })}
-                required
-              />
-            </div>
-
-            <div className="px-6 py-4 bg-slate-50 border-t flex justify-end gap-3">
-              <button
-                onClick={() => setShowBatchModal(false)}
-                className="px-5 py-2 text-sm font-bold text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-100 shadow-sm"
-              >
-                Hủy Bỏ
-              </button>
-              <button
-                onClick={handleSaveBatch}
-                className="flex items-center px-5 py-2 text-sm font-bold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 shadow-sm"
-              >
-                <Save className="w-4 h-4 mr-2" /> Lưu Lô Mới
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* --- STANDALONE BATCH MODAL --- */}
+      <ModalCreateBatch
+        isOpen={showBatchModal}
+        onClose={() => setShowBatchModal(false)}
+        onSuccess={handleBatchCreated}
+        variantId={batchModalVariant?.id || 0}
+        variantCode={batchModalVariant?.code}
+        variantName={batchModalVariant?.name}
+        supplierId={Number(supplierId) || 0}
+      />
     </PageContainer>
   );
 };

@@ -4,15 +4,21 @@ import '@testing-library/jest-dom/vitest';
 import { MemoryRouter } from 'react-router-dom';
 import InventoryTransferForm from '../../../pages/inventoryTransfer/InventoryTransferForm';
 import { inventoryTransferApi } from '../../../api/inventoryTransferApi';
+import { inventoryIssueApi } from '../../../api/inventoryIssueApi';
 import { warehouseApi } from '../../../api/warehouseApi';
 import { productVariantApi } from '../../../api/productVariantApi';
 import { uomApi } from '../../../api/uomApi';
-import { productBatchApi } from '../../../api/productBatchApi';
 
 // Mock APIs
 vi.mock('../../../api/inventoryTransferApi', () => ({
   inventoryTransferApi: {
     create: vi.fn(),
+  },
+}));
+
+vi.mock('../../../api/inventoryIssueApi', () => ({
+  inventoryIssueApi: {
+    getSuggestedBatches: vi.fn(),
   },
 }));
 
@@ -30,12 +36,6 @@ vi.mock('../../../api/productVariantApi', () => ({
 
 vi.mock('../../../api/uomApi', () => ({
   uomApi: {
-    getAllList: vi.fn(),
-  },
-}));
-
-vi.mock('../../../api/productBatchApi', () => ({
-  productBatchApi: {
     getAllList: vi.fn(),
   },
 }));
@@ -69,14 +69,14 @@ describe('Module 10 - InventoryTransferForm Component', () => {
   ];
   const mockVariants = [{ id: 1, name: 'Dâu Tây Đà Lạt Hộp 500g', code: 'SKU-DAUTAY-500G' }];
   const mockUoms = [{ id: 1, name: 'Hộp 500g' }];
-  const mockBatches = [{ id: 1, variantId: 1, batchCode: 'BATCH-2026-001' }];
+  const mockBatches = [{ batchId: 1, batchCode: 'BATCH-2026-001', expiryDate: '2026-12-31', quantityAvailable: 100 }];
 
   beforeEach(() => {
     vi.clearAllMocks();
     (warehouseApi.getAllList as any).mockResolvedValue(mockWarehouses);
     (productVariantApi.getAllList as any).mockResolvedValue(mockVariants);
     (uomApi.getAllList as any).mockResolvedValue(mockUoms);
-    (productBatchApi.getAllList as any).mockResolvedValue(mockBatches);
+    (inventoryIssueApi.getSuggestedBatches as any).mockResolvedValue(mockBatches);
   });
 
   // TC01: RENDER FORM LẬP PHIẾU ĐIỀU CHUYỂN
@@ -144,7 +144,6 @@ describe('Module 10 - InventoryTransferForm Component', () => {
       expect(warehouseApi.getAllList).toHaveBeenCalled();
       expect(productVariantApi.getAllList).toHaveBeenCalled();
       expect(uomApi.getAllList).toHaveBeenCalled();
-      expect(productBatchApi.getAllList).toHaveBeenCalled();
     });
 
     // 1. Chọn Kho nguồn: Tổng Kho Hà Nội
@@ -167,13 +166,7 @@ describe('Module 10 - InventoryTransferForm Component', () => {
     const spOption = await screen.findByText('SKU-DAUTAY-500G - Dâu Tây Đà Lạt Hộp 500g');
     fireEvent.click(spOption);
 
-    // 4. Chọn Lô
-    const batchTrigger = screen.getByText('-- Chọn Lô --');
-    fireEvent.click(batchTrigger);
-    const batchOption = await screen.findByText('BATCH-2026-001');
-    fireEvent.click(batchOption);
-
-    // 5. Chọn ĐVT
+    // 4. Chọn ĐVT
     const uomTriggers = screen.getAllByText('ĐVT');
     fireEvent.click(uomTriggers[uomTriggers.length - 1]);
     const uomOption = await screen.findByText('Hộp 500g');

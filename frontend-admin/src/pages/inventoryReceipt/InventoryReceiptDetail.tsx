@@ -249,17 +249,17 @@ const InventoryReceiptDetail: React.FC = () => {
                   value={<span className="font-bold text-slate-800">{receipt.warehouseName}</span>}
                 />
                 <InfoField label="Nhà cung cấp" value={receipt.supplierName || '---'} />
-                <InfoField label="Người kiểm đếm" value={receipt.receivedByName || '---'} />
+                <InfoField label="Thủ kho kiểm đếm" value={receipt.receivedByName || '---'} />
 
                 <div className="flex flex-col items-start">
                   <span className="text-[11px] font-bold text-slate-400 uppercase mb-1">
-                    Ngày xe cập bến
+                    Ngày Nhận Hàng
                   </span>
                   <DateCell isoString={receipt.receiptDate} />
                 </div>
                 <div className="flex flex-col items-start">
                   <span className="text-[11px] font-bold text-slate-400 uppercase mb-1">
-                    Thời gian lập phiếu
+                    Thời Gian Lập Phiếu
                   </span>
                   <DateTimeCell isoString={receipt.createdAt} />
                 </div>

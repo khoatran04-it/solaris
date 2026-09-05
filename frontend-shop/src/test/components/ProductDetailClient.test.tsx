@@ -4,6 +4,12 @@ import '@testing-library/jest-dom';
 import ProductDetailClient from '@/components/product/ProductDetailClient';
 import { useCartStore } from '@/stores/cartStore';
 
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({
+    push: vi.fn(),
+  }),
+}));
+
 /**
  * ============================================================================
  * 🛒 FRONTEND SHOP - MODULE 12: SHOPPING CART
@@ -66,8 +72,8 @@ describe('Module 12 - ProductDetailClient Component', () => {
   it('TC01 - Render giá bán đã chiết khấu, badge giảm giá và ĐVT mặc định', () => {
     render(<ProductDetailClient product={mockProduct as any} />);
 
-    expect(screen.getByText('80.000 ₫')).toBeInTheDocument();
-    expect(screen.getByText('100.000 ₫')).toBeInTheDocument();
+    expect(screen.getAllByText(/80\.000/).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText(/100\.000/)).toBeInTheDocument();
     expect(screen.getByText('-20%')).toBeInTheDocument();
     expect(screen.getByText('/ Kg')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Thêm Vào Giỏ Hàng/i })).toBeInTheDocument();

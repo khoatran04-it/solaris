@@ -295,7 +295,7 @@ namespace backend.Tests.Modules.Module14_PaymentAndShipping
             var updatedOrder = await context.Orders.FindAsync(100);
             updatedOrder!.TrackingCode.Should().Be("GHN-EXPRESS-100830-999");
             updatedOrder.ShippingProvider.Should().Be("GHN");
-            updatedOrder.Status.Should().Be(OrderStatus.Shipping);
+            updatedOrder.Status.Should().Be(OrderStatus.Confirmed);
         }
         #endregion
 

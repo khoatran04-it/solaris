@@ -18,3 +18,13 @@ export interface CategoryAttributeQueryParams extends PaginationParams {
   categoryId?: string;
   attributeDefinitionId?: string;
 }
+
+export interface CategoryAttributeSyncItem {
+  attributeDefinitionId: number;
+  isRequired: boolean;
+}
+
+export interface CategoryAttributeSyncPayload {
+  categoryId: number;
+  attributes: CategoryAttributeSyncItem[];
+}

@@ -5,9 +5,11 @@ interface DatePickerProps {
   label?: string;
   required?: boolean;
   error?: string;
-  value: Date | null;
+  value?: Date | null;
+  selectedDate?: Date | null;
   onChange: (date: Date) => void;
   placeholder?: string;
+  alignRight?: boolean;
 }
 
 const DatePicker: React.FC<DatePickerProps> = ({
@@ -15,12 +17,22 @@ const DatePicker: React.FC<DatePickerProps> = ({
   required,
   error,
   value,
+  selectedDate,
   onChange,
   placeholder = 'Chọn ngày/tháng/năm...',
+  alignRight = false,
 }) => {
+  const activeDate = value !== undefined ? value : (selectedDate !== undefined ? selectedDate : null);
   const [isOpen, setIsOpen] = useState(false);
-  const [currentMonth, setCurrentMonth] = useState(value || new Date());
+  const [currentMonth, setCurrentMonth] = useState(activeDate || new Date());
   const wrapperRef = useRef<HTMLDivElement>(null);
+
+  // Cập nhật currentMonth khi activeDate thay đổi
+  useEffect(() => {
+    if (activeDate) {
+      setCurrentMonth(activeDate);
+    }
+  }, [activeDate]);
 
   // Đóng lịch khi click ra ngoài
   useEffect(() => {
@@ -34,8 +46,8 @@ const DatePicker: React.FC<DatePickerProps> = ({
   }, []);
 
   // Format ngày hiển thị ra ô Input (VD: 27/06/2026)
-  const displayValue = value
-    ? value.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })
+  const displayValue = activeDate
+    ? activeDate.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })
     : '';
 
   // --- LOGIC VẼ TỜ LỊCH ---
@@ -102,7 +114,11 @@ const DatePicker: React.FC<DatePickerProps> = ({
 
       {/* POPUP LỊCH (CALENDAR) */}
       {isOpen && (
-        <div className="absolute top-[calc(100%+8px)] left-0 w-70 bg-white border border-slate-100 rounded-2xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.15)] z-100 p-5 font-normal animate-in fade-in zoom-in-95 duration-200">
+        <div
+          className={`absolute top-[calc(100%+8px)] ${
+            alignRight ? 'right-0' : 'left-0'
+          } w-70 bg-white border border-slate-100 rounded-2xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.15)] z-100 p-5 font-normal animate-in fade-in zoom-in-95 duration-200`}
+        >
           {/* Header: Tháng / Năm */}
           <div className="flex justify-between items-center mb-5">
             <button

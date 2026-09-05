@@ -108,17 +108,15 @@ namespace backend.Services
                                  ?? await _context.IAUsers.FirstOrDefaultAsync();
                 int systemUserId = systemUser?.Id ?? 2;
 
-                // Chọn kho tối ưu theo GPS hoặc kho mặc định
-                var warehouses = await _context.Warehouses
-                    .Include(w => w.Address)
-                    .Where(w => w.IsActive && !w.IsDeleted)
-                    .ToListAsync();
+                // 1. Chạy Smart Routing Engine để xác định Kho đích tối ưu gần khách hàng nhất
+                var cartItemsDto = cart.Items.Select(i => new backend.DTOs.OrderDTOs.OrderDetailCreateDto
+                {
+                    VariantId = i.VariantId,
+                    Quantity = i.Quantity
+                }).ToList();
 
-                if (!warehouses.Any())
-                    throw new InvalidOperationException("Hệ thống chưa thiết lập kho hàng đang hoạt động.");
-
-                var primaryWarehouse = warehouses.FirstOrDefault(w => w.WarehouseType != null && w.WarehouseType.ToLower().Contains("tổng")) ?? warehouses.First();
-                int selectedWarehouseId = primaryWarehouse.Id;
+                var routing = await _routingService.DetermineOptimalWarehouseAsync(customerAddressId, cartItemsDto);
+                int selectedWarehouseId = routing.OptimalWarehouseId;
 
                 // 2. Chuẩn bị chi tiết đơn hàng & Tính giá
                 var orderDetails = new List<OrderDetail>();
@@ -126,7 +124,7 @@ namespace backend.Services
                 decimal totalDiscount = 0;
 
                 // 3. Sinh trước mã đơn hàng ORD-YYYYMMDD-XXXXXX
-                string dateStr = now.ToString("yyyyMMdd");
+                string dateStr = DateTimeHelper.VietnamDateString;
                 string randStr = Guid.NewGuid().ToString("N").Substring(0, 6).ToUpperInvariant();
                 string orderCode = $"ORD-{dateStr}-{randStr}";
 
@@ -134,7 +132,7 @@ namespace backend.Services
                 {
                     if (item.Variant == null) continue;
 
-                    // Kiểm tra tồn kho khả dụng tại kho được chọn (ưu tiên lô còn hạn sử dụng theo FEFO)
+                    // Kiểm tra tồn kho khả dụng tại kho đích trước (ưu tiên lô còn hạn sử dụng theo FEFO)
                     var inventory = await _context.WarehouseInventories
                         .Include(wi => wi.Batch)
                         .Where(wi => wi.WarehouseId == selectedWarehouseId && 
@@ -144,7 +142,9 @@ namespace backend.Services
                         .OrderBy(wi => wi.Batch != null ? wi.Batch.ExpiryDate : DateTime.MaxValue)
                         .FirstOrDefaultAsync();
 
-                    // Nếu kho được chọn không có lô còn hạn đủ số lượng, tìm kho khác có lô còn hạn đủ số lượng
+                    int reserveWarehouseId = selectedWarehouseId;
+
+                    // Nếu kho đích không đủ hàng, tìm kho khác có lô còn hạn đủ số lượng để giữ chỗ (Reserve)
                     if (inventory == null)
                     {
                         var anyStockInv = await _context.WarehouseInventories
@@ -157,7 +157,7 @@ namespace backend.Services
 
                         if (anyStockInv != null)
                         {
-                            selectedWarehouseId = anyStockInv.WarehouseId;
+                            reserveWarehouseId = anyStockInv.WarehouseId;
                             inventory = anyStockInv;
                         }
                     }
@@ -172,7 +172,7 @@ namespace backend.Services
 
                         if (inventory != null)
                         {
-                            selectedWarehouseId = inventory.WarehouseId;
+                            reserveWarehouseId = inventory.WarehouseId;
                         }
                     }
 
@@ -182,7 +182,7 @@ namespace backend.Services
                         throw new InvalidOperationException($"Sản phẩm '{item.Variant.Name}' không đủ tồn kho khả dụng (Yêu cầu: {item.Quantity}, Còn: {currentAvail}).");
                     }
 
-                    // Khóa giữ chỗ tồn kho
+                    // Khóa giữ chỗ tồn kho tại kho thực tế đang giữ hàng
                     inventory.QuantityAvailable -= item.Quantity;
                     inventory.QuantityReserved += item.Quantity;
                     inventory.UpdatedAt = now;
@@ -192,12 +192,12 @@ namespace backend.Services
                     {
                         TransactionCode = $"TX-{now:yyyyMMdd}-{Guid.NewGuid():N}".Substring(0, 20).ToUpperInvariant(),
                         Type = TransactionType.Reserve,
-                        WarehouseId = selectedWarehouseId,
+                        WarehouseId = reserveWarehouseId,
                         VariantId = item.VariantId,
                         BatchId = inventory.BatchId,
                         Quantity = item.Quantity,
                         ReferenceCode = orderCode,
-                        Note = $"Khách hàng {customer.Name} ({customer.Code}) đặt hàng qua Shop",
+                        Note = $"Khách hàng {customer.Name} ({customer.Code}) đặt hàng qua Shop (Kho xử lý đơn: #{selectedWarehouseId}, Giữ hàng tại kho #{reserveWarehouseId})",
                         CreatedById = systemUserId,
                         CreatedAt = now
                     });
@@ -262,7 +262,7 @@ namespace backend.Services
                     DeliveryAddress = deliveryAddress,
                     WarehouseId = selectedWarehouseId,
                     OrderDate = now,
-                    Status = OrderStatus.Confirmed, // Đã giữ chỗ tồn kho
+                    Status = OrderStatus.Pending, // Chờ duyệt đơn hàng
                     PaymentStatus = PaymentStatus.Unpaid,
                     PaymentMethod = request.PaymentMethod,
                     SubTotal = subTotal,
@@ -361,12 +361,14 @@ namespace backend.Services
                 int systemUserId = systemUser?.Id ?? 2;
 
                 // Hoàn trả lại tồn kho đã giữ chỗ (Unreserve)
-                if (order.WarehouseId.HasValue && order.Status == OrderStatus.Confirmed)
+                if (order.WarehouseId.HasValue && (order.Status == OrderStatus.Confirmed || order.Status == OrderStatus.Pending))
                 {
                     foreach (var d in order.Details)
                     {
                         var inv = await _context.WarehouseInventories
-                            .FirstOrDefaultAsync(wi => wi.WarehouseId == order.WarehouseId.Value && wi.VariantId == d.VariantId);
+                            .FirstOrDefaultAsync(wi => wi.WarehouseId == order.WarehouseId.Value && wi.VariantId == d.VariantId && wi.QuantityReserved > 0)
+                            ?? await _context.WarehouseInventories
+                            .FirstOrDefaultAsync(wi => wi.VariantId == d.VariantId && wi.QuantityReserved > 0);
 
                         if (inv != null)
                         {
@@ -398,6 +400,62 @@ namespace backend.Services
 
                 await _context.SaveChangesAsync();
                 return true;
+            });
+        }
+
+        public async Task<ShopOrderReadDto> ConfirmDeliveryAsync(int customerId, string orderCode)
+        {
+            return await _context.ExecuteInTransactionAsync(async () =>
+            {
+                var order = await _context.Orders
+                    .Include(o => o.Details)
+                    .FirstOrDefaultAsync(o => o.CustomerId == customerId && o.OrderCode == orderCode.Trim() && !o.IsDeleted);
+
+                if (order == null)
+                    throw new KeyNotFoundException("Không tìm thấy đơn hàng.");
+
+                if (order.Status == OrderStatus.Cancelled)
+                    throw new InvalidOperationException("Đơn hàng này đã bị hủy.");
+
+                if (order.Status == OrderStatus.Completed)
+                    return await GetOrderByCodeInternalAsync(order.Id);
+
+                var now = DateTime.UtcNow;
+
+                // 1. Chuyển trạng thái đơn hàng sang Hoàn Tất (Giao thành công)
+                order.Status = OrderStatus.Completed;
+                order.UpdatedAt = now;
+
+                // 2. Nếu là COD hoặc chưa thanh toán, đánh dấu Đã Thanh Toán (khách đã nhận hàng và trả tiền)
+                if (order.PaymentStatus != PaymentStatus.Paid)
+                {
+                    order.PaymentStatus = PaymentStatus.Paid;
+                }
+
+                await _context.SaveChangesAsync();
+
+                // 3. Tự động tính tổng chi tiêu hoàn tất và xét nâng hạng thành viên (Customer Tier)
+                var customer = await _context.Customers.FirstOrDefaultAsync(c => c.Id == customerId && !c.IsDeleted);
+                if (customer != null)
+                {
+                    var totalSpent = await _context.Orders
+                        .Where(o => o.CustomerId == customerId && o.Status == OrderStatus.Completed && !o.IsDeleted)
+                        .SumAsync(o => o.TotalAmount);
+
+                    var highestTier = await _context.CustomerTiers
+                        .Where(t => t.IsActive && !t.IsDeleted && t.MinSpending <= totalSpent)
+                        .OrderByDescending(t => t.MinSpending)
+                        .FirstOrDefaultAsync();
+
+                    if (highestTier != null && customer.CustomerTierId != highestTier.Id)
+                    {
+                        customer.CustomerTierId = highestTier.Id;
+                        customer.UpdatedAt = now;
+                        await _context.SaveChangesAsync();
+                    }
+                }
+
+                return await GetOrderByCodeInternalAsync(order.Id);
             });
         }
 

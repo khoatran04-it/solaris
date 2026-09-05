@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ClipboardList, AlertCircle } from 'lucide-react';
+import { ClipboardList, AlertCircle, Save } from 'lucide-react';
 
 import {
   PageContainer,
@@ -102,21 +102,27 @@ const InventoryAuditForm: React.FC = () => {
       />
 
       <FormCard>
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-6">
           <FormSection title="Thông Tin Đợt Kiểm Kê">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <FormSelect
                 label="Kho cần kiểm kê"
                 value={warehouseId}
-                onSelect={(val) => setWarehouseId(val ? Number(val) : '')}
+                onSelect={(val) => {
+                  setWarehouseId(val ? Number(val) : '');
+                  setErrors((prev) => ({ ...prev, warehouseId: '' }));
+                }}
                 options={warehouses}
                 error={errors.warehouseId}
+                placeholder="-- Chọn Kho kiểm kê --"
+                showSearch
+                searchPlaceholder="Tìm kiếm kho..."
                 required
               />
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-                  Hình thức kiểm kê
+                  Hình thức kiểm kê <span className="text-red-500">*</span>
                 </label>
                 <div className="grid grid-cols-3 gap-2">
                   {Object.keys(InventoryAuditTypeLabels).map((key) => {
@@ -127,9 +133,9 @@ const InventoryAuditForm: React.FC = () => {
                         key={t}
                         type="button"
                         onClick={() => setAuditType(t)}
-                        className={`px-3 py-2.5 rounded-xl text-xs font-bold border transition-all text-center ${
+                        className={`px-3 py-2.5 rounded-xl text-xs font-bold border transition-all text-center cursor-pointer ${
                           isSelected
-                            ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                            ? 'bg-amber-400 text-slate-950 border-amber-400 shadow-2xs font-black'
                             : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
                         }`}
                       >
@@ -144,17 +150,17 @@ const InventoryAuditForm: React.FC = () => {
                 <FormTextarea
                   label="Ghi chú & Chỉ đạo kiểm kê"
                   value={note}
-                  onChange={(e) => setNote(e.target.value)}
+                  onChange={(e: any) => setNote(e.target.value)}
                   rows={3}
                   placeholder="Kiểm kê định kỳ cuối tháng, chú ý đếm kỹ các Lô hàng sát hạn sử dụng..."
                 />
               </div>
             </div>
 
-            <div className="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-xl flex gap-3 items-start text-xs text-amber-800 leading-relaxed">
+            <div className="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-2xl flex gap-3 items-start text-xs text-amber-900 leading-relaxed shadow-2xs">
               <AlertCircle className="w-5 h-5 shrink-0 text-amber-600 mt-0.5" />
               <div>
-                <span className="font-bold">Lưu ý quản trị:</span> Khi nhấn "Tạo đợt kiểm kê", hệ
+                <span className="font-bold">Lưu ý quản trị:</span> Khi nhấn "TẠO MỚI", hệ
                 thống sẽ lưu lại toàn bộ số dư tồn kho khả dụng hiện tại làm mốc so sánh (System
                 Quantity). Nhân viên đi đếm có thể sử dụng chế độ{' '}
                 <strong>Đếm Mù (Blind Count)</strong> để ghi nhận số liệu khách quan nhất.
@@ -162,8 +168,16 @@ const InventoryAuditForm: React.FC = () => {
             </div>
           </FormSection>
 
-          <div className="flex justify-end pt-6">
-            <SubmitButton loading={loading} isEditMode={false} />
+          {/* FOOTER ACTION BUTTONS */}
+          <div className="flex justify-end gap-3 pt-6 border-t border-slate-100 mt-2">
+            <button
+              type="button"
+              onClick={() => navigate('/inventory-audits')}
+              className="px-6 py-2.5 text-sm font-bold text-slate-600 bg-white border border-slate-300 rounded-xl hover:bg-slate-50 transition-colors shadow-xs cursor-pointer"
+            >
+              Hủy Bỏ
+            </button>
+            <SubmitButton loading={loading} isEditMode={false} icon={Save} />
           </div>
         </form>
       </FormCard>

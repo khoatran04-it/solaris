@@ -43,7 +43,7 @@ builder.Services.AddFluentValidationAutoValidation();
 builder.Services.AddValidatorsFromAssembly(typeof(Program).Assembly);
 builder.Services.AddEndpointsApiExplorer();
 
-// 🔥 CẬP NHẬT SWAGGER: Thêm nút Authorize (Ổ khóa) để test API kẹp Token
+// CẬP NHẬT SWAGGER: Thêm nút Authorize (Ổ khóa) để test API kẹp Token
 builder.Services.AddSwaggerGen(c =>
 {
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
@@ -76,9 +76,7 @@ builder.Services.AddSwaggerGen(c =>
 
 builder.Services.AddAutoMapper(cfg => cfg.AddMaps(typeof(Program).Assembly));
 
-// ==========================================
-// 🔥 CẤU HÌNH JWT AUTHENTICATION
-// ==========================================
+// CẤU HÌNH JWT AUTHENTICATION
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
 var secretKey = jwtSettings["SecretKey"];
 
@@ -137,6 +135,7 @@ builder.Services.AddScoped<IInventoryService, InventoryService>();
 // --- Đăng ký DI cho nhóm Identity & Access ---
 builder.Services.AddScoped<IIARoleService, IARoleService>();
 builder.Services.AddScoped<IIAUserService, IAUserService>();
+builder.Services.AddScoped<IIAPermissionService, IAPermissionService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 
 // --- Đăng ký DI cho nhóm Procurement (Phase 3) ---
@@ -176,145 +175,26 @@ builder.Services.AddHttpClient<IGeminiChatService, GeminiChatService>();
 var app = builder.Build();
 
 // 4. Middlewares
-// 🔥 BẮT BUỘC: UseCors phải đứng đầu tiên để trả header CORS cho cả Preflight OPTIONS và Exception Responses
 app.UseCors("AllowViteApp");
-
 app.UseMiddleware<ExceptionMiddleware>();
-
 app.UseSwagger();
 app.UseSwaggerUI();
-
-// 🔥 BẮT BUỘC: Authentication (Xác thực ai là ai) phải nằm trước Authorization (Xác thực có quyền gì)
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
 
-// Tự động chuẩn hóa dữ liệu trạng thái khi khởi động
+// Khởi tạo và đồng bộ dữ liệu mầm khi khởi động
 using (var scope = app.Services.CreateScope())
 {
     try
     {
         var db = scope.ServiceProvider.GetRequiredService<SolarisDbContext>();
-        db.Database.Migrate();
-        db.Database.ExecuteSqlRaw("UPDATE SupplierTypes SET IsActive = 1 WHERE IsActive = 0 AND IsDeleted = 0;");
-        db.Database.ExecuteSqlRaw("UPDATE CustomerTypes SET IsActive = 1 WHERE IsActive = 0 AND IsDeleted = 0;");
-        db.Database.ExecuteSqlRaw("UPDATE CustomerTiers SET IsActive = 1 WHERE IsActive = 0 AND IsDeleted = 0;");
-        db.Database.ExecuteSqlRaw("UPDATE CustomerGroups SET IsActive = 1 WHERE IsActive = 0 AND IsDeleted = 0;");
-        db.Database.ExecuteSqlRaw("UPDATE ProductCategoryGroups SET IsActive = 1 WHERE IsActive = 0 AND IsDeleted = 0;");
-        db.Database.ExecuteSqlRaw("UPDATE ProductCategories SET IsActive = 1 WHERE IsActive = 0 AND IsDeleted = 0;");
-        db.Database.ExecuteSqlRaw("UPDATE UoMCategories SET IsActive = 1 WHERE IsActive = 0 AND IsDeleted = 0;");
-        db.Database.ExecuteSqlRaw("UPDATE UoMs SET IsActive = 1 WHERE IsActive = 0 AND IsDeleted = 0;");
-        db.Database.ExecuteSqlRaw("UPDATE UoMConversions SET IsActive = 1 WHERE IsActive = 0 AND IsDeleted = 0;");
-        db.Database.ExecuteSqlRaw("UPDATE Products SET IsActive = 1 WHERE IsActive = 0 AND IsDeleted = 0;");
-        db.Database.ExecuteSqlRaw("UPDATE AttributeDefinitions SET IsActive = 1 WHERE IsActive = 0 AND IsDeleted = 0;");
-        db.Database.ExecuteSqlRaw("UPDATE ProductAttributes SET IsActive = 1 WHERE IsActive = 0 AND IsDeleted = 0;");
-        db.Database.ExecuteSqlRaw("UPDATE ProductVariants SET IsActive = 1 WHERE IsActive = 0 AND IsDeleted = 0;");
-        db.Database.ExecuteSqlRaw("UPDATE PromotionCampaigns SET IsActive = 1 WHERE IsActive = 0 AND IsDeleted = 0;");
-        db.Database.ExecuteSqlRaw("UPDATE Warehouses SET IsActive = 1 WHERE IsActive = 0 AND IsDeleted = 0;");
-        db.Database.ExecuteSqlRaw("UPDATE SupplierProducts SET IsActive = 1 WHERE IsActive = 0 AND IsDeleted = 0;");
-
-        // Tự động chuẩn hóa kiểu cột và sửa lỗi font Unicode cho IAPermissions
-        try
-        {
-            db.Database.ExecuteSqlRaw("ALTER TABLE IAPermissions ALTER COLUMN Module NVARCHAR(100) NOT NULL;");
-            db.Database.ExecuteSqlRaw("ALTER TABLE IAPermissions ALTER COLUMN Name NVARCHAR(200) NOT NULL;");
-
-            var permissionUpdates = new Dictionary<int, (string Module, string Name)>
-            {
-                { 1, ("Hệ thống", "Xem danh sách Vai trò") },
-                { 2, ("Hệ thống", "Thêm/Sửa/Xóa Vai trò & Phân quyền") },
-                { 3, ("Hệ thống", "Xem danh sách Nhân viên") },
-                { 4, ("Hệ thống", "Thêm/Sửa/Xóa Nhân viên") },
-                { 5, ("Nhà cung cấp", "Xem danh sách Nhà cung cấp") },
-                { 6, ("Nhà cung cấp", "Thêm/Sửa/Xóa Nhà cung cấp") },
-                { 7, ("Nhà cung cấp", "Cấu hình Phân loại Nhà cung cấp") },
-                { 8, ("Khách hàng", "Xem danh sách Khách hàng") },
-                { 9, ("Khách hàng", "Thêm/Sửa/Xóa Khách hàng") },
-                { 10, ("Khách hàng", "Cấu hình Khách hàng (Loại, Cấp bậc, Nhóm)") },
-                { 11, ("Sản phẩm", "Xem danh sách Sản phẩm & Biến thể") },
-                { 12, ("Sản phẩm", "Thêm/Sửa/Xóa Sản phẩm & Biến thể") },
-                { 13, ("Sản phẩm", "Quản lý Danh mục & Nhóm danh mục") },
-                { 14, ("Thuộc tính", "Quản lý Từ điển & Gán Thuộc tính") },
-                { 15, ("Đơn vị tính", "Xem Đơn vị tính & Tỷ lệ quy đổi") },
-                { 16, ("Đơn vị tính", "Quản lý Đơn vị tính, Phân loại & Quy đổi") },
-                { 17, ("Khuyến mãi", "Xem Chiến dịch Khuyến mãi") },
-                { 18, ("Khuyến mãi", "Quản lý Chiến dịch Khuyến mãi") },
-                { 19, ("Kho hàng", "Xem Kho hàng") },
-                { 20, ("Kho hàng", "Quản lý Kho hàng") },
-                { 21, ("Kho tổng", "Xem Tồn kho tổng") },
-                { 22, ("Kho tổng", "Quản lý & Điều chuyển Tồn kho") }
-            };
-
-            foreach (var kvp in permissionUpdates)
-            {
-                db.Database.ExecuteSqlRaw(
-                    "UPDATE IAPermissions SET Module = {0}, Name = {1} WHERE Id = {2}",
-                    kvp.Value.Module, kvp.Value.Name, kvp.Key);
-            }
-        }
-        catch
-        {
-            // Bỏ qua nếu bảng chưa tạo xong
-        }
-
-        // Seed Từ điển thuộc tính EAV Nông sản
-        var defaultAttrs = new List<(string Name, string DataType)>
-        {
-            ("Xuất xứ / Vùng trồng", "string"),
-            ("Chứng nhận chất lượng", "string"),
-            ("Độ ngọt (Brix)", "number"),
-            ("Hướng dẫn bảo quản", "string"),
-            ("Hướng dẫn sử dụng", "string"),
-            ("Khối lượng tịnh", "string")
-        };
-
-        foreach (var attr in defaultAttrs)
-        {
-            if (!db.AttributeDefinitions.Any(a => a.Name.ToLower() == attr.Name.ToLower() && !a.IsDeleted))
-            {
-                db.AttributeDefinitions.Add(new AttributeDefinition
-                {
-                    Name = attr.Name,
-                    DataType = attr.DataType,
-                    IsActive = true,
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
-                });
-            }
-        }
-        db.SaveChanges();
-
-        // Tự động sinh Slugs cho các bản ghi cũ nếu chưa có
-        var productsWithoutSlug = db.Products.Where(p => string.IsNullOrEmpty(p.Slug) && !p.IsDeleted).ToList();
-        foreach (var p in productsWithoutSlug)
-        {
-            p.Slug = backend.Helpers.SlugHelper.GenerateSlug(p.Name);
-        }
-
-        var categoriesWithoutSlug = db.ProductCategories.Where(c => string.IsNullOrEmpty(c.Slug) && !c.IsDeleted).ToList();
-        foreach (var c in categoriesWithoutSlug)
-        {
-            c.Slug = backend.Helpers.SlugHelper.GenerateSlug(c.Name);
-        }
-
-        var groupsWithoutSlug = db.ProductCategoryGroups.Where(g => string.IsNullOrEmpty(g.Slug) && !g.IsDeleted).ToList();
-        foreach (var g in groupsWithoutSlug)
-        {
-            g.Slug = backend.Helpers.SlugHelper.GenerateSlug(g.Name);
-        }
-
-        var promosWithoutSlug = db.PromotionCampaigns.Where(pr => string.IsNullOrEmpty(pr.Slug) && !pr.IsDeleted).ToList();
-        foreach (var pr in promosWithoutSlug)
-        {
-            pr.Slug = backend.Helpers.SlugHelper.GenerateSlug(pr.Name);
-        }
-
-        db.SaveChanges();
+        await DbInitializer.SeedAsync(db);
     }
     catch
     {
-        // Bỏ qua nếu database chưa sẵn sàng hoặc trong quá trình khởi tạo migration
+        // Bỏ qua nếu database chưa sẵn sàng trong quá trình khởi tạo migration
     }
 }
 

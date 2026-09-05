@@ -1,4 +1,4 @@
-﻿namespace backend.DTOs.ShopDTOs
+namespace backend.DTOs.ShopDTOs
 {
     /// <summary>
     /// DTO hiển thị Thẻ Sản phẩm (Product Card).
@@ -159,6 +159,16 @@
 
         /// <summary>Là tùy chọn giá được chọn sẵn khi vừa load trang.</summary>
         public bool IsDefault { get; set; }
+
+        /// <summary>
+        /// Hệ số quy đổi so với ĐVT cơ sở (Ví dụ: 1 Thùng = 10 Kg -> Factor = 10).
+        /// </summary>
+        public decimal ConversionFactor { get; set; } = 1;
+
+        /// <summary>
+        /// Chuỗi hiển thị quy đổi trực quan cho khách (Ví dụ: "1 Thùng = 10 Kilogram").
+        /// </summary>
+        public string? ConversionText { get; set; }
         #endregion
     }
 

@@ -254,5 +254,45 @@ namespace backend.Tests.Modules.Module01_Auth
             await act.Should().ThrowAsync<KeyNotFoundException>();
         }
         #endregion
+
+        #region TEST CASE 08 & 09: BẢO VỆ VAI TRÒ HỆ THỐNG CỐT LÕI (SUPER ADMIN)
+        [Fact(DisplayName = "TC08 - Chặn xóa vai trò quản trị hệ thống mặc định (ADMIN / SUPER_ADMIN)")]
+        public async Task DeleteAsync_SuperAdminRole_ShouldThrowInvalidOperationException()
+        {
+            // Arrange
+            using var context = TestFactories.CreateInMemoryDbContext();
+            var mapper = TestFactories.CreateAutoMapper();
+
+            var role = new IARole { Id = 1, Code = "SUPER_ADMIN", Name = "Quản trị viên tối cao" };
+            context.IARoles.Add(role);
+            await context.SaveChangesAsync();
+
+            var roleService = new IARoleService(context, mapper);
+
+            // Act & Assert
+            var act = async () => await roleService.DeleteAsync(1);
+            await act.Should().ThrowAsync<InvalidOperationException>()
+                .WithMessage("*Không thể xóa vai trò quản trị hệ thống mặc định*");
+        }
+
+        [Fact(DisplayName = "TC09 - Chặn tạm khóa vai trò quản trị hệ thống mặc định (ADMIN / SUPER_ADMIN)")]
+        public async Task ToggleActiveAsync_SuperAdminRole_ShouldThrowInvalidOperationException()
+        {
+            // Arrange
+            using var context = TestFactories.CreateInMemoryDbContext();
+            var mapper = TestFactories.CreateAutoMapper();
+
+            var role = new IARole { Id = 1, Code = "ADMIN", Name = "Quản trị viên", IsActive = true };
+            context.IARoles.Add(role);
+            await context.SaveChangesAsync();
+
+            var roleService = new IARoleService(context, mapper);
+
+            // Act & Assert
+            var act = async () => await roleService.ToggleActiveAsync(1);
+            await act.Should().ThrowAsync<InvalidOperationException>()
+                .WithMessage("*Không thể tạm khóa vai trò quản trị hệ thống mặc định*");
+        }
+        #endregion
     }
 }

@@ -31,13 +31,18 @@ namespace backend.Services
         #region Truy vấn (Query)
         /// <inheritdoc />
         public async Task<PagedResult<InventoryReceiptReadDto>> GetPagedAsync(
-            string? search, int? warehouseId, int? supplierId, int? status, DateTime? startDate, DateTime? endDate, int pageIndex, int pageSize)
+            string? search, int? warehouseId, int? supplierId, int? status, DateTime? startDate, DateTime? endDate, int pageIndex, int pageSize, List<int>? allowedWarehouseIds = null)
         {
             var query = _context.InventoryReceipts
                 .Include(x => x.Warehouse)
                 .Include(x => x.Supplier)
                 .Include(x => x.ReceivedBy)
                 .AsQueryable();
+
+            if (allowedWarehouseIds != null && allowedWarehouseIds.Any())
+            {
+                query = query.Where(x => allowedWarehouseIds.Contains(x.WarehouseId));
+            }
 
             if (!string.IsNullOrWhiteSpace(search))
             {
@@ -87,9 +92,9 @@ namespace backend.Services
         }
 
         /// <inheritdoc />
-        public async Task<InventoryReceiptReadDto> GetByIdAsync(int id)
+        public async Task<InventoryReceiptReadDto> GetByIdAsync(int id, List<int>? allowedWarehouseIds = null)
         {
-            var entity = await _context.InventoryReceipts
+            var query = _context.InventoryReceipts
                 .Include(x => x.Warehouse)
                 .Include(x => x.Supplier)
                 .Include(x => x.ReceivedBy)
@@ -97,10 +102,17 @@ namespace backend.Services
                 .Include(x => x.Details).ThenInclude(d => d.Batch)
                 .Include(x => x.Details).ThenInclude(d => d.UoM)
                 .AsNoTracking()
-                .FirstOrDefaultAsync(x => x.Id == id);
+                .AsQueryable();
+
+            if (allowedWarehouseIds != null && allowedWarehouseIds.Any())
+            {
+                query = query.Where(x => allowedWarehouseIds.Contains(x.WarehouseId));
+            }
+
+            var entity = await query.FirstOrDefaultAsync(x => x.Id == id);
 
             if (entity == null)
-                throw new KeyNotFoundException("Không tìm thấy Phiếu Nhập Kho.");
+                throw new KeyNotFoundException("Không tìm thấy Phiếu Nhập Kho hoặc bạn không có quyền truy cập kho này.");
 
             return _mapper.Map<InventoryReceiptReadDto>(entity);
         }
@@ -128,7 +140,7 @@ namespace backend.Services
             {
                 var entity = _mapper.Map<InventoryReceipt>(dto);
 
-                entity.ReceiptCode = $"IR-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString()[..6].ToUpper()}";
+                entity.ReceiptCode = $"IR-{DateTimeHelper.VietnamDateString}-{Guid.NewGuid().ToString()[..6].ToUpper()}";
                 entity.Status = InventoryReceiptStatus.Pending;
                 entity.CreatedAt = DateTime.UtcNow;
                 entity.UpdatedAt = DateTime.UtcNow;
@@ -177,9 +189,7 @@ namespace backend.Services
 
                 foreach (var detail in receipt.Details)
                 {
-                    if (detail.AcceptedQuantity <= 0) continue;
-
-                    // 1. Cập nhật két sắt tồn kho 4 ngăn (WarehouseInventory -> QuantityAvailable)
+                    // 1. Cập nhật két sắt tồn kho (WarehouseInventory)
                     var inventory = await _context.WarehouseInventories
                         .FirstOrDefaultAsync(x => x.WarehouseId == receipt.WarehouseId && 
                                                   x.VariantId == detail.VariantId && 
@@ -195,7 +205,7 @@ namespace backend.Services
                             QuantityAvailable = detail.AcceptedQuantity,
                             QuantityReserved = 0,
                             QuantityQC = 0,
-                            QuantityDamaged = 0,
+                            QuantityDamaged = detail.RejectedQuantity,
                             CreatedAt = DateTime.UtcNow,
                             UpdatedAt = DateTime.UtcNow
                         };
@@ -204,24 +214,28 @@ namespace backend.Services
                     else
                     {
                         inventory.QuantityAvailable += detail.AcceptedQuantity;
+                        inventory.QuantityDamaged += detail.RejectedQuantity;
                         inventory.UpdatedAt = DateTime.UtcNow;
                     }
 
                     // 2. Ghi sổ cái bất biến (InventoryTransaction)
-                    var invTransaction = new InventoryTransaction
+                    if (detail.AcceptedQuantity > 0)
                     {
-                        TransactionCode = $"TXN-{DateTime.UtcNow:yyyyMMddHHmmss}-{Guid.NewGuid().ToString()[..4].ToUpper()}",
-                        WarehouseId = receipt.WarehouseId,
-                        VariantId = detail.VariantId,
-                        BatchId = detail.BatchId,
-                        Type = TransactionType.Receipt,
-                        Quantity = detail.AcceptedQuantity,
-                        ReferenceCode = receipt.ReceiptCode,
-                        Note = $"Nhập kho hoàn tất theo phiếu {receipt.ReceiptCode}",
-                        CreatedById = receivedById,
-                        CreatedAt = DateTime.UtcNow
-                    };
-                    _context.InventoryTransactions.Add(invTransaction);
+                        var invTransaction = new InventoryTransaction
+                        {
+                            TransactionCode = $"TXN-{DateTimeHelper.VietnamNow:yyyyMMddHHmmss}-{Guid.NewGuid().ToString()[..4].ToUpper()}",
+                            WarehouseId = receipt.WarehouseId,
+                            VariantId = detail.VariantId,
+                            BatchId = detail.BatchId,
+                            Type = TransactionType.Receipt,
+                            Quantity = detail.AcceptedQuantity,
+                            ReferenceCode = receipt.ReceiptCode,
+                            Note = $"Nhập kho hoàn tất theo phiếu {receipt.ReceiptCode}",
+                            CreatedById = receivedById,
+                            CreatedAt = DateTime.UtcNow
+                        };
+                        _context.InventoryTransactions.Add(invTransaction);
+                    }
 
                     // 3. Cập nhật tiến độ dòng PO Detail
                     if (detail.PurchaseOrderDetailId.HasValue)
@@ -238,6 +252,22 @@ namespace backend.Services
                     }
                 }
 
+                // 4. Nếu phiếu nhập kho thu hồi theo Phiếu Trả Hàng (RMA) -> Cập nhật CustomerReturn sang Completed
+                if (!string.IsNullOrEmpty(receipt.Note))
+                {
+                    var retMatch = System.Text.RegularExpressions.Regex.Match(receipt.Note, @"RET-\d+-[A-Za-z0-9]+");
+                    if (retMatch.Success)
+                    {
+                        var retCode = retMatch.Value;
+                        var ret = await _context.CustomerReturns.FirstOrDefaultAsync(r => r.ReturnCode == retCode);
+                        if (ret != null && ret.Status != CustomerReturnStatus.Completed)
+                        {
+                            ret.Status = CustomerReturnStatus.Completed;
+                            ret.UpdatedAt = DateTime.UtcNow;
+                        }
+                    }
+                }
+
                 await _context.SaveChangesAsync();
 
                 // 4. Cập nhật trạng thái Đơn mua hàng gốc (PO)
@@ -249,7 +279,11 @@ namespace backend.Services
 
                     if (po != null && (po.Status == PurchaseOrderStatus.Approved || po.Status == PurchaseOrderStatus.PartiallyReceived))
                     {
-                        bool isFullyReceived = po.Details.All(d => d.ReceivedQuantity >= d.OrderQuantity);
+                        // Dung sai hoàn tất nhận hàng nông sản (UoM Tolerance: 5%):
+                        // Do đặc thù nông sản tươi cân đo thực tế (ví dụ đặt 10kg nhận 9.6kg - 9.8kg),
+                        // nếu nhận được >= 95% số lượng đặt thì ghi nhận PO hoàn tất chu trình.
+                        const decimal ACCEPTABLE_TOLERANCE_PERCENT = 0.05m;
+                        bool isFullyReceived = po.Details.All(d => d.ReceivedQuantity >= (d.OrderQuantity * (1.0m - ACCEPTABLE_TOLERANCE_PERCENT)));
                         po.Status = isFullyReceived ? PurchaseOrderStatus.Completed : PurchaseOrderStatus.PartiallyReceived;
                         po.UpdatedAt = DateTime.UtcNow;
                     }

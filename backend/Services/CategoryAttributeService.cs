@@ -135,9 +135,77 @@ namespace backend.Services
             return _mapper.Map<CategoryAttributeReadDto>(entity);
         }
 
+        /// <summary>
+        /// Lấy danh sách cấu hình thuộc tính thuộc về một Danh mục cụ thể.
+        /// </summary>
+        public async Task<IEnumerable<CategoryAttributeReadDto>> GetByCategoryIdAsync(int categoryId)
+        {
+            var items = await _context.CategoryAttributes
+                .Include(x => x.Category)
+                .Include(x => x.AttributeDefinition)
+                .Where(x => x.CategoryId == categoryId)
+                .OrderBy(x => x.Id)
+                .AsNoTracking()
+                .ToListAsync();
+
+            return _mapper.Map<IEnumerable<CategoryAttributeReadDto>>(items);
+        }
+
         #endregion
 
         #region Thao tác Dữ liệu (Command)
+
+        /// <summary>
+        /// Đồng bộ ma trận thuộc tính cho danh mục sản phẩm (Bulk Sync).
+        /// </summary>
+        public async Task<bool> SyncCategoryAttributesAsync(CategoryAttributeSyncDto dto)
+        {
+            // 1. Kiểm tra Category tồn tại
+            if (!await _context.ProductCategories.AnyAsync(c => c.Id == dto.CategoryId && !c.IsDeleted))
+                throw new InvalidOperationException("Danh mục sản phẩm được chỉ định không tồn tại.");
+
+            return await _context.ExecuteInTransactionAsync(async () =>
+            {
+                // 2. Lấy tất cả thuộc tính hiện có của danh mục này
+                var existingAttributes = await _context.CategoryAttributes
+                    .Where(x => x.CategoryId == dto.CategoryId)
+                    .ToListAsync();
+
+                var selectedIds = dto.Attributes.Select(a => a.AttributeDefinitionId).Distinct().ToList();
+
+                // 3. Xóa các thuộc tính bị bỏ chọn
+                var toRemove = existingAttributes
+                    .Where(x => x.AttributeDefinitionId.HasValue && !selectedIds.Contains(x.AttributeDefinitionId.Value))
+                    .ToList();
+
+                if (toRemove.Any())
+                {
+                    _context.CategoryAttributes.RemoveRange(toRemove);
+                }
+
+                // 4. Cập nhật hoặc thêm mới các thuộc tính được chọn
+                foreach (var attrDto in dto.Attributes)
+                {
+                    var existing = existingAttributes.FirstOrDefault(x => x.AttributeDefinitionId == attrDto.AttributeDefinitionId);
+                    if (existing != null)
+                    {
+                        existing.IsRequired = attrDto.IsRequired;
+                    }
+                    else
+                    {
+                        _context.CategoryAttributes.Add(new CategoryAttribute
+                        {
+                            CategoryId = dto.CategoryId,
+                            AttributeDefinitionId = attrDto.AttributeDefinitionId,
+                            IsRequired = attrDto.IsRequired,
+                        });
+                    }
+                }
+
+                await _context.SaveChangesAsync();
+                return true;
+            });
+        }
 
         /// <summary>
         /// Thiết lập mới cấu hình: Gán một thuộc tính từ Từ điển hệ thống vào một Danh mục sản phẩm (sử dụng Transaction Resilience).

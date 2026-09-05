@@ -10,6 +10,10 @@ import {
   XCircle,
   AlertCircle,
   Loader2,
+  CheckCircle,
+  AlertTriangle,
+  Boxes,
+  ArrowRight,
 } from 'lucide-react';
 
 import {
@@ -33,6 +37,7 @@ import {
   PaymentStatusLabels,
   PaymentStatusColors,
   PaymentMethodLabels,
+  RoutingPreviewResult,
 } from '../../types/order';
 
 const OrderDetail: React.FC = () => {
@@ -40,7 +45,9 @@ const OrderDetail: React.FC = () => {
   const navigate = useNavigate();
 
   const [order, setOrder] = useState<Order | null>(null);
+  const [routingAnalysis, setRoutingAnalysis] = useState<RoutingPreviewResult | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadingRouting, setLoadingRouting] = useState(false);
   const [activeTab, setActiveTab] = useState<'info' | 'items'>('info');
 
   // Cancel modal
@@ -70,6 +77,41 @@ const OrderDetail: React.FC = () => {
       setLoading(true);
       const data = await orderApi.getById(Number(id));
       setOrder(data);
+
+      const isPendingOrConfirmed =
+        data.status === OrderStatus.Draft ||
+        data.status === OrderStatus.Pending ||
+        data.status === OrderStatus.Confirmed ||
+        data.status === OrderStatus.Processing;
+
+      const hasUnissuedItems =
+        data.details && data.details.some((d: any) => (d.issuedQuantity || 0) < d.quantity);
+
+      // Phân tích tình trạng tồn kho đa kho cho đơn hàng CHỈ KHI đơn đang chờ xuất và chưa xuất đủ
+      if (data && data.details && data.details.length > 0 && isPendingOrConfirmed && hasUnissuedItems) {
+        try {
+          setLoadingRouting(true);
+          const routing = await orderApi.previewRouting({
+            customerId: data.customerId,
+            customerAddressId: data.customerAddressId,
+            deliveryAddress: data.deliveryAddress || '',
+            warehouseId: data.warehouseId,
+            paymentMethod: data.paymentMethod,
+            details: data.details.map((d) => ({
+              variantId: d.variantId,
+              uoMId: d.uoMId,
+              quantity: d.quantity,
+            })),
+          });
+          setRoutingAnalysis(routing);
+        } catch (rErr) {
+          console.error('Không thể phân tích định tuyến tồn kho:', rErr);
+        } finally {
+          setLoadingRouting(false);
+        }
+      } else {
+        setRoutingAnalysis(null);
+      }
     } catch (error) {
       console.error('Lỗi tải đơn hàng:', error);
       showToast('error', 'KHÔNG THỂ TẢI DỮ LIỆU ĐƠN HÀNG');
@@ -153,6 +195,30 @@ const OrderDetail: React.FC = () => {
 
           {/* Nút luồng đi tiếp: Nằm bên trái */}
           <div className="flex items-center gap-2">
+            {/* Nút Duyệt Đơn Hàng (Pending -> Confirmed) */}
+            {order.status === OrderStatus.Pending && (
+              <button
+                onClick={async () => {
+                  try {
+                    setActionLoading(true);
+                    await orderApi.updateStatus(order.id, {
+                      status: OrderStatus.Confirmed,
+                    });
+                    showToast('success', 'ĐÃ DUYỆT ĐƠN HÀNG THÀNH CÔNG!');
+                    fetchOrder();
+                  } catch (err: any) {
+                    showToast('error', err.response?.data?.message || 'Lỗi duyệt đơn hàng');
+                  } finally {
+                    setActionLoading(false);
+                  }
+                }}
+                disabled={actionLoading}
+                className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg font-bold text-sm hover:bg-emerald-700 transition-all shadow-sm shadow-emerald-200 disabled:opacity-50"
+              >
+                <CheckCircle size={16} /> Duyệt Đơn Hàng
+              </button>
+            )}
+
             {/* Nút Đẩy Đơn Sang GHN */}
             {!order.trackingCode &&
               order.status !== OrderStatus.Cancelled &&
@@ -177,23 +243,49 @@ const OrderDetail: React.FC = () => {
                 </button>
               )}
 
-            {(order.status === OrderStatus.Confirmed ||
-              order.status === OrderStatus.Processing) && (
-              <button
-                onClick={() => navigate(`/inventory-issues/create?orderId=${order.id}`)}
-                className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg font-bold text-sm hover:bg-indigo-700 transition-all shadow-sm shadow-indigo-200"
-              >
-                <PackageCheck size={16} /> Xuất Kho Đơn Hàng
-              </button>
-            )}
+            {/* Nút Xuất Kho Đơn Hàng: Chỉ hiện khi chưa xuất đủ và trạng thái là Confirmed hoặc Processing */}
+            {(order.status === OrderStatus.Confirmed || order.status === OrderStatus.Processing) &&
+              order.details?.some((d) => (d.issuedQuantity || 0) < d.quantity) && (
+                <button
+                  onClick={() => navigate(`/inventory-issues/create?orderId=${order.id}`)}
+                  className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg font-bold text-sm hover:bg-indigo-700 transition-all shadow-sm shadow-indigo-200"
+                >
+                  <PackageCheck size={16} /> Xuất Kho Đơn Hàng
+                </button>
+              )}
 
-            {(order.status === OrderStatus.Confirmed ||
-              order.status === OrderStatus.Processing) && (
+            {/* Nút Chuyển Kho Bổ Sung: Chỉ hiện khi chưa xuất đủ và trạng thái là Confirmed hoặc Processing */}
+            {(order.status === OrderStatus.Confirmed || order.status === OrderStatus.Processing) &&
+              order.details?.some((d) => (d.issuedQuantity || 0) < d.quantity) && (
+                <button
+                  onClick={() => navigate(`/inventory-transfers/create?orderId=${order.id}`)}
+                  className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-lg font-bold text-sm hover:bg-amber-600 transition-all shadow-sm shadow-amber-200"
+                >
+                  <Truck size={16} /> Chuyển Kho Bổ Sung
+                </button>
+              )}
+
+            {order.status === OrderStatus.Shipping && (
               <button
-                onClick={() => navigate(`/inventory-transfers/create?orderId=${order.id}`)}
-                className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-lg font-bold text-sm hover:bg-amber-600 transition-all shadow-sm shadow-amber-200"
+                onClick={async () => {
+                  try {
+                    setActionLoading(true);
+                    await orderApi.updateStatus(order.id, {
+                      status: OrderStatus.Completed,
+                      paymentStatus: 3, // Paid
+                    });
+                    showToast('success', 'ĐÃ CẬP NHẬT ĐƠN HÀNG: GIAO THÀNH CÔNG & ĐÃ THANH TOÁN!');
+                    fetchOrder();
+                  } catch (err: any) {
+                    showToast('error', err.response?.data?.message || 'Lỗi cập nhật trạng thái đơn');
+                  } finally {
+                    setActionLoading(false);
+                  }
+                }}
+                disabled={actionLoading}
+                className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg font-bold text-sm hover:bg-emerald-700 transition-all shadow-sm shadow-emerald-200 disabled:opacity-50"
               >
-                <Truck size={16} /> Chuyển Kho Bổ Sung
+                <PackageCheck size={16} /> Xác Nhận Đã Giao Hàng
               </button>
             )}
 
@@ -221,6 +313,140 @@ const OrderDetail: React.FC = () => {
           </button>
         )}
       </div>
+
+      {/* ================= SMART FULFILLMENT ALERT BANNER (KHI ĐANG CHỜ XUẤT VÀ THIẾU HÀNG) ================= */}
+      {(order.status === OrderStatus.Draft ||
+        order.status === OrderStatus.Pending ||
+        order.status === OrderStatus.Confirmed ||
+        order.status === OrderStatus.Processing) &&
+        order.details?.some((d) => (d.issuedQuantity || 0) < d.quantity) &&
+        routingAnalysis &&
+        !routingAnalysis.isFullyStocked &&
+        routingAnalysis.missingItems &&
+        routingAnalysis.missingItems.length > 0 && (
+          <div className="bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-amber-500/5 border-2 border-amber-300/90 rounded-3xl p-6 shadow-sm mb-6 flex flex-col lg:flex-row lg:items-center justify-between gap-6 animate-in fade-in duration-300">
+            <div className="flex items-start gap-4">
+              <div className="w-13 h-13 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-500 text-white flex items-center justify-center shadow-lg shadow-amber-500/30 shrink-0">
+                <AlertTriangle size={28} />
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2.5 flex-wrap">
+                  <span className="px-3 py-0.5 rounded-full bg-amber-500 text-white text-[11px] font-black uppercase tracking-wider shadow-xs">
+                    ⚠️ Cảnh Báo Thiếu Hàng Xuất
+                  </span>
+                  <span className="text-sm font-bold text-amber-950">
+                    Kho xuất hiện tại (<strong className="text-indigo-800 font-extrabold">{order.warehouseName || 'Chưa gán'}</strong>) đang thiếu {routingAnalysis.missingItems.length} mặt hàng để xuất đơn!
+                  </span>
+                </div>
+
+                {/* Danh sách mặt hàng thiếu */}
+                <div className="flex flex-wrap gap-2 pt-1">
+                  {routingAnalysis.missingItems.map((item, idx) => (
+                    <span
+                      key={idx}
+                      className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-white/95 border border-amber-300 rounded-xl text-xs text-amber-950 font-bold shadow-2xs"
+                    >
+                      <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
+                      <span>{item.variantName}:</span>
+                      <span className="text-rose-600 font-black">Thiếu {item.missingQuantity}</span>
+                      <span className="text-slate-400 font-medium">(Cần {item.requestedQuantity}, Có {item.availableQuantity})</span>
+                    </span>
+                  ))}
+                </div>
+
+                {/* Gợi ý kho nguồn */}
+                {routingAnalysis.suggestedSourceWarehouseName && (
+                  <p className="text-xs text-slate-700 pt-0.5 font-medium flex items-center gap-2 flex-wrap">
+                    <span className="text-indigo-700 font-bold">💡 Gợi ý điều phối:</span>
+                    <span>Kho nguồn có sẵn hàng khả dụng là</span>
+                    <strong className="text-indigo-950 font-black bg-indigo-50 px-2.5 py-1 rounded-lg border border-indigo-200">
+                      {routingAnalysis.suggestedSourceWarehouseName}
+                    </strong>
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Nút Lập Lệnh Chuyển Kho Hàng Thiếu */}
+            <button
+              onClick={() =>
+                navigate(
+                  `/inventory-transfers/create?orderId=${order.id}&fromWarehouseId=${
+                    routingAnalysis.suggestedSourceWarehouseId || ''
+                  }&toWarehouseId=${order.warehouseId || ''}&missingOnly=true`
+                )
+              }
+              className="px-5 py-3.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-black text-xs uppercase tracking-wider rounded-2xl transition-all shadow-md shadow-amber-500/25 hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2.5 shrink-0 border border-amber-400"
+            >
+              <Truck size={18} />
+              <span>Lập Lệnh Chuyển Kho Bổ Sung ({routingAnalysis.missingItems.length} SP Thiếu)</span>
+              <ArrowRight size={16} />
+            </button>
+          </div>
+        )}
+
+      {/* ================= SẴN SÀNG XUẤT HÀNG BANNER (KHI ĐANG CHỜ XUẤT VÀ ĐỦ HÀNG) ================= */}
+      {(order.status === OrderStatus.Draft ||
+        order.status === OrderStatus.Pending ||
+        order.status === OrderStatus.Confirmed ||
+        order.status === OrderStatus.Processing) &&
+        order.details?.some((d) => (d.issuedQuantity || 0) < d.quantity) &&
+        routingAnalysis &&
+        routingAnalysis.isFullyStocked && (
+          <div className="bg-emerald-50/90 border border-emerald-200 rounded-2xl px-5 py-3.5 mb-6 flex items-center justify-between text-xs text-emerald-900 font-bold shadow-2xs">
+            <div className="flex items-center gap-2.5">
+              <CheckCircle size={18} className="text-emerald-600 shrink-0" />
+              <span>Kho xuất <strong>{order.warehouseName}</strong> có đủ 100% tồn kho khả dụng để thực hiện xuất kho cho đơn hàng này.</span>
+            </div>
+            <span className="px-2.5 py-1 bg-emerald-600 text-white rounded-lg text-[10px] font-black uppercase tracking-wider shrink-0">
+              Sẵn sàng xuất hàng
+            </span>
+          </div>
+        )}
+
+      {/* ================= ĐANG GIAO HÀNG BANNER ================= */}
+      {order.status === OrderStatus.Shipping && (
+        <div className="bg-gradient-to-r from-blue-500/10 via-indigo-500/10 to-blue-500/5 border-2 border-blue-200 rounded-3xl p-5 shadow-sm mb-6 flex items-center justify-between gap-4 animate-in fade-in">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-md shadow-blue-500/20 shrink-0">
+              <Truck size={24} />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="px-2.5 py-0.5 rounded-full bg-blue-600 text-white text-[11px] font-black uppercase tracking-wider">
+                  Đang Vận Chuyển
+                </span>
+                <span className="text-sm font-bold text-blue-950">
+                  Đơn hàng đã được xuất kho và đang giao đến khách hàng
+                </span>
+              </div>
+              <p className="text-xs text-slate-600 pt-1 font-medium">
+                Đơn vị vận chuyển: <strong className="text-blue-900 font-black">{order.shippingProvider || 'GHN'}</strong>
+                {order.trackingCode && (
+                  <> | Mã vận đơn: <strong className="font-mono text-indigo-700 bg-white px-2 py-0.5 rounded border border-blue-200 font-bold">{order.trackingCode}</strong></>
+                )}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ================= HOÀN TẤT BANNER ================= */}
+      {order.status === OrderStatus.Completed && (
+        <div className="bg-emerald-50/90 border border-emerald-300 rounded-3xl p-5 shadow-sm mb-6 flex items-center gap-4 animate-in fade-in">
+          <div className="w-12 h-12 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shadow-md shadow-emerald-500/20 shrink-0">
+            <CheckCircle size={24} />
+          </div>
+          <div>
+            <span className="px-2.5 py-0.5 rounded-full bg-emerald-600 text-white text-[11px] font-black uppercase tracking-wider">
+              Hoàn Tất
+            </span>
+            <p className="text-sm font-bold text-emerald-950 pt-1">
+              Đơn hàng đã được giao thành công và hoàn tất toàn bộ chu trình!
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* ================= TABS ================= */}
       <TabGroup>
@@ -371,52 +597,98 @@ const OrderDetail: React.FC = () => {
                     >
                       Đã Xuất Kho
                     </th>
+                    <th className="px-4 py-4 text-center min-w-36">Tình Trạng Kho Xuất</th>
                     <th className="px-4 py-4 text-right min-w-30">Chiết Khấu</th>
                     <th className="px-4 py-4 text-right min-w-37.5">Thành Tiền</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-sm">
-                  {order.details?.map((item, idx) => (
-                    <tr key={item.id || idx} className="hover:bg-slate-50/80 transition-colors">
-                      <td className="px-4 py-3 text-center text-slate-400 font-medium">
-                        {idx + 1}
-                      </td>
-                      <td className="px-4 py-3 font-bold text-slate-500">{item.variantCode}</td>
-                      <td className="px-4 py-3 font-bold text-slate-800">{item.variantName}</td>
-                      <td className="px-4 py-3 text-center text-slate-600">{item.uoMName}</td>
-                      <td className="px-4 py-3 text-right font-medium text-slate-600">
-                        {formatCurrency(item.unitPrice)}
-                      </td>
+                  {order.details?.map((item, idx) => {
+                    const missing = routingAnalysis?.missingItems?.find((m) => m.variantId === item.variantId);
+                    return (
+                      <tr key={item.id || idx} className="hover:bg-slate-50/80 transition-colors">
+                        <td className="px-4 py-3 text-center text-slate-400 font-medium">
+                          {idx + 1}
+                        </td>
+                        <td className="px-4 py-3 font-bold text-slate-500">{item.variantCode}</td>
+                        <td className="px-4 py-3 font-bold text-slate-800">{item.variantName}</td>
+                        <td className="px-4 py-3 text-center text-slate-600">{item.uoMName}</td>
+                        <td className="px-4 py-3 text-right font-medium text-slate-600">
+                          {formatCurrency(item.unitPrice)}
+                        </td>
 
-                      {/* Cột Số lượng Đặt */}
-                      <td className="px-4 py-3 text-center border-l border-indigo-100 bg-indigo-50/20">
-                        <span className="font-bold text-[15px] text-indigo-700">
-                          {item.quantity}
-                        </span>
-                      </td>
+                        {/* Cột Số lượng Đặt */}
+                        <td className="px-4 py-3 text-center border-l border-indigo-100 bg-indigo-50/20">
+                          <span className="font-bold text-[15px] text-indigo-700">
+                            {item.quantity}
+                          </span>
+                        </td>
 
-                      {/* Cột Số lượng Đã Xuất */}
-                      <td className="px-4 py-3 text-center border-l border-emerald-100 bg-emerald-50/20">
-                        <span
-                          className={`font-black text-[15px] ${item.issuedQuantity < item.quantity ? 'text-amber-500' : 'text-emerald-600'}`}
-                        >
-                          {item.issuedQuantity}
-                        </span>
-                      </td>
+                        {/* Cột Số lượng Đã Xuất */}
+                        <td className="px-4 py-3 text-center border-l border-emerald-100 bg-emerald-50/20">
+                          <span
+                            className={`font-black text-[15px] ${item.issuedQuantity < item.quantity ? 'text-amber-500' : 'text-emerald-600'}`}
+                          >
+                            {item.issuedQuantity}
+                          </span>
+                        </td>
 
-                      <td className="px-4 py-3 text-right text-slate-500 border-l border-slate-100">
-                        {formatCurrency(item.discountAmount)}
-                      </td>
-                      <td className="px-4 py-3 text-right font-black text-slate-800">
-                        {formatCurrency(item.totalPrice)}
-                      </td>
-                    </tr>
-                  ))}
+                        {/* Cột Tình trạng kho xuất */}
+                        <td className="px-4 py-3 text-center border-l border-slate-100">
+                          {(() => {
+                            if (order.status === OrderStatus.Shipping || order.status === OrderStatus.Completed) {
+                              if (item.issuedQuantity >= item.quantity) {
+                                return (
+                                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                    <CheckCircle size={13} /> Đã xuất đủ ({item.issuedQuantity}/{item.quantity})
+                                  </span>
+                                );
+                              }
+                              return (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                                  <AlertCircle size={13} /> Đã xuất {item.issuedQuantity}/{item.quantity}
+                                </span>
+                              );
+                            }
+
+                            if (order.status === OrderStatus.Cancelled) {
+                              return (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-bold bg-slate-100 text-slate-500 border border-slate-200">
+                                  Đã hủy đơn
+                                </span>
+                              );
+                            }
+
+                            if (missing && missing.missingQuantity > 0) {
+                              return (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                                  <AlertCircle size={13} /> Thiếu {missing.missingQuantity} (Có {missing.availableQuantity})
+                                </span>
+                              );
+                            }
+
+                            return (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                <CheckCircle size={13} /> Đủ hàng xuất
+                              </span>
+                            );
+                          })()}
+                        </td>
+
+                        <td className="px-4 py-3 text-right text-slate-500 border-l border-slate-100">
+                          {formatCurrency(item.discountAmount)}
+                        </td>
+                        <td className="px-4 py-3 text-right font-black text-slate-800">
+                          {formatCurrency(item.totalPrice)}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
                 <tfoot className="bg-slate-50/80 border-t border-slate-200 text-sm">
                   <tr>
                     <td
-                      colSpan={8}
+                      colSpan={9}
                       className="px-4 py-3 text-right font-bold text-slate-500 uppercase tracking-wider text-xs"
                     >
                       Tiền hàng:
@@ -427,7 +699,7 @@ const OrderDetail: React.FC = () => {
                   </tr>
                   <tr>
                     <td
-                      colSpan={8}
+                      colSpan={9}
                       className="px-4 py-2 text-right font-bold text-slate-500 uppercase tracking-wider text-xs"
                     >
                       Phí vận chuyển:
@@ -438,7 +710,7 @@ const OrderDetail: React.FC = () => {
                   </tr>
                   <tr className="border-t border-slate-200 bg-emerald-50/30">
                     <td
-                      colSpan={8}
+                      colSpan={9}
                       className="px-4 py-4 text-right text-emerald-800 uppercase tracking-wider text-xs font-black"
                     >
                       Tổng Thanh Toán:

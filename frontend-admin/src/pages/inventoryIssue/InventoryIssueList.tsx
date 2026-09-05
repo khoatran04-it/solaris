@@ -180,17 +180,17 @@ const InventoryIssueList: React.FC = () => {
                 <th className="w-[10%] py-4 px-2 text-xs font-bold text-slate-500 uppercase tracking-wider">
                   <div className="flex justify-center">
                     <CustomDateFilter
-                      title="TỪ NGÀY"
+                      title="NGÀY XUẤT"
                       selectedDate={fromDateFilter}
                       onApply={setFromDateFilter}
                     />
                   </div>
                 </th>
 
-                <th className="w-[10%] py-4 px-2 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                <th className="w-[12%] py-4 px-2 text-xs font-bold text-slate-500 uppercase tracking-wider">
                   <div className="flex justify-center">
                     <CustomDateFilter
-                      title="ĐẾN NGÀY"
+                      title="THỜI GIAN LẬP"
                       selectedDate={toDateFilter}
                       onApply={setToDateFilter}
                     />
@@ -250,18 +250,23 @@ const InventoryIssueList: React.FC = () => {
                       </div>
                     </td>
 
-                    {/* CELL 4 & 5: NGƯỜI NHẬN */}
+                    {/* CELL 4: NGƯỜI NHẬN */}
                     <td className="px-4 py-3.5 text-slate-700 text-sm">
                       <div className="font-semibold">{issue.receiverName || '---'}</div>
                       <div className="text-xs text-slate-400">{issue.receiverPhone}</div>
                     </td>
 
-                    {/* CELL 6 & 7: NGÀY XUẤT */}
-                    <td className="py-3 px-2 text-center" colSpan={2}>
+                    {/* CELL 5: NGÀY XUẤT */}
+                    <td className="py-3 px-2 text-center">
                       <DateCell isoString={issue.issueDate} />
                     </td>
 
-                    {/* CELL 8: TRẠNG THÁI */}
+                    {/* CELL 6: THỜI GIAN LẬP */}
+                    <td className="py-3 px-2 text-center">
+                      <DateTimeCell isoString={issue.createdAt} />
+                    </td>
+
+                    {/* CELL 7: TRẠNG THÁI */}
                     <td className="px-4 py-3.5 text-center">
                       <div className="flex justify-center">
                         <span

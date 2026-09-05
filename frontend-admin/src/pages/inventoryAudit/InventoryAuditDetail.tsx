@@ -22,6 +22,7 @@ import {
   DetailSection,
   InfoField,
 } from '../../components/commons/TabUI';
+import { FormSelect } from '../../components/commons/FormUI';
 import { Toast } from '../../components/commons/Toast';
 import { DateTimeCell } from '../../components/commons/ListUI';
 
@@ -34,6 +35,17 @@ import {
   InventoryAuditTypeLabels,
   InventoryAuditSubmitCountPayload,
 } from '../../types/inventoryAudit';
+
+const AUDIT_REASON_OPTIONS = [
+  { value: 'Hao hụt tự nhiên (-)', label: 'Hao hụt tự nhiên (-)' },
+  { value: 'Dập nát / Vỡ bao bì (-)', label: 'Dập nát / Vỡ bao bì (-)' },
+  { value: 'Hư hỏng biến đổi chất lượng (-)', label: 'Hư hỏng biến đổi chất lượng (-)' },
+  { value: 'Hết hạn sử dụng (-)', label: 'Hết hạn sử dụng (-)' },
+  { value: 'Thất thoát / Mất cắp (-)', label: 'Thất thoát / Mất cắp (-)' },
+  { value: 'Thừa do kiểm kê (+)', label: 'Thừa do kiểm kê (+)' },
+  { value: 'Sai lệch nhập liệu (±)', label: 'Sai lệch nhập liệu (±)' },
+  { value: 'Khác', label: 'Lý do khác (Nhập tay...)' },
+];
 
 const InventoryAuditDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -215,9 +227,9 @@ const InventoryAuditDetail: React.FC = () => {
           <button
             type="button"
             onClick={() => setIsBlindCount(!isBlindCount)}
-            className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold border transition-colors ${
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold border transition-colors cursor-pointer ${
               isBlindCount
-                ? 'bg-amber-50 text-amber-800 border-amber-300'
+                ? 'bg-amber-100 text-amber-950 border-amber-300 shadow-2xs'
                 : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
             }`}
           >
@@ -230,7 +242,7 @@ const InventoryAuditDetail: React.FC = () => {
               <button
                 onClick={handleSubmitCount}
                 disabled={actionLoading}
-                className="flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-lg text-sm font-bold transition-colors disabled:opacity-50"
+                className="flex items-center gap-2 px-4 py-2 bg-amber-50 text-amber-950 border border-amber-300 hover:bg-amber-100 rounded-xl text-sm font-bold transition-colors disabled:opacity-50 cursor-pointer shadow-2xs"
               >
                 <Save size={16} /> Lưu Số Liệu
               </button>
@@ -238,7 +250,7 @@ const InventoryAuditDetail: React.FC = () => {
               <button
                 onClick={handleApprove}
                 disabled={actionLoading}
-                className="flex items-center gap-2 px-5 py-2 bg-emerald-600 text-white hover:bg-emerald-700 rounded-lg text-sm font-bold transition-all shadow-sm shadow-emerald-200 disabled:opacity-50"
+                className="flex items-center gap-2 px-5 py-2 bg-emerald-600 text-white hover:bg-emerald-700 rounded-xl text-sm font-bold transition-all shadow-sm shadow-emerald-200 disabled:opacity-50 cursor-pointer"
               >
                 {actionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Scale size={16} />}
                 Chốt Sổ & Cân Bằng Kho
@@ -247,7 +259,7 @@ const InventoryAuditDetail: React.FC = () => {
               <button
                 onClick={() => setCancelModalOpen(true)}
                 disabled={actionLoading}
-                className="flex items-center gap-2 px-4 py-2 bg-white text-rose-600 border border-rose-200 rounded-lg text-sm font-bold hover:bg-rose-50 transition-colors"
+                className="flex items-center gap-2 px-4 py-2 bg-white text-rose-600 border border-rose-200 rounded-xl text-sm font-bold hover:bg-rose-50 transition-colors cursor-pointer"
               >
                 <XCircle size={16} /> Hủy Phiếu
               </button>
@@ -259,19 +271,19 @@ const InventoryAuditDetail: React.FC = () => {
       {/* SUMMARY METRIC CARDS */}
       {!isBlindCount && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <div className="p-4 bg-white border border-slate-200 rounded-xl shadow-xs">
+          <div className="p-4 bg-white border border-slate-200 rounded-2xl shadow-xs">
             <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">
               Tổng Tồn Hệ Thống
             </div>
             <div className="text-2xl font-black text-slate-800 mt-1">{audit.totalSystemQty}</div>
           </div>
-          <div className="p-4 bg-white border border-slate-200 rounded-xl shadow-xs">
+          <div className="p-4 bg-white border border-slate-200 rounded-2xl shadow-xs">
             <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">
               Tổng Thực Tế Đếm
             </div>
-            <div className="text-2xl font-black text-indigo-700 mt-1">{audit.totalActualQty}</div>
+            <div className="text-2xl font-black text-amber-900 mt-1">{audit.totalActualQty}</div>
           </div>
-          <div className="p-4 bg-white border border-slate-200 rounded-xl shadow-xs">
+          <div className="p-4 bg-white border border-slate-200 rounded-2xl shadow-xs">
             <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">
               Chênh Lệch Số Lượng
             </div>
@@ -281,7 +293,7 @@ const InventoryAuditDetail: React.FC = () => {
               {audit.totalVarianceQty > 0 ? `+${audit.totalVarianceQty}` : audit.totalVarianceQty}
             </div>
           </div>
-          <div className="p-4 bg-white border border-slate-200 rounded-xl shadow-xs">
+          <div className="p-4 bg-white border border-slate-200 rounded-2xl shadow-xs">
             <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">
               Giá Trị Chênh Lệch
             </div>
@@ -314,25 +326,24 @@ const InventoryAuditDetail: React.FC = () => {
       {activeTab === 'count' && (
         <DetailCard>
           <div className="p-6">
-            <div className="overflow-x-auto border border-slate-200 rounded-xl shadow-sm">
-              <table className="w-full text-left whitespace-nowrap text-sm">
+            <div className="overflow-x-auto border border-slate-200 rounded-2xl shadow-2xs min-h-[380px] pb-28">
+              <table className="w-full text-left whitespace-nowrap text-sm min-w-[900px]">
                 <thead className="bg-slate-50 text-slate-600 font-bold text-xs uppercase tracking-wider border-b border-slate-200">
                   <tr>
-                    <th className="px-4 py-3.5 text-center w-12">#</th>
-                    <th className="px-4 py-3.5">Mã SKU</th>
-                    <th className="px-4 py-3.5 min-w-48">Tên Sản Phẩm</th>
-                    <th className="px-4 py-3.5 min-w-36">Lô Hàng</th>
-                    <th className="px-4 py-3.5 text-center">ĐVT</th>
+                    <th className="px-3 py-3.5 text-center w-10">#</th>
+                    <th className="px-4 py-3.5 min-w-[200px]">Mặt Hàng (SKU)</th>
+                    <th className="px-4 py-3.5 min-w-[160px]">Lô Hàng</th>
+                    <th className="px-3 py-3.5 text-center w-20">ĐVT</th>
                     {!isBlindCount && (
-                      <th className="px-4 py-3.5 text-center bg-slate-100/70">Tồn Hệ Thống</th>
+                      <th className="px-3 py-3.5 text-center bg-slate-100/70 w-24">Tồn Hệ Thống</th>
                     )}
-                    <th className="px-4 py-3.5 text-center bg-indigo-50/70 text-indigo-900 w-36">
+                    <th className="px-3 py-3.5 text-center bg-amber-50/70 text-amber-950 w-28">
                       Thực Tế Đếm
                     </th>
-                    {!isBlindCount && <th className="px-4 py-3.5 text-center">Chênh Lệch</th>}
-                    {!isBlindCount && <th className="px-4 py-3.5 text-right">Đơn Giá</th>}
-                    {!isBlindCount && <th className="px-4 py-3.5 text-right">Giá Trị Lệch</th>}
-                    <th className="px-4 py-3.5 min-w-48">Giải trình / Ghi chú</th>
+                    {!isBlindCount && <th className="px-3 py-3.5 text-center w-24">Chênh Lệch</th>}
+                    {!isBlindCount && <th className="px-3 py-3.5 text-right w-24">Đơn Giá</th>}
+                    {!isBlindCount && <th className="px-3 py-3.5 text-right w-28">Giá Trị Lệch</th>}
+                    <th className="px-4 py-3.5 min-w-[220px]">Giải trình / Ghi chú</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -345,24 +356,28 @@ const InventoryAuditDetail: React.FC = () => {
                     const varAmount = variance * detail.unitPrice;
 
                     return (
-                      <tr key={detail.id} className="hover:bg-slate-50/60">
-                        <td className="px-4 py-3 text-center text-slate-400">{idx + 1}</td>
-                        <td className="px-4 py-3 font-bold text-slate-700">{detail.variantCode}</td>
-                        <td className="px-4 py-3 font-medium text-slate-900">
-                          {detail.variantName}
+                      <tr
+                        key={detail.id}
+                        className="hover:bg-slate-50/60 transition-colors"
+                        style={{ zIndex: 50 - idx }}
+                      >
+                        <td className="px-3 py-3 text-center text-slate-400">{idx + 1}</td>
+                        <td className="px-4 py-3">
+                          <div className="font-bold text-slate-900 text-[13px]">{detail.variantName}</div>
+                          <div className="text-[11px] font-semibold text-slate-400">{detail.variantCode}</div>
                         </td>
-                        <td className="px-4 py-3 font-bold text-indigo-700">{detail.batchCode}</td>
-                        <td className="px-4 py-3 text-center text-slate-600">{detail.uoMName}</td>
+                        <td className="px-4 py-3 font-bold text-amber-800 text-[12px]">{detail.batchCode}</td>
+                        <td className="px-3 py-3 text-center text-slate-600 font-medium">{detail.uoMName}</td>
 
                         {/* Tồn hệ thống */}
                         {!isBlindCount && (
-                          <td className="px-4 py-3 text-center font-bold text-slate-700 bg-slate-50/40">
+                          <td className="px-3 py-3 text-center font-bold text-slate-700 bg-slate-50/40">
                             {detail.systemQuantity}
                           </td>
                         )}
 
                         {/* Số đếm thực tế (Input editable) */}
-                        <td className="px-4 py-3 text-center bg-indigo-50/20">
+                        <td className="px-3 py-3 text-center bg-amber-50/20">
                           {isEditable ? (
                             <input
                               type="number"
@@ -375,10 +390,10 @@ const InventoryAuditDetail: React.FC = () => {
                                   parseFloat(e.target.value) || 0
                                 )
                               }
-                              className="w-24 px-2.5 py-1.5 border border-indigo-300 rounded-lg text-center font-black text-indigo-800 focus:ring-2 focus:ring-indigo-500 outline-none"
+                              className="w-20 px-2 py-1.5 border border-amber-300 rounded-lg text-center font-black text-amber-950 focus:ring-2 focus:ring-amber-500 outline-none shadow-2xs"
                             />
                           ) : (
-                            <span className="font-black text-indigo-800">
+                            <span className="font-black text-amber-950">
                               {detail.actualQuantity}
                             </span>
                           )}
@@ -386,7 +401,7 @@ const InventoryAuditDetail: React.FC = () => {
 
                         {/* Chênh lệch */}
                         {!isBlindCount && (
-                          <td className="px-4 py-3 text-center font-bold">
+                          <td className="px-3 py-3 text-center font-bold">
                             <span
                               className={
                                 variance < 0
@@ -402,13 +417,13 @@ const InventoryAuditDetail: React.FC = () => {
                         )}
 
                         {!isBlindCount && (
-                          <td className="px-4 py-3 text-right text-slate-600">
+                          <td className="px-3 py-3 text-right text-slate-600">
                             {formatCurrency(detail.unitPrice)}
                           </td>
                         )}
 
                         {!isBlindCount && (
-                          <td className="px-4 py-3 text-right font-bold">
+                          <td className="px-3 py-3 text-right font-bold">
                             <span
                               className={
                                 varAmount < 0
@@ -424,19 +439,49 @@ const InventoryAuditDetail: React.FC = () => {
                         )}
 
                         {/* Ghi chú lý do */}
-                        <td className="px-4 py-3">
+                        <td className="p-2 min-w-[220px]">
                           {isEditable ? (
-                            <input
-                              type="text"
-                              placeholder="Hao hụt tự nhiên, dập nát..."
-                              value={currentVal.reasonNote}
-                              onChange={(e) =>
-                                handleCountChange(detail.id, 'reasonNote', e.target.value)
-                              }
-                              className="w-full px-2 py-1 border border-slate-200 rounded text-xs focus:ring-2 focus:ring-indigo-400 outline-none"
-                            />
+                            <div className="flex flex-col gap-1.5">
+                              <FormSelect
+                                label=""
+                                placeholder="-- Chọn lý do giải trình --"
+                                options={AUDIT_REASON_OPTIONS}
+                                value={
+                                  AUDIT_REASON_OPTIONS.slice(0, 7).some(
+                                    (o) => o.value === currentVal.reasonNote
+                                  )
+                                    ? currentVal.reasonNote
+                                    : currentVal.reasonNote
+                                      ? 'Khác'
+                                      : ''
+                                }
+                                onSelect={(val) => {
+                                  if (val === 'Khác') {
+                                    handleCountChange(detail.id, 'reasonNote', 'Khác: ');
+                                  } else {
+                                    handleCountChange(detail.id, 'reasonNote', val);
+                                  }
+                                }}
+                              />
+
+                              {(!AUDIT_REASON_OPTIONS.slice(0, 7).some(
+                                (o) => o.value === currentVal.reasonNote
+                              ) &&
+                                currentVal.reasonNote !== '') && (
+                                <input
+                                  type="text"
+                                  placeholder="Nhập chi tiết lý do..."
+                                  value={currentVal.reasonNote}
+                                  onChange={(e) =>
+                                    handleCountChange(detail.id, 'reasonNote', e.target.value)
+                                  }
+                                  className="w-full px-3 py-1.5 border border-amber-300 rounded-xl text-xs focus:ring-2 focus:ring-amber-400 outline-none bg-amber-50/40 text-amber-950 font-medium"
+                                  autoFocus
+                                />
+                              )}
+                            </div>
                           ) : (
-                            <span className="text-xs italic text-slate-600">
+                            <span className="inline-flex text-xs font-medium text-slate-700 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200">
                               {detail.reasonNote || '---'}
                             </span>
                           )}

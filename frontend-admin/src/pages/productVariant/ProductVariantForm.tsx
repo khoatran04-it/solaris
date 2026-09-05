@@ -16,7 +16,10 @@ import {
 import { productVariantApi } from '../../api/productVariantApi';
 import { productApi } from '../../api/productApi';
 import { uomApi } from '../../api/uomApi';
+import { uomConversionApi } from '../../api/uomConversionApi';
 import { ProductVariantPayload, VariantPriceInput } from '../../types/productVariant';
+import { Product } from '../../types/product';
+import { UoMConversion } from '../../types/uomConversion';
 
 // Shared UI Components
 import { Toast } from '../../components/commons/Toast';
@@ -69,8 +72,10 @@ const ProductVariantForm: React.FC = () => {
 
   // --- TABS & DROPDOWN OPTIONS ---
   const [activeTab, setActiveTab] = useState<TabType>('info');
+  const [rawProducts, setRawProducts] = useState<Product[]>([]);
   const [productOptions, setProductOptions] = useState<{ label: string; value: number }[]>([]);
   const [uomOptions, setUomOptions] = useState<{ label: string; value: number }[]>([]); // Data Đơn vị tính
+  const [uomConversions, setUomConversions] = useState<UoMConversion[]>([]);
   const [dynamicAttributes, setDynamicAttributes] = useState<AttributeDef[]>([]);
 
   const [toast, setToast] = useState<{
@@ -85,16 +90,19 @@ const ProductVariantForm: React.FC = () => {
 
   // --- EFFECT 1: Init Data ---
   useEffect(() => {
-    // Tải SP gốc và Đơn vị tính song song
+    // Tải SP gốc, Đơn vị tính và Quy đổi UoM song song
     Promise.all([
       productApi.getAllList(),
       uomApi.getAllList(), // API lấy danh sách UoM (Kg, Thùng, Hộp...)
+      uomConversionApi.getAllList(true).catch(() => []), // API lấy danh sách Quy đổi ĐVT đang hoạt động
     ])
-      .then(([products, uoms]) => {
-        setProductOptions(products.map((p: any) => ({ label: p.name, value: p.id })));
-        setUomOptions(uoms.map((u: any) => ({ label: u.name, value: u.id })));
+      .then(([products, uoms, conversions]) => {
+        setRawProducts(products || []);
+        setProductOptions((products || []).map((p: any) => ({ label: p.name, value: p.id })));
+        setUomOptions((uoms || []).map((u: any) => ({ label: u.name, value: u.id })));
+        setUomConversions(conversions || []);
       })
-      .catch(() => showToast('warning', 'Không tải được danh mục bổ trợ (Sản phẩm / Đơn vị tính)'));
+      .catch(() => showToast('warning', 'Không tải được danh mục bổ trợ (Sản phẩm / Đơn vị tính / Quy đổi)'));
 
     // Lấy chi tiết Edit
     if (isEditMode && id) {
@@ -372,17 +380,22 @@ const ProductVariantForm: React.FC = () => {
                     options={STATUS_OPTIONS}
                     onSelect={(val) => handleFieldChange('isActive', val === 1)}
                   />
-                  <FormInput
-                    label="Tồn kho định mức (Guide)"
-                    required
-                    type="number"
-                    value={formData.inventoryGuideline}
-                    error={errors.inventoryGuideline}
-                    disabled={loading}
-                    onChange={(e) =>
-                      handleFieldChange('inventoryGuideline', parseInt(e.target.value) || 0)
-                    }
-                  />
+                  <div className="flex flex-col">
+                    <FormInput
+                      label="Mức tồn kho an toàn tối thiểu (Safety Stock)"
+                      type="number"
+                      placeholder="0"
+                      value={formData.inventoryGuideline === 0 ? '' : formData.inventoryGuideline}
+                      error={errors.inventoryGuideline}
+                      disabled={loading}
+                      onChange={(e) =>
+                        handleFieldChange('inventoryGuideline', parseInt(e.target.value, 10) || 0)
+                      }
+                    />
+                    <p className="text-[11px] text-slate-400 mt-1 font-medium italic">
+                      * Hệ thống sẽ cảnh báo khi tồn kho thực tế thấp hơn mức này (Mặc định: 0 - Không cảnh báo).
+                    </p>
+                  </div>
                 </div>
               </FormSection>
               <FormSection title="Hình Ảnh & Bổ Sung">
@@ -478,21 +491,21 @@ const ProductVariantForm: React.FC = () => {
                 </div>
               )}
 
-              {/* TABLE NHẬP LIỆU */}
-              <div className="border border-slate-200 rounded-xl overflow-hidden bg-white">
+              {/* TABLE NHẬP LIỆU BẢNG GIÁ - XỬ LÝ OVERFLOW DROPDOWN */}
+              <div className="border border-slate-200 rounded-2xl bg-white shadow-2xs">
                 <table className="w-full text-left border-collapse">
                   <thead className="bg-slate-50/80 border-b border-slate-200">
                     <tr>
-                      <th className="w-[35%] py-3 px-4 text-xs font-bold text-slate-500 uppercase">
+                      <th className="w-[38%] py-3.5 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">
                         Đơn Vị Tính <span className="text-red-500">*</span>
                       </th>
-                      <th className="w-[35%] py-3 px-4 text-xs font-bold text-slate-500 uppercase">
+                      <th className="w-[38%] py-3.5 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">
                         Giá Bán Niêm Yết (VNĐ) <span className="text-red-500">*</span>
                       </th>
-                      <th className="w-[15%] py-3 px-4 text-xs font-bold text-slate-500 uppercase text-center">
+                      <th className="w-[12%] py-3.5 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">
                         Mặc Định
                       </th>
-                      <th className="w-[15%] py-3 px-4 text-xs font-bold text-slate-500 uppercase text-center">
+                      <th className="w-[12%] py-3.5 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">
                         Thao Tác
                       </th>
                     </tr>
@@ -500,54 +513,122 @@ const ProductVariantForm: React.FC = () => {
                   <tbody className="divide-y divide-slate-100">
                     {formData.prices.length === 0 ? (
                       <tr>
-                        <td colSpan={4} className="py-8 text-center text-slate-400 text-sm italic">
-                          Chưa có bảng giá nào. Vui lòng thêm quy cách bán.
+                        <td colSpan={4} className="py-10 text-center text-slate-400 text-sm italic">
+                          Chưa có bảng giá nào. Vui lòng bấm nút thêm quy cách bán bên dưới.
                         </td>
                       </tr>
                     ) : (
                       formData.prices.map((row, idx) => (
                         <tr
                           key={idx}
-                          className={
-                            row.isDefault
-                              ? 'bg-yellow-50/20'
-                              : 'hover:bg-slate-50/50 transition-colors'
-                          }
+                          className={`relative transition-colors ${
+                            row.isDefault ? 'bg-yellow-50/30' : 'hover:bg-slate-50/60'
+                          }`}
+                          style={{ zIndex: 60 - idx }}
                         >
-                          <td className="p-3">
+                          <td className="p-3 align-top">
                             <FormSelect
-                              label="" // Ẩn label đi vì đã có Header bảng
+                              label=""
+                              showSearch
+                              searchPlaceholder="Tìm ĐVT..."
                               options={uomOptions}
                               value={row.uoMId}
                               onSelect={(val) => handleUpdatePriceRow(idx, 'uoMId', val)}
-                              placeholder="Chọn UoM..."
+                              placeholder="Chọn ĐVT..."
                             />
-                          </td>
-                          <td className="p-3">
-                            <FormInput
-                              label=""
-                              type="number"
-                              value={row.price}
-                              onChange={(e) =>
-                                handleUpdatePriceRow(idx, 'price', parseFloat(e.target.value) || 0)
+                            {/* Chú thích quy cách / Quy đổi ĐVT */}
+                            {(() => {
+                              if (!row.uoMId) return null;
+                              const currentProd = rawProducts.find((p) => p.id === formData.productId);
+                              if (currentProd && row.uoMId === currentProd.baseUoMId) {
+                                return (
+                                  <div className="mt-1.5 inline-flex items-center gap-1.5 text-[11px] font-bold text-amber-800 bg-amber-50/90 px-2.5 py-1 rounded-lg border border-amber-200 shadow-2xs">
+                                    <Star size={11} className="fill-amber-500 text-amber-500" />
+                                    <span>Đơn vị cơ sở ({currentProd.baseUoMName || 'Kg'})</span>
+                                  </div>
+                                );
                               }
-                            />
+                              const conv =
+                                uomConversions.find(
+                                  (c) => c.productId === formData.productId && c.fromUoMId === row.uoMId
+                                ) ||
+                                uomConversions.find(
+                                  (c) => !c.productId && c.fromUoMId === row.uoMId
+                                );
+                              if (conv) {
+                                const fromName =
+                                  conv.fromUoMName ||
+                                  uomOptions.find((u) => u.value === row.uoMId)?.label ||
+                                  'ĐVT';
+                                const toName =
+                                  conv.toUoMName ||
+                                  currentProd?.baseUoMName ||
+                                  'Kg';
+                                return (
+                                  <div className="mt-1.5 inline-flex items-center gap-1.5 text-[11px] font-bold text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200/90 shadow-2xs">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                    <span>💡 1 {fromName} = {conv.conversionFactor} {toName}</span>
+                                  </div>
+                                );
+                              }
+                              return (
+                                <div className="mt-1.5 inline-flex items-center gap-1.5 text-[11px] font-medium text-slate-400 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-200">
+                                  <span>⚠️ Chưa cấu hình quy đổi</span>
+                                </div>
+                              );
+                            })()}
                           </td>
-                          <td className="p-3 text-center">
+                          <td className="p-3 align-top">
+                            <div className="relative">
+                              <input
+                                type="text"
+                                placeholder="VD: 45000"
+                                value={
+                                  row.price > 0
+                                    ? row.price.toLocaleString('vi-VN')
+                                    : ''
+                                }
+                                onChange={(e) => {
+                                  const numericVal =
+                                    parseInt(
+                                      e.target.value.replace(/\D/g, ''),
+                                      10
+                                    ) || 0;
+                                  handleUpdatePriceRow(idx, 'price', numericVal);
+                                }}
+                                className="w-full h-11.5 px-4 pr-10 rounded-xl border border-slate-200 focus:border-yellow-400 focus:ring-4 focus:ring-yellow-400/20 bg-slate-50/50 hover:bg-white focus:bg-white text-slate-800 font-bold text-sm outline-none transition-all"
+                              />
+                              <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold pointer-events-none">
+                                ₫
+                              </span>
+                            </div>
+                          </td>
+                          <td className="p-3 text-center align-middle">
                             <button
                               type="button"
                               onClick={() => handleSetDefaultPrice(idx)}
-                              className={`p-2 rounded-full transition-all mx-auto ${row.isDefault ? 'text-yellow-500 bg-yellow-100' : 'text-slate-300 hover:bg-slate-100 hover:text-slate-500'}`}
-                              title={row.isDefault ? 'Đang làm mặc định' : 'Đặt làm mặc định'}
+                              className={`p-2.5 rounded-full transition-all mx-auto ${
+                                row.isDefault
+                                  ? 'text-yellow-500 bg-yellow-100 shadow-xs'
+                                  : 'text-slate-300 hover:bg-slate-100 hover:text-slate-500'
+                              }`}
+                              title={
+                                row.isDefault
+                                  ? 'Đang làm mặc định'
+                                  : 'Đặt làm mặc định'
+                              }
                             >
-                              <Star size={20} className={row.isDefault ? 'fill-current' : ''} />
+                              <Star
+                                size={20}
+                                className={row.isDefault ? 'fill-current' : ''}
+                              />
                             </button>
                           </td>
-                          <td className="p-3 text-center">
+                          <td className="p-3 text-center align-middle">
                             <button
                               type="button"
                               onClick={() => handleRemovePriceRow(idx)}
-                              className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors mx-auto"
+                              className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors mx-auto cursor-pointer"
                               title="Xóa quy cách"
                             >
                               <Trash2 size={18} strokeWidth={2.5} />
@@ -560,11 +641,11 @@ const ProductVariantForm: React.FC = () => {
                 </table>
 
                 {/* NÚT THÊM DÒNG NẰM DƯỚI ĐÁY BẢNG */}
-                <div className="p-3 bg-slate-50/30 border-t border-slate-100 flex justify-center">
+                <div className="p-3.5 bg-slate-50/50 border-t border-slate-100 flex justify-center">
                   <button
                     type="button"
                     onClick={handleAddPriceRow}
-                    className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200/50 rounded-lg transition-colors"
+                    className="flex items-center gap-2 px-5 py-2.5 text-sm font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-xl transition-all cursor-pointer shadow-2xs hover:shadow-xs active:scale-98"
                   >
                     <Plus size={16} strokeWidth={3} /> THÊM QUY CÁCH BÁN
                   </button>

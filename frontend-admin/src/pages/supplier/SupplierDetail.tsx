@@ -9,7 +9,6 @@ import {
   Star,
   Edit3,
   Trash2,
-  Truck,
   Package,
   Clock,
 } from 'lucide-react';
@@ -36,11 +35,10 @@ import {
   DetailSection,
   InfoField,
   DetailProfileCard,
-  TabEmptyPlaceholder,
 } from '../../components/commons/TabUI';
 import { DateTimeCell, TableEmpty } from '../../components/commons/ListUI';
 
-type TabType = 'detail' | 'products' | 'addresses' | 'history';
+type TabType = 'detail' | 'products' | 'addresses';
 
 const SupplierDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -285,12 +283,6 @@ const SupplierDetail: React.FC = () => {
           onClick={() => setActiveTab('addresses')}
           label={`DANH SÁCH ĐỊA CHỈ KHO (${supplier.addresses?.length || 0})`}
           icon={MapPin}
-        />
-        <TabButton
-          active={activeTab === 'history'}
-          onClick={() => setActiveTab('history')}
-          label="LỊCH SỬ NHẬP HÀNG"
-          icon={Truck}
         />
       </TabGroup>
 
@@ -648,15 +640,6 @@ const SupplierDetail: React.FC = () => {
               </table>
             </div>
           </div>
-        )}
-
-        {/* ================= TAB 4: LỊCH SỬ NHẬP HÀNG ================= */}
-        {activeTab === 'history' && (
-          <TabEmptyPlaceholder
-            icon={Truck}
-            title="Lịch sử nhập hàng trống"
-            desc="Nhà cung cấp này chưa phát sinh bất kỳ đơn nhập hàng hay giao dịch nào trên hệ thống."
-          />
         )}
       </DetailCard>
     </DetailPageContainer>

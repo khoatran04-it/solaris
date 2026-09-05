@@ -21,6 +21,9 @@ namespace backend.DTOs.CustomerDTOs
 
         /// <summary>Địa chỉ Email liên hệ.</summary>
         public string? Email { get; set; }
+
+        /// <summary>Mật khẩu mới nếu muốn đặt lại (Reset Password) cho khách hàng.</summary>
+        public string? Password { get; set; }
         #endregion
 
         #region Thông tin Chi tiết & Cá nhân hóa

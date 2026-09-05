@@ -140,7 +140,7 @@ namespace backend.Services
             {
                 var issue = _mapper.Map<InventoryIssue>(dto);
 
-                issue.IssueCode = $"ISS-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString()[..6].ToUpper()}";
+                issue.IssueCode = $"ISS-{DateTimeHelper.VietnamDateString}-{Guid.NewGuid().ToString()[..6].ToUpper()}";
                 issue.IssuedById = safeUserId;
                 issue.IssueDate = dto.IssueDate ?? DateTime.UtcNow;
                 issue.Status = InventoryIssueStatus.Pending;
@@ -210,7 +210,7 @@ namespace backend.Services
 
                     _context.InventoryTransactions.Add(new InventoryTransaction
                     {
-                        TransactionCode = $"TXN-{DateTime.UtcNow:yyyyMMddHHmmss}-{Guid.NewGuid().ToString()[..4].ToUpper()}",
+                        TransactionCode = $"TXN-{DateTimeHelper.VietnamNow:yyyyMMddHHmmss}-{Guid.NewGuid().ToString()[..4].ToUpper()}",
                         WarehouseId = issue.WarehouseId,
                         VariantId = detail.VariantId,
                         BatchId = detail.BatchId,

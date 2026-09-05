@@ -44,14 +44,27 @@ namespace backend.Services.Interfaces
         Task<int> CreateAsync(CustomerReturnCreateDto dto, int? currentUserId = null);
         #endregion
 
-        #region Kiểm định & Hạch toán (QC & Fulfillment)
+        #region Duyệt & Kiểm định & Hạch toán (Lifecycle Workflow)
         /// <summary>
-        /// BƯỚC 2: Kiểm định chất lượng và Hoàn tất phiếu trả hàng.
-        /// NGHIỆP VỤ SINH TỬ CỦA KHO VÀ KẾ TOÁN: Khi Thủ kho submit DTO này:
-        /// 1. Tính toán chính xác số tiền cần hoàn (RefundAmount) dựa trên số lượng Hàng đạt chuẩn (Accepted).
-        /// 2. Chuyển Status sang 'Completed'.
-        /// 3. KÍCH HOẠT IInventoryService: Tự động cộng số lượng Accepted vào Tồn khả dụng (QuantityAvailable) 
-        ///    để bán tiếp, và cộng số lượng Damaged vào Tồn hàng hỏng, bảo toàn tuyệt đối sổ cái hàng hóa.
+        /// Duyệt Yêu Cầu Trả Hàng (Pending -> Approved).
+        /// Khách hàng sẽ thấy phiếu chuyển sang trạng thái "Đã duyệt" và chuẩn bị gửi hàng về kho.
+        /// </summary>
+        Task<bool> ApproveAsync(int id, int approvedById);
+
+        /// <summary>
+        /// BƯỚC 2: Kiểm định chất lượng tại kho (Approved -> Inspecting).
+        /// Phân loại số lượng Đạt (Accepted) và Hỏng (Damaged) để chuẩn bị tạo phiếu nhập kho thu hồi.
+        /// </summary>
+        Task<bool> InspectQCAsync(int id, int receivedById, CustomerReturnInspectionDto dto);
+
+        /// <summary>
+        /// Hoàn tất trực tiếp Phiếu trả hàng (Inspecting -> Completed).
+        /// Tự động cập nhật số dư tồn kho (Available / Damaged) và ghi nhận sổ cái bất biến.
+        /// </summary>
+        Task<bool> CompleteReturnAsync(int id);
+
+        /// <summary>
+        /// Kiểm định chất lượng và Hoàn tất phiếu trả hàng trong 1 bước (backward compatibility).
         /// </summary>
         Task<bool> InspectAndCompleteAsync(int id, int receivedById, CustomerReturnInspectionDto dto);
 

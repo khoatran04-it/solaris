@@ -143,6 +143,13 @@ namespace backend.Services
                     throw new KeyNotFoundException($"Không tìm thấy vai trò với ID = {id}.");
                 }
 
+                // Bảo vệ vai trò hệ thống không bị tạm khóa
+                if ((entity.Code.Equals("ADMIN", StringComparison.OrdinalIgnoreCase) ||
+                     entity.Code.Equals("SUPER_ADMIN", StringComparison.OrdinalIgnoreCase)) && !dto.IsActive)
+                {
+                    throw new InvalidOperationException("Không thể tạm khóa vai trò quản trị hệ thống mặc định.");
+                }
+
                 _mapper.Map(dto, entity);
 
                 #region Đồng bộ lại danh sách Quyền hạn (RolePermissions)
@@ -178,6 +185,13 @@ namespace backend.Services
                 throw new KeyNotFoundException($"Không tìm thấy vai trò với ID = {id}.");
             }
 
+            // Bảo vệ vai trò hệ thống cốt lõi không bị xóa
+            if (entity.Code.Equals("ADMIN", StringComparison.OrdinalIgnoreCase) ||
+                entity.Code.Equals("SUPER_ADMIN", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("Không thể xóa vai trò quản trị hệ thống mặc định.");
+            }
+
             // DbContext sẽ tự động chuyển thành Soft Delete (IsDeleted = true) trong SaveChangesAsync
             _context.IARoles.Remove(entity);
             await _context.SaveChangesAsync();
@@ -190,6 +204,13 @@ namespace backend.Services
             if (entity == null)
             {
                 throw new KeyNotFoundException($"Không tìm thấy vai trò với ID = {id}.");
+            }
+
+            // Bảo vệ vai trò hệ thống không bị tạm khóa
+            if ((entity.Code.Equals("ADMIN", StringComparison.OrdinalIgnoreCase) ||
+                 entity.Code.Equals("SUPER_ADMIN", StringComparison.OrdinalIgnoreCase)) && entity.IsActive)
+            {
+                throw new InvalidOperationException("Không thể tạm khóa vai trò quản trị hệ thống mặc định.");
             }
 
             entity.IsActive = !entity.IsActive;

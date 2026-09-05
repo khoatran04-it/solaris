@@ -8,6 +8,7 @@ import { warehouseApi } from '../../../api/warehouseApi';
 import { productVariantApi } from '../../../api/productVariantApi';
 import { uomApi } from '../../../api/uomApi';
 import { productBatchApi } from '../../../api/productBatchApi';
+import { orderApi } from '../../../api/orderApi';
 
 // Mock APIs
 vi.mock('../../../api/inventoryIssueApi', () => ({
@@ -43,6 +44,7 @@ vi.mock('../../../api/productBatchApi', () => ({
 
 vi.mock('../../../api/orderApi', () => ({
   orderApi: {
+    getAll: vi.fn(),
     getById: vi.fn(),
   },
 }));
@@ -88,6 +90,7 @@ describe('Module 10 - InventoryIssueForm Component', () => {
     (productVariantApi.getAllList as any).mockResolvedValue(mockVariants);
     (uomApi.getAllList as any).mockResolvedValue(mockUoms);
     (productBatchApi.getAllList as any).mockResolvedValue(mockBatches);
+    (orderApi.getAll as any).mockResolvedValue({ items: [], totalRecords: 0 });
   });
 
   // TC01: RENDER FORM TẠO MỚI PHIẾU XUẤT
@@ -174,6 +177,15 @@ describe('Module 10 - InventoryIssueForm Component', () => {
   // TC04: SUBMIT FORM HỢP LỆ
   it('TC04 - Submit form hợp lệ gọi API create và điều hướng trang chi tiết', async () => {
     (inventoryIssueApi.create as any).mockResolvedValue({ id: 20, message: 'Thành công' });
+    (inventoryIssueApi.getSuggestedBatches as any).mockResolvedValue([
+      {
+        batchId: 1,
+        batchCode: 'BATCH-2026-001',
+        expiryDate: '2026-09-02T00:00:00Z',
+        quantityAvailable: 30,
+        suggestedPickQuantity: 25,
+      },
+    ]);
 
     render(
       <MemoryRouter>
@@ -185,7 +197,6 @@ describe('Module 10 - InventoryIssueForm Component', () => {
       expect(warehouseApi.getAllList).toHaveBeenCalled();
       expect(productVariantApi.getAllList).toHaveBeenCalled();
       expect(uomApi.getAllList).toHaveBeenCalled();
-      expect(productBatchApi.getAllList).toHaveBeenCalled();
     });
 
     // 1. Chọn kho xuất
@@ -195,7 +206,15 @@ describe('Module 10 - InventoryIssueForm Component', () => {
     const whOption = await screen.findByText('Tổng Kho Hà Nội');
     fireEvent.click(whOption);
 
-    // 2. Nhập địa chỉ giao hàng
+    // 2. Nhập thông tin người nhận và địa chỉ giao hàng
+    const nameLabel = screen.getByText('Người nhận hàng');
+    const nameInput = nameLabel.nextElementSibling as HTMLInputElement;
+    fireEvent.change(nameInput, { target: { value: 'Nguyễn Văn A' } });
+
+    const phoneLabel = screen.getByText('Số điện thoại nhận');
+    const phoneInput = phoneLabel.nextElementSibling as HTMLInputElement;
+    fireEvent.change(phoneInput, { target: { value: '0901234567' } });
+
     const addrLabel = screen.getByText('Địa chỉ giao hàng');
     const addrInput = addrLabel.nextElementSibling as HTMLInputElement;
     fireEvent.change(addrInput, { target: { value: 'Số 10 Phố Huế, Hoàn Kiếm, Hà Nội' } });
@@ -206,13 +225,7 @@ describe('Module 10 - InventoryIssueForm Component', () => {
     const spOption = await screen.findByText('SKU-DAUTAY-500G - Dâu Tây Đà Lạt Hộp 500g');
     fireEvent.click(spOption);
 
-    // 4. Chọn Lô (dòng 1)
-    const batchTrigger = screen.getByText('-- Chọn Lô --');
-    fireEvent.click(batchTrigger);
-    const batchOption = await screen.findByText('BATCH-2026-001');
-    fireEvent.click(batchOption);
-
-    // 5. Chọn ĐVT (dòng 1)
+    // 4. Chọn ĐVT (dòng 1)
     const uomTrigger = screen.getByText('ĐVT');
     fireEvent.click(uomTrigger);
     const uomOption = await screen.findByText('Hộp 500g');

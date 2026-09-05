@@ -1,4 +1,4 @@
-﻿namespace backend.DTOs.ShopDTOs
+namespace backend.DTOs.ShopDTOs
 {
     public class ShopCustomerProfileDto
     {
@@ -12,6 +12,12 @@
         public string? AvatarPath { get; set; }
         public string? CustomerTierName { get; set; }
         public decimal DiscountPercent { get; set; }
+        public decimal TotalSpent { get; set; } = 0;
+        public int TotalOrders { get; set; } = 0;
+        public string? NextTierName { get; set; }
+        public decimal? NextTierMinSpending { get; set; }
+        public decimal AmountToNextTier { get; set; } = 0;
+        public decimal TierProgressPercent { get; set; } = 0;
         public List<ShopAddressDto> Addresses { get; set; } = new List<ShopAddressDto>();
     }
 

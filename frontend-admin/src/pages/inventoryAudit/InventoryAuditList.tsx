@@ -192,7 +192,7 @@ const InventoryAuditList: React.FC = () => {
                 <th className="w-[10%] py-4 px-2 text-xs font-bold text-slate-500 uppercase tracking-wider">
                   <div className="flex justify-center">
                     <CustomDateFilter
-                      title="TỪ NGÀY"
+                      title="NGÀY KIỂM KÊ"
                       selectedDate={fromDateFilter}
                       onApply={setFromDateFilter}
                     />
@@ -202,7 +202,7 @@ const InventoryAuditList: React.FC = () => {
                 <th className="w-[10%] py-4 px-2 text-xs font-bold text-slate-500 uppercase tracking-wider">
                   <div className="flex justify-center">
                     <CustomDateFilter
-                      title="ĐẾN NGÀY"
+                      title="THỜI GIAN LẬP"
                       selectedDate={toDateFilter}
                       onApply={setToDateFilter}
                     />
@@ -277,9 +277,14 @@ const InventoryAuditList: React.FC = () => {
                         </span>
                       </td>
 
-                      {/* CELL 4 & 5: NGÀY BẮT ĐẦU (Gộp Từ ngày - Đến ngày) */}
-                      <td className="py-3 px-2 text-center" colSpan={2}>
+                      {/* CELL 4: NGÀY KIỂM KÊ */}
+                      <td className="py-3 px-2 text-center">
                         <DateCell isoString={audit.auditDate} />
+                      </td>
+
+                      {/* CELL 5: THỜI GIAN LẬP */}
+                      <td className="py-3 px-2 text-center">
+                        <DateTimeCell isoString={audit.completedAt || audit.createdAt} />
                       </td>
 
                       {/* CELL 6: TRẠNG THÁI */}

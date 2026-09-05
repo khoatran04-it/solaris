@@ -221,7 +221,19 @@ const UserForm: React.FC = () => {
       }
       setTimeout(() => navigate('/users'), 1000);
     } catch (error: any) {
-      showToast('error', error.response?.data?.message || 'CÓ LỖI XẢY RA KHI LƯU');
+      const serverMsg = error.response?.data?.message || error.message || 'CÓ LỖI XẢY RA KHI LƯU';
+      showToast('error', serverMsg);
+
+      const fieldErrors: Record<string, string> = {};
+      if (serverMsg.includes('Email')) fieldErrors.email = serverMsg;
+      if (serverMsg.includes('Tên đăng nhập') || serverMsg.includes('Username')) fieldErrors.username = serverMsg;
+      if (serverMsg.includes('CCCD')) fieldErrors.citizenId = serverMsg;
+      if (serverMsg.includes('Số điện thoại') || serverMsg.includes('SĐT')) fieldErrors.phoneNumber = serverMsg;
+
+      if (Object.keys(fieldErrors).length > 0) {
+        setErrors((prev) => ({ ...prev, ...fieldErrors }));
+        setActiveTab('info');
+      }
     } finally {
       setLoading(false);
     }

@@ -7,11 +7,14 @@ import {
     Minus, 
     Trash2, 
     ArrowRight, 
-    Sparkles, 
     Gift,
     MapPin,
     Phone,
-    User
+    User,
+    CreditCard,
+    Banknote,
+    CheckCircle2,
+    Truck
 } from 'lucide-react';
 import { InteractiveOrderPayload, InteractiveOrderItem } from '@/types/chat';
 import { formatVND } from '@/lib/utils';
@@ -97,11 +100,11 @@ export default function InteractiveOrderCard({ sessionId, payload, onOrderSucces
         return (
             <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 text-center space-y-2">
                 <div className="w-10 h-10 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center mx-auto text-lg font-bold">
-                    ✓
+                    <CheckCircle2 className="w-6 h-6" />
                 </div>
                 <h4 className="font-bold text-xs text-emerald-900">ĐÃ TẠO ĐƠN HÀNG THÀNH CÔNG!</h4>
                 <p className="text-[11px] text-emerald-700">Mã đơn: <span className="font-mono font-bold">{orderCode}</span></p>
-                <p className="text-[10px] text-slate-500">Đơn hàng đang được kho Solaris chuẩn bị để chuyển sang GHN Express.</p>
+                <p className="text-[10px] text-slate-500">Đơn hàng đang được kho Solaris đóng gói để giao nhanh qua GHN Express.</p>
             </div>
         );
     }
@@ -109,7 +112,7 @@ export default function InteractiveOrderCard({ sessionId, payload, onOrderSucces
     if (items.length === 0) {
         return (
             <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-center text-xs text-slate-500">
-                Đơn hàng gợi ý đã trống. Bạn hãy nhắn tin để em tìm thêm nông sản khác nhé! 🥑
+                Đơn hàng gợi ý đã trống. Bạn hãy nhắn tin để em tìm thêm nông sản khác nhé!
             </div>
         );
     }
@@ -135,8 +138,8 @@ export default function InteractiveOrderCard({ sessionId, payload, onOrderSucces
             }`}>
                 {isFreeShipping ? (
                     <>
-                        <Sparkles className="w-4 h-4 text-emerald-600 shrink-0" />
-                        <span>🎉 Đơn hàng đã đạt <strong>MIỄN PHÍ SHIP 100%</strong> qua GHN!</span>
+                        <Truck className="w-4 h-4 text-emerald-600 shrink-0" />
+                        <span>Đơn hàng đã đạt <strong>MIỄN PHÍ GIAO HÀNG</strong> qua GHN!</span>
                     </>
                 ) : (
                     <>
@@ -239,7 +242,8 @@ export default function InteractiveOrderCard({ sessionId, payload, onOrderSucces
                         onChange={() => setPaymentMethod(3)}
                         className="hidden"
                     />
-                    <span>💳 VNPay Sandbox</span>
+                    <CreditCard className="w-3.5 h-3.5 text-blue-600" />
+                    <span>VNPay Sandbox</span>
                 </label>
 
                 <label className={`flex-1 p-2 rounded-xl border cursor-pointer transition-all flex items-center gap-1.5 text-[11px] ${
@@ -252,7 +256,8 @@ export default function InteractiveOrderCard({ sessionId, payload, onOrderSucces
                         onChange={() => setPaymentMethod(1)}
                         className="hidden"
                     />
-                    <span>💵 Khi nhận (COD)</span>
+                    <Banknote className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Khi nhận (COD)</span>
                 </label>
             </div>
 
@@ -273,7 +278,7 @@ export default function InteractiveOrderCard({ sessionId, payload, onOrderSucces
                     type="button"
                     onClick={handleConfirmOrder}
                     disabled={isSubmitting || items.length === 0}
-                    className="w-full py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl font-bold text-xs transition-all shadow-md shadow-emerald-600/20 flex items-center justify-center gap-1.5 active:scale-98 disabled:opacity-50"
+                    className="w-full py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl font-bold text-xs transition-all shadow-md shadow-emerald-600/20 flex items-center justify-center gap-1.5 active:scale-98 disabled:opacity-50 cursor-pointer"
                 >
                     <span>{isSubmitting ? 'Đang tạo đơn...' : paymentMethod === 3 ? 'Xác Nhận & Thanh Toán VNPay' : 'Xác Nhận Đặt Đơn Này'}</span>
                     <ArrowRight className="w-3.5 h-3.5" />

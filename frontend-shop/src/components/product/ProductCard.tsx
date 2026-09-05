@@ -1,6 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
-import { MapPin, Award, ArrowRight } from 'lucide-react';
+import { MapPin, ArrowRight, Sparkles, CheckCircle2 } from 'lucide-react';
 import { ShopProductCard } from '@/types/product';
 import { formatVND } from '@/lib/utils';
 
@@ -10,96 +10,106 @@ interface ProductCardProps {
 
 export default function ProductCard({ product }: ProductCardProps) {
     return (
-        <div className="group relative bg-white rounded-2xl border border-slate-100 shadow-xs hover:shadow-xl hover:border-emerald-200 transition-all duration-300 flex flex-col overflow-hidden">
+        <div className="group relative bg-white rounded-3xl border border-slate-200/70 shadow-[0_2px_15px_-3px_rgba(0,0,0,0.04)] hover:shadow-[0_12px_30px_-5px_rgba(0,0,0,0.08)] hover:border-emerald-300 hover:-translate-y-1 transition-all duration-300 flex flex-col overflow-hidden">
             
-            {/* Discount Badge */}
-            {product.hasPromotion && product.discountPercent > 0 && (
-                <div className="absolute top-3 left-3 z-10 bg-gradient-to-r from-rose-500 to-pink-600 text-white text-[11px] font-black px-2 py-0.5 rounded-full shadow-md">
-                    -{product.discountPercent}%
-                </div>
-            )}
+            {/* 1. Badges: Khuyến mãi & Chứng nhận & Hết hàng */}
+            <div className="absolute top-3.5 left-3.5 z-10 flex flex-col gap-1.5 items-start">
+                {product.hasPromotion && product.discountPercent > 0 && (
+                    <span className="bg-gradient-to-r from-rose-500 to-red-600 text-white text-[11px] font-black px-2.5 py-0.5 rounded-full shadow-xs tracking-wide">
+                        -{product.discountPercent}%
+                    </span>
+                )}
+                {product.certification && (
+                    <span className="bg-emerald-600/90 backdrop-blur-xs text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full shadow-xs flex items-center gap-0.5">
+                        <CheckCircle2 className="w-2.5 h-2.5" />
+                        {product.certification}
+                    </span>
+                )}
+            </div>
 
-            {/* Out of Stock Badge */}
             {!product.isInStock && (
-                <div className="absolute top-3 right-3 z-10 bg-slate-900/80 backdrop-blur-xs text-white text-[10px] font-bold px-2 py-0.5 rounded-md">
+                <div className="absolute top-3.5 right-3.5 z-10 bg-slate-900/80 backdrop-blur-xs text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full shadow-xs">
                     Tạm hết hàng
                 </div>
             )}
 
-            {/* Product Image Area */}
-            <Link href={`/san-pham/${product.slug}`} className="block relative aspect-square bg-slate-50 overflow-hidden">
+            {/* 2. Product Image Area */}
+            <Link 
+                href={`/san-pham/${product.slug}`} 
+                className="block relative aspect-square bg-slate-50 overflow-hidden border-b border-slate-100/80 group-hover:bg-emerald-50/20 transition-colors"
+            >
                 {product.imagePath ? (
                     <img
                         src={product.imagePath}
                         alt={product.name}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        className="w-full h-full object-cover group-hover:scale-108 transition-transform duration-500 ease-out"
                         loading="lazy"
                     />
                 ) : (
-                    <div className="w-full h-full flex items-center justify-center text-4xl bg-emerald-50/50 group-hover:scale-105 transition-transform duration-500">
-                        🥑
+                    <div className="w-full h-full flex flex-col items-center justify-center text-slate-300 group-hover:text-emerald-500 transition-colors">
+                        <svg viewBox="0 0 24 24" className="w-16 h-16 fill-none stroke-current stroke-1.5">
+                            <path d="M12 2a9 9 0 0 1 9 9c0 4.97-4.03 9-9 9a9 9 0 0 1-9-9c0-4.97 4.03-9 9-9z" />
+                            <path d="M12 7v5l3 3" />
+                            <path d="M9 12a3 3 0 1 0 6 0 3 3 0 0 0-6 0z" />
+                        </svg>
+                        <span className="text-[10px] font-bold uppercase tracking-wider mt-1 text-slate-400">Solaris Farm</span>
                     </div>
                 )}
             </Link>
 
-            {/* Content Area */}
-            <div className="p-4 flex-1 flex flex-col justify-between space-y-3">
-                <div className="space-y-1.5">
-                    {/* Category & Origin Tags */}
-                    <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
+            {/* 3. Content Details */}
+            <div className="p-4 sm:p-5 flex-1 flex flex-col justify-between space-y-3">
+                <div className="space-y-2">
+                    {/* Tags: Xuất xứ & Brix */}
+                    <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
                         {product.origin && (
-                            <span className="inline-flex items-center gap-0.5 px-2 py-0.5 bg-slate-100 text-slate-700 font-semibold rounded-md">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-slate-100 text-slate-700 font-semibold rounded-lg">
                                 <MapPin className="w-2.5 h-2.5 text-emerald-600" />
-                                {product.origin}
-                            </span>
-                        )}
-                        {product.certification && (
-                            <span className="inline-flex items-center gap-0.5 px-2 py-0.5 bg-emerald-50 text-emerald-700 font-bold rounded-md border border-emerald-200">
-                                <Award className="w-2.5 h-2.5 text-emerald-600" />
-                                {product.certification}
+                                <span>{product.origin}</span>
                             </span>
                         )}
                         {product.brixLevel && (
-                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-amber-50 text-amber-700 font-bold rounded-md">
-                                🍬 {product.brixLevel}°Bx
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-50 text-amber-800 font-bold rounded-lg border border-amber-200/50">
+                                <Sparkles className="w-2.5 h-2.5 text-amber-500" />
+                                <span>{product.brixLevel}°Bx</span>
                             </span>
                         )}
                     </div>
 
-                    {/* Product Title */}
-                    <h3 className="font-bold text-sm text-slate-900 group-hover:text-emerald-700 line-clamp-2 transition-colors">
+                    {/* Product Name */}
+                    <h3 className="font-bold text-sm text-slate-900 group-hover:text-emerald-700 transition-colors line-clamp-2 leading-snug">
                         <Link href={`/san-pham/${product.slug}`}>
                             {product.name}
                         </Link>
                     </h3>
                 </div>
 
-                {/* Pricing & View Detail Button */}
-                <div className="pt-2 border-t border-slate-50 flex items-center justify-between">
+                {/* 4. Pricing & Action CTA */}
+                <div className="pt-3 border-t border-slate-100 flex items-end justify-between gap-2">
                     <div>
-                        <div className="flex items-baseline gap-1.5">
-                            <span className="font-black text-emerald-700 text-base">
+                        <div className="flex items-baseline gap-1">
+                            <span className="font-black text-emerald-700 text-lg sm:text-xl">
                                 {formatVND(product.discountedPrice)}
                             </span>
-                            <span className="text-[11px] font-medium text-slate-500">
+                            <span className="text-[11px] font-semibold text-slate-500">
                                 /{product.baseUoMName || 'Kg'}
                             </span>
                         </div>
                         {product.hasPromotion && product.discountedPrice < product.originalPrice && (
-                            <span className="text-[11px] text-slate-400 line-through">
+                            <span className="text-xs text-slate-400 line-through font-medium block">
                                 {formatVND(product.originalPrice)}
                             </span>
                         )}
                     </div>
 
-                    {/* View Detail Button (replaces broken Quick Add) */}
+                    {/* View Details Button */}
                     <Link
                         href={`/san-pham/${product.slug}`}
-                        title={product.isInStock ? 'Xem chi tiết & Chọn mua' : 'Hết hàng'}
-                        className={`p-2.5 rounded-full transition-all duration-200 shadow-xs flex items-center justify-center ${
+                        title={product.isInStock ? 'Xem chi tiết & Mua ngay' : 'Tạm hết hàng'}
+                        className={`p-2.5 rounded-2xl transition-all flex items-center justify-center ${
                             !product.isInStock
                                 ? 'bg-slate-100 text-slate-400 pointer-events-none'
-                                : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-600 hover:text-white active:scale-95'
+                                : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-600 hover:text-white shadow-2xs group-hover:bg-emerald-600 group-hover:text-white active:scale-95'
                         }`}
                     >
                         <ArrowRight className="w-4 h-4" />

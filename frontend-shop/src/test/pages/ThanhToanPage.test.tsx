@@ -140,8 +140,8 @@ describe('Module 13 - ThanhToanPage Component', () => {
     render(<ThanhToanPage />);
 
     await waitFor(() => {
-      expect(screen.getByText(/1\. Địa Chỉ Nhận Hàng/i)).toBeInTheDocument();
-      expect(screen.getByText(/2\. Phương Thức Thanh Toán/i)).toBeInTheDocument();
+      expect(screen.getByText(/Địa Chỉ Nhận Hàng/i)).toBeInTheDocument();
+      expect(screen.getByText(/Phương Thức Thanh Toán/i)).toBeInTheDocument();
       expect(screen.getByText(/Bơ Booth 7 Đắk Lắk \(Kg\)/i)).toBeInTheDocument();
       expect(screen.getByText(/Nguyễn Văn A • 0901234567/i)).toBeInTheDocument();
       expect(screen.getByText('Mặc định')).toBeInTheDocument();

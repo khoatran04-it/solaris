@@ -161,7 +161,7 @@ namespace backend.Tests.Modules.Module01_Auth
             // Act & Assert
             var act = async () => await userService.CreateAsync(createDto);
             await act.Should().ThrowAsync<InvalidOperationException>()
-                .WithMessage("*đã tồn tại trong hệ thống*");
+                .WithMessage("*Email*đã được sử dụng bởi tài khoản khác*");
         }
         #endregion
 
@@ -286,6 +286,66 @@ namespace backend.Tests.Modules.Module01_Auth
             var userInDb = await context.IAUsers.FindAsync(200);
             BCrypt.Net.BCrypt.Verify("NewPass@456", userInDb!.PasswordHash).Should().BeTrue();
             BCrypt.Net.BCrypt.Verify("OldPass@123", userInDb.PasswordHash).Should().BeFalse();
+        }
+        #endregion
+
+        #region TEST CASE 08 & 09: BẢO VỆ TÀI KHOẢN ROOT ADMIN
+        [Fact(DisplayName = "TC08 - Chặn xóa tài khoản admin gốc tối cao")]
+        public async Task DeleteAsync_AdminRootUser_ShouldThrowInvalidOperationException()
+        {
+            // Arrange
+            using var context = TestFactories.CreateInMemoryDbContext();
+            var mapper = TestFactories.CreateAutoMapper();
+
+            var user = new IAUser
+            {
+                Id = 1,
+                Username = "admin",
+                FullName = "Quản trị viên tối cao",
+                Email = "admin@solaris.vn",
+                PhoneNumber = "0900000000",
+                CitizenId = "000000000001",
+                PasswordHash = "hash",
+                IsActive = true
+            };
+            context.IAUsers.Add(user);
+            await context.SaveChangesAsync();
+
+            var userService = new IAUserService(context, mapper);
+
+            // Act & Assert
+            var act = async () => await userService.DeleteAsync(1);
+            await act.Should().ThrowAsync<InvalidOperationException>()
+                .WithMessage("*Không thể xóa tài khoản quản trị viên tối cao*");
+        }
+
+        [Fact(DisplayName = "TC09 - Chặn tạm khóa tài khoản admin gốc tối cao")]
+        public async Task ToggleActiveAsync_AdminRootUser_ShouldThrowInvalidOperationException()
+        {
+            // Arrange
+            using var context = TestFactories.CreateInMemoryDbContext();
+            var mapper = TestFactories.CreateAutoMapper();
+
+            var user = new IAUser
+            {
+                Id = 1,
+                Username = "admin",
+                FullName = "Quản trị viên tối cao",
+                Email = "admin@solaris.vn",
+                PhoneNumber = "0900000000",
+                CitizenId = "000000000001",
+                PasswordHash = "hash",
+                IsActive = true
+            };
+            context.IAUsers.Add(user);
+            await context.SaveChangesAsync();
+
+            var userService = new IAUserService(context, mapper);
+
+            // Act & Assert
+            var act = async () => await userService.ToggleActiveAsync(1);
+            await act.Should().ThrowAsync<InvalidOperationException>()
+                .WithMessage("*Không thể tạm khóa tài khoản quản trị viên tối cao*");
         }
         #endregion
     }

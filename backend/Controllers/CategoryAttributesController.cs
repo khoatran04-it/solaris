@@ -71,9 +71,43 @@ namespace backend.Controllers
             }
         }
 
+        /// <summary>
+        /// Lấy toàn bộ danh sách cấu hình thuộc tính của một Danh mục sản phẩm.
+        /// </summary>
+        [HttpGet("category/{categoryId}")]
+        [ProducesResponseType(typeof(IEnumerable<CategoryAttributeReadDto>), StatusCodes.Status200OK)]
+        public async Task<IActionResult> GetByCategoryId(int categoryId)
+        {
+            var data = await _service.GetByCategoryIdAsync(categoryId);
+            return Ok(data);
+        }
+
         #endregion
 
         #region Thao tác Dữ liệu (Command)
+
+        /// <summary>
+        /// Đồng bộ hàng loạt ma trận thuộc tính cho Danh mục sản phẩm (Bulk Sync).
+        /// </summary>
+        [HttpPost("sync")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> Sync([FromBody] CategoryAttributeSyncDto dto)
+        {
+            try
+            {
+                await _service.SyncCategoryAttributesAsync(dto);
+                return Ok(new { message = "Đồng bộ thuộc tính cho danh mục thành công." });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
 
         /// <summary>
         /// Thiết lập gán một thuộc tính từ Từ điển hệ thống vào một Danh mục sản phẩm.

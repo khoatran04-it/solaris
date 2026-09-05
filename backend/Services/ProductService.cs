@@ -190,6 +190,7 @@ namespace backend.Services
                 var entity = _mapper.Map<Product>(dto);
                 entity.Code = trimmedCode;
                 entity.Name = dto.Name.Trim();
+                entity.Slug = !string.IsNullOrWhiteSpace(entity.Slug) ? SlugHelper.GenerateSlug(entity.Slug) : SlugHelper.GenerateSlug(entity.Name);
                 entity.Description = dto.Description?.Trim();
                 entity.ImagePath = dto.ImagePath?.Trim();
                 entity.IsActive = dto.IsActive;
@@ -229,6 +230,7 @@ namespace backend.Services
                 _mapper.Map(dto, entity);
                 entity.Code = trimmedCode;
                 entity.Name = dto.Name.Trim();
+                entity.Slug = SlugHelper.GenerateSlug(entity.Name);
                 entity.Description = dto.Description?.Trim();
                 entity.ImagePath = dto.ImagePath?.Trim();
                 entity.IsActive = dto.IsActive;

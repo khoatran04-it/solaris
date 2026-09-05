@@ -488,5 +488,170 @@ namespace backend.Tests.Modules.Module10_Inventory
                 .WithMessage("*Không thể xóa Phiếu Nhập Kho đã hoàn tất*");
         }
         #endregion
+
+        #region TC09: PHÂN LOẠI HÀNG HỎNG KHI NHẬP KHO (QUANTITY DAMAGED ROUTING)
+        /// <summary>
+        /// TC09: Kiểm tra khi hoàn tất phiếu nhập có RejectedQuantity > 0, hệ thống cộng số lượng này vào QuantityDamaged.
+        /// </summary>
+        [Fact]
+        public async Task TC09_CompleteReceiptAsync_WithDamagedQuantity_ShouldRouteToQuantityDamaged()
+        {
+            // Arrange
+            using var context = TestFactories.CreateInMemoryDbContext();
+            await SeedDependenciesAsync(context);
+
+            var receipt = new InventoryReceipt
+            {
+                Id = 15,
+                ReceiptCode = "IR-DAMAGED-TEST",
+                WarehouseId = 1,
+                SupplierId = 1,
+                Status = InventoryReceiptStatus.Pending,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+            receipt.Details.Add(new InventoryReceiptDetail
+            {
+                Id = 1,
+                InventoryReceiptId = 15,
+                VariantId = 1,
+                BatchId = 1,
+                UoMId = 1,
+                ExpectedQuantity = 100,
+                AcceptedQuantity = 90,
+                RejectedQuantity = 10,
+                RejectReason = "10 hộp bị dập nát"
+            });
+            context.InventoryReceipts.Add(receipt);
+            await context.SaveChangesAsync();
+
+            var service = new InventoryReceiptService(context, _mapper);
+
+            // Act
+            var success = await service.CompleteReceiptAsync(15, receivedById: 1, note: "Nhập hàng có 10 hộp hỏng");
+
+            // Assert
+            success.Should().BeTrue();
+
+            var inv = await context.WarehouseInventories.FirstAsync(x => x.WarehouseId == 1 && x.VariantId == 1 && x.BatchId == 1);
+            inv.QuantityAvailable.Should().Be(90);  // Hàng tốt
+            inv.QuantityDamaged.Should().Be(10);    // Hàng hỏng
+        }
+        #endregion
+
+        #region TC10: TỰ ĐỘNG CHUYỂN TRẠNG THÁI CUSTOMER RETURN KHI NHẬP KHO THU HỒI (RMA LINKING)
+        /// <summary>
+        /// TC10: Kiểm tra khi hoàn tất Phiếu nhập kho thu hồi có Note chứa mã phiếu trả hàng RET-...,
+        /// hệ thống tự động đồng bộ chuyển trạng thái CustomerReturn tương ứng sang Completed.
+        /// </summary>
+        [Fact]
+        public async Task TC10_CompleteReceiptAsync_WithCustomerReturnCodeInNote_ShouldAutoCompleteReturn()
+        {
+            // Arrange
+            using var context = TestFactories.CreateInMemoryDbContext();
+            await SeedDependenciesAsync(context);
+            var now = DateTime.UtcNow;
+
+            var customerReturn = new CustomerReturn
+            {
+                Id = 20,
+                ReturnCode = "RET-20260901-ABC123",
+                OrderId = 1,
+                CustomerId = 1,
+                WarehouseId = 1,
+                Status = CustomerReturnStatus.Inspecting,
+                ReturnDate = now,
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+            context.CustomerReturns.Add(customerReturn);
+
+            var receipt = new InventoryReceipt
+            {
+                Id = 25,
+                ReceiptCode = "IR-RMA-RECLAIM",
+                WarehouseId = 1,
+                SupplierId = 1,
+                Status = InventoryReceiptStatus.Pending,
+                Note = "Nhập kho thu hồi theo phiếu trả hàng RET-20260901-ABC123",
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+            receipt.Details.Add(new InventoryReceiptDetail
+            {
+                Id = 1,
+                InventoryReceiptId = 25,
+                VariantId = 1,
+                BatchId = 1,
+                UoMId = 1,
+                ExpectedQuantity = 5,
+                AcceptedQuantity = 5,
+                RejectedQuantity = 0
+            });
+            context.InventoryReceipts.Add(receipt);
+            await context.SaveChangesAsync();
+
+            var service = new InventoryReceiptService(context, _mapper);
+
+            // Act
+            var success = await service.CompleteReceiptAsync(25, receivedById: 1, note: null);
+
+            // Assert
+            success.Should().BeTrue();
+
+            var updatedReturn = await context.CustomerReturns.FindAsync(20);
+            updatedReturn!.Status.Should().Be(CustomerReturnStatus.Completed);
+        }
+        #endregion
+
+        #region TC11: DUNG SAI HOÀN TẤT NHẬN HÀNG NÔNG SẢN (PO TOLERANCE 5%)
+        /// <summary>
+        /// TC11: Kiểm tra quy tắc dung sai nông sản tươi 5% (ví dụ đặt 100 hộp nhận 96 hộp >= 95%),
+        /// Đơn mua hàng PO vẫn được ghi nhận hoàn tất chu trình (Status = Completed).
+        /// </summary>
+        [Fact]
+        public async Task TC11_CompleteReceiptAsync_WithPOTolerance_ShouldCompletePOWhenReceivedAtLeast95Percent()
+        {
+            // Arrange
+            using var context = TestFactories.CreateInMemoryDbContext();
+            await SeedDependenciesAsync(context);
+
+            var receipt = new InventoryReceipt
+            {
+                Id = 30,
+                ReceiptCode = "IR-PO-TOLERANCE",
+                WarehouseId = 1,
+                SupplierId = 1,
+                Status = InventoryReceiptStatus.Pending,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+            receipt.Details.Add(new InventoryReceiptDetail
+            {
+                Id = 1,
+                InventoryReceiptId = 30,
+                VariantId = 1,
+                BatchId = 1,
+                UoMId = 1,
+                PurchaseOrderDetailId = 1, // PO đặt 100 hộp
+                ExpectedQuantity = 100,
+                AcceptedQuantity = 96,     // Nhận thực tế 96 hộp (96% >= 95% threshold)
+                RejectedQuantity = 0
+            });
+            context.InventoryReceipts.Add(receipt);
+            await context.SaveChangesAsync();
+
+            var service = new InventoryReceiptService(context, _mapper);
+
+            // Act
+            var success = await service.CompleteReceiptAsync(30, receivedById: 1, note: "Nông sản tươi cân đo thực tế 96 hộp");
+
+            // Assert
+            success.Should().BeTrue();
+
+            var po = await context.PurchaseOrders.FindAsync(1);
+            po!.Status.Should().Be(PurchaseOrderStatus.Completed);
+        }
+        #endregion
     }
 }

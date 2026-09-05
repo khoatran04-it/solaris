@@ -19,8 +19,8 @@ import {
   DateTimeCell,
 } from '../../components/commons/ListUI';
 import { TabGroup, TabButton } from '../../components/commons/TabUI';
-import { CustomFilter } from '../../components/commons/CustomFilter';
-import { CustomDateFilter } from '../../components/commons/CustomDateFilter';
+import { FormSelect } from '../../components/commons/FormUI';
+import CustomDatePicker from '../../components/commons/CustomDatePicker';
 import { Toast } from '../../components/commons/Toast';
 
 import { inventoryReconciliationApi } from '../../api/inventoryReconciliationApi';
@@ -66,12 +66,20 @@ const InventoryReconciliation: React.FC = () => {
     setTimeout(() => setToast((prev) => ({ ...prev, show: false })), 3000);
   };
 
+  // Helper format ngày YYYY-MM-DD theo giờ địa phương Việt Nam (tránh lệch timezone)
+  const formatDateParam = (d: Date) => {
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   // --- EFFECT: LOAD WAREHOUSES ---
   useEffect(() => {
     const loadWarehouses = async () => {
       try {
         const whList = await warehouseApi.getAllList().catch(() => []);
-        const opts = whList.map((w: any) => ({ label: w.name, value: w.id }));
+        const opts = whList.map((w: any) => ({ label: `${w.name} (${w.code})`, value: w.id }));
         setWarehouseOptions(opts);
         if (opts.length > 0) {
           setSelectedWarehouseId(opts[0].value);
@@ -90,8 +98,8 @@ const InventoryReconciliation: React.FC = () => {
       setShiftLoading(true);
       const data = await inventoryReconciliationApi.getShiftClosing(
         selectedWarehouseId,
-        fromDate.toLocaleDateString('en-CA'),
-        toDate.toLocaleDateString('en-CA')
+        formatDateParam(fromDate),
+        formatDateParam(toDate)
       );
       setShiftData(data);
     } catch (err) {
@@ -110,8 +118,8 @@ const InventoryReconciliation: React.FC = () => {
       const data = await inventoryReconciliationApi.getStockLedger(
         selectedWarehouseId,
         undefined, // Tạm thời không filter theo ProductVariant ở màn hình tổng này
-        fromDate.toLocaleDateString('en-CA'),
-        toDate.toLocaleDateString('en-CA'),
+        formatDateParam(fromDate),
+        formatDateParam(toDate),
         ledgerPage,
         ledgerPageSize
       );
@@ -144,7 +152,7 @@ const InventoryReconciliation: React.FC = () => {
     <ListPageContainer>
       <Toast {...toast} />
 
-      {/* Bọc ListHeader trong 1 div ẩn đi phần tìm kiếm và nút bấm bên phải để vượt qua lỗi Props của TypeScript */}
+      {/* ListHeader */}
       <div className="[&>div>div:last-child]:hidden">
         <ListHeader
           title="Cân Đối Phát Sinh & Sổ Cái (Reconciliation)"
@@ -157,42 +165,51 @@ const InventoryReconciliation: React.FC = () => {
       </div>
 
       {/* ================= GLOBAL REPORT PARAMETERS BAR ================= */}
-      <div className="flex flex-wrap items-center justify-between gap-4 mb-6 p-5 bg-white border border-slate-200 rounded-2xl shadow-sm">
-        <div className="flex flex-wrap items-center gap-4">
-          <div className="flex items-center gap-2">
-            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-              Tham số Báo cáo:
-            </span>
-          </div>
+      <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 mb-6 p-5 bg-white border border-slate-100 rounded-3xl shadow-[0_2px_20px_-4px_rgba(0,0,0,0.05)]">
+        <div className="flex flex-wrap items-center gap-3.5 w-full lg:w-auto">
+          <span className="text-xs font-extrabold text-slate-600 uppercase tracking-wider shrink-0">
+            Tham số Báo cáo:
+          </span>
           <div className="w-px h-6 bg-slate-200 hidden md:block"></div>
 
-          <CustomFilter
-            title="Kho truy xuất"
-            options={warehouseOptions}
-            selectedValues={selectedWarehouseId ? [selectedWarehouseId] : []}
-            onApply={(val) => {
-              if (val.length > 0) setSelectedWarehouseId(Number(val[0]));
-              else setSelectedWarehouseId(0); // Xử lý khi user bấm "Xóa Lọc"
-            }}
-          />
+          {/* Chọn Kho */}
+          <div className="w-64 min-w-[200px]">
+            <FormSelect
+              label=""
+              options={warehouseOptions}
+              value={selectedWarehouseId}
+              onSelect={(val) => setSelectedWarehouseId(Number(val))}
+              placeholder="-- Chọn Kho hàng --"
+              showSearch
+              searchPlaceholder="Tìm kiếm kho..."
+            />
+          </div>
 
-          <CustomDateFilter
-            title="Từ ngày"
-            selectedDate={fromDate}
-            onApply={(d) => d && setFromDate(d)}
-          />
+          {/* Từ ngày */}
+          <div className="w-44">
+            <CustomDatePicker
+              label=""
+              value={fromDate}
+              onChange={(d) => d && setFromDate(d)}
+              placeholder="Từ ngày"
+            />
+          </div>
 
-          <CustomDateFilter
-            title="Đến ngày"
-            selectedDate={toDate}
-            onApply={(d) => d && setToDate(d)}
-          />
+          {/* Đến ngày */}
+          <div className="w-44">
+            <CustomDatePicker
+              label=""
+              value={toDate}
+              onChange={(d) => d && setToDate(d)}
+              placeholder="Đến ngày"
+            />
+          </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 w-full lg:w-auto justify-end">
           <button
             onClick={() => (activeTab === 'shift' ? fetchShiftReport() : fetchLedger())}
-            className="flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-700 font-bold text-sm rounded-lg hover:bg-indigo-100 transition-colors border border-indigo-200/50"
+            className="flex items-center gap-2 px-5 py-2.5 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 font-bold text-sm rounded-xl transition-all shadow-2xs cursor-pointer"
           >
             <RefreshCw size={16} className={shiftLoading || ledgerLoading ? 'animate-spin' : ''} />
             Tải Lại Số Liệu
@@ -224,7 +241,7 @@ const InventoryReconciliation: React.FC = () => {
           {/* METRIC OVERVIEW CARDS */}
           {shiftData && (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-              <div className="p-5 bg-white border border-slate-200 rounded-2xl shadow-sm relative overflow-hidden group">
+              <div className="p-5 bg-white border border-slate-200/80 rounded-2xl shadow-2xs relative overflow-hidden group">
                 <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                   <Box size={48} />
                 </div>
@@ -235,7 +252,7 @@ const InventoryReconciliation: React.FC = () => {
                   {shiftData.totalOpeningItems.toLocaleString('vi-VN')}
                 </div>
               </div>
-              <div className="p-5 bg-emerald-500 border border-emerald-600 rounded-2xl shadow-sm shadow-emerald-200 relative overflow-hidden group">
+              <div className="p-5 bg-emerald-500 border border-emerald-600 rounded-2xl shadow-sm shadow-emerald-200/50 relative overflow-hidden group">
                 <div className="absolute top-0 right-0 p-4 opacity-20 group-hover:scale-110 transition-transform">
                   <ArrowDownRight size={48} className="text-emerald-900" />
                 </div>
@@ -246,7 +263,7 @@ const InventoryReconciliation: React.FC = () => {
                   +{shiftData.totalInflowItems.toLocaleString('vi-VN')}
                 </div>
               </div>
-              <div className="p-5 bg-rose-500 border border-rose-600 rounded-2xl shadow-sm shadow-rose-200 relative overflow-hidden group">
+              <div className="p-5 bg-rose-500 border border-rose-600 rounded-2xl shadow-sm shadow-rose-200/50 relative overflow-hidden group">
                 <div className="absolute top-0 right-0 p-4 opacity-20 group-hover:scale-110 transition-transform">
                   <ArrowUpRight size={48} className="text-rose-900" />
                 </div>
@@ -257,7 +274,7 @@ const InventoryReconciliation: React.FC = () => {
                   -{shiftData.totalOutflowItems.toLocaleString('vi-VN')}
                 </div>
               </div>
-              <div className="p-5 bg-indigo-600 border border-indigo-700 rounded-2xl shadow-sm shadow-indigo-200 relative overflow-hidden group">
+              <div className="p-5 bg-indigo-600 border border-indigo-700 rounded-2xl shadow-sm shadow-indigo-200/50 relative overflow-hidden group">
                 <div className="absolute top-0 right-0 p-4 opacity-20 group-hover:scale-110 transition-transform">
                   <Scale size={48} className="text-indigo-900" />
                 </div>
@@ -272,8 +289,8 @@ const InventoryReconciliation: React.FC = () => {
           )}
 
           <ListCard>
-            <div className="overflow-x-auto min-h-100 pb-24">
-              <table className="w-full text-left whitespace-nowrap text-sm min-w-375">
+            <div className="overflow-x-auto min-h-[400px] pb-24">
+              <table className="w-full text-left whitespace-nowrap text-sm min-w-[1200px]">
                 <thead className="bg-slate-50 text-slate-600 font-bold uppercase tracking-wider border-b border-slate-200 text-xs">
                   <tr>
                     <th className="px-4 py-4 text-center w-12">#</th>
@@ -302,7 +319,7 @@ const InventoryReconciliation: React.FC = () => {
                       Chuyển Đi
                     </th>
 
-                    <th className="px-4 py-4 text-center text-amber-800 bg-amber-50/60 min-w-27.5 border-l border-amber-100">
+                    <th className="px-4 py-4 text-center text-amber-800 bg-amber-50/60 min-w-28 border-l border-amber-100">
                       Điều Chỉnh (±)
                     </th>
 
@@ -329,9 +346,9 @@ const InventoryReconciliation: React.FC = () => {
                     shiftData.items.map((row, idx) => (
                       <tr key={row.variantId} className="hover:bg-slate-50/70 transition-colors">
                         <td className="px-4 py-3 text-center text-slate-400">{idx + 1}</td>
-                        <td className="px-4 py-3 font-bold text-slate-500">{row.variantCode}</td>
+                        <td className="px-4 py-3 font-mono font-bold text-indigo-700">{row.variantCode}</td>
                         <td className="px-4 py-3 font-bold text-slate-800">{row.variantName}</td>
-                        <td className="px-4 py-3 text-center text-slate-600">{row.uomName}</td>
+                        <td className="px-4 py-3 text-center text-slate-600 font-medium">{row.uomName}</td>
 
                         <td className="px-4 py-3 text-center font-bold text-[13px] text-slate-700 bg-slate-50/40 border-l border-slate-100">
                           {row.openingStock}
@@ -389,22 +406,22 @@ const InventoryReconciliation: React.FC = () => {
       {activeTab === 'ledger' && (
         <div className="animate-in fade-in duration-300">
           <ListCard>
-            <div className="overflow-x-auto min-h-100 pb-24">
-              <table className="w-full text-left whitespace-nowrap text-sm min-w-300">
+            <div className="overflow-x-auto min-h-[400px] pb-24">
+              <table className="w-full text-left whitespace-nowrap text-sm min-w-[1100px]">
                 <thead className="bg-slate-50 text-slate-500 font-bold text-xs uppercase tracking-wider border-b border-slate-200">
                   <tr>
                     <th className="px-4 py-4 text-center w-12">#</th>
-                    <th className="px-4 py-4 min-w-37.5">Thời Gian</th>
-                    <th className="px-4 py-4 min-w-37.5">Mã Giao Dịch</th>
-                    <th className="px-4 py-4 min-w-37.5">Loại Nghiệp Vụ</th>
-                    <th className="px-4 py-4 min-w-35">Chứng Từ Gốc</th>
-                    <th className="px-4 py-4 min-w-50">Sản Phẩm</th>
-                    <th className="px-4 py-4 min-w-30">Lô Hàng</th>
-                    <th className="px-4 py-4 text-center min-w-30 bg-indigo-50/50 text-indigo-900">
+                    <th className="px-4 py-4 min-w-[130px]">Thời Gian</th>
+                    <th className="px-4 py-4 min-w-[170px]">Mã Giao Dịch</th>
+                    <th className="px-4 py-4 min-w-[120px]">Loại Nghiệp Vụ</th>
+                    <th className="px-4 py-4 min-w-[130px]">Chứng Từ Gốc</th>
+                    <th className="px-4 py-4 min-w-[180px]">Sản Phẩm</th>
+                    <th className="px-4 py-4 min-w-[150px]">Lô Hàng</th>
+                    <th className="px-4 py-4 text-center min-w-[100px] bg-indigo-50/50 text-indigo-900">
                       Biến Động
                     </th>
-                    <th className="px-4 py-4 min-w-37.5">Người Thực Hiện</th>
-                    <th className="px-4 py-4 min-w-50">Ghi Chú</th>
+                    <th className="px-4 py-4 min-w-[140px]">Người Thực Hiện</th>
+                    <th className="px-4 py-4 min-w-[180px]">Ghi Chú</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -430,22 +447,22 @@ const InventoryReconciliation: React.FC = () => {
                             <DateTimeCell isoString={entry.transactionDate} />
                           </td>
                           <td className="px-4 py-3">
-                            <span className="inline-flex items-center px-2 py-1 rounded bg-slate-100 text-slate-600 font-mono text-xs font-bold border border-slate-200/60">
+                            <span className="inline-flex items-center px-2 py-1 rounded-md bg-slate-100 text-slate-700 font-mono text-xs font-bold border border-slate-200/80">
                               {entry.transactionCode}
                             </span>
                           </td>
                           <td className="px-4 py-3">
-                            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-600">
+                            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-700 bg-slate-100 px-2 py-0.5 rounded">
                               {entry.transactionType}
                             </span>
                           </td>
-                          <td className="px-4 py-3 font-bold text-indigo-600 text-xs">
+                          <td className="px-4 py-3 font-mono font-bold text-indigo-600 text-xs">
                             {entry.referenceCode || '---'}
                           </td>
                           <td className="px-4 py-3 font-bold text-slate-800">
                             {entry.variantName}
                           </td>
-                          <td className="px-4 py-3 font-bold text-indigo-700 text-xs">
+                          <td className="px-4 py-3 font-mono font-bold text-indigo-700 text-xs">
                             {entry.batchCode || '---'}
                           </td>
 

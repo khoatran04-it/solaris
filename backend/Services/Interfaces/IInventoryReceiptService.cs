@@ -22,9 +22,7 @@ namespace backend.Services.Interfaces
         /// <param name="supplierId">Lọc phiếu theo Nhà cung cấp giao hàng.</param>
         /// <param name="status">Lọc theo trạng thái (Pending, QC, Completed, Cancelled).</param>
         /// <param name="startDate">Lọc từ ngày (Dựa trên ReceiptDate).</param>
-        /// <param name="endDate">Lọc đến ngày (Dựa trên ReceiptDate).</param>
-        /// <param name="pageIndex">Trang hiện tại (Bắt đầu từ 1).</param>
-        /// <param name="pageSize">Số lượng bản ghi trên mỗi trang.</param>
+        /// <param name="allowedWarehouseIds">[Bảo mật RBAC] Danh sách ID kho mà User có quyền truy cập.</param>
         Task<PagedResult<InventoryReceiptReadDto>> GetPagedAsync(
             string? search,
             int? warehouseId,
@@ -33,14 +31,14 @@ namespace backend.Services.Interfaces
             DateTime? startDate,
             DateTime? endDate,
             int pageIndex,
-            int pageSize
+            int pageSize,
+            List<int>? allowedWarehouseIds = null
         );
 
         /// <summary>
-        /// Lấy chi tiết Phiếu nhập kho theo ID.
-        /// Dữ liệu trả về bao gồm danh sách kết quả kiểm đếm (Accepted/Rejected) và các trường đã được làm phẳng.
+        /// Lấy chi tiết Phiếu nhập kho theo ID kèm xác thực quyền truy cập kho.
         /// </summary>
-        Task<InventoryReceiptReadDto> GetByIdAsync(int id);
+        Task<InventoryReceiptReadDto> GetByIdAsync(int id, List<int>? allowedWarehouseIds = null);
         #endregion
 
         #region Thao tác Dữ liệu & Quy trình (Command & Workflow)

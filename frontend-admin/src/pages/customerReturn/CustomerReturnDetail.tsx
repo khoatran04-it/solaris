@@ -111,7 +111,21 @@ const CustomerReturnDetail: React.FC = () => {
     );
   };
 
-  const handleCompleteQC = async () => {
+  const handleApprove = async () => {
+    if (!ret) return;
+    try {
+      setActionLoading(true);
+      await customerReturnApi.approve(ret.id);
+      showToast('success', 'ĐÃ DUYỆT YÊU CẦU TRẢ HÀNG THÀNH CÔNG! KHÁCH HÀNG SẼ GỬI HÀNG VỀ KHO.');
+      fetchReturn();
+    } catch (err: any) {
+      showToast('error', err.response?.data?.message || 'Không thể duyệt yêu cầu trả hàng!');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleSaveQC = async () => {
     if (!ret) return;
     try {
       setActionLoading(true);
@@ -120,12 +134,29 @@ const CustomerReturnDetail: React.FC = () => {
         items: inspectionItems,
       };
 
-      await customerReturnApi.inspectAndComplete(ret.id, payload);
-      showToast('success', 'NGHIỆM THU QC THÀNH CÔNG! ĐÃ CẬP NHẬT TỒN KHO KHẢ DỤNG / HÀNG LỖI.');
+      await customerReturnApi.inspect(ret.id, payload);
+      showToast(
+        'success',
+        'ĐÃ LƯU KẾT QUẢ KIỂM ĐỊNH QC! BẠN CÓ THỂ TẠO PHIẾU NHẬP KHO THU HỒI ĐỂ NHẬP LẠI HÀNG.'
+      );
       setQcModalOpen(false);
       fetchReturn();
     } catch (err: any) {
-      showToast('error', err.response?.data?.message || 'Không thể hoàn tất nghiệm thu QC!');
+      showToast('error', err.response?.data?.message || 'Không thể lưu kết quả kiểm định QC!');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleCompleteReturn = async () => {
+    if (!ret) return;
+    try {
+      setActionLoading(true);
+      await customerReturnApi.complete(ret.id);
+      showToast('success', 'ĐÃ HOÀN TẤT PHIẾU TRẢ HÀNG & HẠCH TOÁN TỒN KHO THÀNH CÔNG!');
+      fetchReturn();
+    } catch (err: any) {
+      showToast('error', err.response?.data?.message || 'Không thể hoàn tất phiếu trả hàng!');
     } finally {
       setActionLoading(false);
     }
@@ -202,27 +233,65 @@ const CustomerReturnDetail: React.FC = () => {
             )}
           </div>
 
-          {/* Vách ngăn */}
-          {(ret.status === CustomerReturnStatus.Pending ||
-            ret.status === CustomerReturnStatus.Inspecting) && (
-            <div className="h-6 w-px bg-slate-200 mx-2 hidden md:block"></div>
-          )}
+          <div className="h-6 w-px bg-slate-200 mx-2 hidden md:block"></div>
 
-          {/* Nút QC Inspection (Nằm bên trái) */}
-          {(ret.status === CustomerReturnStatus.Pending ||
-            ret.status === CustomerReturnStatus.Inspecting) && (
-            <button
-              onClick={() => setQcModalOpen(true)}
-              disabled={actionLoading}
-              className="flex items-center gap-2 px-5 py-2 bg-indigo-600 text-white rounded-lg font-bold text-sm hover:bg-indigo-700 transition-all shadow-sm shadow-indigo-200 disabled:opacity-50"
-            >
-              <ShieldCheck size={16} /> Kiểm Định QC & Nghiệm Thu
-            </button>
-          )}
+          {/* Nhóm nút theo từng trạng thái */}
+          <div className="flex items-center gap-2">
+            {/* 1. Trạng thái Pending: Nút Duyệt Yêu Cầu */}
+            {ret.status === CustomerReturnStatus.Pending && (
+              <button
+                onClick={handleApprove}
+                disabled={actionLoading}
+                className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg font-bold text-sm hover:bg-emerald-700 transition-all shadow-sm shadow-emerald-200 disabled:opacity-50"
+              >
+                <CheckCircle size={16} /> Duyệt Yêu Cầu
+              </button>
+            )}
+
+            {/* 2. Trạng thái Approved: Nút Kiểm Định QC (khi hàng về kho) */}
+            {ret.status === CustomerReturnStatus.Approved && (
+              <button
+                onClick={() => setQcModalOpen(true)}
+                disabled={actionLoading}
+                className="flex items-center gap-2 px-5 py-2 bg-indigo-600 text-white rounded-lg font-bold text-sm hover:bg-indigo-700 transition-all shadow-sm shadow-indigo-200 disabled:opacity-50"
+              >
+                <ShieldCheck size={16} /> Kiểm Định QC & Nghiệm Thu
+              </button>
+            )}
+
+            {/* 3. Trạng thái Inspecting (Đang xử lý sau khi QC): Nút Tạo Phiếu Nhập Kho Thu Hồi + Hoàn tất */}
+            {ret.status === CustomerReturnStatus.Inspecting && (
+              <>
+                <button
+                  onClick={() => navigate(`/inventory-receipts/create?returnId=${ret.id}`)}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-bold text-sm hover:bg-blue-700 transition-all shadow-sm shadow-blue-200"
+                >
+                  <Package size={16} /> Tạo Phiếu Nhập Kho Thu Hồi
+                </button>
+
+                <button
+                  onClick={handleCompleteReturn}
+                  disabled={actionLoading}
+                  className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg font-bold text-sm hover:bg-emerald-700 transition-all shadow-sm shadow-emerald-200 disabled:opacity-50"
+                >
+                  <CheckCircle size={16} /> Hoàn Tất Trả Hàng
+                </button>
+
+                <button
+                  onClick={() => setQcModalOpen(true)}
+                  disabled={actionLoading}
+                  className="flex items-center gap-2 px-3 py-2 bg-slate-100 text-slate-700 rounded-lg font-medium text-xs hover:bg-slate-200 transition-all"
+                >
+                  <ShieldCheck size={14} /> Sửa Kết Quả QC
+                </button>
+              </>
+            )}
+          </div>
         </div>
 
-        {/* Nút Từ Chối (Nằm sát góc phải) */}
+        {/* Nút Từ Chối (Hiện khi chưa hoàn tất hoặc từ chối) */}
         {(ret.status === CustomerReturnStatus.Pending ||
+          ret.status === CustomerReturnStatus.Approved ||
           ret.status === CustomerReturnStatus.Inspecting) && (
           <button
             onClick={() => setRejectModalOpen(true)}
@@ -513,7 +582,7 @@ const CustomerReturnDetail: React.FC = () => {
                 Hủy Bỏ
               </button>
               <button
-                onClick={handleCompleteQC}
+                onClick={handleSaveQC}
                 disabled={actionLoading}
                 className="px-5 py-2 bg-indigo-600 text-white rounded-lg text-sm font-bold hover:bg-indigo-700 transition-all disabled:opacity-50 flex items-center gap-2 shadow-sm shadow-indigo-200"
               >
@@ -522,7 +591,7 @@ const CustomerReturnDetail: React.FC = () => {
                 ) : (
                   <CheckCircle size={16} />
                 )}
-                Hoàn Tất Nghiệm Thu & Cập Nhật Kho
+                Lưu Kết Quả Kiểm Định & Chuyển Sang Xử Lý
               </button>
             </div>
           </div>
