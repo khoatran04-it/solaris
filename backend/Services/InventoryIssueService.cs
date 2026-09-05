@@ -148,6 +148,32 @@ namespace backend.Services
                 issue.UpdatedAt = DateTime.UtcNow;
                 issue.IsDeleted = false;
 
+                // Tự động tính toán Thể tích (TotalCbm) và Trọng lượng (TotalWeightKg) của kiện hàng xuất kho
+                var variantIds = issue.Details.Select(d => d.VariantId).Distinct().ToList();
+                var variants = await _context.ProductVariants.Where(v => variantIds.Contains(v.Id)).ToDictionaryAsync(v => v.Id);
+
+                foreach (var d in issue.Details)
+                {
+                    if (variants.TryGetValue(d.VariantId, out var variant))
+                    {
+                        if (!d.TotalCbm.HasValue || d.TotalCbm.Value <= 0)
+                        {
+                            var unitCbm = variant.UnitCbm ?? (
+                                (variant.LengthCm > 0 && variant.WidthCm > 0 && variant.HeightCm > 0)
+                                    ? (variant.LengthCm.Value * variant.WidthCm.Value * variant.HeightCm.Value) / 1000000m
+                                    : 0.02m
+                            );
+                            d.TotalCbm = Math.Round(unitCbm * d.Quantity, 4);
+                        }
+
+                        if (!d.TotalWeightKg.HasValue || d.TotalWeightKg.Value <= 0)
+                        {
+                            var unitWeight = variant.GrossWeightKg ?? 1.0m;
+                            d.TotalWeightKg = Math.Round(unitWeight * d.Quantity, 2);
+                        }
+                    }
+                }
+
                 _context.InventoryIssues.Add(issue);
                 await _context.SaveChangesAsync();
 

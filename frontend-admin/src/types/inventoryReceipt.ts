@@ -49,6 +49,9 @@ export interface InventoryReceiptDetail {
   acceptedQuantity: number;
   rejectedQuantity: number;
   rejectReason?: string;
+
+  actualWeightKg?: number;
+  calculatedCbm?: number;
 }
 
 // Phiếu nhập kho (Header)
@@ -89,6 +92,9 @@ export interface InventoryReceiptDetailPayload {
   acceptedQuantity: number;
   rejectedQuantity: number;
   rejectReason?: string;
+
+  actualWeightKg?: number;
+  calculatedCbm?: number;
 }
 
 export interface InventoryReceiptCreatePayload {

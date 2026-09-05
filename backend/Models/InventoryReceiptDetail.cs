@@ -35,6 +35,20 @@ namespace backend.Models
         public string? RejectReason { get; set; }
         #endregion
 
+        #region Cân đo thực tế & Thể tích (Actual Weight & Volume Metrics)
+        /// <summary>
+        /// Khối lượng cân thực tế tại cửa kho tính bằng Kilogram (Kg).
+        /// Nghiệp vụ: Dùng đối chiếu hao hụt thực tế so với barem cân nặng lý thuyết từ nhà cung cấp.
+        /// </summary>
+        public decimal? ActualWeightKg { get; set; }
+
+        /// <summary>
+        /// Thể tích tính toán của dòng hàng nhập kho này tính bằng mét khối (CBM - m3).
+        /// Nghiệp vụ: Dùng để cộng vào thể tích kho đã sử dụng (Occupied CBM) khi hoàn tất phiếu nhập.
+        /// </summary>
+        public decimal? CalculatedCbm { get; set; }
+        #endregion
+
         #region Liên kết Hàng hóa & Lô hàng (Traceability)
         /// <summary>Mã định danh của Biến thể sản phẩm (SKU) đang được kiểm đếm.</summary>
         public int VariantId { get; set; }

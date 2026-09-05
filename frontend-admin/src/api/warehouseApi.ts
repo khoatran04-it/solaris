@@ -1,6 +1,6 @@
 import axiosClient from './axiosClient';
 import { PagedResult } from '../types/common';
-import { Warehouse, WarehousePayload, WarehouseQueryParams } from '../types/warehouse';
+import { Warehouse, WarehousePayload, WarehouseQueryParams, WarehouseCapacityStatus } from '../types/warehouse';
 
 export const warehouseApi = {
   // 1. GET (Có phân trang & Lọc)
@@ -20,22 +20,27 @@ export const warehouseApi = {
     return axiosClient.get(`/warehouses/${id}`);
   },
 
-  // 4. POST (Thêm mới kho hàng & Địa chỉ bằng Transaction)
+  // 4. GET Capacity Status (Trạng thái thể tích & tải trọng tức thời)
+  getCapacityStatus: (id: number): Promise<WarehouseCapacityStatus> => {
+    return axiosClient.get(`/warehouses/${id}/capacity`);
+  },
+
+  // 5. POST (Thêm mới kho hàng & Địa chỉ bằng Transaction)
   create: (data: WarehousePayload): Promise<Warehouse> => {
     return axiosClient.post('/warehouses', data);
   },
 
-  // 5. PUT (Cập nhật kho hàng & Ghi đè địa chỉ)
+  // 6. PUT (Cập nhật kho hàng & Ghi đè địa chỉ)
   update: (id: number, data: WarehousePayload): Promise<void> => {
     return axiosClient.put(`/warehouses/${id}`, data);
   },
 
-  // 6. DELETE (Xóa mềm)
+  // 7. DELETE (Xóa mềm)
   delete: (id: number): Promise<void> => {
     return axiosClient.delete(`/warehouses/${id}`);
   },
 
-  // 7. PATCH (Thay đổi trạng thái Tạm khóa / Hoạt động)
+  // 8. PATCH (Thay đổi trạng thái Tạm khóa / Hoạt động)
   toggleActive: (id: number): Promise<void> => {
     return axiosClient.patch(`/warehouses/${id}/toggle-active`);
   },

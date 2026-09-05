@@ -146,6 +146,33 @@ namespace backend.Services
                 entity.UpdatedAt = DateTime.UtcNow;
                 entity.IsDeleted = false;
 
+                // Tự động tính toán Thể tích (CBM) và Cân nặng (Weight) nếu chưa được nhập
+                var variantIds = entity.Details.Select(d => d.VariantId).Distinct().ToList();
+                var variants = await _context.ProductVariants.Where(v => variantIds.Contains(v.Id)).ToDictionaryAsync(v => v.Id);
+
+                foreach (var d in entity.Details)
+                {
+                    if (variants.TryGetValue(d.VariantId, out var variant))
+                    {
+                        var qty = d.AcceptedQuantity > 0 ? d.AcceptedQuantity : d.ExpectedQuantity;
+                        if (!d.CalculatedCbm.HasValue || d.CalculatedCbm.Value <= 0)
+                        {
+                            var unitCbm = variant.UnitCbm ?? (
+                                (variant.LengthCm > 0 && variant.WidthCm > 0 && variant.HeightCm > 0)
+                                    ? (variant.LengthCm.Value * variant.WidthCm.Value * variant.HeightCm.Value) / 1000000m
+                                    : 0.02m
+                            );
+                            d.CalculatedCbm = Math.Round(unitCbm * qty, 4);
+                        }
+
+                        if (!d.ActualWeightKg.HasValue || d.ActualWeightKg.Value <= 0)
+                        {
+                            var unitWeight = variant.GrossWeightKg ?? 1.0m;
+                            d.ActualWeightKg = Math.Round(unitWeight * qty, 2);
+                        }
+                    }
+                }
+
                 _context.InventoryReceipts.Add(entity);
                 await _context.SaveChangesAsync();
 
@@ -183,6 +210,67 @@ namespace backend.Services
                 if (!string.IsNullOrWhiteSpace(note))
                 {
                     receipt.Note = note.Trim();
+                }
+
+                // Cập nhật CBM/Weight thực tế nếu còn thiếu
+                var rVariantIds = receipt.Details.Select(d => d.VariantId).Distinct().ToList();
+                var rVariants = await _context.ProductVariants.Where(v => rVariantIds.Contains(v.Id)).ToDictionaryAsync(v => v.Id);
+                foreach (var d in receipt.Details)
+                {
+                    if (rVariants.TryGetValue(d.VariantId, out var variant))
+                    {
+                        var unitCbm = variant.UnitCbm ?? (
+                            (variant.LengthCm > 0 && variant.WidthCm > 0 && variant.HeightCm > 0)
+                                ? (variant.LengthCm.Value * variant.WidthCm.Value * variant.HeightCm.Value) / 1000000m
+                                : 0.02m
+                        );
+                        var unitWeight = variant.GrossWeightKg ?? 1.0m;
+                        if (!d.CalculatedCbm.HasValue || d.CalculatedCbm.Value <= 0)
+                        {
+                            d.CalculatedCbm = Math.Round(unitCbm * d.AcceptedQuantity, 4);
+                        }
+                        if (!d.ActualWeightKg.HasValue || d.ActualWeightKg.Value <= 0)
+                        {
+                            d.ActualWeightKg = Math.Round(unitWeight * d.AcceptedQuantity, 2);
+                        }
+                    }
+                }
+
+                // Cảnh báo sức chứa kho (Capacity Warning Shield)
+                var warehouse = await _context.Warehouses.FirstOrDefaultAsync(w => w.Id == receipt.WarehouseId);
+                if (warehouse != null)
+                {
+                    var incomingCbm = receipt.Details.Sum(d => d.CalculatedCbm ?? 0);
+                    var totalCapacityCbm = warehouse.TotalCapacityCbm ?? 500m;
+
+                    var existingInventories = await _context.WarehouseInventories
+                        .Include(w => w.Variant)
+                        .Where(w => w.WarehouseId == receipt.WarehouseId && (w.QuantityAvailable > 0 || w.QuantityReserved > 0 || w.QuantityQC > 0))
+                        .AsNoTracking()
+                        .ToListAsync();
+
+                    decimal currentOccupiedCbm = 0;
+                    foreach (var inv in existingInventories)
+                    {
+                        var totalQty = inv.QuantityAvailable + inv.QuantityReserved + inv.QuantityQC;
+                        var uCbm = inv.Variant?.UnitCbm ?? (
+                            (inv.Variant?.LengthCm > 0 && inv.Variant?.WidthCm > 0 && inv.Variant?.HeightCm > 0)
+                                ? (inv.Variant.LengthCm.Value * inv.Variant.WidthCm.Value * inv.Variant.HeightCm.Value) / 1000000m
+                                : 0.02m
+                        );
+                        currentOccupiedCbm += totalQty * uCbm;
+                    }
+
+                    if (currentOccupiedCbm + incomingCbm > totalCapacityCbm)
+                    {
+                        var warningMsg = $"[CẢNH BÁO QUÁ TẢI CBM]: Lô hàng ({incomingCbm:N2} m³) làm vượt sức chứa kho ({Math.Round(currentOccupiedCbm + incomingCbm, 2)}/{totalCapacityCbm:N2} m³).";
+                        receipt.Note = string.IsNullOrWhiteSpace(receipt.Note) ? warningMsg : $"{receipt.Note} | {warningMsg}";
+                    }
+                    else if (totalCapacityCbm > 0 && ((currentOccupiedCbm + incomingCbm) / totalCapacityCbm) * 100m >= warehouse.WarningThresholdPercent)
+                    {
+                        var warningMsg = $"[CẢNH BÁO SỨC CHỨA]: Kho sắp đầy ({Math.Round(((currentOccupiedCbm + incomingCbm) / totalCapacityCbm) * 100m, 1)}% dung tích).";
+                        receipt.Note = string.IsNullOrWhiteSpace(receipt.Note) ? warningMsg : $"{receipt.Note} | {warningMsg}";
+                    }
                 }
 
                 var poIdsToUpdate = new HashSet<int>();

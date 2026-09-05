@@ -30,6 +30,13 @@ namespace backend.DTOs.InventoryDTOs
         public double Latitude { get; set; }
         public double Longitude { get; set; }
 
+        // --- Thông số Sức chứa Vật lý ---
+        public decimal? TotalAreaSqm { get; set; }
+        public decimal? TotalCapacityCbm { get; set; }
+        public decimal? MaxWeightCapacityKg { get; set; }
+        public int? MaxPalletPositions { get; set; }
+        public int WarningThresholdPercent { get; set; } = 85;
+
         // --- Trạng thái ---
         public bool IsActive { get; set; }
         public DateTime CreatedAt { get; set; }
@@ -63,6 +70,12 @@ namespace backend.DTOs.InventoryDTOs
         public string Name { get; set; } = string.Empty;
         public string? WarehouseType { get; set; }
 
+        public decimal? TotalAreaSqm { get; set; }
+        public decimal? TotalCapacityCbm { get; set; }
+        public decimal? MaxWeightCapacityKg { get; set; }
+        public int? MaxPalletPositions { get; set; }
+        public int WarningThresholdPercent { get; set; } = 85;
+
         public int? ManagerId { get; set; }
         public bool IsActive { get; set; } = true;
 
@@ -81,11 +94,45 @@ namespace backend.DTOs.InventoryDTOs
         public string Name { get; set; } = string.Empty;
         public string? WarehouseType { get; set; }
 
+        public decimal? TotalAreaSqm { get; set; }
+        public decimal? TotalCapacityCbm { get; set; }
+        public decimal? MaxWeightCapacityKg { get; set; }
+        public int? MaxPalletPositions { get; set; }
+        public int WarningThresholdPercent { get; set; } = 85;
+
         public int? ManagerId { get; set; }
         public bool IsActive { get; set; }
 
         /// <summary>Thông tin địa chỉ cập nhật để ghi đè lên bản ghi cũ.</summary>
         public required WarehouseAddressPayload Address { get; set; }
+    }
+    #endregion
+
+    #region DTO Báo cáo Sức chứa (Capacity Status)
+    /// <summary>
+    /// DTO cung cấp trạng thái sức chứa tức thời (CBM, Tải trọng kg) của một kho hàng.
+    /// </summary>
+    public class WarehouseCapacityStatusDto
+    {
+        public int WarehouseId { get; set; }
+        public string WarehouseCode { get; set; } = string.Empty;
+        public string WarehouseName { get; set; } = string.Empty;
+
+        // Thể tích
+        public decimal TotalCapacityCbm { get; set; }
+        public decimal OccupiedCbm { get; set; }
+        public decimal AvailableCbm { get; set; }
+        public decimal OccupancyRateCbm { get; set; }
+
+        // Tải trọng
+        public decimal MaxWeightCapacityKg { get; set; }
+        public decimal OccupiedWeightKg { get; set; }
+        public decimal AvailableWeightKg { get; set; }
+        public decimal OccupancyRateWeight { get; set; }
+
+        // Đánh giá
+        public int WarningThresholdPercent { get; set; } = 85;
+        public string Status { get; set; } = "Safe"; // "Safe", "Warning", "Critical"
     }
     #endregion
 }

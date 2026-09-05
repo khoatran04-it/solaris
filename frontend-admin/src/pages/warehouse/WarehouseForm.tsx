@@ -25,6 +25,11 @@ const INITIAL_STATE: WarehousePayload = {
   code: '',
   name: '',
   warehouseType: '',
+  totalAreaSqm: undefined,
+  totalCapacityCbm: undefined,
+  maxWeightCapacityKg: undefined,
+  maxPalletPositions: undefined,
+  warningThresholdPercent: 85,
   managerId: 0, // 0 = Chưa bổ nhiệm
   isActive: true,
   address: {
@@ -100,6 +105,11 @@ const WarehouseForm: React.FC = () => {
             code: res.code || '',
             name: res.name || '',
             warehouseType: res.warehouseType || '',
+            totalAreaSqm: res.totalAreaSqm,
+            totalCapacityCbm: res.totalCapacityCbm,
+            maxWeightCapacityKg: res.maxWeightCapacityKg,
+            maxPalletPositions: res.maxPalletPositions,
+            warningThresholdPercent: res.warningThresholdPercent ?? 85,
             managerId: res.managerId || 0,
             isActive: res.isActive,
             address: {
@@ -190,6 +200,11 @@ const WarehouseForm: React.FC = () => {
         code: formData.code?.trim().toUpperCase(),
         name: formData.name.trim(),
         warehouseType: formData.warehouseType?.trim() || undefined,
+        totalAreaSqm: formData.totalAreaSqm ? Number(formData.totalAreaSqm) : undefined,
+        totalCapacityCbm: formData.totalCapacityCbm ? Number(formData.totalCapacityCbm) : undefined,
+        maxWeightCapacityKg: formData.maxWeightCapacityKg ? Number(formData.maxWeightCapacityKg) : undefined,
+        maxPalletPositions: formData.maxPalletPositions ? Number(formData.maxPalletPositions) : undefined,
+        warningThresholdPercent: formData.warningThresholdPercent ? Number(formData.warningThresholdPercent) : 85,
         managerId: formData.managerId === 0 ? null : formData.managerId,
         address: {
           province: formData.address.province.trim(),
@@ -336,6 +351,77 @@ const WarehouseForm: React.FC = () => {
                   }
                 />
               </div>
+            </div>
+          </FormSection>
+
+          {/* ================= SECTION 3: SỨC CHỨA & DIỆN TÍCH LƯU KHO ================= */}
+          <FormSection title="Quy Mô & Sức Chứa Lưu Trữ (Capacity & Dimensions)">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <FormInput
+                label="Tổng Thể Tích Lưu Trữ (CBM - m³)"
+                type="number"
+                placeholder="VD: 500"
+                value={formData.totalCapacityCbm ?? ''}
+                disabled={loading}
+                onChange={(e) =>
+                  handleFieldChange(
+                    'totalCapacityCbm',
+                    e.target.value ? parseFloat(e.target.value) : undefined
+                  )
+                }
+              />
+              <FormInput
+                label="Tải Trọng Sàn Tối Đa (Kg)"
+                type="number"
+                placeholder="VD: 100000 (100 Tấn)"
+                value={formData.maxWeightCapacityKg ?? ''}
+                disabled={loading}
+                onChange={(e) =>
+                  handleFieldChange(
+                    'maxWeightCapacityKg',
+                    e.target.value ? parseFloat(e.target.value) : undefined
+                  )
+                }
+              />
+              <FormInput
+                label="Ngưỡng Cảnh Báo Đầy Kho (%)"
+                type="number"
+                placeholder="VD: 85"
+                value={formData.warningThresholdPercent ?? 85}
+                disabled={loading}
+                onChange={(e) =>
+                  handleFieldChange(
+                    'warningThresholdPercent',
+                    e.target.value ? parseInt(e.target.value) : 85
+                  )
+                }
+              />
+              <FormInput
+                label="Diện Tích Kho (m²)"
+                type="number"
+                placeholder="VD: 1200"
+                value={formData.totalAreaSqm ?? ''}
+                disabled={loading}
+                onChange={(e) =>
+                  handleFieldChange(
+                    'totalAreaSqm',
+                    e.target.value ? parseFloat(e.target.value) : undefined
+                  )
+                }
+              />
+              <FormInput
+                label="Số Vị Trí Pallet (Pallet Slots)"
+                type="number"
+                placeholder="VD: 300"
+                value={formData.maxPalletPositions ?? ''}
+                disabled={loading}
+                onChange={(e) =>
+                  handleFieldChange(
+                    'maxPalletPositions',
+                    e.target.value ? parseInt(e.target.value) : undefined
+                  )
+                }
+              />
             </div>
           </FormSection>
 

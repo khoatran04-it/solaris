@@ -87,6 +87,12 @@ namespace backend.DTOs.InventoryIssueDTOs
         /// dựa trên giá của Batch hoặc Bình quân gia quyền. Trường này thường chỉ dùng khi có yêu cầu ghi nhận giá thủ công ngoại lệ.
         /// </summary>
         public decimal UnitPrice { get; set; }
+
+        /// <summary>Tổng khối lượng kiện hàng xuất đi tính bằng Kilogram (Kg).</summary>
+        public decimal? TotalWeightKg { get; set; }
+
+        /// <summary>Tổng thể tích kiện hàng xuất đi tính bằng mét khối (CBM - m3).</summary>
+        public decimal? TotalCbm { get; set; }
         #endregion
     }
 }

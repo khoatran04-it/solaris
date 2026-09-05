@@ -219,6 +219,9 @@ const WarehouseList: React.FC = () => {
                                 {item.warehouseType}
                               </span>
                             )}
+                            <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200/60">
+                              📦 {item.totalCapacityCbm ?? 500} m³
+                            </span>
                           </div>
                         </div>
                       </td>

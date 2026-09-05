@@ -17,6 +17,10 @@ namespace backend.Configurations
             builder.Property(x => x.RejectedQuantity).HasColumnType("decimal(18,3)");
             builder.Property(x => x.RejectReason).HasMaxLength(500);
 
+            // Đo lường thực tế & Thể tích
+            builder.Property(x => x.ActualWeightKg).HasColumnType("decimal(18,3)");
+            builder.Property(x => x.CalculatedCbm).HasColumnType("decimal(18,4)");
+
             // --- CONFIGURATION KHÓA NGOẠI ---
             // Xóa Phiếu Nhập thì xóa luôn chi tiết (Cascade)
             builder.HasOne(x => x.InventoryReceipt)

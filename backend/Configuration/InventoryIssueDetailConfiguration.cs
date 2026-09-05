@@ -14,6 +14,8 @@ namespace backend.Configurations
             builder.Property(x => x.Quantity).HasColumnType("decimal(18,3)");
             builder.Property(x => x.UnitPrice).HasColumnType("decimal(18,2)");
             builder.Property(x => x.TotalPrice).HasColumnType("decimal(18,2)");
+            builder.Property(x => x.TotalWeightKg).HasColumnType("decimal(18,3)");
+            builder.Property(x => x.TotalCbm).HasColumnType("decimal(18,4)");
 
             // Relationships
             builder.HasOne(x => x.InventoryIssue)

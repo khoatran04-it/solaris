@@ -26,6 +26,21 @@ namespace backend.Models
 
         /// <summary>Mức tồn kho an toàn tối thiểu (Safety Stock - hệ thống sẽ tự động cảnh báo khi tồn kho tổng xuống dưới mức này).</summary>
         public int InventoryGuideline { get; set; }
+
+        /// <summary>Khối lượng tổng cả bao bì của 1 đơn vị quy cách biến thể (Kg).</summary>
+        public decimal? GrossWeightKg { get; set; }
+
+        /// <summary>Chiều dài đóng gói (cm).</summary>
+        public decimal? LengthCm { get; set; }
+
+        /// <summary>Chiều rộng đóng gói (cm).</summary>
+        public decimal? WidthCm { get; set; }
+
+        /// <summary>Chiều cao đóng gói (cm).</summary>
+        public decimal? HeightCm { get; set; }
+
+        /// <summary>Thể tích của 1 đơn vị quy cách tính bằng mét khối (CBM - m3).</summary>
+        public decimal? UnitCbm { get; set; }
         #endregion
 
         #region Trạng thái & Hệ thống

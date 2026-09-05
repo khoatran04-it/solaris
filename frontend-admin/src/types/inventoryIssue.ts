@@ -40,6 +40,8 @@ export interface InventoryIssueDetail {
   quantity: number;
   unitPrice: number;
   totalPrice: number;
+  totalWeightKg?: number;
+  totalCbm?: number;
 }
 
 export interface InventoryIssue {
@@ -81,6 +83,8 @@ export interface InventoryIssueDetailCreatePayload {
   uoMId: number;
   quantity: number;
   unitPrice: number;
+  totalWeightKg?: number;
+  totalCbm?: number;
 }
 
 export interface InventoryIssueCreatePayload {

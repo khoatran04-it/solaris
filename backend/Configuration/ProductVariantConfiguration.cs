@@ -21,6 +21,13 @@ namespace backend.Configurations
 
             builder.Property(x => x.InventoryGuideline).HasDefaultValue(0);
 
+            // Quy cách Vật lý & Thể tích
+            builder.Property(x => x.GrossWeightKg).HasColumnType("decimal(18,3)");
+            builder.Property(x => x.LengthCm).HasColumnType("decimal(18,2)");
+            builder.Property(x => x.WidthCm).HasColumnType("decimal(18,2)");
+            builder.Property(x => x.HeightCm).HasColumnType("decimal(18,2)");
+            builder.Property(x => x.UnitCbm).HasColumnType("decimal(18,4)");
+
             // Audit & Soft Delete
             builder.Property(x => x.CreatedAt).HasColumnType("datetime2");
             builder.Property(x => x.UpdatedAt).HasColumnType("datetime2");

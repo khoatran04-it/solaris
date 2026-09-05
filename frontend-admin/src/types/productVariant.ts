@@ -56,6 +56,13 @@ export interface ProductVariant {
   productId: number;
   productName: string;
 
+  // Thông số Kích thước & Trọng lượng
+  grossWeightKg?: number;
+  lengthCm?: number;
+  widthCm?: number;
+  heightCm?: number;
+  unitCbm?: number;
+
   // Ngăn chứa dữ liệu con
   attributes: VariantAttribute[];
   prices: VariantPrice[]; // 🔥 BỔ SUNG: Mảng quy cách bán hàng
@@ -68,7 +75,12 @@ export interface ProductVariantPayload {
   description?: string | null;
   imagePath?: string | null;
 
-  // 🔥 ĐÃ XÓA: defaultPrice ở gốc
+  // Thông số Kích thước & Trọng lượng
+  grossWeightKg?: number;
+  lengthCm?: number;
+  widthCm?: number;
+  heightCm?: number;
+  unitCbm?: number;
 
   inventoryGuideline: number;
   isActive: boolean;

@@ -43,6 +43,11 @@ const INITIAL_STATE: ProductVariantPayload = {
   inventoryGuideline: 0,
   isActive: true,
   productId: 0,
+  grossWeightKg: undefined,
+  lengthCm: undefined,
+  widthCm: undefined,
+  heightCm: undefined,
+  unitCbm: undefined,
   attributes: [],
   prices: [], // 🔥 Khởi tạo mảng giá rỗng
 };
@@ -117,6 +122,11 @@ const ProductVariantForm: React.FC = () => {
             inventoryGuideline: res.inventoryGuideline || 0,
             isActive: res.isActive,
             productId: res.productId,
+            grossWeightKg: res.grossWeightKg,
+            lengthCm: res.lengthCm,
+            widthCm: res.widthCm,
+            heightCm: res.heightCm,
+            unitCbm: res.unitCbm,
             attributes: res.attributes.map((a) => ({
               attributeDefinitionId: a.attributeDefinitionId!,
               attributeValue: a.attributeValue,
@@ -160,6 +170,22 @@ const ProductVariantForm: React.FC = () => {
         return newErrors;
       });
     }
+  };
+
+  const handleDimensionChange = (
+    field: 'lengthCm' | 'widthCm' | 'heightCm',
+    val: number | undefined
+  ) => {
+    setFormData((prev) => {
+      const next = { ...prev, [field]: val };
+      const l = field === 'lengthCm' ? val : prev.lengthCm;
+      const w = field === 'widthCm' ? val : prev.widthCm;
+      const h = field === 'heightCm' ? val : prev.heightCm;
+      if (l && w && h && l > 0 && w > 0 && h > 0) {
+        next.unitCbm = Math.round(((l * w * h) / 1000000) * 10000) / 10000;
+      }
+      return next;
+    });
   };
 
   // Helper: Cập nhật Thuộc tính
@@ -422,6 +448,76 @@ const ProductVariantForm: React.FC = () => {
                     value={formData.description || ''}
                     rows={3}
                     onChange={(e: any) => handleFieldChange('description', e.target.value)}
+                  />
+                </div>
+              </FormSection>
+
+              <FormSection title="Kích Thước Đóng Gói & Khối Lượng (Physical Dimensions & Weight)">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+                  <FormInput
+                    label="Dài (cm)"
+                    type="number"
+                    placeholder="VD: 30"
+                    value={formData.lengthCm ?? ''}
+                    disabled={loading}
+                    onChange={(e) =>
+                      handleDimensionChange(
+                        'lengthCm',
+                        e.target.value ? parseFloat(e.target.value) : undefined
+                      )
+                    }
+                  />
+                  <FormInput
+                    label="Rộng (cm)"
+                    type="number"
+                    placeholder="VD: 20"
+                    value={formData.widthCm ?? ''}
+                    disabled={loading}
+                    onChange={(e) =>
+                      handleDimensionChange(
+                        'widthCm',
+                        e.target.value ? parseFloat(e.target.value) : undefined
+                      )
+                    }
+                  />
+                  <FormInput
+                    label="Cao (cm)"
+                    type="number"
+                    placeholder="VD: 15"
+                    value={formData.heightCm ?? ''}
+                    disabled={loading}
+                    onChange={(e) =>
+                      handleDimensionChange(
+                        'heightCm',
+                        e.target.value ? parseFloat(e.target.value) : undefined
+                      )
+                    }
+                  />
+                  <FormInput
+                    label="Thể Tích (CBM - m³)"
+                    type="number"
+                    placeholder="Tự động tính"
+                    value={formData.unitCbm ?? ''}
+                    disabled={loading}
+                    onChange={(e) =>
+                      handleFieldChange(
+                        'unitCbm',
+                        e.target.value ? parseFloat(e.target.value) : undefined
+                      )
+                    }
+                  />
+                  <FormInput
+                    label="Khối Lượng Cả Bì (Kg)"
+                    type="number"
+                    placeholder="VD: 1.5"
+                    value={formData.grossWeightKg ?? ''}
+                    disabled={loading}
+                    onChange={(e) =>
+                      handleFieldChange(
+                        'grossWeightKg',
+                        e.target.value ? parseFloat(e.target.value) : undefined
+                      )
+                    }
                   />
                 </div>
               </FormSection>

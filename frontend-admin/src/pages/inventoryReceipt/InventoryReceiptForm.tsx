@@ -30,6 +30,7 @@ import { useAuthStore } from '../../stores/useAuthStore';
 
 import { InventoryReceiptCreatePayload } from '../../types/inventoryReceipt';
 import { PurchaseOrder, PurchaseOrderStatus } from '../../types/purchaseOrder';
+import { WarehouseCapacityStatus } from '../../types/warehouse';
 
 // Types cho Dropdown
 interface SelectOption {
@@ -47,6 +48,8 @@ interface DetailRow {
   acceptedQuantity: number;
   rejectedQuantity: number;
   rejectReason: string;
+  actualWeightKg?: number;
+  calculatedCbm?: number;
 }
 
 const InventoryReceiptForm: React.FC = () => {
@@ -76,12 +79,29 @@ const InventoryReceiptForm: React.FC = () => {
     { value: number; label: string; data: PurchaseOrder }[]
   >([]);
 
-  // --- FORM STATES ---
   const [selectedPoId, setSelectedPoId] = useState<number | ''>('');
   const [warehouseId, setWarehouseId] = useState<number | ''>('');
+  const [capacityStatus, setCapacityStatus] = useState<WarehouseCapacityStatus | null>(null);
   const [supplierId, setSupplierId] = useState<number | ''>('');
   const [receiptDate, setReceiptDate] = useState<Date | null>(new Date());
   const [notes, setNotes] = useState('');
+
+  // Tải thông tin sức chứa khi thay đổi kho
+  useEffect(() => {
+    if (
+      warehouseId &&
+      typeof warehouseId === 'number' &&
+      warehouseId > 0 &&
+      typeof warehouseApi.getCapacityStatus === 'function'
+    ) {
+      warehouseApi
+        .getCapacityStatus(warehouseId)
+        .then(setCapacityStatus)
+        .catch(() => setCapacityStatus(null));
+    } else {
+      setCapacityStatus(null);
+    }
+  }, [warehouseId]);
 
   const [details, setDetails] = useState<DetailRow[]>([
     {
@@ -404,16 +424,28 @@ const InventoryReceiptForm: React.FC = () => {
         note: notes,
         details: details
           .filter((d) => Number(d.acceptedQuantity) > 0 || Number(d.rejectedQuantity) > 0)
-          .map((d) => ({
-            variantId: d.variantId as number,
-            batchId: d.batchId as number,
-            uoMId: d.uoMId as number,
-            purchaseOrderDetailId: d.purchaseOrderDetailId || undefined,
-            expectedQuantity: Number(d.expectedQuantity),
-            acceptedQuantity: Number(d.acceptedQuantity),
-            rejectedQuantity: Number(d.rejectedQuantity),
-            rejectReason: d.rejectReason.trim() || undefined,
-          })),
+          .map((d) => {
+            const v = rawVariants.find((rv) => rv.id === d.variantId);
+            const unitCbm =
+              v?.unitCbm ||
+              (v?.lengthCm && v?.widthCm && v?.heightCm
+                ? (v.lengthCm * v.widthCm * v.heightCm) / 1000000
+                : 0.02);
+            const unitWeight = v?.grossWeightKg || 1;
+            const qty = Number(d.acceptedQuantity) > 0 ? Number(d.acceptedQuantity) : Number(d.expectedQuantity);
+            return {
+              variantId: d.variantId as number,
+              batchId: d.batchId as number,
+              uoMId: d.uoMId as number,
+              purchaseOrderDetailId: d.purchaseOrderDetailId || undefined,
+              expectedQuantity: Number(d.expectedQuantity),
+              acceptedQuantity: Number(d.acceptedQuantity),
+              rejectedQuantity: Number(d.rejectedQuantity),
+              rejectReason: d.rejectReason.trim() || undefined,
+              calculatedCbm: Math.round(unitCbm * qty * 10000) / 10000,
+              actualWeightKg: Math.round(unitWeight * qty * 100) / 100,
+            };
+          }),
       };
 
       await inventoryReceiptApi.create(payload);
@@ -425,6 +457,25 @@ const InventoryReceiptForm: React.FC = () => {
       setLoading(false);
     }
   };
+
+  // Tính tổng thể tích và tải trọng dự kiến của lô hàng nhập
+  const totalIncomingCbm = details.reduce((sum, d) => {
+    const v = rawVariants.find((rv) => rv.id === d.variantId);
+    const unitCbm =
+      v?.unitCbm ||
+      (v?.lengthCm && v?.widthCm && v?.heightCm
+        ? (v.lengthCm * v.widthCm * v.heightCm) / 1000000
+        : 0.02);
+    const qty = Number(d.acceptedQuantity) || 0;
+    return sum + unitCbm * qty;
+  }, 0);
+
+  const totalIncomingWeightKg = details.reduce((sum, d) => {
+    const v = rawVariants.find((rv) => rv.id === d.variantId);
+    const unitWeight = v?.grossWeightKg || 1;
+    const qty = Number(d.acceptedQuantity) || 0;
+    return sum + unitWeight * qty;
+  }, 0);
 
   return (
     <PageContainer>
@@ -506,6 +557,64 @@ const InventoryReceiptForm: React.FC = () => {
                   rows={2}
                 />
               </div>
+
+              {/* THÔNG BÁO SỨC CHỨA TỨC THỜI CỦA KHO */}
+              {capacityStatus && (
+                <div className="lg:col-span-4 p-4 rounded-2xl bg-slate-50 border border-slate-200 flex flex-col md:flex-row items-center justify-between gap-4">
+                  <div className="flex-1 w-full space-y-2">
+                    <div className="flex justify-between items-center text-xs font-bold">
+                      <span className="text-slate-700">
+                        📦 Sức chứa kho: {capacityStatus.warehouseName} ({capacityStatus.warehouseCode})
+                      </span>
+                      <span
+                        className={
+                          capacityStatus.status === 'Critical' ||
+                          capacityStatus.occupiedCbm + totalIncomingCbm > capacityStatus.totalCapacityCbm
+                            ? 'text-rose-600 font-extrabold'
+                            : capacityStatus.status === 'Warning'
+                            ? 'text-amber-600 font-extrabold'
+                            : 'text-emerald-600 font-extrabold'
+                        }
+                      >
+                        {capacityStatus.occupiedCbm} / {capacityStatus.totalCapacityCbm} m³ (Đang chứa {capacityStatus.occupancyRateCbm}%)
+                      </span>
+                    </div>
+                    {/* Progress Bar */}
+                    <div className="w-full bg-slate-200 h-2.5 rounded-full overflow-hidden flex">
+                      <div
+                        className="bg-emerald-500 h-full transition-all duration-300"
+                        style={{ width: `${Math.min(100, capacityStatus.occupancyRateCbm)}%` }}
+                        title="Đã sử dụng"
+                      />
+                      {totalIncomingCbm > 0 && (
+                        <div
+                          className="bg-indigo-500 h-full transition-all duration-300 animate-pulse"
+                          style={{
+                            width: `${Math.min(
+                              100 - Math.min(100, capacityStatus.occupancyRateCbm),
+                              (totalIncomingCbm / (capacityStatus.totalCapacityCbm || 1)) * 100
+                            )}%`,
+                          }}
+                          title="Lô hàng chuẩn bị nhập"
+                        />
+                      )}
+                    </div>
+                    <div className="flex justify-between text-[11px] text-slate-500">
+                      <span>
+                        Tải trọng sàn: {capacityStatus.occupiedWeightKg} / {capacityStatus.maxWeightCapacityKg} kg ({capacityStatus.occupancyRateWeight}%)
+                      </span>
+                      <span className="font-semibold text-indigo-600">
+                        + Lô chuẩn bị nhập: ~{totalIncomingCbm.toFixed(2)} m³ | ~{totalIncomingWeightKg.toFixed(1)} kg
+                      </span>
+                    </div>
+                  </div>
+                  {capacityStatus.occupiedCbm + totalIncomingCbm > capacityStatus.totalCapacityCbm && (
+                    <div className="px-3 py-1.5 rounded-xl bg-rose-100 text-rose-800 text-xs font-bold shrink-0">
+                      ⚠️ Cảnh báo: Vượt sức chứa kho!
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </FormSection>
 
@@ -640,6 +749,20 @@ const InventoryReceiptForm: React.FC = () => {
                             }}
                             className="w-16 h-10 mx-auto block text-center font-black text-emerald-700 bg-white border border-emerald-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-400 outline-none shadow-2xs"
                           />
+                          {Boolean(row.variantId && row.acceptedQuantity > 0) && (() => {
+                            const v = rawVariants.find((rv) => rv.id === row.variantId);
+                            const uCbm =
+                              v?.unitCbm ||
+                              (v?.lengthCm && v?.widthCm && v?.heightCm
+                                ? (v.lengthCm * v.widthCm * v.heightCm) / 1000000
+                                : 0.02);
+                            const uWeight = v?.grossWeightKg || 1;
+                            return (
+                              <div className="text-[10px] text-slate-500 font-medium mt-1 whitespace-nowrap">
+                                {(uCbm * row.acceptedQuantity).toFixed(2)} m³ | {(uWeight * row.acceptedQuantity).toFixed(1)} kg
+                              </div>
+                            );
+                          })()}
                         </td>
                         <td className="p-2 bg-rose-50/20 border-l border-rose-100 text-center">
                           <input

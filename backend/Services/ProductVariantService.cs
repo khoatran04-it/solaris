@@ -170,6 +170,13 @@ namespace backend.Services
                 entity.Name = dto.Name.Trim();
                 entity.Description = dto.Description?.Trim();
                 entity.ImagePath = dto.ImagePath?.Trim();
+                if (dto.LengthCm.HasValue && dto.WidthCm.HasValue && dto.HeightCm.HasValue && dto.LengthCm.Value > 0 && dto.WidthCm.Value > 0 && dto.HeightCm.Value > 0)
+                {
+                    if (!dto.UnitCbm.HasValue || dto.UnitCbm.Value <= 0)
+                    {
+                        entity.UnitCbm = Math.Round((dto.LengthCm.Value * dto.WidthCm.Value * dto.HeightCm.Value) / 1000000m, 4);
+                    }
+                }
                 entity.CreatedAt = DateTime.UtcNow;
                 entity.UpdatedAt = DateTime.UtcNow;
                 entity.IsActive = dto.IsActive;
@@ -207,6 +214,13 @@ namespace backend.Services
                 entity.Name = dto.Name.Trim();
                 entity.Description = dto.Description?.Trim();
                 entity.ImagePath = dto.ImagePath?.Trim();
+                if (entity.LengthCm.HasValue && entity.WidthCm.HasValue && entity.HeightCm.HasValue && entity.LengthCm.Value > 0 && entity.WidthCm.Value > 0 && entity.HeightCm.Value > 0)
+                {
+                    if (!dto.UnitCbm.HasValue || dto.UnitCbm.Value <= 0)
+                    {
+                        entity.UnitCbm = Math.Round((entity.LengthCm.Value * entity.WidthCm.Value * entity.HeightCm.Value) / 1000000m, 4);
+                    }
+                }
                 entity.UpdatedAt = DateTime.UtcNow;
                 entity.IsActive = dto.IsActive;
 

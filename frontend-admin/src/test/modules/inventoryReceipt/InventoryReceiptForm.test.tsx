@@ -20,6 +20,21 @@ vi.mock('../../../api/inventoryReceiptApi', () => ({
 vi.mock('../../../api/warehouseApi', () => ({
   warehouseApi: {
     getAllList: vi.fn(),
+    getCapacityStatus: vi.fn().mockResolvedValue({
+      warehouseId: 1,
+      warehouseCode: 'WH-01',
+      warehouseName: 'Kho Test',
+      totalCapacityCbm: 500,
+      occupiedCbm: 50,
+      availableCbm: 450,
+      occupancyRateCbm: 10,
+      maxWeightCapacityKg: 100000,
+      occupiedWeightKg: 5000,
+      availableWeightKg: 95000,
+      occupancyRateWeight: 5,
+      warningThresholdPercent: 85,
+      status: 'Safe',
+    }),
   },
 }));
 

@@ -681,6 +681,64 @@ namespace backend.Tests.Modules.Module08_Warehouse
             await actNotFound.Should().ThrowAsync<KeyNotFoundException>();
         }
 
+        /// <summary>
+        /// TC11: GetCapacityStatusAsync tính toán chính xác CBM, Khối lượng và Trạng thái (Safe/Warning/Critical).
+        /// </summary>
+        [Fact]
+        public async Task GetCapacityStatusAsync_ShouldCalculateCorrectCbmAndWeight_And_ReturnStatus()
+        {
+            // Arrange
+            using var context = TestFactories.CreateInMemoryDbContext();
+            var warehouse = new Warehouse
+            {
+                Id = 1,
+                Code = "WH-HCM-01",
+                Name = "Tổng kho Thủ Đức",
+                TotalCapacityCbm = 100m,
+                MaxWeightCapacityKg = 1000m,
+                WarningThresholdPercent = 80,
+                IsActive = true
+            };
+            context.Warehouses.Add(warehouse);
+
+            // 2 variants:
+            // v1: 50cm x 40cm x 30cm => 0.06 CBM, 2.5 kg
+            var v1 = new ProductVariant { Id = 1, Code = "SKU-01", Name = "Xoài Cát Chu", LengthCm = 50, WidthCm = 40, HeightCm = 30, UnitCbm = 0.06m, GrossWeightKg = 2.5m };
+            // v2: fallback default => 0.02 CBM, 1 kg
+            var v2 = new ProductVariant { Id = 2, Code = "SKU-02", Name = "Sầu Riêng Ri6", GrossWeightKg = 5m };
+            context.ProductVariants.AddRange(v1, v2);
+
+            // Warehouse inventory:
+            // v1: 1000 units => 1000 * 0.06 = 60 CBM, 1000 * 2.5 = 2500 kg
+            context.WarehouseInventories.Add(new WarehouseInventory
+            {
+                WarehouseId = 1,
+                VariantId = 1,
+                BatchId = 1,
+                QuantityAvailable = 1000,
+                QuantityReserved = 0,
+                QuantityQC = 0
+            });
+
+            await context.SaveChangesAsync();
+
+            var service = new WarehouseService(context, _mapper);
+
+            // Act
+            var status = await service.GetCapacityStatusAsync(1);
+
+            // Assert
+            status.Should().NotBeNull();
+            status.WarehouseId.Should().Be(1);
+            status.TotalCapacityCbm.Should().Be(100m);
+            status.OccupiedCbm.Should().Be(60m);
+            status.AvailableCbm.Should().Be(40m);
+            status.OccupancyRateCbm.Should().Be(60m);
+            status.OccupiedWeightKg.Should().Be(2500m);
+            status.OccupancyRateWeight.Should().Be(250m);
+            status.Status.Should().Be("Critical"); // > 100% weight capacity
+        }
+
         #endregion
     }
 }
