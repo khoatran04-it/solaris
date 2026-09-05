@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { User, Package, MapPin, RotateCcw, CheckCircle2, Award, Sparkles, ShieldCheck } from 'lucide-react';
+import { User, Package, MapPin, RotateCcw, CheckCircle2, Award, Sparkles } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import shopCustomerApi from '@/api/shopCustomerApi';
 

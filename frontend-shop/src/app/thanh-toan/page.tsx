@@ -4,8 +4,6 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { 
-    MapPin, 
-    CreditCard, 
     Truck, 
     CheckCircle2, 
     ShoppingBag, 

@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -9,10 +9,7 @@ import {
     RotateCcw, 
     ArrowLeft,
     CheckCircle2,
-    Calendar,
-    Truck,
     CreditCard,
-    AlertCircle,
     X
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';

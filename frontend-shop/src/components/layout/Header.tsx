@@ -17,7 +17,6 @@ import {
     RotateCcw,
     PhoneCall,
     Clock,
-    ShieldCheck,
     ArrowRight
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';

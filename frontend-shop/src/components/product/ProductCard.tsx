@@ -1,6 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
-import { MapPin, Award, ArrowRight, Sparkles, CheckCircle2 } from 'lucide-react';
+import { MapPin, ArrowRight, Sparkles, CheckCircle2 } from 'lucide-react';
 import { ShopProductCard } from '@/types/product';
 import { formatVND } from '@/lib/utils';
 

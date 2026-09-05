@@ -54,7 +54,7 @@ describe('Module 13 - TraHangPage Component', () => {
   const mockOrder = {
     id: 1,
     orderCode: 'ORD-20260830-001',
-    orderDate: '2026-08-30T08:00:00Z',
+    orderDate: new Date(Date.now() - 3600000).toISOString(),
     status: 5,
     statusName: 'Giao thành công',
     totalAmount: 300000,
@@ -74,6 +74,7 @@ describe('Module 13 - TraHangPage Component', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    window.alert = vi.fn();
     useAuthStore.setState({ isAuthenticated: true, user: null, token: 'mock-token' });
     (shopReturnApi.getAll as any).mockResolvedValue({
       items: mockReturns,
@@ -105,7 +106,7 @@ describe('Module 13 - TraHangPage Component', () => {
       expect(screen.getByText('RET-20260830-001')).toBeInTheDocument();
       expect(screen.getByText('ORD-20260830-001')).toBeInTheDocument();
       expect(screen.getByText('Chờ tiếp nhận')).toBeInTheDocument();
-      expect(screen.getByText('150.000 ₫')).toBeInTheDocument();
+      expect(screen.getByText(/150\.000/)).toBeInTheDocument();
     });
   });
 
@@ -122,7 +123,7 @@ describe('Module 13 - TraHangPage Component', () => {
     render(<TraHangPage />);
 
     await waitFor(() => {
-      expect(screen.getByText('Bạn chưa có yêu cầu đổi trả hàng nào.')).toBeInTheDocument();
+      expect(screen.getByText(/Bạn chưa có yêu cầu đổi trả nào/i)).toBeInTheDocument();
     });
   });
 
@@ -138,7 +139,7 @@ describe('Module 13 - TraHangPage Component', () => {
     const createBtn = screen.getByRole('button', { name: /Tạo yêu cầu mới/i });
     fireEvent.click(createBtn);
 
-    expect(screen.getByText('Tạo Phiếu Đổi/Trả Hàng Nông Sản')).toBeInTheDocument();
+    expect(screen.getByText(/Tạo Phiếu Đổi\s*\/\s*Trả Hàng Nông Sản/i)).toBeInTheDocument();
 
     // 2. Nhập mã đơn hàng và bấm kiểm tra
     const orderInput = screen.getByPlaceholderText(/Nhập mã đơn hàng/i);

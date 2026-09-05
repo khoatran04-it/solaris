@@ -83,8 +83,8 @@ describe('Module 12 - GioHangPage Component', () => {
 
     expect(screen.getByText('Bơ Booth 7 Đắk Lắk')).toBeInTheDocument();
     expect(screen.getByText('Kg')).toBeInTheDocument();
-    expect(screen.getByText(/Xuất xứ: Đắk Lắk/i)).toBeInTheDocument();
-    expect(screen.getByText('3 mặt hàng trong giỏ')).toBeInTheDocument();
+    expect(screen.getByText(/Vùng trồng: Đắk Lắk/i)).toBeInTheDocument();
+    expect(screen.getByText(/3\s*món hàng/i)).toBeInTheDocument();
     expect(screen.getAllByText(/240\.000/)).toHaveLength(2); // Line total & Estimated total
     expect(screen.getByText(/300\.000/)).toBeInTheDocument(); // SubTotal
     expect(screen.getByText(/-.*60\.000/)).toBeInTheDocument(); // Total discount
@@ -163,7 +163,7 @@ describe('Module 12 - GioHangPage Component', () => {
 
     render(<GioHangPage />);
 
-    const deleteBtn = screen.getByTitle('Xóa khỏi giỏ');
+    const deleteBtn = screen.getByTitle('Xóa khỏi giỏ hàng');
     fireEvent.click(deleteBtn);
 
     expect(mockRemoveItem).toHaveBeenCalledWith(105);

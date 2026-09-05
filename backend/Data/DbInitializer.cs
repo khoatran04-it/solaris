@@ -171,34 +171,26 @@ namespace backend.Data
             await context.SaveChangesAsync();
 
             // 6. Backfill Slugs cho Nhóm ngành hàng, Danh mục, Sản phẩm, Khuyến mãi
-            var groupsToUpdate = await context.ProductCategoryGroups
-                .Where(g => string.IsNullOrEmpty(g.Slug) || g.Slug.All(char.IsDigit))
-                .ToListAsync();
-            foreach (var g in groupsToUpdate)
+            var allGroups = await context.ProductCategoryGroups.ToListAsync();
+            foreach (var g in allGroups.Where(g => string.IsNullOrEmpty(g.Slug) || g.Slug.All(char.IsDigit)))
             {
                 g.Slug = SlugHelper.GenerateSlug(g.Name);
             }
 
-            var catsToUpdate = await context.ProductCategories
-                .Where(c => string.IsNullOrEmpty(c.Slug) || c.Slug.All(char.IsDigit))
-                .ToListAsync();
-            foreach (var c in catsToUpdate)
+            var allCats = await context.ProductCategories.ToListAsync();
+            foreach (var c in allCats.Where(c => string.IsNullOrEmpty(c.Slug) || c.Slug.All(char.IsDigit)))
             {
                 c.Slug = SlugHelper.GenerateSlug(c.Name);
             }
 
-            var prodsToUpdate = await context.Products
-                .Where(p => string.IsNullOrEmpty(p.Slug) || p.Slug.All(char.IsDigit))
-                .ToListAsync();
-            foreach (var p in prodsToUpdate)
+            var allProds = await context.Products.ToListAsync();
+            foreach (var p in allProds.Where(p => string.IsNullOrEmpty(p.Slug) || p.Slug.All(char.IsDigit)))
             {
                 p.Slug = SlugHelper.GenerateSlug(p.Name);
             }
 
-            var promosToUpdate = await context.PromotionCampaigns
-                .Where(pc => string.IsNullOrEmpty(pc.Slug) || pc.Slug.All(char.IsDigit))
-                .ToListAsync();
-            foreach (var pc in promosToUpdate)
+            var allPromos = await context.PromotionCampaigns.ToListAsync();
+            foreach (var pc in allPromos.Where(pc => string.IsNullOrEmpty(pc.Slug) || pc.Slug.All(char.IsDigit)))
             {
                 pc.Slug = SlugHelper.GenerateSlug(pc.Name);
             }

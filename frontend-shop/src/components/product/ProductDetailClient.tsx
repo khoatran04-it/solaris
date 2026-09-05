@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ShoppingBag, Check, ShieldCheck, Truck, RotateCcw, Sparkles, CheckCircle2, Zap } from 'lucide-react';
+import { ShoppingBag, Check, ShieldCheck, Truck, RotateCcw, Sparkles, Zap } from 'lucide-react';
 import { ShopProductDetail, ShopProductVariant, ShopVariantPrice } from '@/types/product';
 import { formatVND } from '@/lib/utils';
 import { useCartStore } from '@/stores/cartStore';

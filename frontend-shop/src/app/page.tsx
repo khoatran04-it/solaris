@@ -1,6 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
-import { ArrowRight, Flame, Leaf, CheckCircle2, Layers, ShieldCheck, Truck, RotateCcw, Award, Building2, Sparkles } from 'lucide-react';
+import { ArrowRight, Flame, Leaf, CheckCircle2, Layers, Building2, Sparkles } from 'lucide-react';
 import PromoBannerSlider from '@/components/promotion/PromoBannerSlider';
 import ProductCard from '@/components/product/ProductCard';
 import shopProductApi from '@/api/shopProductApi';

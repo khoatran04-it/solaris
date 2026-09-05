@@ -7,7 +7,6 @@ import {
     Minus, 
     Trash2, 
     ArrowRight, 
-    Sparkles, 
     Gift,
     MapPin,
     Phone,

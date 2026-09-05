@@ -1,7 +1,7 @@
 import React from 'react';
 import { Metadata } from 'next';
 import Link from 'next/link';
-import { Sparkles, Search, Layers, RotateCcw } from 'lucide-react';
+import { Sparkles, Search, RotateCcw } from 'lucide-react';
 import ProductCard from '@/components/product/ProductCard';
 import ProductFilter from '@/components/product/ProductFilter';
 import shopProductApi from '@/api/shopProductApi';

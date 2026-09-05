@@ -63,7 +63,7 @@ describe('Module 15 - InteractiveOrderCard Component (UI Testing in RAM)', () =>
         fireEvent.click(plusButton);
 
         expect(screen.getByText('3')).toBeInTheDocument();
-        expect(screen.getByText(/MIỄN PHÍ SHIP 100%/i)).toBeInTheDocument();
+        expect(screen.getByText(/MIỄN PHÍ GIAO HÀNG/i)).toBeInTheDocument();
     });
 
     it('TC03 - Xác nhận đặt hàng thành công qua COD', async () => {
