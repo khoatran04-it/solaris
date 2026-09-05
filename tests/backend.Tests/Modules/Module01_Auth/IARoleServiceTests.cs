@@ -1,4 +1,4 @@
-using backend.DTOs.AuthDTOs;
+﻿using backend.DTOs.AuthDTOs;
 using backend.Models;
 using backend.Services;
 using backend.Tests.Common;
@@ -8,8 +8,8 @@ namespace backend.Tests.Modules.Module01_Auth
 {
     /// <summary>
     /// ============================================================================
-    /// 📦 MODULE 1: IDENTITY & ACCESS MANAGEMENT (IAM)
-    /// 🧪 UNIT TEST: IARoleService (Quản lý Vai trò & Cấu hình Ma trận Quyền hạn)
+    /// MODULE 1: IDENTITY & ACCESS MANAGEMENT (IAM)
+    /// UNIT TEST: IARoleService (Quản lý Vai trò & Cấu hình Ma trận Quyền hạn)
     /// ============================================================================
     /// </summary>
     public class IARoleServiceTests

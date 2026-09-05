@@ -7,6 +7,14 @@ import ProtectedRoute from './components/auth/ProtectedRoute';
 import { PERMISSIONS } from './constants/permissions';
 
 // =============================================================================
+// 📊 DASHBOARDS & EXECUTIVE REPORTING
+// =============================================================================
+import OverviewDashboard from './pages/dashboard/OverviewDashboard';
+import SalesGeographyDashboard from './pages/dashboard/SalesGeographyDashboard';
+import InventoryCapacityDashboard from './pages/dashboard/InventoryCapacityDashboard';
+import QualityExpiryDashboard from './pages/dashboard/QualityExpiryDashboard';
+
+// =============================================================================
 // 📦 MODULE 1: IDENTITY & ACCESS MANAGEMENT (IAM)
 // =============================================================================
 import RoleList from './pages/role/RoleList';
@@ -117,7 +125,11 @@ function App() {
         {/* Private Routes (Bọc trong ProtectedRoute) */}
         <Route element={<ProtectedRoute />}>
           <Route path="/" element={<Layout />}>
-            <Route index element={<h2>Chào mừng đến với hệ thống quản trị Solaris!</h2>} />
+            {/* 📊 DASHBOARDS & EXECUTIVE REPORTING */}
+            <Route index element={<OverviewDashboard />} />
+            <Route path="dashboards/sales" element={<SalesGeographyDashboard />} />
+            <Route path="dashboards/inventory" element={<InventoryCapacityDashboard />} />
+            <Route path="dashboards/quality" element={<QualityExpiryDashboard />} />
 
             {/* 📦 MODULE 1: IAM & PHÂN QUYỀN (RÀNG BUỘC RBAC) */}
             <Route element={<ProtectedRoute requiredPermission={PERMISSIONS.SYSTEM.ROLE_VIEW} />}>

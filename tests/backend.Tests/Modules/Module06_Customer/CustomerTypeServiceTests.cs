@@ -1,4 +1,4 @@
-using AutoMapper;
+﻿using AutoMapper;
 using backend.DTOs.CustomerTypeDTOs;
 using backend.Models;
 using backend.Services;
@@ -11,8 +11,8 @@ namespace backend.Tests.Modules.Module06_Customer
 {
     /// <summary>
     /// ============================================================================
-    /// 📦 MODULE 6: CUSTOMER MASTER DATA
-    /// 🧪 UNIT TEST: CustomerTypeService (Quản lý Phân loại Khách hàng)
+    /// MODULE 6: CUSTOMER MASTER DATA
+    /// UNIT TEST: CustomerTypeService (Quản lý Phân loại Khách hàng)
     /// ============================================================================
     /// </summary>
     public class CustomerTypeServiceTests

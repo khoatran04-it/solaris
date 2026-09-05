@@ -1,4 +1,4 @@
-using AutoMapper;
+﻿using AutoMapper;
 using backend.DTOs.CustomerReturnDTOs;
 using backend.Models;
 using backend.Models.Enums;
@@ -16,8 +16,8 @@ namespace backend.Tests.Modules.Module13_OrderAndReturn
 {
     /// <summary>
     /// ============================================================================
-    /// 📦 MODULE 13: SALES ORDERS & CUSTOMER RETURNS
-    /// 🧪 UNIT TEST: CustomerReturnService (Quản Lý Trả Hàng, Nghiệm Thu QC & Điều Hướng Tồn Kho)
+    /// MODULE 13: SALES ORDERS & CUSTOMER RETURNS
+    /// UNIT TEST: CustomerReturnService (Quản Lý Trả Hàng, Nghiệm Thu QC & Điều Hướng Tồn Kho)
     /// ============================================================================
     /// </summary>
     public class CustomerReturnServiceTests

@@ -1,4 +1,4 @@
-using AutoMapper;
+﻿using AutoMapper;
 using backend.DTOs.InventoryAdjustmentDTOs;
 using backend.Models;
 using backend.Models.Enums;
@@ -16,8 +16,8 @@ namespace backend.Tests.Modules.Module11_InventoryAudit
 {
     /// <summary>
     /// ============================================================================
-    /// ⚖️ MODULE 11: INVENTORY ADJUSTMENTS & WRITE-OFFS
-    /// 🧪 TEST SUITE: InventoryAdjustmentServiceTests
+    /// MODULE 11: INVENTORY ADJUSTMENTS & WRITE-OFFS
+    /// TEST SUITE: InventoryAdjustmentServiceTests
     /// ============================================================================
     /// Kiểm thử toàn diện tầng nghiệp vụ Điều chỉnh & Xuất hủy tồn kho:
     /// - Phân trang, tìm kiếm mã phiếu, lọc theo Kho, Trạng thái, Lý do, Khoảng ngày

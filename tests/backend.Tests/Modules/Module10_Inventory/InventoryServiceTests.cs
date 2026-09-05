@@ -1,4 +1,4 @@
-using AutoMapper;
+﻿using AutoMapper;
 using backend.DTOs.InventoryDTOs;
 using backend.Models;
 using backend.Models.Enums;
@@ -16,8 +16,8 @@ namespace backend.Tests.Modules.Module10_Inventory
 {
     /// <summary>
     /// ============================================================================
-    /// 📦 MODULE 10: CORE INVENTORY ENGINE & LEDGER
-    /// 🧪 TEST SUITE: InventoryServiceTests
+    /// MODULE 10: CORE INVENTORY ENGINE & LEDGER
+    /// TEST SUITE: InventoryServiceTests
     /// ============================================================================
     /// Kiểm thử toàn diện tầng Core Engine quản lý Két sắt Tồn kho 4 ngăn và Sổ cái Giao dịch:
     /// - Truy vấn tổng hợp (GetAllList), Báo cáo tồn kho đa chiều (GetPaged), Lọc cận date (FEFO), Lọc hết hàng

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+﻿import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter } from 'react-router-dom';
@@ -31,8 +31,8 @@ vi.mock('react-router-dom', async () => {
 
 /**
  * ============================================================================
- * 📋 MODULE 11: INVENTORY AUDIT (STOCKTAKE)
- * 🧪 COMPONENT TEST: InventoryAuditForm (Tạo Mới & Snapshot Kiểm Kê)
+ * MODULE 11: INVENTORY AUDIT (STOCKTAKE)
+ * COMPONENT TEST: InventoryAuditForm (Tạo Mới & Snapshot Kiểm Kê)
  * ============================================================================
  */
 describe('Module 11 - InventoryAuditForm Component', () => {

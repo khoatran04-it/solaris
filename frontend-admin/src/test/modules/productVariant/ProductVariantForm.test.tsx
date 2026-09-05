@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+﻿import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
@@ -38,16 +38,14 @@ vi.mock('../../../api/uomConversionApi', () => ({
 
 /**
  * ============================================================================
- * 📦 MODULE 5: PRODUCT & PRICING
- * 🧪 COMPONENT TEST: ProductVariantForm (Form Thêm / Sửa Biến Thể 3 Tabs & Bảng Giá)
+ * MODULE 5: PRODUCT & PRICING
+ * COMPONENT TEST: ProductVariantForm (Form Thêm / Sửa Biến Thể 3 Tabs & Bảng Giá)
  * ============================================================================
  */
 describe('Module 05 - ProductVariantForm Component', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    (productApi.getAllList as any).mockResolvedValue([
-      { id: 1, name: 'Táo Envy New Zealand' },
-    ]);
+    (productApi.getAllList as any).mockResolvedValue([{ id: 1, name: 'Táo Envy New Zealand' }]);
     (productApi.getAttributesConfig as any).mockResolvedValue([
       { id: 100, name: 'Độ ngọt Brix', isRequired: true },
       { id: 101, name: 'Vùng trồng', isRequired: false },
@@ -209,12 +207,8 @@ describe('Module 05 - ProductVariantForm Component', () => {
       inventoryGuideline: 100,
       isActive: true,
       productId: 1,
-      attributes: [
-        { attributeDefinitionId: 100, attributeValue: '16' },
-      ],
-      prices: [
-        { uoMId: 1, price: 120000, isDefault: true },
-      ],
+      attributes: [{ attributeDefinitionId: 100, attributeValue: '16' }],
+      prices: [{ uoMId: 1, price: 120000, isDefault: true }],
     });
     (productVariantApi.update as any).mockResolvedValue({});
 
@@ -251,6 +245,52 @@ describe('Module 05 - ProductVariantForm Component', () => {
         })
       );
     });
+  });
+  // #endregion
+
+  // #region TC06: QUY CÁCH ĐÓNG GÓI, KÍCH THƯỚC VẬT LÝ VÀ TÍNH TOÁN CBM
+  it('TC06 - Nhập kích thước Dài, Rộng, Cao tự động tính toán Thể tích CBM và lưu Khối lượng cả bì', async () => {
+    render(
+      <MemoryRouter initialEntries={['/product-variants/create']}>
+        <Routes>
+          <Route path="/product-variants/create" element={<ProductVariantForm />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText('VD: TH-500G')).toBeInTheDocument();
+    });
+
+    // 1. Điền kích thước đóng gói ban đầu: 50 x 40 x 25 cm
+    const lengthInput = screen.getByPlaceholderText('VD: 30');
+    fireEvent.change(lengthInput, { target: { value: '50' } });
+
+    const widthInput = screen.getByPlaceholderText('VD: 20');
+    fireEvent.change(widthInput, { target: { value: '40' } });
+
+    const heightInput = screen.getByPlaceholderText('VD: 15');
+    fireEvent.change(heightInput, { target: { value: '25' } });
+
+    // 2. Kiểm tra ô CBM tự động tính toán: 50 * 40 * 25 / 1,000,000 = 0.05
+    const cbmInput = screen.getByPlaceholderText('Tự động tính') as HTMLInputElement;
+    await waitFor(() => {
+      expect(cbmInput.value).toBe('0.05');
+    });
+
+    // 3. Thay đổi kích thước sang kiện lớn: 100 x 50 x 40 cm -> CBM = 0.2
+    fireEvent.change(lengthInput, { target: { value: '100' } });
+    fireEvent.change(widthInput, { target: { value: '50' } });
+    fireEvent.change(heightInput, { target: { value: '40' } });
+
+    await waitFor(() => {
+      expect(cbmInput.value).toBe('0.2');
+    });
+
+    // 4. Điền khối lượng cả bì (Gross Weight)
+    const weightInput = screen.getByPlaceholderText('VD: 1.5') as HTMLInputElement;
+    fireEvent.change(weightInput, { target: { value: '18.5' } });
+    expect(weightInput.value).toBe('18.5');
   });
   // #endregion
 });

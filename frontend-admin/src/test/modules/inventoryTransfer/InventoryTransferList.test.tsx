@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+﻿import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter } from 'react-router-dom';
@@ -36,8 +36,8 @@ vi.mock('react-router-dom', async () => {
 
 /**
  * ============================================================================
- * 🚚 MODULE 10: INVENTORY TRANSFERS (2-STEP DISPATCH & RECEIVE)
- * 🧪 COMPONENT TEST: InventoryTransferList (Danh Sách Phiếu Điều Chuyển Kho)
+ * MODULE 10: INVENTORY TRANSFERS (2-STEP DISPATCH & RECEIVE)
+ * COMPONENT TEST: InventoryTransferList (Danh Sách Phiếu Điều Chuyển Kho)
  * ============================================================================
  */
 describe('Module 10 - InventoryTransferList Component', () => {

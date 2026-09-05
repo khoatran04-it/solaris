@@ -226,9 +226,11 @@ const UserForm: React.FC = () => {
 
       const fieldErrors: Record<string, string> = {};
       if (serverMsg.includes('Email')) fieldErrors.email = serverMsg;
-      if (serverMsg.includes('Tên đăng nhập') || serverMsg.includes('Username')) fieldErrors.username = serverMsg;
+      if (serverMsg.includes('Tên đăng nhập') || serverMsg.includes('Username'))
+        fieldErrors.username = serverMsg;
       if (serverMsg.includes('CCCD')) fieldErrors.citizenId = serverMsg;
-      if (serverMsg.includes('Số điện thoại') || serverMsg.includes('SĐT')) fieldErrors.phoneNumber = serverMsg;
+      if (serverMsg.includes('Số điện thoại') || serverMsg.includes('SĐT'))
+        fieldErrors.phoneNumber = serverMsg;
 
       if (Object.keys(fieldErrors).length > 0) {
         setErrors((prev) => ({ ...prev, ...fieldErrors }));

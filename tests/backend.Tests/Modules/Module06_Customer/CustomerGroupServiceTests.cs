@@ -1,4 +1,4 @@
-using AutoMapper;
+﻿using AutoMapper;
 using backend.DTOs.CustomerGroupDTOs;
 using backend.Models;
 using backend.Services;
@@ -11,8 +11,8 @@ namespace backend.Tests.Modules.Module06_Customer
 {
     /// <summary>
     /// ============================================================================
-    /// 📦 MODULE 6: CUSTOMER MASTER DATA
-    /// 🧪 UNIT TEST: CustomerGroupService (Quản lý Nhóm Khách hàng / Marketing Tag)
+    /// MODULE 6: CUSTOMER MASTER DATA
+    /// UNIT TEST: CustomerGroupService (Quản lý Nhóm Khách hàng / Marketing Tag)
     /// ============================================================================
     /// </summary>
     public class CustomerGroupServiceTests

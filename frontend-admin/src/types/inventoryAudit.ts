@@ -20,11 +20,11 @@ export const InventoryAuditStatusLabels: Record<InventoryAuditStatus, string> = 
 };
 
 export const InventoryAuditStatusColors: Record<InventoryAuditStatus, string> = {
-  [InventoryAuditStatus.Draft]: 'bg-slate-100 text-slate-600 border-slate-200',
-  [InventoryAuditStatus.InProgress]: 'bg-indigo-100 text-indigo-700 border-indigo-200',
-  [InventoryAuditStatus.PendingApproval]: 'bg-amber-100 text-amber-700 border-amber-200',
-  [InventoryAuditStatus.Completed]: 'bg-emerald-100 text-emerald-800 border-emerald-200',
-  [InventoryAuditStatus.Cancelled]: 'bg-rose-100 text-rose-700 border-rose-200',
+  [InventoryAuditStatus.Draft]: 'bg-slate-50 text-slate-600 border-slate-200',
+  [InventoryAuditStatus.InProgress]: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+  [InventoryAuditStatus.PendingApproval]: 'bg-amber-50 text-amber-700 border-amber-200',
+  [InventoryAuditStatus.Completed]: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  [InventoryAuditStatus.Cancelled]: 'bg-rose-50 text-rose-700 border-rose-200',
 };
 
 export enum InventoryAuditType {

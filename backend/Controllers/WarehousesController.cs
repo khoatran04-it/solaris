@@ -78,6 +78,26 @@ namespace backend.Controllers
             return Ok(result);
         }
 
+        /// <summary>
+        /// Lấy thông tin trạng thái sức chứa tức thời (CBM, Tải trọng, % lấp đầy) của kho hàng.
+        /// </summary>
+        /// <param name="id">Mã định danh của kho hàng.</param>
+        [HttpGet("{id}/capacity")]
+        [ProducesResponseType(typeof(WarehouseCapacityStatusDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> GetCapacity(int id)
+        {
+            try
+            {
+                var result = await _warehouseService.GetCapacityStatusAsync(id);
+                return Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+        }
+
         #endregion
 
         // ==========================================

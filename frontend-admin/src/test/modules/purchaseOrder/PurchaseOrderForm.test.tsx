@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+﻿import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
@@ -54,18 +54,14 @@ vi.mock('react-router-dom', async () => {
 
 /**
  * ============================================================================
- * 🛒 MODULE 09: PURCHASING & PURCHASE ORDER MANAGEMENT
- * 🧪 COMPONENT TEST: PurchaseOrderForm (Biểu Mẫu Tạo Mới & Chỉnh Sửa PO)
+ * MODULE 09: PURCHASING & PURCHASE ORDER MANAGEMENT
+ * COMPONENT TEST: PurchaseOrderForm (Biểu Mẫu Tạo Mới & Chỉnh Sửa PO)
  * ============================================================================
  */
 describe('Module 09 - PurchaseOrderForm Component', () => {
-  const mockSuppliers = [
-    { id: 1, name: 'Nông Trại Đà Lạt GAP', code: 'SUP-DALAT' },
-  ];
+  const mockSuppliers = [{ id: 1, name: 'Nông Trại Đà Lạt GAP', code: 'SUP-DALAT' }];
 
-  const mockVariants = [
-    { id: 10, name: 'Dâu Tây Hộp 500g', code: 'SKU-DAUTAY' },
-  ];
+  const mockVariants = [{ id: 10, name: 'Dâu Tây Hộp 500g', code: 'SKU-DAUTAY' }];
 
   const mockUoms = [
     { id: 100, name: 'Hộp' },
@@ -112,7 +108,9 @@ describe('Module 09 - PurchaseOrderForm Component', () => {
     expect(screen.getByText('2. Chi Tiết Đặt Hàng')).toBeInTheDocument();
 
     await waitFor(() => {
-      expect(screen.getByText('Chưa có mặt hàng nào. Vui lòng bấm "Thêm Mặt Hàng".')).toBeInTheDocument();
+      expect(
+        screen.getByText('Chưa có mặt hàng nào. Vui lòng bấm "Thêm Mặt Hàng".')
+      ).toBeInTheDocument();
     });
   });
   // #endregion
@@ -231,7 +229,9 @@ describe('Module 09 - PurchaseOrderForm Component', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText(/Chỉ được phép chỉnh sửa đơn hàng đang ở trạng thái Nháp!/i)).toBeInTheDocument();
+      expect(
+        screen.getByText(/Chỉ được phép chỉnh sửa đơn hàng đang ở trạng thái Nháp!/i)
+      ).toBeInTheDocument();
     });
   });
   // #endregion

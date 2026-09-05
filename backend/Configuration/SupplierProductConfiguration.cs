@@ -20,7 +20,7 @@ namespace backend.Configurations
             builder.Property(x => x.MinimumOrderQuantity).HasColumnType("decimal(18,3)").HasDefaultValue(1m);
             builder.Property(x => x.LeadTimeDays).HasDefaultValue(0);
 
-            // 🔥 COMPOSITE INDEX: Đảm bảo 1 Nhà cung cấp chỉ có 1 mức giá/cấu hình cho 1 Sản phẩm tại một thời điểm
+            // Composite Unique Index: Đảm bảo 1 Nhà cung cấp chỉ có 1 mức giá/cấu hình cho 1 Biến thể tại một thời điểm
             builder.HasIndex(x => new { x.VariantId, x.SupplierId }).IsUnique();
 
             // Audit & Soft Delete

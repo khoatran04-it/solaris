@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+﻿import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
@@ -26,8 +26,8 @@ vi.mock('react-router-dom', async () => {
 
 /**
  * ============================================================================
- * 📦 MODULE 13: SALES ORDERS & CUSTOMER RETURNS
- * 🧪 COMPONENT TEST: OrderDetail (Chi Tiết Đơn Bán Hàng)
+ * MODULE 13: SALES ORDERS & CUSTOMER RETURNS
+ * COMPONENT TEST: OrderDetail (Chi Tiết Đơn Bán Hàng)
  * ============================================================================
  */
 describe('Module 13 - OrderDetail Component', () => {
@@ -134,7 +134,9 @@ describe('Module 13 - OrderDetail Component', () => {
       expect(screen.getByText(/Xác Nhận Hủy Đơn Hàng/i)).toBeInTheDocument();
     });
 
-    const reasonInput = screen.getByPlaceholderText(/Khách đổi ý, đặt nhầm sản phẩm, kho hết hàng.../i);
+    const reasonInput = screen.getByPlaceholderText(
+      /Khách đổi ý, đặt nhầm sản phẩm, kho hết hàng.../i
+    );
     fireEvent.change(reasonInput, { target: { value: 'Khách hàng đổi ý muốn đặt lại đơn khác' } });
 
     const confirmCancelBtn = screen.getByRole('button', { name: /Xác Nhận Hủy/i });

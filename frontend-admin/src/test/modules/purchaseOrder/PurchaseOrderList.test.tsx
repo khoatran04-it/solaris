@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+﻿import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter } from 'react-router-dom';
@@ -37,8 +37,8 @@ vi.mock('react-router-dom', async () => {
 
 /**
  * ============================================================================
- * 🛒 MODULE 09: PURCHASING & PURCHASE ORDER MANAGEMENT
- * 🧪 COMPONENT TEST: PurchaseOrderList (Danh Sách Đơn Đặt Mua Hàng)
+ * MODULE 09: PURCHASING & PURCHASE ORDER MANAGEMENT
+ * COMPONENT TEST: PurchaseOrderList (Danh Sách Đơn Đặt Mua Hàng)
  * ============================================================================
  */
 describe('Module 09 - PurchaseOrderList Component', () => {
@@ -124,7 +124,9 @@ describe('Module 09 - PurchaseOrderList Component', () => {
       </MemoryRouter>
     );
 
-    const searchInput = screen.getByPlaceholderText('Tìm kiếm theo mã đơn, nhà cung cấp, ghi chú...');
+    const searchInput = screen.getByPlaceholderText(
+      'Tìm kiếm theo mã đơn, nhà cung cấp, ghi chú...'
+    );
     fireEvent.change(searchInput, { target: { value: 'PO-20260830-001' } });
 
     await waitFor(
@@ -237,7 +239,9 @@ describe('Module 09 - PurchaseOrderList Component', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText(/Thử thay đổi từ khóa tìm kiếm hoặc điều kiện lọc/i)).toBeInTheDocument();
+      expect(
+        screen.getByText(/Thử thay đổi từ khóa tìm kiếm hoặc điều kiện lọc/i)
+      ).toBeInTheDocument();
     });
   });
   // #endregion

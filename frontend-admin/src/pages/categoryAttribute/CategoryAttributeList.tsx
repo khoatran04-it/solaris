@@ -133,7 +133,8 @@ const CategoryAttributeList: React.FC = () => {
       map.get(item.categoryId)!.attributes.push({
         id: item.id,
         attributeDefinitionId: item.attributeDefinitionId,
-        attributeDefinitionName: item.attributeDefinitionName || `Thuộc tính #${item.attributeDefinitionId}`,
+        attributeDefinitionName:
+          item.attributeDefinitionName || `Thuộc tính #${item.attributeDefinitionId}`,
         isRequired: item.isRequired,
       });
     });
@@ -263,9 +264,7 @@ const CategoryAttributeList: React.FC = () => {
                                   : 'bg-slate-50 text-slate-700 border-slate-200'
                               }`}
                               title={
-                                attr.isRequired
-                                  ? 'Bắt buộc nhập khi tạo sản phẩm'
-                                  : 'Tùy chọn nhập'
+                                attr.isRequired ? 'Bắt buộc nhập khi tạo sản phẩm' : 'Tùy chọn nhập'
                               }
                             >
                               <Tag
@@ -296,9 +295,7 @@ const CategoryAttributeList: React.FC = () => {
                         <div className="flex justify-center gap-1.5 opacity-60 group-hover:opacity-100 transition-all duration-300">
                           <button
                             onClick={() =>
-                              navigate(
-                                `/category-attributes/create?categoryId=${group.categoryId}`
-                              )
+                              navigate(`/category-attributes/create?categoryId=${group.categoryId}`)
                             }
                             className="p-2 text-slate-400 hover:text-yellow-600 hover:bg-yellow-50 rounded-xl transition-colors cursor-pointer"
                             title="Chỉnh sửa ma trận thuộc tính của danh mục này"

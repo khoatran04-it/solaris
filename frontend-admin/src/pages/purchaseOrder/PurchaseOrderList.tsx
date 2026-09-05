@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+﻿import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ShoppingCart, Edit3, Trash2, Eye } from 'lucide-react';
 
@@ -50,7 +50,7 @@ const PurchaseOrderList: React.FC = () => {
   // --- OPTIONS CHO BỘ LỌC ---
   const [supplierOptions, setSupplierOptions] = useState<{ label: string; value: number }[]>([]);
 
-  // 🔥 FIX: Lấy keys từ object Labels để tránh lỗi Reverse Mapping của Enum trong TypeScript
+  // Lấy keys từ object Labels để tránh lỗi Reverse Mapping của Enum trong TypeScript
   const statusOptions = Object.keys(PurchaseOrderStatusLabels).map((key) => ({
     label: PurchaseOrderStatusLabels[Number(key) as PurchaseOrderStatus],
     value: Number(key),

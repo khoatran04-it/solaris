@@ -1,4 +1,4 @@
-using AutoMapper;
+﻿using AutoMapper;
 using backend.DTOs.SupplierAddressDTOs;
 using backend.DTOs.SupplierDTOs;
 using backend.Models;
@@ -12,8 +12,8 @@ namespace backend.Tests.Modules.Module03_Supplier
 {
     /// <summary>
     /// ============================================================================
-    /// 📦 MODULE 3: SUPPLIER MASTER DATA
-    /// 🧪 UNIT TEST: SupplierService (Quản lý Hồ sơ Nhà cung cấp)
+    /// MODULE 3: SUPPLIER MASTER DATA
+    /// UNIT TEST: SupplierService (Quản lý Hồ sơ Nhà cung cấp)
     /// ============================================================================
     /// </summary>
     public class SupplierServiceTests

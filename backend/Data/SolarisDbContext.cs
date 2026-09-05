@@ -97,8 +97,7 @@ namespace backend.Data
         {
             base.OnModelCreating(modelBuilder);
 
-            // 1. Chỉ giữ lại Index Unique cho các bảng CHƯA ĐƯỢC tách file Configuration
-            // (Sau này sếp tạo Configuration cho Supplier, UoM... thì quay lại đây xóa nốt cho sạch)
+            // 1. Chỉ giữ lại Index Unique cho các bảng chưa tách file Configuration
             modelBuilder.Entity<Product>().HasIndex(s => s.Code).IsUnique();
 
 
@@ -108,24 +107,22 @@ namespace backend.Data
                 relationship.DeleteBehavior = DeleteBehavior.Restrict;
             }
 
-            // 3. 🔥 QUAN TRỌNG NHẤT: Quét các file Configuration ở bước CUỐI CÙNG
-            // Những cấu hình đặc thù (như Cascade của CustomerAddress, CustomerGroupLink) 
-            // sẽ được apply sau cùng và tự động bẻ khóa cái Restrict mặc định ở bước 2.
+            // 3. Quét các file Configuration trong Assembly ở bước cuối cùng
+            // Cấu hình đặc thù trong Configuration sẽ ghi đè thiết lập Restrict mặc định
             modelBuilder.ApplyConfigurationsFromAssembly(typeof(SolarisDbContext).Assembly);
         }
 
-        // SOFT DELETE HACK
+        // Tự động xử lý Soft Delete cho các Entity kế thừa ISoftDelete
         public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
         {
-            // Quét các Entity đang được EF Core theo dõi xem có cái nào kế thừa ISoftDelete không
             var entries = ChangeTracker.Entries<ISoftDelete>();
 
             foreach (var entry in entries)
             {
-                // Nếu phát hiện có thằng nào đang chuẩn bị bị đem ra pháp trường (Deleted)
+                // Kiểm tra các thực thể đang ở trạng thái Deleted
                 if (entry.State == EntityState.Deleted)
                 {
-                    // Chuyển án tử hình (Deleted) thành án chung thân (Modified)
+                    // Chuyển trạng thái sang Modified và kích hoạt cờ IsDeleted
                     entry.State = EntityState.Modified;
 
                     // Đánh dấu cờ đã xóa mềm và lưu lại thời gian xóa

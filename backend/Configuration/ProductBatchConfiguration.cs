@@ -1,4 +1,4 @@
-﻿using backend.Models;
+using backend.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -18,13 +18,13 @@ namespace backend.Configurations
 
             // Quan hệ với ProductVariant (1 Biến thể có nhiều Lô)
             builder.HasOne(x => x.Variant)
-                   .WithMany()
+                   .WithMany(v => v.Batches)
                    .HasForeignKey(x => x.VariantId)
                    .OnDelete(DeleteBehavior.Restrict); // Không cho xóa Biến thể nếu đang có Lô hàng
 
             // Quan hệ với Supplier (1 NCC cung cấp nhiều Lô)
             builder.HasOne(x => x.Supplier)
-                   .WithMany()
+                   .WithMany(s => s.Batches)
                    .HasForeignKey(x => x.SupplierId)
                    .OnDelete(DeleteBehavior.Restrict); // Xóa NCC thì ID này về Null, lô hàng vẫn giữ nguyên
         }

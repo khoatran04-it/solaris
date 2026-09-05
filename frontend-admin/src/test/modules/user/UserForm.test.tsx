@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+﻿import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import UserForm from '../../../pages/user/UserForm';
@@ -36,8 +36,8 @@ vi.mock('../../../api/warehouseApi', () => ({
 
 /**
  * ============================================================================
- * 📦 MODULE 1: IDENTITY & ACCESS MANAGEMENT (IAM)
- * 🧪 COMPONENT TEST: UserForm (Form Tạo mới & Chỉnh sửa Nhân viên)
+ * MODULE 1: IDENTITY & ACCESS MANAGEMENT (IAM)
+ * COMPONENT TEST: UserForm (Form Tạo mới & Chỉnh sửa Nhân viên)
  * ============================================================================
  */
 describe('Module 01 - UserForm Component', () => {

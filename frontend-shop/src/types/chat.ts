@@ -1,84 +1,121 @@
 export interface ChatSession {
-    id: number;
-    sessionToken: string;
-    title: string;
-    createdAt: string;
-    updatedAt: string;
-    totalMessages: number;
-    lastMessage?: string;
+  id: number;
+  sessionToken: string;
+  title: string;
+  createdAt: string;
+  updatedAt: string;
+  totalMessages: number;
+  lastMessage?: string;
 }
 
 export interface ChatMessage {
-    id: number;
-    role: 'user' | 'model' | 'system';
-    content: string;
-    payloadType: 'none' | 'product_cards' | 'interactive_order' | 'order_success';
-    payload?: any;
-    createdAt: string;
+  id: number;
+  role: "user" | "model" | "system";
+  content: string;
+  payloadType:
+    | "none"
+    | "product_cards"
+    | "interactive_order"
+    | "order_success"
+    | "order_tracking";
+  payload?: any;
+  createdAt: string;
 }
 
 export interface InteractiveOrderItem {
-    variantId: number;
-    variantCode: string;
-    variantName: string;
-    slug?: string;
-    imagePath?: string;
-    uoMId: number;
-    uoMName: string;
-    quantity: number;
-    unitPrice: number;
-    discountAmount: number;
-    totalPrice: number;
+  variantId: number;
+  variantCode: string;
+  variantName: string;
+  slug?: string;
+  imagePath?: string;
+  uoMId: number;
+  uoMName: string;
+  quantity: number;
+  unitPrice: number;
+  discountAmount: number;
+  totalPrice: number;
+  availableStock?: number;
+  warningMessage?: string;
 }
 
 export interface InteractiveOrderPayload {
-    title: string;
-    previousOrderCode?: string;
-    items: InteractiveOrderItem[];
-    subTotal: number;
-    totalDiscount: number;
-    shippingFee: number;
-    totalAmount: number;
-    isFreeShipping: boolean;
-    freeShippingThreshold: number;
-    suggestedDeliveryAddress?: string;
-    suggestedReceiverName?: string;
-    suggestedReceiverPhone?: string;
+  title: string;
+  previousOrderCode?: string;
+  items: InteractiveOrderItem[];
+  stockWarning?: string;
+  subTotal: number;
+  totalDiscount: number;
+  shippingFee: number;
+  totalAmount: number;
+  isFreeShipping: boolean;
+  freeShippingThreshold: number;
+  suggestedDeliveryAddress?: string;
+  suggestedReceiverName?: string;
+  suggestedReceiverPhone?: string;
 }
 
 export interface AiProductCard {
-    id: number;
-    variantId: number;
-    name: string;
-    slug: string;
-    imagePath?: string;
-    price: number;
-    discountedPrice: number;
-    uoMName: string;
-    origin?: string;
-    certification?: string;
-    brixLevel?: string;
-    isInStock: boolean;
+  id: number;
+  variantId: number;
+  uoMId?: number;
+  name: string;
+  slug: string;
+  imagePath?: string;
+  price: number;
+  discountedPrice: number;
+  uoMName: string;
+  origin?: string;
+  certification?: string;
+  brixLevel?: string;
+  isInStock: boolean;
 }
 
 export interface ConfirmInteractiveOrderPayload {
-    sessionId: number;
-    items: InteractiveOrderItem[];
-    receiverName?: string;
-    receiverPhone?: string;
-    deliveryAddress?: string;
-    ghnDistrictId?: number;
-    ghnWardCode?: string;
-    shippingFee: number;
-    paymentMethod: number; // 3 = VNPay, 1 = COD
-    note?: string;
+  sessionId: number;
+  items: InteractiveOrderItem[];
+  customerAddressId?: number;
+  receiverName?: string;
+  receiverPhone?: string;
+  deliveryAddress?: string;
+  ghnDistrictId?: number;
+  ghnWardCode?: string;
+  shippingFee: number;
+  paymentMethod: number; // 3 = VNPay, 1 = COD
+  note?: string;
 }
 
 export interface ConfirmInteractiveOrderResponse {
-    orderId: number;
-    orderCode: string;
-    totalAmount: number;
-    paymentMethodName: string;
-    paymentUrl?: string;
-    message?: string;
+  orderId: number;
+  orderCode: string;
+  totalAmount: number;
+  paymentMethodName: string;
+  paymentUrl?: string;
+  message?: string;
+}
+
+export interface AiOrderTrackingItem {
+  variantName: string;
+  quantity: number;
+  uoMName: string;
+  totalPrice: number;
+}
+
+export interface AiOrderTracking {
+  orderId: number;
+  orderCode: string;
+  orderDate: string;
+  status: number;
+  statusName: string;
+  paymentStatus: number;
+  paymentStatusName: string;
+  paymentMethod: number;
+  paymentMethodName: string;
+  subTotal: number;
+  shippingFee: number;
+  totalAmount: number;
+  receiverName?: string;
+  receiverPhone?: string;
+  deliveryAddress?: string;
+  shippingProvider?: string;
+  items: AiOrderTrackingItem[];
 }

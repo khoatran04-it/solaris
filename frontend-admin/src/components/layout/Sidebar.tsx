@@ -1,10 +1,9 @@
-import React, { useState, useEffect, useMemo } from 'react';
+﻿import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
   Package,
   ShieldCheck,
-  Settings,
   Sun,
   ChevronLeft,
   ChevronRight,
@@ -17,7 +16,7 @@ import {
   Search,
 } from 'lucide-react';
 
-// 🔥 Import store và constants quyền
+// Quản lý quyền truy cập menu
 import { useAuthStore } from '../../stores/useAuthStore';
 import { PERMISSIONS } from '../../constants/permissions';
 
@@ -34,9 +33,14 @@ interface MenuItem {
 const MENU_CONFIG: MenuItem[] = [
   {
     id: 'dashboard',
-    label: 'Tổng quan',
+    label: 'Bảng điều khiển & Báo cáo',
     icon: LayoutDashboard,
-    path: '/',
+    children: [
+      { label: 'Tổng quan kinh doanh', path: '/' },
+      { label: 'Doanh số & Địa lý', path: '/dashboards/sales' },
+      { label: 'Tồn kho & Sức chứa', path: '/dashboards/inventory' },
+      { label: 'Chất lượng & Hạn dùng', path: '/dashboards/quality' },
+    ],
   },
   {
     id: 'sales',
@@ -96,7 +100,11 @@ const MENU_CONFIG: MenuItem[] = [
     label: 'Quản lý Kho bãi',
     icon: Package,
     children: [
-      { label: 'Tổng quan Tồn kho', path: '/inventories', permission: PERMISSIONS.INVENTORY.RECEIPT_VIEW },
+      {
+        label: 'Tổng quan Tồn kho',
+        path: '/inventories',
+        permission: PERMISSIONS.INVENTORY.RECEIPT_VIEW,
+      },
       {
         label: 'Phiếu nhập kho',
         path: '/inventory-receipts',
@@ -112,7 +120,11 @@ const MENU_CONFIG: MenuItem[] = [
         path: '/inventory-transfers',
         permission: PERMISSIONS.INVENTORY.TRANSFER_VIEW,
       },
-      { label: 'Kiểm kê kho', path: '/inventory-audits', permission: PERMISSIONS.INVENTORY.AUDIT_VIEW },
+      {
+        label: 'Kiểm kê kho',
+        path: '/inventory-audits',
+        permission: PERMISSIONS.INVENTORY.AUDIT_VIEW,
+      },
       {
         label: 'Điều chỉnh tồn kho',
         path: '/inventory-adjustments',
@@ -186,7 +198,7 @@ export const Sidebar: React.FC = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [openMenus, setOpenMenus] = useState<string[]>([]);
 
-  // 🔥 State cho thanh tìm kiếm
+  // State tìm kiếm menu điều hướng
   const [searchTerm, setSearchTerm] = useState('');
 
   const handleLogout = () => {
@@ -247,7 +259,11 @@ export const Sidebar: React.FC = () => {
     } else {
       // Khi không search, mở menu chứa url hiện tại
       const activeParent = displayMenu.find((m) =>
-        m.children?.some((c) => location.pathname.startsWith(c.path))
+        m.children?.some((c) =>
+          c.path === '/'
+            ? location.pathname === '/'
+            : location.pathname === c.path || location.pathname.startsWith(c.path + '/')
+        )
       );
       if (activeParent && !openMenus.includes(activeParent.id)) {
         setOpenMenus((prev) => [...prev, activeParent.id]);
@@ -312,7 +328,11 @@ export const Sidebar: React.FC = () => {
           const Icon = item.icon;
           const isOpen = openMenus.includes(item.id);
 
-          const isChildActive = item.children?.some((c) => location.pathname.startsWith(c.path));
+          const isChildActive = item.children?.some((c) =>
+            c.path === '/'
+              ? location.pathname === '/'
+              : location.pathname === c.path || location.pathname.startsWith(c.path + '/')
+          );
           const isActive = (item.path && location.pathname === item.path) || isChildActive;
 
           return (
@@ -349,7 +369,7 @@ export const Sidebar: React.FC = () => {
 
               {/* Submenu Area */}
               {item.children && !isCollapsed && (
-                /* 🔥 FIXED BUG: Đã xóa "|| isActive" khỏi class điều kiện, menu giờ chỉ mở nếu isOpen = true */
+                /* Submenu chỉ hiển thị khi isOpen = true */
                 <div
                   className={`grid transition-all duration-300 ease-in-out ${isOpen ? 'grid-rows-[1fr] opacity-100 mt-1' : 'grid-rows-[0fr] opacity-0'}`}
                 >
@@ -357,7 +377,11 @@ export const Sidebar: React.FC = () => {
                     <div className="absolute left-5 top-0 bottom-2 w-px bg-slate-200" />
 
                     {item.children.map((child) => {
-                      const isSubActive = location.pathname.startsWith(child.path);
+                      const isSubActive =
+                        child.path === '/'
+                          ? location.pathname === '/'
+                          : location.pathname === child.path ||
+                            location.pathname.startsWith(child.path + '/');
                       return (
                         <button
                           key={child.path}
@@ -391,16 +415,6 @@ export const Sidebar: React.FC = () => {
 
       {/* --- FOOTER --- */}
       <div className="p-3 border-t border-slate-200 flex flex-col gap-1 shrink-0">
-        <button
-          className={`w-full flex items-center gap-3 p-3 rounded-xl transition-colors group text-slate-600 hover:bg-slate-50 hover:text-slate-900 ${isCollapsed ? 'justify-center' : ''}`}
-        >
-          <Settings
-            size={20}
-            className="shrink-0 text-slate-400 group-hover:rotate-90 group-hover:text-slate-600 transition-all duration-300"
-          />
-          {!isCollapsed && <span className="text-sm font-medium whitespace-nowrap">Cài đặt</span>}
-        </button>
-
         <button
           onClick={handleLogout}
           className={`w-full flex items-center gap-3 p-3 rounded-xl transition-colors group text-slate-600 hover:bg-red-50 hover:text-red-600 ${isCollapsed ? 'justify-center' : ''}`}

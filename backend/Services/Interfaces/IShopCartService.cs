@@ -1,4 +1,4 @@
-﻿using backend.DTOs.ShopDTOs;
+using backend.DTOs.ShopDTOs;
 using System.Threading.Tasks;
 
 namespace backend.Services.Interfaces
@@ -64,6 +64,14 @@ namespace backend.Services.Interfaces
         /// <param name="customerId">ID Khách hàng vừa đăng nhập thành công.</param>
         /// <param name="request">Danh sách các món hàng vãng lai cần đồng bộ.</param>
         Task<ShopCartDto> SyncGuestCartAsync(int customerId, ShopSyncGuestCartDto request);
+
+        /// <summary>
+        /// Báo giá và kiểm tra tồn kho thời gian thực cho danh sách món hàng của khách vãng lai (Guest Cart Preview).
+        /// Không lưu giỏ hàng vào Database nhưng tính toán đầy đủ giá, khuyến mãi và tồn kho khả dụng để hiển thị trên UI.
+        /// </summary>
+        /// <param name="request">Danh sách các món hàng vãng lai từ LocalStorage.</param>
+        /// <returns>Giỏ hàng ShopCartDto với thông tin sản phẩm đầy đủ để hiển thị.</returns>
+        Task<ShopCartDto> GetGuestCartPreviewAsync(ShopSyncGuestCartDto request);
         #endregion
     }
 }

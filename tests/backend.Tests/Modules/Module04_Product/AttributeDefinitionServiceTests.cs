@@ -1,4 +1,4 @@
-using AutoMapper;
+﻿using AutoMapper;
 using backend.DTOs.AttributeDefinitionDTOs;
 using backend.Models;
 using backend.Services;
@@ -11,8 +11,8 @@ namespace backend.Tests.Modules.Module04_Product
 {
     /// <summary>
     /// ============================================================================
-    /// 📦 MODULE 4: PRODUCT MASTER DATA
-    /// 🧪 UNIT TEST: AttributeDefinitionService (Từ Điển Thuộc Tính Động - EAV)
+    /// MODULE 4: PRODUCT MASTER DATA
+    /// UNIT TEST: AttributeDefinitionService (Từ Điển Thuộc Tính Động - EAV)
     /// ============================================================================
     /// </summary>
     public class AttributeDefinitionServiceTests

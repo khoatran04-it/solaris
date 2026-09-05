@@ -157,6 +157,9 @@ builder.Services.AddScoped<IInventoryAuditService, InventoryAuditService>();
 builder.Services.AddScoped<IInventoryAdjustmentService, InventoryAdjustmentService>();
 builder.Services.AddScoped<IInventoryReconciliationService, InventoryReconciliationService>();
 
+// --- Đăng ký DI cho Dashboard & Analytics ---
+builder.Services.AddScoped<IDashboardService, DashboardService>();
+
 // --- Đăng ký DI cho nhóm Shop E-Commerce ---
 builder.Services.AddScoped<IShopAuthService, ShopAuthService>();
 builder.Services.AddScoped<IShopCustomerService, ShopCustomerService>();

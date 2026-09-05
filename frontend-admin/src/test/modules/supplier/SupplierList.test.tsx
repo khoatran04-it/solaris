@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+﻿import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter } from 'react-router-dom';
@@ -23,8 +23,8 @@ vi.mock('../../../api/supplierTypeApi', () => ({
 
 /**
  * ============================================================================
- * 📦 MODULE 3: SUPPLIER
- * 🧪 COMPONENT TEST: SupplierList (Danh sách Hồ sơ Nhà cung cấp)
+ * MODULE 3: SUPPLIER
+ * COMPONENT TEST: SupplierList (Danh sách Hồ sơ Nhà cung cấp)
  * ============================================================================
  */
 describe('Module 03 - SupplierList Component', () => {

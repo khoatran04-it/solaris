@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   Package,
@@ -43,8 +43,13 @@ const INITIAL_STATE: ProductVariantPayload = {
   inventoryGuideline: 0,
   isActive: true,
   productId: 0,
+  grossWeightKg: undefined,
+  lengthCm: undefined,
+  widthCm: undefined,
+  heightCm: undefined,
+  unitCbm: undefined,
   attributes: [],
-  prices: [], // 🔥 Khởi tạo mảng giá rỗng
+  prices: [], // Khởi tạo mảng giá
 };
 
 const STATUS_OPTIONS = [
@@ -102,7 +107,9 @@ const ProductVariantForm: React.FC = () => {
         setUomOptions((uoms || []).map((u: any) => ({ label: u.name, value: u.id })));
         setUomConversions(conversions || []);
       })
-      .catch(() => showToast('warning', 'Không tải được danh mục bổ trợ (Sản phẩm / Đơn vị tính / Quy đổi)'));
+      .catch(() =>
+        showToast('warning', 'Không tải được danh mục bổ trợ (Sản phẩm / Đơn vị tính / Quy đổi)')
+      );
 
     // Lấy chi tiết Edit
     if (isEditMode && id) {
@@ -117,6 +124,11 @@ const ProductVariantForm: React.FC = () => {
             inventoryGuideline: res.inventoryGuideline || 0,
             isActive: res.isActive,
             productId: res.productId,
+            grossWeightKg: res.grossWeightKg,
+            lengthCm: res.lengthCm,
+            widthCm: res.widthCm,
+            heightCm: res.heightCm,
+            unitCbm: res.unitCbm,
             attributes: res.attributes.map((a) => ({
               attributeDefinitionId: a.attributeDefinitionId!,
               attributeValue: a.attributeValue,
@@ -162,6 +174,22 @@ const ProductVariantForm: React.FC = () => {
     }
   };
 
+  const handleDimensionChange = (
+    field: 'lengthCm' | 'widthCm' | 'heightCm',
+    val: number | undefined
+  ) => {
+    setFormData((prev) => {
+      const next = { ...prev, [field]: val };
+      const l = field === 'lengthCm' ? val : prev.lengthCm;
+      const w = field === 'widthCm' ? val : prev.widthCm;
+      const h = field === 'heightCm' ? val : prev.heightCm;
+      if (l && w && h && l > 0 && w > 0 && h > 0) {
+        next.unitCbm = Math.round(((l * w * h) / 1000000) * 10000) / 10000;
+      }
+      return next;
+    });
+  };
+
   // Helper: Cập nhật Thuộc tính
   const handleDynamicAttrChange = (definitionId: number, value: string) => {
     setFormData((prev) => {
@@ -175,7 +203,7 @@ const ProductVariantForm: React.FC = () => {
   const getDynamicAttrValue = (definitionId: number) =>
     formData.attributes.find((a) => a.attributeDefinitionId === definitionId)?.attributeValue || '';
 
-  // 🔥 Helpers: XỬ LÝ BẢNG GIÁ (TAB 3)
+  // Helpers: Xử lý bảng giá biến thể
   const handleAddPriceRow = () => {
     setFormData((prev) => ({
       ...prev,
@@ -393,7 +421,8 @@ const ProductVariantForm: React.FC = () => {
                       }
                     />
                     <p className="text-[11px] text-slate-400 mt-1 font-medium italic">
-                      * Hệ thống sẽ cảnh báo khi tồn kho thực tế thấp hơn mức này (Mặc định: 0 - Không cảnh báo).
+                      * Hệ thống sẽ cảnh báo khi tồn kho thực tế thấp hơn mức này (Mặc định: 0 -
+                      Không cảnh báo).
                     </p>
                   </div>
                 </div>
@@ -422,6 +451,76 @@ const ProductVariantForm: React.FC = () => {
                     value={formData.description || ''}
                     rows={3}
                     onChange={(e: any) => handleFieldChange('description', e.target.value)}
+                  />
+                </div>
+              </FormSection>
+
+              <FormSection title="Kích Thước Đóng Gói & Khối Lượng (Physical Dimensions & Weight)">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+                  <FormInput
+                    label="Dài (cm)"
+                    type="number"
+                    placeholder="VD: 30"
+                    value={formData.lengthCm ?? ''}
+                    disabled={loading}
+                    onChange={(e) =>
+                      handleDimensionChange(
+                        'lengthCm',
+                        e.target.value ? parseFloat(e.target.value) : undefined
+                      )
+                    }
+                  />
+                  <FormInput
+                    label="Rộng (cm)"
+                    type="number"
+                    placeholder="VD: 20"
+                    value={formData.widthCm ?? ''}
+                    disabled={loading}
+                    onChange={(e) =>
+                      handleDimensionChange(
+                        'widthCm',
+                        e.target.value ? parseFloat(e.target.value) : undefined
+                      )
+                    }
+                  />
+                  <FormInput
+                    label="Cao (cm)"
+                    type="number"
+                    placeholder="VD: 15"
+                    value={formData.heightCm ?? ''}
+                    disabled={loading}
+                    onChange={(e) =>
+                      handleDimensionChange(
+                        'heightCm',
+                        e.target.value ? parseFloat(e.target.value) : undefined
+                      )
+                    }
+                  />
+                  <FormInput
+                    label="Thể Tích (CBM - m³)"
+                    type="number"
+                    placeholder="Tự động tính"
+                    value={formData.unitCbm ?? ''}
+                    disabled={loading}
+                    onChange={(e) =>
+                      handleFieldChange(
+                        'unitCbm',
+                        e.target.value ? parseFloat(e.target.value) : undefined
+                      )
+                    }
+                  />
+                  <FormInput
+                    label="Khối Lượng Cả Bì (Kg)"
+                    type="number"
+                    placeholder="VD: 1.5"
+                    value={formData.grossWeightKg ?? ''}
+                    disabled={loading}
+                    onChange={(e) =>
+                      handleFieldChange(
+                        'grossWeightKg',
+                        e.target.value ? parseFloat(e.target.value) : undefined
+                      )
+                    }
                   />
                 </div>
               </FormSection>
@@ -539,7 +638,9 @@ const ProductVariantForm: React.FC = () => {
                             {/* Chú thích quy cách / Quy đổi ĐVT */}
                             {(() => {
                               if (!row.uoMId) return null;
-                              const currentProd = rawProducts.find((p) => p.id === formData.productId);
+                              const currentProd = rawProducts.find(
+                                (p) => p.id === formData.productId
+                              );
                               if (currentProd && row.uoMId === currentProd.baseUoMId) {
                                 return (
                                   <div className="mt-1.5 inline-flex items-center gap-1.5 text-[11px] font-bold text-amber-800 bg-amber-50/90 px-2.5 py-1 rounded-lg border border-amber-200 shadow-2xs">
@@ -550,7 +651,8 @@ const ProductVariantForm: React.FC = () => {
                               }
                               const conv =
                                 uomConversions.find(
-                                  (c) => c.productId === formData.productId && c.fromUoMId === row.uoMId
+                                  (c) =>
+                                    c.productId === formData.productId && c.fromUoMId === row.uoMId
                                 ) ||
                                 uomConversions.find(
                                   (c) => !c.productId && c.fromUoMId === row.uoMId
@@ -560,14 +662,13 @@ const ProductVariantForm: React.FC = () => {
                                   conv.fromUoMName ||
                                   uomOptions.find((u) => u.value === row.uoMId)?.label ||
                                   'ĐVT';
-                                const toName =
-                                  conv.toUoMName ||
-                                  currentProd?.baseUoMName ||
-                                  'Kg';
+                                const toName = conv.toUoMName || currentProd?.baseUoMName || 'Kg';
                                 return (
                                   <div className="mt-1.5 inline-flex items-center gap-1.5 text-[11px] font-bold text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200/90 shadow-2xs">
                                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                                    <span>💡 1 {fromName} = {conv.conversionFactor} {toName}</span>
+                                    <span>
+                                      💡 1 {fromName} = {conv.conversionFactor} {toName}
+                                    </span>
                                   </div>
                                 );
                               }
@@ -583,17 +684,10 @@ const ProductVariantForm: React.FC = () => {
                               <input
                                 type="text"
                                 placeholder="VD: 45000"
-                                value={
-                                  row.price > 0
-                                    ? row.price.toLocaleString('vi-VN')
-                                    : ''
-                                }
+                                value={row.price > 0 ? row.price.toLocaleString('vi-VN') : ''}
                                 onChange={(e) => {
                                   const numericVal =
-                                    parseInt(
-                                      e.target.value.replace(/\D/g, ''),
-                                      10
-                                    ) || 0;
+                                    parseInt(e.target.value.replace(/\D/g, ''), 10) || 0;
                                   handleUpdatePriceRow(idx, 'price', numericVal);
                                 }}
                                 className="w-full h-11.5 px-4 pr-10 rounded-xl border border-slate-200 focus:border-yellow-400 focus:ring-4 focus:ring-yellow-400/20 bg-slate-50/50 hover:bg-white focus:bg-white text-slate-800 font-bold text-sm outline-none transition-all"
@@ -612,16 +706,9 @@ const ProductVariantForm: React.FC = () => {
                                   ? 'text-yellow-500 bg-yellow-100 shadow-xs'
                                   : 'text-slate-300 hover:bg-slate-100 hover:text-slate-500'
                               }`}
-                              title={
-                                row.isDefault
-                                  ? 'Đang làm mặc định'
-                                  : 'Đặt làm mặc định'
-                              }
+                              title={row.isDefault ? 'Đang làm mặc định' : 'Đặt làm mặc định'}
                             >
-                              <Star
-                                size={20}
-                                className={row.isDefault ? 'fill-current' : ''}
-                              />
+                              <Star size={20} className={row.isDefault ? 'fill-current' : ''} />
                             </button>
                           </td>
                           <td className="p-3 text-center align-middle">

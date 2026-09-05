@@ -19,6 +19,13 @@ export interface Warehouse {
   isActive: boolean;
   createdAt: string;
 
+  // Thông tin Diện tích & Sức chứa vật lý
+  totalAreaSqm?: number;
+  totalCapacityCbm?: number;
+  maxWeightCapacityKg?: number;
+  maxPalletPositions?: number;
+  warningThresholdPercent?: number;
+
   // Thông tin Trưởng kho
   managerId?: number;
   managerName?: string;
@@ -39,9 +46,31 @@ export interface WarehousePayload {
   code?: string; // Bắt buộc khi Create, khi Update có thể bỏ qua
   name: string;
   warehouseType?: string;
+  totalAreaSqm?: number;
+  totalCapacityCbm?: number;
+  maxWeightCapacityKg?: number;
+  maxPalletPositions?: number;
+  warningThresholdPercent?: number;
   managerId?: number | null;
   isActive: boolean;
   address: WarehouseAddressPayload; // Khối địa chỉ lồng bên trong
+}
+
+// 3.1 Trạng thái sức chứa tức thời
+export interface WarehouseCapacityStatus {
+  warehouseId: number;
+  warehouseCode: string;
+  warehouseName: string;
+  totalCapacityCbm: number;
+  occupiedCbm: number;
+  availableCbm: number;
+  occupancyRateCbm: number;
+  maxWeightCapacityKg: number;
+  occupiedWeightKg: number;
+  availableWeightKg: number;
+  occupancyRateWeight: number;
+  warningThresholdPercent: number;
+  status: 'Safe' | 'Warning' | 'Critical';
 }
 
 // 4. Query Params (Dùng cho bộ lọc tìm kiếm trên Bảng Danh Sách)

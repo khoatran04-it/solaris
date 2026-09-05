@@ -1,5 +1,6 @@
 using backend.DTOs.AiDTOs;
 using backend.Services.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System;
@@ -12,7 +13,9 @@ namespace backend.Controllers.Shop
     /// <summary>
     /// Controller Quản lý Trợ lý Ảo AI B2C (Solaris AI Chatbot & Conversational Commerce).
     /// Hỗ trợ luồng đàm thoại thông minh, đề xuất sản phẩm thời gian thực, chốt đơn trực tiếp trong khung chat và quản lý lịch sử hội thoại.
+    /// Khóa bảo vệ nghiêm ngặt: Yêu cầu đăng nhập tài khoản để sử dụng Trợ lý AI và chốt đơn.
     /// </summary>
+    [Authorize]
     [Route("api/shop/ai")]
     [ApiController]
     [Produces("application/json")]

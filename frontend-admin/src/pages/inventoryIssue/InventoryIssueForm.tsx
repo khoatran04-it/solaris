@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+﻿import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { PackageCheck, Plus, Trash2, Sparkles, Save } from 'lucide-react';
 
@@ -23,7 +23,7 @@ import { productBatchApi } from '../../api/productBatchApi';
 import { uomApi } from '../../api/uomApi';
 import { useAuthStore } from '../../stores/useAuthStore';
 
-// 🔥 IMPORT TYPE CHUẨN
+// Import types
 import { InventoryIssueCreatePayload, SuggestedBatch } from '../../types/inventoryIssue';
 
 // --- FORM STATE TYPES ---
@@ -170,67 +170,68 @@ const InventoryIssueForm: React.FC = () => {
     []
   );
 
-  const loadOrder = useCallback(
-    async (id: number) => {
-      try {
-        const ord = await orderApi.getById(id);
-        if (ord) {
-          const whId = ord.warehouseId;
-          setFormData((prev) => ({
-            ...prev,
-            orderId: ord.id,
-            warehouseId: whId || prev.warehouseId,
-            receiverName: ord.receiverName || ord.customerName || '',
-            receiverPhone: ord.receiverPhone || ord.customerPhone || '',
-            deliveryAddress: ord.deliveryAddress || '',
-          }));
+  const loadOrder = useCallback(async (id: number) => {
+    try {
+      const ord = await orderApi.getById(id);
+      if (ord) {
+        const whId = ord.warehouseId;
+        setFormData((prev) => ({
+          ...prev,
+          orderId: ord.id,
+          warehouseId: whId || prev.warehouseId,
+          receiverName: ord.receiverName || ord.customerName || '',
+          receiverPhone: ord.receiverPhone || ord.customerPhone || '',
+          deliveryAddress: ord.deliveryAddress || '',
+        }));
 
-          if (ord.details && ord.details.length > 0) {
-            const batchMapUpdates: Record<string, SuggestedBatch[]> = {};
+        if (ord.details && ord.details.length > 0) {
+          const batchMapUpdates: Record<string, SuggestedBatch[]> = {};
 
-            const rows: DetailRow[] = await Promise.all(
-              ord.details.map(async (d) => {
-                const unissued = Math.max(0, d.quantity - (d.issuedQuantity || 0));
-                const qty = unissued > 0 ? unissued : d.quantity;
-                let autoBatchId: number | '' = '';
+          const rows: DetailRow[] = await Promise.all(
+            ord.details.map(async (d) => {
+              const unissued = Math.max(0, d.quantity - (d.issuedQuantity || 0));
+              const qty = unissued > 0 ? unissued : d.quantity;
+              let autoBatchId: number | '' = '';
 
-                if (whId) {
-                  try {
-                    const suggestions = await inventoryIssueApi.getSuggestedBatches(whId, d.variantId, qty);
-                    if (suggestions && suggestions.length > 0) {
-                      autoBatchId = suggestions[0].batchId;
-                      batchMapUpdates[`${whId}_${d.variantId}`] = suggestions;
-                    } else {
-                      batchMapUpdates[`${whId}_${d.variantId}`] = [];
-                    }
-                  } catch {
+              if (whId) {
+                try {
+                  const suggestions = await inventoryIssueApi.getSuggestedBatches(
+                    whId,
+                    d.variantId,
+                    qty
+                  );
+                  if (suggestions && suggestions.length > 0) {
+                    autoBatchId = suggestions[0].batchId;
+                    batchMapUpdates[`${whId}_${d.variantId}`] = suggestions;
+                  } else {
                     batchMapUpdates[`${whId}_${d.variantId}`] = [];
                   }
+                } catch {
+                  batchMapUpdates[`${whId}_${d.variantId}`] = [];
                 }
+              }
 
-                return {
-                  id: crypto.randomUUID(),
-                  orderDetailId: d.id,
-                  variantId: d.variantId,
-                  batchId: autoBatchId,
-                  uoMId: d.uoMId,
-                  quantity: qty,
-                  unitPrice: d.unitPrice,
-                };
-              })
-            );
+              return {
+                id: crypto.randomUUID(),
+                orderDetailId: d.id,
+                variantId: d.variantId,
+                batchId: autoBatchId,
+                uoMId: d.uoMId,
+                quantity: qty,
+                unitPrice: d.unitPrice,
+              };
+            })
+          );
 
-            setVariantBatchesMap((prev) => ({ ...prev, ...batchMapUpdates }));
-            setDetails(rows);
-            showToast('success', 'Đã tải thông tin đơn hàng và tự động phân bổ Lô FEFO tối ưu!');
-          }
+          setVariantBatchesMap((prev) => ({ ...prev, ...batchMapUpdates }));
+          setDetails(rows);
+          showToast('success', 'Đã tải thông tin đơn hàng và tự động phân bổ Lô FEFO tối ưu!');
         }
-      } catch (err) {
-        showToast('error', 'Không thể tải thông tin đơn hàng gốc!');
       }
-    },
-    []
-  );
+    } catch (err) {
+      showToast('error', 'Không thể tải thông tin đơn hàng gốc!');
+    }
+  }, []);
 
   useEffect(() => {
     if (orderIdParam) {
@@ -244,7 +245,11 @@ const InventoryIssueForm: React.FC = () => {
       const whId = Number(formData.warehouseId);
       details.forEach(async (row) => {
         if (row.variantId) {
-          const suggestions = await fetchBatchesForVariant(whId, Number(row.variantId), row.quantity);
+          const suggestions = await fetchBatchesForVariant(
+            whId,
+            Number(row.variantId),
+            row.quantity
+          );
           if (suggestions && suggestions.length > 0 && !row.batchId) {
             setDetails((prev) =>
               prev.map((r) => (r.id === row.id ? { ...r, batchId: suggestions[0].batchId } : r))
@@ -655,10 +660,10 @@ const InventoryIssueForm: React.FC = () => {
                                   !formData.warehouseId
                                     ? '-- Chọn Kho xuất trước --'
                                     : !row.variantId
-                                    ? '-- Chọn Sản phẩm trước --'
-                                    : rowBatches.length === 0
-                                    ? '-- Kho xuất hết hàng cho SP này --'
-                                    : '-- Chọn Lô FEFO --'
+                                      ? '-- Chọn Sản phẩm trước --'
+                                      : rowBatches.length === 0
+                                        ? '-- Kho xuất hết hàng cho SP này --'
+                                        : '-- Chọn Lô FEFO --'
                                 }
                                 showSearch
                                 searchPlaceholder="Tìm mã lô..."
@@ -670,7 +675,9 @@ const InventoryIssueForm: React.FC = () => {
                                     b.quantityReserved > 0 && b.quantityAvailable === 0
                                       ? `[Đã giữ chỗ cho đơn: ${b.quantityReserved}]`
                                       : `[Khả dụng: ${b.quantityAvailable}${
-                                          b.quantityReserved ? `, Giữ chỗ: ${b.quantityReserved}` : ''
+                                          b.quantityReserved
+                                            ? `, Giữ chỗ: ${b.quantityReserved}`
+                                            : ''
                                         }]`;
 
                                   return {

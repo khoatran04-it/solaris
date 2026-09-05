@@ -1,4 +1,4 @@
-using AutoMapper;
+﻿using AutoMapper;
 using backend.DTOs.PromotionCampaignDTOs;
 using backend.Models;
 using backend.Services;
@@ -11,8 +11,8 @@ namespace backend.Tests.Modules.Module07_PromotionCampaign
 {
     /// <summary>
     /// ============================================================================
-    /// 📦 MODULE 07: PROMOTION CAMPAIGN & PROMOTION VARIANT MANAGEMENT
-    /// 🧪 TEST SUITE: PromotionCampaignServiceTests
+    /// MODULE 07: PROMOTION CAMPAIGN & PROMOTION VARIANT MANAGEMENT
+    /// TEST SUITE: PromotionCampaignServiceTests
     /// ============================================================================
     /// Kiểm thử toàn diện tầng nghiệp vụ Quản lý Chiến Dịch Khuyến Mãi (Promotion Campaigns):
     /// - Quản lý cấu hình chiến dịch (Flash Sale, Giảm giá theo % hoặc Tiền mặt)

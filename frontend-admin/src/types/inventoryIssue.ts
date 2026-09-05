@@ -18,10 +18,10 @@ export const InventoryIssueStatusLabels: Record<InventoryIssueStatus, string> = 
 };
 
 export const InventoryIssueStatusColors: Record<InventoryIssueStatus, string> = {
-  [InventoryIssueStatus.Pending]: 'bg-slate-100 text-slate-600 border-slate-200',
-  [InventoryIssueStatus.Picking]: 'bg-indigo-100 text-indigo-700 border-indigo-200',
-  [InventoryIssueStatus.Completed]: 'bg-emerald-100 text-emerald-800 border-emerald-200',
-  [InventoryIssueStatus.Cancelled]: 'bg-rose-100 text-rose-700 border-rose-200',
+  [InventoryIssueStatus.Pending]: 'bg-amber-50 text-amber-700 border-amber-200',
+  [InventoryIssueStatus.Picking]: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+  [InventoryIssueStatus.Completed]: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  [InventoryIssueStatus.Cancelled]: 'bg-rose-50 text-rose-700 border-rose-200',
 };
 
 // =========================================================
@@ -40,6 +40,8 @@ export interface InventoryIssueDetail {
   quantity: number;
   unitPrice: number;
   totalPrice: number;
+  totalWeightKg?: number;
+  totalCbm?: number;
 }
 
 export interface InventoryIssue {
@@ -81,6 +83,8 @@ export interface InventoryIssueDetailCreatePayload {
   uoMId: number;
   quantity: number;
   unitPrice: number;
+  totalWeightKg?: number;
+  totalCbm?: number;
 }
 
 export interface InventoryIssueCreatePayload {

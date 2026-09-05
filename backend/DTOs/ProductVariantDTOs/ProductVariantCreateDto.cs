@@ -54,6 +54,12 @@ namespace backend.DTOs.ProductVariantDTOs
 
         /// <summary>Mức tồn kho an toàn tối thiểu (Safety Stock - tự động cảnh báo khi tồn xuống dưới mức này).</summary>
         public int InventoryGuideline { get; set; }
+
+        public decimal? GrossWeightKg { get; set; }
+        public decimal? LengthCm { get; set; }
+        public decimal? WidthCm { get; set; }
+        public decimal? HeightCm { get; set; }
+        public decimal? UnitCbm { get; set; }
         #endregion
 
         #region Liên kết dữ liệu (Foreign Keys)

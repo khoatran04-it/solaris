@@ -1,4 +1,4 @@
-import axiosClient from './axiosClient';
+﻿import axiosClient from './axiosClient';
 import { PagedResult } from '../types/common';
 import { ProductBatch, ProductBatchPayload, ProductBatchQueryParams } from '../types/productBatch';
 
@@ -15,7 +15,7 @@ export const productBatchApi = {
     return axiosClient.get(`/ProductBatches/${id}`);
   },
 
-  // 🔥 FIX: Thêm Id hoa để hứng đúng cấu trúc của C# trả về
+  // Ánh xạ trường Id từ API response
   create: (
     data: ProductBatchPayload
   ): Promise<{ message?: string; Message?: string; id?: number; Id?: number }> => {

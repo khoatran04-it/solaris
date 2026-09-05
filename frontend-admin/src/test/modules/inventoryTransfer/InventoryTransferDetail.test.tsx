@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+﻿import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
@@ -27,8 +27,8 @@ vi.mock('react-router-dom', async () => {
 
 /**
  * ============================================================================
- * 🚚 MODULE 10: INVENTORY TRANSFERS (2-STEP DISPATCH & RECEIVE)
- * 🧪 COMPONENT TEST: InventoryTransferDetail (Chi Tiết & Xử Lý Phiếu Điều Chuyển)
+ * MODULE 10: INVENTORY TRANSFERS (2-STEP DISPATCH & RECEIVE)
+ * COMPONENT TEST: InventoryTransferDetail (Chi Tiết & Xử Lý Phiếu Điều Chuyển)
  * ============================================================================
  */
 describe('Module 10 - InventoryTransferDetail Component', () => {
@@ -91,7 +91,9 @@ describe('Module 10 - InventoryTransferDetail Component', () => {
     expect(await screen.findByText('TRF-20260830-001')).toBeInTheDocument();
     expect(screen.getByText('Tổng Kho Hà Nội')).toBeInTheDocument();
     expect(screen.getByText('Kho Nam Sài Gòn')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Xuất Hàng Đi \(In-Transit\)/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /Xuất Hàng Đi \(In-Transit\)/i })
+    ).toBeInTheDocument();
   });
 
   // TC02: BƯỚC 1 - XUẤT HÀNG ĐI (DISPATCH)

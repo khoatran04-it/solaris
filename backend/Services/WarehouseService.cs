@@ -140,6 +140,78 @@ namespace backend.Services
             return _mapper.Map<WarehouseReadDto>(entity);
         }
 
+        /// <summary>
+        /// Lấy thông tin trạng thái sức chứa tức thời (CBM, Tải trọng kg, % lấp đầy) của kho hàng.
+        /// </summary>
+        public async Task<WarehouseCapacityStatusDto> GetCapacityStatusAsync(int id)
+        {
+            var warehouse = await _context.Warehouses
+                .AsNoTracking()
+                .FirstOrDefaultAsync(x => x.Id == id);
+
+            if (warehouse == null)
+                throw new KeyNotFoundException($"Không tìm thấy kho hàng với ID {id}.");
+
+            decimal totalCapacityCbm = warehouse.TotalCapacityCbm ?? 500m; // Mặc định 500 CBM nếu chưa cấu hình
+            decimal maxWeightCapacityKg = warehouse.MaxWeightCapacityKg ?? 100000m; // Mặc định 100 Tấn nếu chưa cấu hình
+
+            var inventories = await _context.WarehouseInventories
+                .Include(w => w.Variant)
+                .Where(w => w.WarehouseId == id && (w.QuantityAvailable > 0 || w.QuantityReserved > 0 || w.QuantityQC > 0 || w.QuantityDamaged > 0))
+                .AsNoTracking()
+                .ToListAsync();
+
+            decimal occupiedCbm = 0;
+            decimal occupiedWeightKg = 0;
+
+            foreach (var inv in inventories)
+            {
+                var totalQty = inv.QuantityAvailable + inv.QuantityReserved + inv.QuantityQC + inv.QuantityDamaged;
+                var unitCbm = inv.Variant?.UnitCbm ?? (
+                    (inv.Variant?.LengthCm > 0 && inv.Variant?.WidthCm > 0 && inv.Variant?.HeightCm > 0)
+                        ? (inv.Variant.LengthCm.Value * inv.Variant.WidthCm.Value * inv.Variant.HeightCm.Value) / 1000000m
+                        : 0.02m
+                );
+                var unitWeight = inv.Variant?.GrossWeightKg ?? 1m;
+
+                occupiedCbm += totalQty * unitCbm;
+                occupiedWeightKg += totalQty * unitWeight;
+            }
+
+            decimal availableCbm = Math.Max(0, totalCapacityCbm - occupiedCbm);
+            decimal occupancyRateCbm = totalCapacityCbm > 0 ? Math.Round((occupiedCbm / totalCapacityCbm) * 100m, 2) : 0;
+
+            decimal availableWeightKg = Math.Max(0, maxWeightCapacityKg - occupiedWeightKg);
+            decimal occupancyRateWeight = maxWeightCapacityKg > 0 ? Math.Round((occupiedWeightKg / maxWeightCapacityKg) * 100m, 2) : 0;
+
+            string status = "Safe";
+            if (occupancyRateCbm >= 100 || occupancyRateWeight >= 100)
+            {
+                status = "Critical";
+            }
+            else if (occupancyRateCbm >= warehouse.WarningThresholdPercent || occupancyRateWeight >= warehouse.WarningThresholdPercent)
+            {
+                status = "Warning";
+            }
+
+            return new WarehouseCapacityStatusDto
+            {
+                WarehouseId = warehouse.Id,
+                WarehouseCode = warehouse.Code,
+                WarehouseName = warehouse.Name,
+                TotalCapacityCbm = totalCapacityCbm,
+                OccupiedCbm = Math.Round(occupiedCbm, 2),
+                AvailableCbm = Math.Round(availableCbm, 2),
+                OccupancyRateCbm = occupancyRateCbm,
+                MaxWeightCapacityKg = maxWeightCapacityKg,
+                OccupiedWeightKg = Math.Round(occupiedWeightKg, 2),
+                AvailableWeightKg = Math.Round(availableWeightKg, 2),
+                OccupancyRateWeight = occupancyRateWeight,
+                WarningThresholdPercent = warehouse.WarningThresholdPercent,
+                Status = status
+            };
+        }
+
         #endregion
 
         // ==========================================

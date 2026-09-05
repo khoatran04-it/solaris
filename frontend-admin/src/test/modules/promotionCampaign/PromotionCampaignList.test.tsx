@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+﻿import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter } from 'react-router-dom';
@@ -25,8 +25,8 @@ vi.mock('react-router-dom', async () => {
 
 /**
  * ============================================================================
- * 📦 MODULE 07: PROMOTION CAMPAIGNS
- * 🧪 COMPONENT TEST: PromotionCampaignList (Danh sách Chiến Dịch Khuyến Mãi)
+ * MODULE 07: PROMOTION CAMPAIGNS
+ * COMPONENT TEST: PromotionCampaignList (Danh sách Chiến Dịch Khuyến Mãi)
  * ============================================================================
  */
 describe('Module 07 - PromotionCampaignList Component', () => {

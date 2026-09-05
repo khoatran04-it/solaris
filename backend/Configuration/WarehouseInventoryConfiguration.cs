@@ -1,4 +1,4 @@
-﻿using backend.Models;
+using backend.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -11,7 +11,7 @@ namespace backend.Configurations
             builder.ToTable("WarehouseInventories");
             builder.HasKey(x => x.Id);
 
-            // 🔥 COMPOSITE UNIQUE INDEX: Đảm bảo 1 Kho + 1 Biến Thể + 1 Lô chỉ có DUY NHẤT 1 dòng số dư
+            // Composite Unique Index: Đảm bảo 1 Kho + 1 Biến Thể + 1 Lô chỉ có duy nhất 1 bản ghi số dư
             // Tăng tốc độ truy xuất cực nhanh khi check tồn kho
             builder.HasIndex(x => new { x.WarehouseId, x.VariantId, x.BatchId }).IsUnique();
 

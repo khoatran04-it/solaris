@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+﻿import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeftRight, Plus, Trash2, Save, Sparkles, Loader2 } from 'lucide-react';
 
@@ -22,7 +22,7 @@ import { productVariantApi } from '../../api/productVariantApi';
 import { uomApi } from '../../api/uomApi';
 import { useAuthStore } from '../../stores/useAuthStore';
 
-// 🔥 IMPORT TYPE CHUẨN TỪ FILE TYPES
+// Import types
 import { InventoryTransferCreatePayload } from '../../types/inventoryTransfer';
 import { SuggestedBatch } from '../../types/inventoryIssue';
 
@@ -154,7 +154,7 @@ const InventoryTransferForm: React.FC = () => {
         const ord = await orderApi.getById(id);
         if (ord) {
           let fromWh = fromWarehouseIdParam ? Number(fromWarehouseIdParam) : '';
-          let toWh = toWarehouseIdParam ? Number(toWarehouseIdParam) : (ord.warehouseId || '');
+          let toWh = toWarehouseIdParam ? Number(toWarehouseIdParam) : ord.warehouseId || '';
 
           let itemsToTransfer: { variantId: number; uoMId: number; quantity: number }[] = [];
 
@@ -256,7 +256,11 @@ const InventoryTransferForm: React.FC = () => {
       const whId = Number(formData.fromWarehouseId);
       details.forEach(async (row) => {
         if (row.variantId) {
-          const suggestions = await fetchBatchesForVariant(whId, Number(row.variantId), row.quantity);
+          const suggestions = await fetchBatchesForVariant(
+            whId,
+            Number(row.variantId),
+            row.quantity
+          );
           if (suggestions && suggestions.length > 0 && !row.batchId) {
             setDetails((prev) =>
               prev.map((r) => (r.id === row.id ? { ...r, batchId: suggestions[0].batchId } : r))
@@ -575,10 +579,10 @@ const InventoryTransferForm: React.FC = () => {
                               !formData.fromWarehouseId
                                 ? '-- Chọn Kho nguồn trước --'
                                 : !row.variantId
-                                ? '-- Chọn Sản phẩm trước --'
-                                : rowBatches.length === 0
-                                ? '-- Kho nguồn hết hàng cho SP này --'
-                                : '-- Chọn Lô FEFO --'
+                                  ? '-- Chọn Sản phẩm trước --'
+                                  : rowBatches.length === 0
+                                    ? '-- Kho nguồn hết hàng cho SP này --'
+                                    : '-- Chọn Lô FEFO --'
                             }
                             showSearch
                             searchPlaceholder="Tìm mã lô..."

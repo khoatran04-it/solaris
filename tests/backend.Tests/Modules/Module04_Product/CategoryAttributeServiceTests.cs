@@ -1,4 +1,4 @@
-using AutoMapper;
+﻿using AutoMapper;
 using backend.DTOs.CategoryAttributeDTOs;
 using backend.Models;
 using backend.Services;
@@ -11,8 +11,8 @@ namespace backend.Tests.Modules.Module04_Product
 {
     /// <summary>
     /// ============================================================================
-    /// 📦 MODULE 4: PRODUCT MASTER DATA
-    /// 🧪 UNIT TEST: CategoryAttributeService (Cấu Hình Mẫu Thuộc Tính Danh Mục - EAV Template)
+    /// MODULE 4: PRODUCT MASTER DATA
+    /// UNIT TEST: CategoryAttributeService (Cấu Hình Mẫu Thuộc Tính Danh Mục - EAV Template)
     /// ============================================================================
     /// </summary>
     public class CategoryAttributeServiceTests

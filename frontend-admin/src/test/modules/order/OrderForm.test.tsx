@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+﻿import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter } from 'react-router-dom';
@@ -59,8 +59,8 @@ vi.mock('react-router-dom', async () => {
 
 /**
  * ============================================================================
- * 📦 MODULE 13: SALES ORDERS & CUSTOMER RETURNS
- * 🧪 COMPONENT TEST: OrderForm (Form Tạo Đơn Bán Hàng & Định Tuyến Kho)
+ * MODULE 13: SALES ORDERS & CUSTOMER RETURNS
+ * COMPONENT TEST: OrderForm (Form Tạo Đơn Bán Hàng & Định Tuyến Kho)
  * ============================================================================
  */
 describe('Module 13 - OrderForm Component', () => {
@@ -77,7 +77,7 @@ describe('Module 13 - OrderForm Component', () => {
       fullAddress: '123 Lê Lợi, Bến Nghé, Quận 1, TP.HCM',
       isDefault: true,
       latitude: 10.775,
-      longitude: 106.700,
+      longitude: 106.7,
     },
   ];
 
@@ -199,7 +199,9 @@ describe('Module 13 - OrderForm Component', () => {
     fireEvent.click(customerOption);
 
     // 2. Nhập địa chỉ giao hàng
-    const addressInput = screen.getByPlaceholderText(/Số nhà, tên đường, phường\/xã, quận\/huyện.../i);
+    const addressInput = screen.getByPlaceholderText(
+      /Số nhà, tên đường, phường\/xã, quận\/huyện.../i
+    );
     fireEvent.change(addressInput, { target: { value: '123 Lê Lợi, Bến Nghé, Q1' } });
 
     // 3. Chọn sản phẩm

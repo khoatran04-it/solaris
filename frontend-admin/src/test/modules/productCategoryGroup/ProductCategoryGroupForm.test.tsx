@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+﻿import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
@@ -17,8 +17,8 @@ vi.mock('../../../api/productCategoryGroupApi', () => ({
 
 /**
  * ============================================================================
- * 📦 MODULE 4: PRODUCT CATEGORY GROUP
- * 🧪 COMPONENT TEST: ProductCategoryGroupForm (Form Thêm / Sửa Nhóm Ngành Hàng)
+ * MODULE 4: PRODUCT CATEGORY GROUP
+ * COMPONENT TEST: ProductCategoryGroupForm (Form Thêm / Sửa Nhóm Ngành Hàng)
  * ============================================================================
  */
 describe('Module 04 - ProductCategoryGroupForm Component', () => {

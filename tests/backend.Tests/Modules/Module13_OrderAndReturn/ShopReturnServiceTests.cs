@@ -1,4 +1,4 @@
-using AutoMapper;
+﻿using AutoMapper;
 using backend.DTOs.ShopDTOs;
 using backend.Models;
 using backend.Models.Enums;
@@ -16,8 +16,8 @@ namespace backend.Tests.Modules.Module13_OrderAndReturn
 {
     /// <summary>
     /// ============================================================================
-    /// 📦 MODULE 13: SALES ORDERS & CUSTOMER RETURNS
-    /// 🧪 UNIT TEST: ShopReturnService (B2C Self-Service RMA & Batch Resolution)
+    /// MODULE 13: SALES ORDERS & CUSTOMER RETURNS
+    /// UNIT TEST: ShopReturnService (B2C Self-Service RMA & Batch Resolution)
     /// ============================================================================
     /// </summary>
     public class ShopReturnServiceTests

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+﻿import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter } from 'react-router-dom';
@@ -58,8 +58,8 @@ vi.mock('react-router-dom', async () => {
 
 /**
  * ============================================================================
- * 🚚 MODULE 10: INVENTORY TRANSFERS (2-STEP DISPATCH & RECEIVE)
- * 🧪 COMPONENT TEST: InventoryTransferForm (Lập Phiếu Điều Chuyển Liên Kho)
+ * MODULE 10: INVENTORY TRANSFERS (2-STEP DISPATCH & RECEIVE)
+ * COMPONENT TEST: InventoryTransferForm (Lập Phiếu Điều Chuyển Liên Kho)
  * ============================================================================
  */
 describe('Module 10 - InventoryTransferForm Component', () => {
@@ -69,7 +69,9 @@ describe('Module 10 - InventoryTransferForm Component', () => {
   ];
   const mockVariants = [{ id: 1, name: 'Dâu Tây Đà Lạt Hộp 500g', code: 'SKU-DAUTAY-500G' }];
   const mockUoms = [{ id: 1, name: 'Hộp 500g' }];
-  const mockBatches = [{ batchId: 1, batchCode: 'BATCH-2026-001', expiryDate: '2026-12-31', quantityAvailable: 100 }];
+  const mockBatches = [
+    { batchId: 1, batchCode: 'BATCH-2026-001', expiryDate: '2026-12-31', quantityAvailable: 100 },
+  ];
 
   beforeEach(() => {
     vi.clearAllMocks();

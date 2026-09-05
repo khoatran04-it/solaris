@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { X, MapPin, Save } from 'lucide-react';
 import { FormInput } from '../commons/FormUI';
 import { GhnAddressSelect } from '../commons/GhnAddressSelect';
-import { SupplierAddressPayload } from '../../types/supplierAddress'; // Sếp nhớ tạo type này nhé
+import { SupplierAddressPayload } from '../../types/supplierAddress';
 
 interface ModalSupplierAddressProps {
   isOpen: boolean;

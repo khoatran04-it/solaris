@@ -80,6 +80,12 @@ namespace backend.DTOs.InventoryReceiptDTOs
 
         /// <summary>Lý do từ chối (Bắt buộc phải nhập nếu RejectedQuantity > 0 để làm căn cứ trừ công nợ NCC).</summary>
         public string? RejectReason { get; set; }
+
+        /// <summary>Khối lượng cân thực tế tại cửa kho (Kg).</summary>
+        public decimal? ActualWeightKg { get; set; }
+
+        /// <summary>Thể tích tính toán của dòng hàng (CBM - m3).</summary>
+        public decimal? CalculatedCbm { get; set; }
         #endregion
     }
 }

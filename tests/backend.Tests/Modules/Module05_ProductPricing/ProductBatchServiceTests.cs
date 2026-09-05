@@ -1,4 +1,4 @@
-using AutoMapper;
+﻿using AutoMapper;
 using backend.DTOs.ProductBatchDTOs;
 using backend.Models;
 using backend.Services;
@@ -11,8 +11,8 @@ namespace backend.Tests.Modules.Module05_ProductPricing
 {
     /// <summary>
     /// ============================================================================
-    /// 📦 MODULE 5: PRODUCT & PRICING
-    /// 🧪 UNIT TEST: ProductBatchService (Quản lý Lô Hàng Nông Sản - Batches / Lots)
+    /// MODULE 5: PRODUCT & PRICING
+    /// UNIT TEST: ProductBatchService (Quản lý Lô Hàng Nông Sản - Batches / Lots)
     /// ============================================================================
     /// </summary>
     public class ProductBatchServiceTests

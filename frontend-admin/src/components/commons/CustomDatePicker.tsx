@@ -22,7 +22,7 @@ const DatePicker: React.FC<DatePickerProps> = ({
   placeholder = 'Chọn ngày/tháng/năm...',
   alignRight = false,
 }) => {
-  const activeDate = value !== undefined ? value : (selectedDate !== undefined ? selectedDate : null);
+  const activeDate = value !== undefined ? value : selectedDate !== undefined ? selectedDate : null;
   const [isOpen, setIsOpen] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(activeDate || new Date());
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -96,7 +96,7 @@ const DatePicker: React.FC<DatePickerProps> = ({
                     ${error && !isOpen ? 'border-red-400 focus:border-red-500 focus:ring-4 focus:ring-red-500/20' : ''}
                 `}
       >
-        <span className={value ? 'text-slate-800 font-medium' : 'text-slate-400 font-medium'}>
+        <span className={activeDate ? 'text-slate-800 font-medium' : 'text-slate-400 font-medium'}>
           {displayValue || placeholder}
         </span>
         <CalendarIcon
@@ -166,9 +166,9 @@ const DatePicker: React.FC<DatePickerProps> = ({
             {/* Các ngày trong tháng */}
             {days.map((day) => {
               const isSelected =
-                value?.getDate() === day &&
-                value?.getMonth() === currentMonth.getMonth() &&
-                value?.getFullYear() === currentMonth.getFullYear();
+                activeDate?.getDate() === day &&
+                activeDate?.getMonth() === currentMonth.getMonth() &&
+                activeDate?.getFullYear() === currentMonth.getFullYear();
               const isToday =
                 new Date().getDate() === day &&
                 new Date().getMonth() === currentMonth.getMonth() &&

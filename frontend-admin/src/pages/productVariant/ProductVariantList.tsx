@@ -22,6 +22,7 @@ import {
   TableEmpty,
   ListPagination,
   DateTimeCell,
+  StatusBadge,
 } from '../../components/commons/ListUI';
 
 const ProductVariantList: React.FC = () => {
@@ -310,20 +311,12 @@ const ProductVariantList: React.FC = () => {
                       {/* CELL 5: TRẠNG THÁI */}
                       <td className="py-3 px-2 text-center">
                         <div className="flex justify-center">
-                          <button
+                          <StatusBadge
+                            label={item.isActive ? 'Hoạt động' : 'Tạm khóa'}
+                            variant={item.isActive ? 'emerald' : 'rose'}
                             onClick={() => handleToggleActive(item.id, item.isActive)}
-                            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
-                              item.isActive
-                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100'
-                                : 'bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-200'
-                            }`}
                             title="Nhấn để đổi trạng thái"
-                          >
-                            <span
-                              className={`w-1.5 h-1.5 rounded-full ${item.isActive ? 'bg-emerald-500' : 'bg-slate-400'}`}
-                            ></span>
-                            {item.isActive ? 'Hoạt động' : 'Tạm khóa'}
-                          </button>
+                          />
                         </div>
                       </td>
 

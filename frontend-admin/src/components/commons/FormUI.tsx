@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { Loader2, LucideIcon, ChevronLeft, Search, ChevronDown } from 'lucide-react';
 
 // 1. Container cho toàn bộ trang
@@ -175,7 +175,7 @@ export const FormSelect: React.FC<FormSelectProps> = ({
   onSelect,
   showSearch,
   searchPlaceholder,
-  disabled, // 🔥 BƯỚC 1: Thêm disabled vào destructuring
+  disabled, // Trạng thái disabled
 }) => {
   const [isOpen, setIsOpen] = React.useState(false);
   const [search, setSearch] = React.useState('');
@@ -199,11 +199,11 @@ export const FormSelect: React.FC<FormSelectProps> = ({
     <div className="flex flex-col relative" ref={containerRef}>
       <FormLabel label={label} required={required} />
       <div
-        // 🔥 BƯỚC 2: Chặn onClick nếu đang bị disabled
+        // Ngăn chặn onClick khi component ở trạng thái disabled
         onClick={() => {
           if (!disabled) setIsOpen(!isOpen);
         }}
-        // 🔥 BƯỚC 3: Cập nhật CSS hiển thị trạng thái Disabled
+        // Áp dụng CSS hiển thị trạng thái disabled
         className={`flex justify-between items-center px-4 h-11.5 rounded-xl text-sm transition-all duration-300 border 
                 ${
                   disabled

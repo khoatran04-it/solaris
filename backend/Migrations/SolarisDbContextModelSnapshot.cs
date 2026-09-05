@@ -128,7 +128,7 @@ namespace backend.Migrations
 
                     b.HasIndex("SessionId");
 
-                    b.ToTable("ChatMessages");
+                    b.ToTable("ChatMessages", (string)null);
                 });
 
             modelBuilder.Entity("backend.Models.ChatSession", b =>
@@ -163,7 +163,7 @@ namespace backend.Migrations
 
                     b.HasIndex("CustomerId");
 
-                    b.ToTable("ChatSessions");
+                    b.ToTable("ChatSessions", (string)null);
                 });
 
             modelBuilder.Entity("backend.Models.Customer", b =>
@@ -452,7 +452,7 @@ namespace backend.Migrations
                     b.Property<int>("Status")
                         .HasColumnType("int");
 
-                    b.Property<DateTime>("UpdatedAt")
+                    b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
                     b.Property<int>("WarehouseId")
@@ -654,162 +654,6 @@ namespace backend.Migrations
                         .IsUnique();
 
                     b.ToTable("IAPermissions", (string)null);
-
-                    b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            Code = "ROLE_VIEW",
-                            Module = "Hệ thống",
-                            Name = "Xem danh sách Vai trò"
-                        },
-                        new
-                        {
-                            Id = 2,
-                            Code = "ROLE_MANAGE",
-                            Module = "Hệ thống",
-                            Name = "Thêm/Sửa/Xóa Vai trò & Phân quyền"
-                        },
-                        new
-                        {
-                            Id = 3,
-                            Code = "USER_VIEW",
-                            Module = "Hệ thống",
-                            Name = "Xem danh sách Nhân viên"
-                        },
-                        new
-                        {
-                            Id = 4,
-                            Code = "USER_MANAGE",
-                            Module = "Hệ thống",
-                            Name = "Thêm/Sửa/Xóa Nhân viên"
-                        },
-                        new
-                        {
-                            Id = 5,
-                            Code = "SUPPLIER_VIEW",
-                            Module = "Nhà cung cấp",
-                            Name = "Xem danh sách Nhà cung cấp"
-                        },
-                        new
-                        {
-                            Id = 6,
-                            Code = "SUPPLIER_MANAGE",
-                            Module = "Nhà cung cấp",
-                            Name = "Thêm/Sửa/Xóa Nhà cung cấp"
-                        },
-                        new
-                        {
-                            Id = 7,
-                            Code = "SUPPLIER_CONFIG",
-                            Module = "Nhà cung cấp",
-                            Name = "Cấu hình Phân loại Nhà cung cấp"
-                        },
-                        new
-                        {
-                            Id = 8,
-                            Code = "CUSTOMER_VIEW",
-                            Module = "Khách hàng",
-                            Name = "Xem danh sách Khách hàng"
-                        },
-                        new
-                        {
-                            Id = 9,
-                            Code = "CUSTOMER_MANAGE",
-                            Module = "Khách hàng",
-                            Name = "Thêm/Sửa/Xóa Khách hàng"
-                        },
-                        new
-                        {
-                            Id = 10,
-                            Code = "CUSTOMER_CONFIG",
-                            Module = "Khách hàng",
-                            Name = "Cấu hình Khách hàng (Loại, Cấp bậc, Nhóm)"
-                        },
-                        new
-                        {
-                            Id = 11,
-                            Code = "PRODUCT_VIEW",
-                            Module = "Sản phẩm",
-                            Name = "Xem danh sách Sản phẩm & Biến thể"
-                        },
-                        new
-                        {
-                            Id = 12,
-                            Code = "PRODUCT_MANAGE",
-                            Module = "Sản phẩm",
-                            Name = "Thêm/Sửa/Xóa Sản phẩm & Biến thể"
-                        },
-                        new
-                        {
-                            Id = 13,
-                            Code = "CATEGORY_MANAGE",
-                            Module = "Sản phẩm",
-                            Name = "Quản lý Danh mục & Nhóm danh mục"
-                        },
-                        new
-                        {
-                            Id = 14,
-                            Code = "ATTRIBUTE_MANAGE",
-                            Module = "Thuộc tính",
-                            Name = "Quản lý Từ điển & Gán Thuộc tính"
-                        },
-                        new
-                        {
-                            Id = 15,
-                            Code = "UOM_VIEW",
-                            Module = "Đơn vị tính",
-                            Name = "Xem Đơn vị tính & Tỷ lệ quy đổi"
-                        },
-                        new
-                        {
-                            Id = 16,
-                            Code = "UOM_MANAGE",
-                            Module = "Đơn vị tính",
-                            Name = "Quản lý Đơn vị tính, Phân loại & Quy đổi"
-                        },
-                        new
-                        {
-                            Id = 17,
-                            Code = "PROMOTION_VIEW",
-                            Module = "Khuyến mãi",
-                            Name = "Xem Chiến dịch Khuyến mãi"
-                        },
-                        new
-                        {
-                            Id = 18,
-                            Code = "PROMOTION_MANAGE",
-                            Module = "Khuyến mãi",
-                            Name = "Quản lý Chiến dịch Khuyến mãi"
-                        },
-                        new
-                        {
-                            Id = 19,
-                            Code = "WAREHOUSE_VIEW",
-                            Module = "Kho hàng",
-                            Name = "Xem Kho hàng"
-                        },
-                        new
-                        {
-                            Id = 20,
-                            Code = "WAREHOUSE_MANAGE",
-                            Module = "Kho hàng",
-                            Name = "Quản lý Kho hàng"
-                        },
-                        new
-                        {
-                            Id = 21,
-                            Code = "INVENTORY_VIEW",
-                            Module = "Kho tổng",
-                            Name = "Xem Tồn kho tổng"
-                        },
-                        new
-                        {
-                            Id = 22,
-                            Code = "INVENTORY_MANAGE",
-                            Module = "Kho tổng",
-                            Name = "Quản lý & Điều chuyển Tồn kho"
-                        });
                 });
 
             modelBuilder.Entity("backend.Models.IARole", b =>
@@ -1352,8 +1196,14 @@ namespace backend.Migrations
                     b.Property<decimal>("Quantity")
                         .HasColumnType("decimal(18,3)");
 
+                    b.Property<decimal?>("TotalCbm")
+                        .HasColumnType("decimal(18,4)");
+
                     b.Property<decimal>("TotalPrice")
                         .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal?>("TotalWeightKg")
+                        .HasColumnType("decimal(18,3)");
 
                     b.Property<decimal>("UnitPrice")
                         .HasColumnType("decimal(18,2)");
@@ -1454,8 +1304,14 @@ namespace backend.Migrations
                     b.Property<decimal>("AcceptedQuantity")
                         .HasColumnType("decimal(18,3)");
 
+                    b.Property<decimal?>("ActualWeightKg")
+                        .HasColumnType("decimal(18,3)");
+
                     b.Property<int>("BatchId")
                         .HasColumnType("int");
+
+                    b.Property<decimal?>("CalculatedCbm")
+                        .HasColumnType("decimal(18,4)");
 
                     b.Property<decimal>("ExpectedQuantity")
                         .HasColumnType("decimal(18,3)");
@@ -1764,7 +1620,7 @@ namespace backend.Migrations
                     b.Property<string>("TrackingCode")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<DateTime>("UpdatedAt")
+                    b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
                     b.Property<int?>("WarehouseId")
@@ -2152,6 +2008,12 @@ namespace backend.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
 
+                    b.Property<decimal?>("GrossWeightKg")
+                        .HasColumnType("decimal(18,3)");
+
+                    b.Property<decimal?>("HeightCm")
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<string>("ImagePath")
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
@@ -2169,6 +2031,9 @@ namespace backend.Migrations
                         .HasColumnType("bit")
                         .HasDefaultValue(false);
 
+                    b.Property<decimal?>("LengthCm")
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -2177,8 +2042,14 @@ namespace backend.Migrations
                     b.Property<int>("ProductId")
                         .HasColumnType("int");
 
+                    b.Property<decimal?>("UnitCbm")
+                        .HasColumnType("decimal(18,4)");
+
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
+
+                    b.Property<decimal?>("WidthCm")
+                        .HasColumnType("decimal(18,2)");
 
                     b.HasKey("Id");
 
@@ -2455,7 +2326,7 @@ namespace backend.Migrations
                     b.Property<int>("CustomerId")
                         .HasColumnType("int");
 
-                    b.Property<DateTime>("UpdatedAt")
+                    b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
                     b.HasKey("Id");
@@ -2486,7 +2357,7 @@ namespace backend.Migrations
                     b.Property<int>("UoMId")
                         .HasColumnType("int");
 
-                    b.Property<DateTime>("UpdatedAt")
+                    b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
                     b.Property<int>("VariantId")
@@ -2953,10 +2824,22 @@ namespace backend.Migrations
                     b.Property<int?>("ManagerId")
                         .HasColumnType("int");
 
+                    b.Property<int?>("MaxPalletPositions")
+                        .HasColumnType("int");
+
+                    b.Property<decimal?>("MaxWeightCapacityKg")
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
+
+                    b.Property<decimal?>("TotalAreaSqm")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal?>("TotalCapacityCbm")
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
@@ -2964,6 +2847,11 @@ namespace backend.Migrations
                     b.Property<string>("WarehouseType")
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
+
+                    b.Property<int>("WarningThresholdPercent")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(85);
 
                     b.HasKey("Id");
 

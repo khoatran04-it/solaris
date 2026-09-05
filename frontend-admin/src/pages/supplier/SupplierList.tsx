@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Hexagon, Edit3, Trash2, Eye } from 'lucide-react';
+import { Hexagon, Edit3, Trash2, Eye, Building2, Mail, Phone } from 'lucide-react';
 
 // API & Types
 import { supplierApi } from '../../api/supplierApi';
@@ -22,6 +22,7 @@ import {
   TableEmpty,
   ListPagination,
   DateTimeCell,
+  StatusBadge,
 } from '../../components/commons/ListUI';
 
 const SupplierList: React.FC = () => {
@@ -132,7 +133,7 @@ const SupplierList: React.FC = () => {
     }
   };
 
-  // 🔥 XỬ LÝ TOGGLE TRẠNG THÁI
+  // Cập nhật trạng thái hoạt động
   const handleToggleActive = async (id: number, currentStatus: boolean) => {
     try {
       await supplierApi.toggleActive(id);
@@ -162,14 +163,15 @@ const SupplierList: React.FC = () => {
           <table className="w-full text-left border-collapse min-w-300">
             <thead>
               <tr className="bg-slate-50/70 border-b border-slate-100 text-center">
-                <th className="w-[10%] py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider text-left">
-                  Mã ID
-                </th>
-                <th className="w-[18%] py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider text-left">
-                  Nhà Cung Cấp
+                <th className="w-[28%] py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider text-left">
+                  NHÀ CUNG CẤP
                 </th>
 
-                <th className="w-[15%] py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider text-left">
+                <th className="w-[18%] py-4 px-2 text-xs font-bold text-slate-500 uppercase tracking-wider text-left">
+                  LIÊN HỆ & THUẾ
+                </th>
+
+                <th className="w-[15%] py-4 px-2 text-xs font-bold text-slate-500 uppercase tracking-wider text-left">
                   <CustomFilter
                     title="PHÂN LOẠI"
                     options={typeOptions}
@@ -178,11 +180,7 @@ const SupplierList: React.FC = () => {
                   />
                 </th>
 
-                <th className="w-[10%] py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">
-                  SĐT
-                </th>
-
-                <th className="w-[12%] py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                <th className="w-[12%] py-4 px-2 text-xs font-bold text-slate-500 uppercase tracking-wider">
                   <div className="flex justify-center">
                     <CustomFilter
                       title="TRẠNG THÁI"
@@ -193,7 +191,7 @@ const SupplierList: React.FC = () => {
                   </div>
                 </th>
 
-                <th className="w-[10%] py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                <th className="w-[9%] py-4 px-2 text-xs font-bold text-slate-500 uppercase tracking-wider">
                   <div className="flex justify-center">
                     <CustomDateFilter
                       title="NGÀY TẠO"
@@ -203,7 +201,7 @@ const SupplierList: React.FC = () => {
                   </div>
                 </th>
 
-                <th className="w-[10%] py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                <th className="w-[9%] py-4 px-2 text-xs font-bold text-slate-500 uppercase tracking-wider">
                   <div className="flex justify-center">
                     <CustomDateFilter
                       title="CẬP NHẬT"
@@ -213,61 +211,105 @@ const SupplierList: React.FC = () => {
                   </div>
                 </th>
 
-                <th className="w-[11%] py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                <th className="w-[9%] py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">
                   Thao Tác
                 </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {isLoading ? (
-                <TableLoading colSpan={8} />
+                <TableLoading colSpan={7} />
               ) : data.length > 0 ? (
                 data.map((item) => (
                   <tr
                     key={item.id}
                     className="hover:bg-slate-50/80 transition-colors duration-200 group"
                   >
-                    <td className="py-4 px-6">
-                      <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-yellow-50 text-yellow-700 text-sm font-bold border border-yellow-200/50">
-                        {item.code}
-                      </span>
-                    </td>
-                    <td className="py-4 px-6 font-semibold text-slate-800">{item.name}</td>
-                    <td className="py-4 px-6">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-lg bg-slate-100 text-slate-700 text-xs font-semibold border border-slate-200/30">
-                        {item.supplierTypeName}
-                      </span>
-                    </td>
-                    <td className="py-4 px-6 text-center text-slate-600 font-medium text-sm">
-                      {item.phone}
-                    </td>
-
-                    {/* 🔥 CELL: TRẠNG THÁI (TOGGLE BUTTON) */}
-                    <td className="py-4 px-6 text-center">
-                      <div className="flex justify-center">
-                        <button
-                          onClick={() => handleToggleActive(item.id, item.isActive)}
-                          className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold border transition-colors ${
-                            item.isActive
-                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200/40 hover:bg-red-50 hover:text-red-600 hover:border-red-200'
-                              : 'bg-slate-100 text-slate-400 border-slate-200/50 hover:bg-emerald-50 hover:text-emerald-600 hover:border-emerald-200'
-                          }`}
-                        >
-                          <span
-                            className={`w-1.5 h-1.5 rounded-full mr-1.5 ${item.isActive ? 'bg-emerald-500' : 'bg-slate-300'}`}
-                          ></span>
-                          {item.isActive ? 'Hoạt động' : 'Ngừng hoạt động'}
-                        </button>
+                    {/* CELL 1: PROFILE NHÀ CUNG CẤP THÔNG MINH */}
+                    <td className="py-3 px-6">
+                      <div className="flex items-center gap-3.5">
+                        <div className="w-10 h-10 rounded-full bg-white border border-slate-200 shadow-sm flex items-center justify-center shrink-0 overflow-hidden">
+                          {item.logoPath ? (
+                            <img
+                              src={item.logoPath}
+                              alt={item.name}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <Building2 size={18} className="text-slate-400" />
+                          )}
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="font-extrabold text-slate-800 text-[13px] truncate max-w-56 leading-tight">
+                            {item.name}
+                          </span>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="text-[10px] font-bold bg-yellow-50 text-yellow-700 px-1.5 py-0.5 rounded border border-yellow-200/50 uppercase tracking-widest">
+                              {item.code}
+                            </span>
+                            <span className="text-[11px] font-medium text-slate-500 tracking-wide flex items-center gap-1">
+                              <Phone size={11} className="text-slate-400" />
+                              {item.phone}
+                            </span>
+                          </div>
+                        </div>
                       </div>
                     </td>
 
-                    <td className="py-4 px-6 text-center">
+                    {/* CELL 2: LIÊN HỆ & THUẾ */}
+                    <td className="py-3 px-2">
+                      <div className="flex flex-col gap-1">
+                        {item.email ? (
+                          <div
+                            className="flex items-center gap-1.5 text-[12px] text-slate-600 truncate max-w-44"
+                            title={item.email}
+                          >
+                            <Mail size={12} className="text-slate-400 shrink-0" />
+                            <span className="truncate">{item.email}</span>
+                          </div>
+                        ) : (
+                          <span className="text-[11px] text-slate-300 italic">Chưa có email</span>
+                        )}
+                        {item.taxCode ? (
+                          <span className="text-[11px] text-slate-500 font-medium">
+                            MST:{' '}
+                            <span className="font-semibold text-slate-700">{item.taxCode}</span>
+                          </span>
+                        ) : (
+                          <span className="text-[11px] text-slate-300 italic">Chưa có MST</span>
+                        )}
+                      </div>
+                    </td>
+
+                    {/* CELL 3: PHÂN LOẠI */}
+                    <td className="py-3 px-2">
+                      <span className="inline-flex px-2.5 py-1 rounded-lg text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200/60">
+                        {item.supplierTypeName || '---'}
+                      </span>
+                    </td>
+
+                    {/* CELL 4: TRẠNG THÁI (TOGGLE BUTTON) */}
+                    <td className="py-3 px-2 text-center">
+                      <div className="flex justify-center">
+                        <StatusBadge
+                          label={item.isActive ? 'Hoạt động' : 'Ngừng hoạt động'}
+                          variant={item.isActive ? 'emerald' : 'rose'}
+                          onClick={() => handleToggleActive(item.id, item.isActive)}
+                          title="Nhấn để đổi trạng thái"
+                        />
+                      </div>
+                    </td>
+
+                    {/* CELL 5 & 6: NGÀY TẠO & CẬP NHẬT */}
+                    <td className="py-3 px-2 text-center">
                       <DateTimeCell isoString={item.createdAt} />
                     </td>
-                    <td className="py-4 px-6 text-center">
+                    <td className="py-3 px-2 text-center">
                       <DateTimeCell isoString={item.updatedAt} />
                     </td>
-                    <td className="py-4 px-6">
+
+                    {/* CELL 7: THAO TÁC */}
+                    <td className="py-3 px-6">
                       <div className="flex justify-center gap-1.5 opacity-40 group-hover:opacity-100 transition-all duration-300">
                         <button
                           onClick={() => navigate(`/suppliers/${item.id}`)}
@@ -299,7 +341,7 @@ const SupplierList: React.FC = () => {
                 ))
               ) : (
                 <TableEmpty
-                  colSpan={8}
+                  colSpan={7}
                   message="Thử thay đổi từ khóa tìm kiếm hoặc điều kiện lọc đối tác."
                 />
               )}

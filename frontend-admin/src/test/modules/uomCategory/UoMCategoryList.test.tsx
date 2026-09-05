@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+﻿import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import UoMCategoryList from '../../../pages/uomCategory/UoMCategoryList';
@@ -15,8 +15,8 @@ vi.mock('../../../api/uomCategoryApi', () => ({
 
 /**
  * ============================================================================
- * 📦 MODULE 2: UNIT OF MEASURE (UoM)
- * 🧪 COMPONENT TEST: UoMCategoryList (Danh sách Nhóm Đơn vị tính)
+ * MODULE 2: UNIT OF MEASURE (UoM)
+ * COMPONENT TEST: UoMCategoryList (Danh sách Nhóm Đơn vị tính)
  * ============================================================================
  */
 describe('Module 02 - UoMCategoryList Component', () => {

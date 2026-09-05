@@ -20,6 +20,7 @@ import {
   TableLoading,
   TableEmpty,
   ListPagination,
+  StatusBadge,
 } from '../../components/commons/ListUI';
 
 const SupplierProductList: React.FC = () => {
@@ -261,22 +262,35 @@ const SupplierProductList: React.FC = () => {
 
                       {/* CELL 2: SẢN PHẨM */}
                       <td className="py-3 px-4">
-                        <div className="flex flex-col">
-                          <span
-                            className="font-bold text-slate-800 text-[13px] leading-tight"
-                            title={item.variantName}
-                          >
-                            {item.variantName || `Biến thể #${item.variantId}`}
-                          </span>
-                          <div className="flex items-center gap-2 mt-1">
-                            <span className="text-[10px] font-bold bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-200/50 uppercase tracking-widest">
-                              {item.variantCode || item.variantSKU || `#${item.variantId}`}
-                            </span>
-                            {item.purchaseUoMName && (
-                              <span className="text-[10px] font-medium text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
-                                ĐVT: {item.purchaseUoMName}
-                              </span>
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-lg bg-white border border-slate-200 shadow-2xs flex items-center justify-center shrink-0 overflow-hidden">
+                            {item.variantImagePath || item.variantImage ? (
+                              <img
+                                src={item.variantImagePath || item.variantImage}
+                                alt={item.variantName || 'Sản phẩm'}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <Package size={18} className="text-slate-300" />
                             )}
+                          </div>
+                          <div className="flex flex-col min-w-0">
+                            <span
+                              className="font-bold text-slate-800 text-[13px] leading-tight truncate max-w-48"
+                              title={item.variantName}
+                            >
+                              {item.variantName || `Biến thể #${item.variantId}`}
+                            </span>
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className="text-[10px] font-bold bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-200/50 uppercase tracking-widest">
+                                {item.variantCode || item.variantSKU || `#${item.variantId}`}
+                              </span>
+                              {item.purchaseUoMName && (
+                                <span className="text-[10px] font-medium text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
+                                  ĐVT: {item.purchaseUoMName}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </td>
@@ -314,20 +328,12 @@ const SupplierProductList: React.FC = () => {
                       {/* CELL 6: TRẠNG THÁI */}
                       <td className="py-3 px-2 text-center">
                         <div className="flex justify-center">
-                          <button
+                          <StatusBadge
+                            label={item.isActive ? 'Đang cung ứng' : 'Tạm ngưng'}
+                            variant={item.isActive ? 'emerald' : 'rose'}
                             onClick={() => handleToggleActive(item.id, item.isActive)}
-                            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
-                              item.isActive
-                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100'
-                                : 'bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-200'
-                            }`}
                             title="Nhấn để đổi trạng thái"
-                          >
-                            <span
-                              className={`w-1.5 h-1.5 rounded-full ${item.isActive ? 'bg-emerald-500' : 'bg-slate-400'}`}
-                            ></span>
-                            {item.isActive ? 'Đang cung ứng' : 'Tạm ngưng'}
-                          </button>
+                          />
                         </div>
                       </td>
 

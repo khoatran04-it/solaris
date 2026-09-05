@@ -43,6 +43,13 @@ namespace backend.Services.Interfaces
         /// <param name="id">Mã định danh của kho hàng.</param>
         /// <returns>Thông tin DTO của kho, hoặc null nếu không tồn tại.</returns>
         Task<WarehouseReadDto?> GetByIdAsync(int id);
+
+        /// <summary>
+        /// Lấy thông tin trạng thái sức chứa tức thời (CBM, Tải trọng kg, % lấp đầy) của kho hàng.
+        /// </summary>
+        /// <param name="id">Mã định danh của kho hàng.</param>
+        /// <returns>DTO trạng thái sức chứa.</returns>
+        Task<WarehouseCapacityStatusDto> GetCapacityStatusAsync(int id);
         #endregion
 
         #region Thao tác Dữ liệu (Command)

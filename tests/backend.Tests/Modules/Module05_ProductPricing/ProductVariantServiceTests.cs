@@ -1,4 +1,4 @@
-using AutoMapper;
+﻿using AutoMapper;
 using backend.DTOs.ProductVariantDTOs;
 using backend.Models;
 using backend.Services;
@@ -11,8 +11,8 @@ namespace backend.Tests.Modules.Module05_ProductPricing
 {
     /// <summary>
     /// ============================================================================
-    /// 📦 MODULE 5: PRODUCT & PRICING
-    /// 🧪 UNIT TEST: ProductVariantService (Quản lý Biến Thể Sản Phẩm - SKU & Bảng Giá)
+    /// MODULE 5: PRODUCT & PRICING
+    /// UNIT TEST: ProductVariantService (Quản lý Biến Thể Sản Phẩm - SKU & Bảng Giá)
     /// ============================================================================
     /// </summary>
     public class ProductVariantServiceTests
@@ -452,6 +452,94 @@ namespace backend.Tests.Modules.Module05_ProductPricing
             deleteResult.Should().BeTrue();
             entityAfterDelete!.IsDeleted.Should().BeTrue();
             entityAfterDelete.DeletedAt.Should().NotBeNull();
+        }
+        #endregion
+
+        #region TC08 & TC09: QUY CÁCH ĐÓNG GÓI, KÍCH THƯỚC VÀ TÍNH TOÁN CBM
+        /// <summary>
+        /// TC08: Tạo mới biến thể tự động tính toán thể tích UnitCbm từ kích thước Dài, Rộng, Cao và lưu Khối lượng cả bì.
+        /// </summary>
+        [Fact]
+        public async Task TC08_CreateAsync_ShouldCalculateUnitCbm_FromDimensions_AndPersistGrossWeight()
+        {
+            // Arrange
+            using var context = TestFactories.CreateInMemoryDbContext();
+            context.Products.Add(new Product { Id = 1, Code = "P-AVO", Name = "Bơ Sáp 034", BaseUoMId = 1 });
+            await context.SaveChangesAsync();
+
+            var service = new ProductVariantService(context, _mapper);
+
+            var createDto = new ProductVariantCreateDto
+            {
+                ProductId = 1,
+                Code = "SKU-AVO-BOX",
+                Name = "Bơ Sáp Thùng 10Kg",
+                LengthCm = 50,
+                WidthCm = 40,
+                HeightCm = 25, // 50x40x25 / 1,000,000 = 0.05 CBM
+                GrossWeightKg = 10.5m,
+                IsActive = true
+            };
+
+            // Act
+            var variantId = await service.CreateAsync(createDto);
+
+            // Assert
+            var variant = await context.ProductVariants.FindAsync(variantId);
+            variant.Should().NotBeNull();
+            variant!.LengthCm.Should().Be(50);
+            variant.WidthCm.Should().Be(40);
+            variant.HeightCm.Should().Be(25);
+            variant.UnitCbm.Should().Be(0.05m);
+            variant.GrossWeightKg.Should().Be(10.5m);
+        }
+
+        /// <summary>
+        /// TC09: Cập nhật biến thể với kích thước mới tự động tính toán lại thể tích UnitCbm.
+        /// </summary>
+        [Fact]
+        public async Task TC09_UpdateAsync_ShouldRecalculateUnitCbm_WhenDimensionsChange()
+        {
+            // Arrange
+            using var context = TestFactories.CreateInMemoryDbContext();
+            context.Products.Add(new Product { Id = 1, Code = "P-AVO", Name = "Bơ Sáp 034", BaseUoMId = 1 });
+            context.ProductVariants.Add(new ProductVariant
+            {
+                Id = 50,
+                ProductId = 1,
+                Code = "SKU-AVO-50",
+                Name = "Bơ Thùng Cũ",
+                LengthCm = 40,
+                WidthCm = 30,
+                HeightCm = 20,
+                UnitCbm = 0.024m,
+                GrossWeightKg = 5m,
+                IsActive = true
+            });
+            await context.SaveChangesAsync();
+
+            var service = new ProductVariantService(context, _mapper);
+
+            var updateDto = new ProductVariantUpdateDto
+            {
+                ProductId = 1,
+                Code = "SKU-AVO-50",
+                Name = "Bơ Thùng Mới",
+                LengthCm = 100,
+                WidthCm = 50,
+                HeightCm = 40, // 100x50x40 / 1,000,000 = 0.2 CBM
+                GrossWeightKg = 22m,
+                IsActive = true
+            };
+
+            // Act
+            var success = await service.UpdateAsync(50, updateDto);
+
+            // Assert
+            success.Should().BeTrue();
+            var variant = await context.ProductVariants.FindAsync(50);
+            variant!.UnitCbm.Should().Be(0.2m);
+            variant.GrossWeightKg.Should().Be(22m);
         }
         #endregion
     }

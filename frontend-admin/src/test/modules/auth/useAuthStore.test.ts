@@ -1,10 +1,10 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+﻿import { describe, it, expect, beforeEach } from 'vitest';
 import { useAuthStore, UserInfo } from '../../../stores/useAuthStore';
 
 /**
  * ============================================================================
- * 📦 MODULE 1: IDENTITY & ACCESS MANAGEMENT (IAM)
- * 🧪 UNIT TEST: useAuthStore (Quản lý State Xác thực & Bộ nhớ Trình duyệt)
+ * MODULE 1: IDENTITY & ACCESS MANAGEMENT (IAM)
+ * UNIT TEST: useAuthStore (Quản lý State Xác thực & Bộ nhớ Trình duyệt)
  * ============================================================================
  */
 describe('Module 01 - useAuthStore (State Management & LocalStorage)', () => {

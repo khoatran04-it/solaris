@@ -1,4 +1,4 @@
-using AutoMapper;
+﻿using AutoMapper;
 using backend.Data;
 using backend.DTOs.UoMConversionDTOs;
 using backend.Models;
@@ -12,8 +12,8 @@ namespace backend.Tests.Modules.Module02_UoM
 {
     /// <summary>
     /// ============================================================================
-    /// 📦 MODULE 2: UNIT OF MEASURE (UoM) MASTER DATA
-    /// 🧪 UNIT TEST: UoMConversionService (Quản lý Quy tắc Quy đổi Đơn vị tính)
+    /// MODULE 2: UNIT OF MEASURE (UoM) MASTER DATA
+    /// UNIT TEST: UoMConversionService (Quản lý Quy tắc Quy đổi Đơn vị tính)
     /// ============================================================================
     /// </summary>
     public class UoMConversionServiceTests

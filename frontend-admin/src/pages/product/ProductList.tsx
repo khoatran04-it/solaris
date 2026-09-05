@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Edit3, Trash2, Eye, Package, Image as ImageIcon } from 'lucide-react';
+import { Edit3, Trash2, Package, Image as ImageIcon } from 'lucide-react';
 
 // API & Types
 import { productApi } from '../../api/productApi';
@@ -23,6 +23,7 @@ import {
   TableEmpty,
   ListPagination,
   DateTimeCell,
+  StatusBadge,
 } from '../../components/commons/ListUI';
 
 const ProductList: React.FC = () => {
@@ -301,20 +302,14 @@ const ProductList: React.FC = () => {
 
                     {/* CELL 4: STATUS VỚI TOGGLE */}
                     <td className="py-3 px-2 text-center">
-                      <button
-                        onClick={() => handleToggleActive(item.id, item.isActive)}
-                        className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
-                          item.isActive
-                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100'
-                            : 'bg-rose-50 text-rose-600 border border-rose-200 hover:bg-rose-100'
-                        }`}
-                        title="Nhấn để đổi trạng thái"
-                      >
-                        <span
-                          className={`w-1.5 h-1.5 rounded-full ${item.isActive ? 'bg-emerald-500' : 'bg-rose-500'}`}
-                        ></span>
-                        {item.isActive ? 'Đang bán' : 'Ngừng bán'}
-                      </button>
+                      <div className="flex justify-center">
+                        <StatusBadge
+                          label={item.isActive ? 'Đang bán' : 'Ngừng bán'}
+                          variant={item.isActive ? 'emerald' : 'rose'}
+                          onClick={() => handleToggleActive(item.id, item.isActive)}
+                          title="Nhấn để đổi trạng thái"
+                        />
+                      </div>
                     </td>
 
                     {/* CELL 5 & 6: DATES */}

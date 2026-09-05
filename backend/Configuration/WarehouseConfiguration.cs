@@ -17,6 +17,13 @@ namespace backend.Configurations
             builder.Property(x => x.Name).IsRequired().HasMaxLength(200).HasColumnType("nvarchar(200)");
             builder.Property(x => x.WarehouseType).HasMaxLength(50).HasColumnType("nvarchar(50)");
 
+            // Thông số Sức chứa Vật lý
+            builder.Property(x => x.TotalAreaSqm).HasColumnType("decimal(18,2)");
+            builder.Property(x => x.TotalCapacityCbm).HasColumnType("decimal(18,2)");
+            builder.Property(x => x.MaxWeightCapacityKg).HasColumnType("decimal(18,2)");
+            builder.Property(x => x.MaxPalletPositions);
+            builder.Property(x => x.WarningThresholdPercent).HasDefaultValue(85);
+
             // Audit & Soft Delete
             builder.Property(x => x.CreatedAt).HasColumnType("datetime2");
             builder.Property(x => x.UpdatedAt).HasColumnType("datetime2");

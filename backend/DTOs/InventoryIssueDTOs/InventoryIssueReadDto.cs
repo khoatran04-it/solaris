@@ -110,6 +110,12 @@ namespace backend.DTOs.InventoryIssueDTOs
 
         /// <summary>Thành tiền xuất kho (Quantity * UnitPrice).</summary>
         public decimal TotalPrice { get; set; }
+
+        /// <summary>Tổng khối lượng kiện hàng xuất đi (Kg).</summary>
+        public decimal? TotalWeightKg { get; set; }
+
+        /// <summary>Tổng thể tích kiện hàng xuất đi (CBM - m3).</summary>
+        public decimal? TotalCbm { get; set; }
         #endregion
     }
 }

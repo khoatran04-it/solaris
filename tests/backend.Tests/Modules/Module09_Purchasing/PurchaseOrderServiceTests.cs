@@ -1,4 +1,4 @@
-using AutoMapper;
+﻿using AutoMapper;
 using backend.DTOs.PurchaseOrderDTOs;
 using backend.Models;
 using backend.Models.Enums;
@@ -16,8 +16,8 @@ namespace backend.Tests.Modules.Module09_Purchasing
 {
     /// <summary>
     /// ============================================================================
-    /// 🛒 MODULE 09: PURCHASING & PURCHASE ORDER MANAGEMENT
-    /// 🧪 TEST SUITE: PurchaseOrderServiceTests
+    /// MODULE 09: PURCHASING & PURCHASE ORDER MANAGEMENT
+    /// TEST SUITE: PurchaseOrderServiceTests
     /// ============================================================================
     /// Kiểm thử toàn diện tầng nghiệp vụ Quản lý Đơn Đặt Mua Hàng từ Nhà Cung Cấp (Purchase Orders - PO):
     /// - Truy vấn danh sách tổng hợp (GetAllList), phân trang, lọc theo NCC, trạng thái, ngày đặt

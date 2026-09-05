@@ -48,13 +48,13 @@ export const CustomDateFilter: React.FC<CustomDateFilterProps> = ({
       <div
         onClick={() => setIsOpen(!isOpen)}
         className={`flex items-center gap-1.5 cursor-pointer select-none transition-colors duration-200 ${
-          isFiltered ? 'text-green-500' : 'text-slate-500 hover:text-slate-800'
+          isFiltered ? 'text-amber-600 font-bold' : 'text-slate-500 hover:text-slate-800'
         }`}
       >
         {title}
         <Filter
           size={14}
-          className={isFiltered ? 'fill-green-500 text-green-500' : 'text-slate-400'}
+          className={isFiltered ? 'fill-amber-500 text-amber-500' : 'text-slate-400'}
         />
       </div>
 
@@ -126,9 +126,9 @@ export const CustomDateFilter: React.FC<CustomDateFilterProps> = ({
                                         h-8 flex items-center justify-center cursor-pointer text-[13px] rounded-md transition-all duration-200
                                         ${
                                           isSelected
-                                            ? 'bg-green-500 text-white font-bold shadow-md shadow-green-500/30'
+                                            ? 'bg-yellow-400 text-slate-900 font-extrabold shadow-sm shadow-yellow-400/50'
                                             : isToday
-                                              ? 'border border-green-500 text-green-600 font-bold bg-green-50/50 hover:bg-green-100'
+                                              ? 'border border-yellow-400 text-yellow-600 font-bold bg-yellow-50 hover:bg-yellow-100'
                                               : 'text-slate-700 font-medium hover:bg-slate-100 hover:text-slate-900'
                                         }
                                     `}

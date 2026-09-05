@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+﻿import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
@@ -31,19 +31,15 @@ vi.mock('../../../api/uomApi', () => ({
 
 /**
  * ============================================================================
- * 📦 MODULE 5: PRODUCT & PRICING
- * 🧪 COMPONENT TEST: ProductForm (Form Thêm / Sửa Sản Phẩm Gốc)
+ * MODULE 5: PRODUCT & PRICING
+ * COMPONENT TEST: ProductForm (Form Thêm / Sửa Sản Phẩm Gốc)
  * ============================================================================
  */
 describe('Module 05 - ProductForm Component', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    (productCategoryApi.getAllList as any).mockResolvedValue([
-      { id: 10, name: 'Rau củ quả' },
-    ]);
-    (uomApi.getAllList as any).mockResolvedValue([
-      { id: 1, name: 'Kilogram', code: 'KG' },
-    ]);
+    (productCategoryApi.getAllList as any).mockResolvedValue([{ id: 10, name: 'Rau củ quả' }]);
+    (uomApi.getAllList as any).mockResolvedValue([{ id: 1, name: 'Kilogram', code: 'KG' }]);
     (productApi.getAllList as any).mockResolvedValue([
       { id: 1, code: 'PROD-EXISTING', name: 'Sản phẩm cũ' },
     ]);

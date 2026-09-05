@@ -1,4 +1,4 @@
-using AutoMapper;
+﻿using AutoMapper;
 using backend.DTOs.InventoryReceiptDTOs;
 using backend.Models;
 using backend.Models.Enums;
@@ -16,8 +16,8 @@ namespace backend.Tests.Modules.Module10_Inventory
 {
     /// <summary>
     /// ============================================================================
-    /// 📥 MODULE 10: INVENTORY RECEIPTS & QUALITY CONTROL (GRN)
-    /// 🧪 TEST SUITE: InventoryReceiptServiceTests
+    /// MODULE 10: INVENTORY RECEIPTS & QUALITY CONTROL (GRN)
+    /// TEST SUITE: InventoryReceiptServiceTests
     /// ============================================================================
     /// Kiểm thử toàn diện tầng nghiệp vụ Quản lý Phiếu Nhập Kho và Kiểm đếm nông sản:
     /// - Phân trang, tìm kiếm mã phiếu, lọc theo Kho, Nhà cung cấp, Trạng thái, Khoảng ngày
@@ -651,6 +651,178 @@ namespace backend.Tests.Modules.Module10_Inventory
 
             var po = await context.PurchaseOrders.FindAsync(1);
             po!.Status.Should().Be(PurchaseOrderStatus.Completed);
+        }
+
+        /// <summary>
+        /// TC12: Chốt sổ phiếu nhập tự động tính toán CBM, Cân nặng và gắn Cảnh báo sức chứa nếu kho chạm ngưỡng.
+        /// </summary>
+        [Fact]
+        public async Task TC12_CompleteReceiptAsync_ShouldCalculatePhysicalMetricsAndAppendCapacityWarning()
+        {
+            // Arrange
+            using var context = TestFactories.CreateInMemoryDbContext();
+            await SeedDependenciesAsync(context);
+
+            var wh = await context.Warehouses.FindAsync(1);
+            wh!.TotalCapacityCbm = 1m; // Sức chứa rất nhỏ: 1 CBM
+            wh.WarningThresholdPercent = 50;
+
+            var variant = await context.ProductVariants.FindAsync(1);
+            variant!.GrossWeightKg = 2.5m;
+            variant.LengthCm = 50;
+            variant.WidthCm = 40;
+            variant.HeightCm = 50; // 50x40x50 / 1,000,000 = 0.1 CBM / unit
+            variant.UnitCbm = 0.1m;
+
+            var receipt = new InventoryReceipt
+            {
+                Id = 40,
+                ReceiptCode = "IR-CAPACITY-WARN",
+                WarehouseId = 1,
+                SupplierId = 1,
+                Status = InventoryReceiptStatus.Pending,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+            receipt.Details.Add(new InventoryReceiptDetail
+            {
+                Id = 2,
+                InventoryReceiptId = 40,
+                VariantId = 1,
+                BatchId = 1,
+                UoMId = 1,
+                ExpectedQuantity = 15,
+                AcceptedQuantity = 15, // 15 units * 0.1 CBM = 1.5 CBM > 1 CBM max!
+                RejectedQuantity = 0
+            });
+            context.InventoryReceipts.Add(receipt);
+            await context.SaveChangesAsync();
+
+            var service = new InventoryReceiptService(context, _mapper);
+
+            // Act
+            var success = await service.CompleteReceiptAsync(40, receivedById: 1, note: "Kiểm đếm xe tải lớn");
+
+            // Assert
+            success.Should().BeTrue();
+
+            var completedReceipt = await context.InventoryReceipts
+                .Include(r => r.Details)
+                .FirstOrDefaultAsync(r => r.Id == 40);
+
+            completedReceipt.Should().NotBeNull();
+            var detail = completedReceipt!.Details.First();
+            detail.CalculatedCbm.Should().Be(1.5m);
+            detail.ActualWeightKg.Should().Be(37.5m); // 15 * 2.5
+            completedReceipt.Note.Should().Contain("[CẢNH BÁO QUÁ TẢI CBM]");
+        }
+
+        /// <summary>
+        /// TC13: Chốt sổ phiếu nhập chạm ngưỡng cảnh báo lấp đầy (WarningThreshold) gắn Cảnh báo sức chứa sắp đầy.
+        /// </summary>
+        [Fact]
+        public async Task TC13_CompleteReceiptAsync_WhenReachingWarningThreshold_ShouldAppendThresholdWarning()
+        {
+            // Arrange
+            using var context = TestFactories.CreateInMemoryDbContext();
+            await SeedDependenciesAsync(context);
+
+            var wh = await context.Warehouses.FindAsync(1);
+            wh!.TotalCapacityCbm = 10m; // Sức chứa: 10 CBM
+            wh.WarningThresholdPercent = 80;
+
+            var variant = await context.ProductVariants.FindAsync(1);
+            variant!.LengthCm = 50;
+            variant.WidthCm = 40;
+            variant.HeightCm = 25; // 50x40x25 / 1,000,000 = 0.05 CBM
+            variant.UnitCbm = 0.05m;
+
+            var receipt = new InventoryReceipt
+            {
+                Id = 45,
+                ReceiptCode = "IR-THRESHOLD-WARN",
+                WarehouseId = 1,
+                SupplierId = 1,
+                Status = InventoryReceiptStatus.Pending,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+            receipt.Details.Add(new InventoryReceiptDetail
+            {
+                Id = 3,
+                InventoryReceiptId = 45,
+                VariantId = 1,
+                BatchId = 1,
+                UoMId = 1,
+                ExpectedQuantity = 170,
+                AcceptedQuantity = 170, // 170 * 0.05 CBM = 8.5 CBM (85% >= 80% threshold, < 100%)
+                RejectedQuantity = 0
+            });
+            context.InventoryReceipts.Add(receipt);
+            await context.SaveChangesAsync();
+
+            var service = new InventoryReceiptService(context, _mapper);
+
+            // Act
+            var success = await service.CompleteReceiptAsync(45, receivedById: 1, note: null);
+
+            // Assert
+            success.Should().BeTrue();
+
+            var completedReceipt = await context.InventoryReceipts.FindAsync(45);
+            completedReceipt!.Note.Should().Contain("[CẢNH BÁO SỨC CHỨA]: Kho sắp đầy");
+            completedReceipt.Note.Should().Contain("85.0% dung tích");
+        }
+
+        /// <summary>
+        /// TC14: Tạo mới phiếu nhập kho lưu vết chính xác Khối lượng cân thực tế (ActualWeightKg) và Thể tích (CalculatedCbm).
+        /// </summary>
+        [Fact]
+        public async Task TC14_CreateReceiptAsync_WithActualWeightAndCalculatedCbm_ShouldPersistDetails()
+        {
+            // Arrange
+            using var context = TestFactories.CreateInMemoryDbContext();
+            await SeedDependenciesAsync(context);
+
+            var variant = await context.ProductVariants.FindAsync(1);
+            variant!.GrossWeightKg = 12.5m;
+            variant.UnitCbm = 0.04m;
+            await context.SaveChangesAsync();
+
+            var service = new InventoryReceiptService(context, _mapper);
+
+            var createDto = new InventoryReceiptCreateDto
+            {
+                WarehouseId = 1,
+                SupplierId = 1,
+                Note = "Nhập hàng cân tại cổng kho",
+                Details = new List<InventoryReceiptDetailCreateDto>
+                {
+                    new InventoryReceiptDetailCreateDto
+                    {
+                        VariantId = 1,
+                        BatchId = 1,
+                        UoMId = 1,
+                        ExpectedQuantity = 50,
+                        AcceptedQuantity = 48,
+                        RejectedQuantity = 2,
+                        RejectReason = "2 thùng bị móp",
+                        ActualWeightKg = 600m,
+                        CalculatedCbm = 2.0m
+                    }
+                }
+            };
+
+            // Act
+            var receiptId = await service.CreateAsync(createDto);
+            var created = await service.GetByIdAsync(receiptId);
+
+            // Assert
+            created.Should().NotBeNull();
+            created.Details.Should().HaveCount(1);
+            var detail = created.Details.First();
+            detail.ActualWeightKg.Should().Be(600m);
+            detail.CalculatedCbm.Should().Be(2.0m);
         }
         #endregion
     }

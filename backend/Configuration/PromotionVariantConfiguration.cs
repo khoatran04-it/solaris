@@ -13,7 +13,7 @@ namespace backend.Configurations
 
             builder.Property(x => x.CreatedAt).HasColumnType("datetime2");
 
-            // 🔥 BẢO VỆ DỮ LIỆU: Đảm bảo 1 Biến thể không bị add 2 lần vào cùng 1 Chiến dịch
+            // Bảo vệ dữ liệu: Đảm bảo 1 Biến thể không bị gán 2 lần vào cùng 1 Chiến dịch
             builder.HasIndex(x => new { x.PromotionCampaignId, x.VariantId })
                 .IsUnique();
 

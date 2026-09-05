@@ -21,6 +21,7 @@ import {
   TableEmpty,
   ListPagination,
   DateTimeCell,
+  StatusBadge,
 } from '../../components/commons/ListUI';
 
 const PromotionCampaignList: React.FC = () => {
@@ -129,26 +130,22 @@ const PromotionCampaignList: React.FC = () => {
 
   // --- HELPER FUNC: Lấy màu và nhãn cho thời hạn chiến dịch ---
   const getCampaignTimeStatus = (startStr: string, endStr: string, isActive: boolean) => {
-    if (!isActive)
-      return { text: 'Đã khóa', icon: '🔒', style: 'bg-rose-50 text-rose-600 border-rose-200' };
+    if (!isActive) return { text: 'Đã khóa', variant: 'rose' as const };
 
     const now = new Date().getTime();
     const start = new Date(startStr).getTime();
     const end = new Date(endStr).getTime();
 
-    if (now < start)
-      return { text: 'Sắp diễn ra', icon: '🟡', style: 'bg-amber-50 text-amber-700 border-amber-200' };
+    if (now < start) return { text: 'Sắp diễn ra', variant: 'amber' as const };
     if (now > end)
       return {
         text: 'Đã kết thúc',
-        icon: '⚪',
-        style: 'bg-slate-100 text-slate-500 border-slate-200',
+        variant: 'slate' as const,
       };
 
     return {
       text: 'Đang diễn ra',
-      icon: '🟢',
-      style: 'bg-emerald-50 text-emerald-700 border-emerald-300 shadow-2xs font-extrabold',
+      variant: 'emerald' as const,
     };
   };
 
@@ -266,31 +263,18 @@ const PromotionCampaignList: React.FC = () => {
 
                       {/* CELL 3: TRẠNG THÁI CHIẾN DỊCH (TÁCH CỘT RIÊNG) */}
                       <td className="py-3 px-2 text-center">
-                        <span
-                          className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border uppercase tracking-wide ${timeStatus.style}`}
-                        >
-                          <span>{timeStatus.icon}</span>
-                          <span>{timeStatus.text}</span>
-                        </span>
+                        <StatusBadge label={timeStatus.text} variant={timeStatus.variant} />
                       </td>
 
                       {/* CELL 4: TRẠNG THÁI HỆ THỐNG */}
                       <td className="py-3 px-2 text-center">
                         <div className="flex justify-center">
-                          <button
+                          <StatusBadge
+                            label={item.isActive ? 'Hoạt động' : 'Tạm khóa'}
+                            variant={item.isActive ? 'emerald' : 'rose'}
                             onClick={() => handleToggleActive(item.id, item.isActive)}
-                            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
-                              item.isActive
-                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100'
-                                : 'bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-200'
-                            }`}
                             title="Nhấn để đổi trạng thái"
-                          >
-                            <span
-                              className={`w-1.5 h-1.5 rounded-full ${item.isActive ? 'bg-emerald-500' : 'bg-slate-400'}`}
-                            ></span>
-                            {item.isActive ? 'Hoạt động' : 'Tạm khóa'}
-                          </button>
+                          />
                         </div>
                       </td>
 

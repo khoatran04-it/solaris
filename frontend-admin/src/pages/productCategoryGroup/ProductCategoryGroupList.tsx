@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Edit3, Trash2, Eye, Layers, Image as ImageIcon } from 'lucide-react';
+import { Edit3, Trash2, Layers, Image as ImageIcon } from 'lucide-react';
 
 // API & Types
 import { productCategoryGroupApi } from '../../api/productCategoryGroupApi';
@@ -21,6 +21,7 @@ import {
   TableEmpty,
   ListPagination,
   DateTimeCell,
+  StatusBadge,
 } from '../../components/commons/ListUI';
 
 const ProductCategoryGroupList: React.FC = () => {
@@ -233,20 +234,14 @@ const ProductCategoryGroupList: React.FC = () => {
 
                     {/* CELL 2: STATUS VỚI TOGGLE */}
                     <td className="py-3 px-2 text-center">
-                      <button
-                        onClick={() => handleToggleActive(item.id, item.isActive)}
-                        className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
-                          item.isActive
-                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100'
-                            : 'bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-200'
-                        }`}
-                        title="Nhấn để đổi trạng thái"
-                      >
-                        <span
-                          className={`w-1.5 h-1.5 rounded-full ${item.isActive ? 'bg-emerald-500' : 'bg-slate-400'}`}
-                        ></span>
-                        {item.isActive ? 'Hoạt động' : 'Tạm khóa'}
-                      </button>
+                      <div className="flex justify-center">
+                        <StatusBadge
+                          label={item.isActive ? 'Hoạt động' : 'Tạm khóa'}
+                          variant={item.isActive ? 'emerald' : 'rose'}
+                          onClick={() => handleToggleActive(item.id, item.isActive)}
+                          title="Nhấn để đổi trạng thái"
+                        />
+                      </div>
                     </td>
 
                     {/* CELL 3 & 4: DATES */}
@@ -260,13 +255,6 @@ const ProductCategoryGroupList: React.FC = () => {
                     {/* CELL 5: ACTIONS */}
                     <td className="py-3 px-6">
                       <div className="flex justify-center gap-1.5 opacity-40 group-hover:opacity-100 transition-all duration-300">
-                        <button
-                          onClick={() => navigate(`/product-category-groups/${item.id}`)}
-                          className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
-                          title="Xem chi tiết"
-                        >
-                          <Eye size={17} strokeWidth={2.5} />
-                        </button>
                         <button
                           onClick={() => navigate(`/product-category-groups/edit/${item.id}`)}
                           className="p-1.5 text-slate-400 hover:text-yellow-600 hover:bg-yellow-50 rounded-lg transition-colors"

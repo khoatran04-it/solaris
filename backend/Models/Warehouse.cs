@@ -19,6 +19,23 @@ namespace backend.Models
         public string? WarehouseType { get; set; }
         #endregion
 
+        #region Sức chứa Vật lý & Cảnh báo (Physical Capacity & Constraints)
+        /// <summary>Diện tích mặt sàn hữu dụng (m2).</summary>
+        public decimal? TotalAreaSqm { get; set; }
+
+        /// <summary>Sức chứa thể tích tối đa của kho tính bằng mét khối (CBM - m3).</summary>
+        public decimal? TotalCapacityCbm { get; set; }
+
+        /// <summary>Tải trọng sàn tối đa cho phép của kho tính bằng Kilogram (Kg).</summary>
+        public decimal? MaxWeightCapacityKg { get; set; }
+
+        /// <summary>Số lượng vị trí Pallet tiêu chuẩn tối đa.</summary>
+        public int? MaxPalletPositions { get; set; }
+
+        /// <summary>Ngưỡng cảnh báo lấp đầy (Phần trăm %, mặc định 85%).</summary>
+        public int WarningThresholdPercent { get; set; } = 85;
+        #endregion
+
         #region Liên kết Địa lý & Nhân sự
         /// <summary>Mã định danh hồ sơ địa chỉ của kho hàng.</summary>
         public int AddressId { get; set; }

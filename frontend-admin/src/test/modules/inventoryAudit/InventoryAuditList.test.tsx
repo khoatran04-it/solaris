@@ -1,14 +1,11 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+﻿import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter } from 'react-router-dom';
 import InventoryAuditList from '../../../pages/inventoryAudit/InventoryAuditList';
 import { inventoryAuditApi } from '../../../api/inventoryAuditApi';
 import { warehouseApi } from '../../../api/warehouseApi';
-import {
-  InventoryAuditStatus,
-  InventoryAuditType,
-} from '../../../types/inventoryAudit';
+import { InventoryAuditStatus, InventoryAuditType } from '../../../types/inventoryAudit';
 
 // Mock APIs
 vi.mock('../../../api/inventoryAuditApi', () => ({
@@ -39,8 +36,8 @@ vi.mock('react-router-dom', async () => {
 
 /**
  * ============================================================================
- * 📋 MODULE 11: INVENTORY AUDIT (STOCKTAKE)
- * 🧪 COMPONENT TEST: InventoryAuditList (Danh Sách Đợt Kiểm Kê Kho)
+ * MODULE 11: INVENTORY AUDIT (STOCKTAKE)
+ * COMPONENT TEST: InventoryAuditList (Danh Sách Đợt Kiểm Kê Kho)
  * ============================================================================
  */
 describe('Module 11 - InventoryAuditList Component', () => {

@@ -1,4 +1,4 @@
-using backend.Data;
+﻿using backend.Data;
 using backend.DTOs.ShippingDTOs;
 using backend.Models;
 using backend.Models.Enums;
@@ -20,8 +20,8 @@ namespace backend.Tests.Modules.Module14_PaymentAndShipping
 {
     /// <summary>
     /// ============================================================================
-    /// 📦 MODULE 14: PAYMENT & 3PL LOGISTICS
-    /// 🧪 UNIT TEST: GhnService (Giao Hàng Nhanh Express, Master Data & Freeship 300k)
+    /// MODULE 14: PAYMENT & 3PL LOGISTICS
+    /// UNIT TEST: GhnService (Giao Hàng Nhanh Express, Master Data & Freeship 300k)
     /// ============================================================================
     /// </summary>
     public class GhnServiceTests

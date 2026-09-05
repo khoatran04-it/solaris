@@ -1,4 +1,4 @@
-using AutoMapper;
+﻿using AutoMapper;
 using backend.DTOs.CustomerAddressDTOs;
 using backend.Models;
 using backend.Services;
@@ -11,8 +11,8 @@ namespace backend.Tests.Modules.Module06_Customer
 {
     /// <summary>
     /// ============================================================================
-    /// 📦 MODULE 6: CUSTOMER MASTER DATA
-    /// 🧪 UNIT TEST: CustomerAddressService (Quản lý Sổ Địa Chỉ & Luân Chuyển Mặc Định)
+    /// MODULE 6: CUSTOMER MASTER DATA
+    /// UNIT TEST: CustomerAddressService (Quản lý Sổ Địa Chỉ & Luân Chuyển Mặc Định)
     /// ============================================================================
     /// </summary>
     public class CustomerAddressServiceTests

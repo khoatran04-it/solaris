@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+﻿import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
@@ -24,8 +24,8 @@ vi.mock('../../../api/uomApi', () => ({
 
 /**
  * ============================================================================
- * 📦 MODULE 2: UNIT OF MEASURE (UoM)
- * 🧪 COMPONENT TEST: UoMCategoryForm (Form Thêm mới & Chỉnh sửa Nhóm ĐVT)
+ * MODULE 2: UNIT OF MEASURE (UoM)
+ * COMPONENT TEST: UoMCategoryForm (Form Thêm mới & Chỉnh sửa Nhóm ĐVT)
  * ============================================================================
  */
 describe('Module 02 - UoMCategoryForm Component', () => {
@@ -170,7 +170,9 @@ describe('Module 02 - UoMCategoryForm Component', () => {
 
     await waitFor(() => {
       const codeInput = screen.getByPlaceholderText('VD: WEIGHT, LENGTH') as HTMLInputElement;
-      const nameInput = screen.getByPlaceholderText('VD: Khối lượng, Chiều dài') as HTMLInputElement;
+      const nameInput = screen.getByPlaceholderText(
+        'VD: Khối lượng, Chiều dài'
+      ) as HTMLInputElement;
 
       expect(codeInput.value).toBe('WEIGHT');
       expect(nameInput.value).toBe('Khối lượng');

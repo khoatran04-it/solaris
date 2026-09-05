@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+﻿import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter } from 'react-router-dom';
@@ -23,8 +23,8 @@ vi.mock('../../../api/warehouseApi', () => ({
 
 /**
  * ============================================================================
- * 📦 MODULE 10: CORE INVENTORY ENGINE & 4-BUCKET LEDGER
- * 🧪 COMPONENT TEST: InventoryDashboard (Tổng Quan Sổ Cái Tồn Kho 4 Ngăn)
+ * MODULE 10: CORE INVENTORY ENGINE & 4-BUCKET LEDGER
+ * COMPONENT TEST: InventoryDashboard (Tổng Quan Sổ Cái Tồn Kho 4 Ngăn)
  * ============================================================================
  */
 describe('Module 10 - InventoryDashboard Component', () => {
@@ -125,9 +125,7 @@ describe('Module 10 - InventoryDashboard Component', () => {
     );
 
     await waitFor(() => {
-      expect(inventoryApi.getAll).toHaveBeenCalledWith(
-        expect.objectContaining({ warehouseId: 1 })
-      );
+      expect(inventoryApi.getAll).toHaveBeenCalledWith(expect.objectContaining({ warehouseId: 1 }));
     });
 
     // Mở dropdown chọn kho và chuyển đổi sang Kho 2
@@ -138,9 +136,7 @@ describe('Module 10 - InventoryDashboard Component', () => {
     fireEvent.click(whOption);
 
     await waitFor(() => {
-      expect(inventoryApi.getAll).toHaveBeenCalledWith(
-        expect.objectContaining({ warehouseId: 2 })
-      );
+      expect(inventoryApi.getAll).toHaveBeenCalledWith(expect.objectContaining({ warehouseId: 2 }));
     });
   });
 

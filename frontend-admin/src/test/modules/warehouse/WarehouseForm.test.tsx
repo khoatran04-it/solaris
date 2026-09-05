@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+﻿import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
@@ -29,12 +29,14 @@ vi.mock('../../../api/shippingApi', () => ({
       { provinceID: 201, provinceName: 'Hồ Chí Minh', code: 'HCM' },
       { provinceID: 203, provinceName: 'Đà Nẵng', code: 'DN' },
     ]),
-    getDistricts: vi.fn().mockResolvedValue([
-      { districtID: 1442, provinceID: 203, districtName: 'Hải Châu', code: 'HC' },
-    ]),
-    getWards: vi.fn().mockResolvedValue([
-      { wardCode: '20101', districtID: 1442, wardName: 'Hòa Cường Bắc' },
-    ]),
+    getDistricts: vi
+      .fn()
+      .mockResolvedValue([
+        { districtID: 1442, provinceID: 203, districtName: 'Hải Châu', code: 'HC' },
+      ]),
+    getWards: vi
+      .fn()
+      .mockResolvedValue([{ wardCode: '20101', districtID: 1442, wardName: 'Hòa Cường Bắc' }]),
     calculateFee: vi.fn(),
     createGhnOrder: vi.fn(),
   },
@@ -51,8 +53,8 @@ vi.mock('react-router-dom', async () => {
 
 /**
  * ============================================================================
- * 📦 MODULE 08: WAREHOUSE & PHYSICAL ADDRESS MANAGEMENT
- * 🧪 COMPONENT TEST: WarehouseForm (Thêm / Sửa Kho Hàng & Địa chỉ)
+ * MODULE 08: WAREHOUSE & PHYSICAL ADDRESS MANAGEMENT
+ * COMPONENT TEST: WarehouseForm (Thêm / Sửa Kho Hàng & Địa chỉ)
  * ============================================================================
  */
 describe('Module 08 - WarehouseForm Component', () => {
@@ -304,6 +306,106 @@ describe('Module 08 - WarehouseForm Component', () => {
     await waitFor(() => {
       expect(screen.getByText('Mã kho này đã tồn tại!')).toBeInTheDocument();
       expect(warehouseApi.create).not.toHaveBeenCalled();
+    });
+  });
+  // #endregion
+
+  // #region TC06: THIẾT LẬP VÀ SUBMIT THÔNG SỐ SỨC CHỨA VẬT LÝ (CBM, TẢI TRỌNG, PALLET)
+  it('TC06 - Điền thông số sức chứa vật lý (CBM, Tải trọng, Diện tích, Pallet, Ngưỡng cảnh báo) và submit thành công', async () => {
+    (warehouseApi.create as any).mockResolvedValue(99);
+
+    render(
+      <MemoryRouter initialEntries={['/warehouses/create']}>
+        <Routes>
+          <Route path="/warehouses/create" element={<WarehouseForm />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(warehouseApi.getAllList).toHaveBeenCalled();
+    });
+
+    // Điền thông tin định danh
+    fireEvent.change(screen.getByPlaceholderText('VD: HUB-HCM-01'), {
+      target: { value: 'WH-CAP-99' },
+    });
+    fireEvent.change(screen.getByPlaceholderText('VD: Kho Tổng Miền Nam'), {
+      target: { value: 'Kho Sức Chứa 99' },
+    });
+
+    // Chọn loại kho
+    const typeTrigger = screen.getByText('-- Chọn loại kho --');
+    fireEvent.click(typeTrigger);
+    await waitFor(() => {
+      expect(screen.getByText('Kho Tổng (Master Hub)')).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByText('Kho Tổng (Master Hub)'));
+
+    // Chọn địa chỉ GHN
+    const provinceSelect = screen.getByText('Chọn Tỉnh / Thành...');
+    fireEvent.click(provinceSelect);
+    await waitFor(() => {
+      expect(screen.getByText('Đà Nẵng')).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByText('Đà Nẵng'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Chọn Quận / Huyện...')).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByText('Chọn Quận / Huyện...'));
+    await waitFor(() => {
+      expect(screen.getByText('Hải Châu')).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByText('Hải Châu'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Chọn Phường / Xã...')).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByText('Chọn Phường / Xã...'));
+    await waitFor(() => {
+      expect(screen.getByText('Hòa Cường Bắc')).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByText('Hòa Cường Bắc'));
+
+    // Điền địa chỉ chi tiết
+    fireEvent.change(screen.getByPlaceholderText('VD: 123 Đường Số 7, KCN Tân Tạo'), {
+      target: { value: 'Số 99 Đại Lộ Kho' },
+    });
+
+    // Điền thông số sức chứa vật lý
+    const cbmInput = screen.getByPlaceholderText('VD: 500');
+    fireEvent.change(cbmInput, { target: { value: '350' } });
+
+    const weightInput = screen.getByPlaceholderText('VD: 100000 (100 Tấn)');
+    fireEvent.change(weightInput, { target: { value: '80000' } });
+
+    const areaInput = screen.getByPlaceholderText('VD: 1200');
+    fireEvent.change(areaInput, { target: { value: '950' } });
+
+    const palletInput = screen.getByPlaceholderText('VD: 300');
+    fireEvent.change(palletInput, { target: { value: '180' } });
+
+    const thresholdInput = screen.getByDisplayValue('85');
+    fireEvent.change(thresholdInput, { target: { value: '80' } });
+
+    // Submit
+    const submitBtn = screen.getByRole('button', { name: /TẠO MỚI/i });
+    fireEvent.click(submitBtn);
+
+    await waitFor(() => {
+      expect(warehouseApi.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          code: 'WH-CAP-99',
+          name: 'Kho Sức Chứa 99',
+          warehouseType: 'Kho Tổng',
+          totalCapacityCbm: 350,
+          maxWeightCapacityKg: 80000,
+          totalAreaSqm: 950,
+          maxPalletPositions: 180,
+          warningThresholdPercent: 80,
+        })
+      );
     });
   });
   // #endregion

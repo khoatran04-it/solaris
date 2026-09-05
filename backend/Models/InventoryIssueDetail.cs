@@ -50,6 +50,20 @@ namespace backend.Models
         public decimal TotalPrice { get; set; }
         #endregion
 
+        #region Thông số Kiện hàng & Giải phóng Không gian
+        /// <summary>
+        /// Tổng khối lượng kiện hàng xuất đi tính bằng Kilogram (Kg).
+        /// Nghiệp vụ: Dùng để đồng bộ cước vận chuyển 3PL (GHN) và trừ tải trọng lưu kho.
+        /// </summary>
+        public decimal? TotalWeightKg { get; set; }
+
+        /// <summary>
+        /// Tổng thể tích giải phóng khỏi kho tính bằng mét khối (CBM - m3).
+        /// Nghiệp vụ: Trừ trực tiếp vào thể tích lưu trữ đã sử dụng của kho khi phiếu xuất Hoàn tất.
+        /// </summary>
+        public decimal? TotalCbm { get; set; }
+        #endregion
+
         #region Đối soát Chứng từ (Issue & Order)
         /// <summary>Mã định danh của Phiếu xuất kho chủ quản.</summary>
         public int InventoryIssueId { get; set; }

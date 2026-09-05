@@ -57,11 +57,11 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
         <div
           onClick={() => setIsOpen(!isOpen)}
           className={`
-                        flex justify-between items-center px-4 py-2.5 rounded-lg cursor-pointer text-sm transition-all duration-300 border
+                        flex justify-between items-center px-4 h-11.5 rounded-xl cursor-pointer text-sm transition-all duration-300 border
                         ${
                           isOpen
-                            ? 'border-green-500 ring-2 ring-green-100 bg-white shadow-sm'
-                            : 'border-slate-200 bg-white hover:border-slate-300 shadow-sm/50'
+                            ? 'border-yellow-400 ring-4 ring-yellow-400/20 bg-white'
+                            : 'border-slate-200 bg-slate-50/50 hover:bg-white'
                         }
                         ${selectedOption ? 'text-slate-800 font-medium' : 'text-slate-400 italic'}
                     `}
@@ -70,9 +70,9 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
             {selectedOption ? selectedOption.label : placeholder}
           </span>
           <ChevronDown
-            size={18}
-            className={`text-slate-400 transition-transform duration-300 ${
-              isOpen ? 'rotate-180 text-green-500' : 'rotate-0'
+            size={16}
+            className={`shrink-0 transition-transform duration-300 ${
+              isOpen ? 'rotate-180 text-yellow-500' : 'rotate-0 text-slate-400'
             }`}
           />
         </div>
@@ -82,18 +82,18 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
           <div className="absolute top-[calc(100%+8px)] left-0 right-0 bg-white border border-slate-100 rounded-2xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.15)] z-100 overflow-hidden animate-in fade-in zoom-in-95 duration-200 flex flex-col">
             {/* Thanh tìm kiếm nội bộ */}
             <div className="flex items-center px-3 py-2 border-b border-slate-100 bg-slate-50/50">
-              <Search size={16} className="text-slate-400" />
+              <Search size={14} className="text-slate-400" />
               <input
                 type="text"
                 autoFocus
                 placeholder="Tìm kiếm nhanh..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="border-none outline-none w-full text-sm bg-transparent placeholder-slate-400 text-slate-700 font-medium pl-2.5 py-1"
+                className="border-none outline-none w-full text-xs bg-transparent placeholder-slate-400 text-slate-700 font-medium pl-2.5 py-1"
               />
               {searchTerm && (
                 <X
-                  size={16}
+                  size={14}
                   className="text-slate-400 hover:text-slate-600 cursor-pointer transition-colors"
                   onClick={() => setSearchTerm('')}
                 />
@@ -114,10 +114,10 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
                         setSearchTerm('');
                       }}
                       className={`
-                                                px-3 py-2.5 cursor-pointer rounded-lg text-sm font-medium transition-colors duration-150
+                                                px-3 py-2.5 cursor-pointer rounded-lg text-[13px] font-semibold transition-colors duration-150 truncate
                                                 ${
                                                   isSelected
-                                                    ? 'bg-green-500 text-white font-semibold shadow-sm shadow-green-500/20'
+                                                    ? 'bg-yellow-400 text-slate-900 font-bold shadow-xs'
                                                     : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
                                                 }
                                             `}
@@ -127,7 +127,7 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
                   );
                 })
               ) : (
-                <div className="py-6 text-center text-sm text-slate-400 italic bg-slate-50/20">
+                <div className="py-6 text-center text-xs text-slate-400 italic bg-slate-50/20">
                   Không tìm thấy kết quả phù hợp
                 </div>
               )}

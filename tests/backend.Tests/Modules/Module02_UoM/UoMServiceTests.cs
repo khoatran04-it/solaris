@@ -1,4 +1,4 @@
-using AutoMapper;
+﻿using AutoMapper;
 using backend.Data;
 using backend.DTOs.UoMDTOs;
 using backend.Models;
@@ -12,8 +12,8 @@ namespace backend.Tests.Modules.Module02_UoM
 {
     /// <summary>
     /// ============================================================================
-    /// 📦 MODULE 2: UNIT OF MEASURE (UoM) MASTER DATA
-    /// 🧪 UNIT TEST: UoMService (Quản lý Đơn vị tính & Ràng buộc toàn vẹn)
+    /// MODULE 2: UNIT OF MEASURE (UoM) MASTER DATA
+    /// UNIT TEST: UoMService (Quản lý Đơn vị tính & Ràng buộc toàn vẹn)
     /// ============================================================================
     /// </summary>
     public class UoMServiceTests
