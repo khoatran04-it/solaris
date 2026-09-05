@@ -559,5 +559,59 @@ namespace backend.Tests.Modules.Module10_Inventory
             suggestions[1].SuggestedPickQuantity.Should().Be(20);
         }
         #endregion
+
+        #region TC10: TỰ ĐỘNG TÍNH TOÁN CBM VÀ TẢI TRỌNG KIỆN HÀNG XUẤT KHO
+        /// <summary>
+        /// TC10: Tạo phiếu xuất kho tự động tính toán Thể tích CBM và Khối lượng kiện hàng xuất đi dựa trên thông số Master Data của SKU.
+        /// </summary>
+        [Fact]
+        public async Task TC10_CreateIssueAsync_ShouldCalculateTotalCbmAndWeight_FromVariantSpecs()
+        {
+            // Arrange
+            using var context = TestFactories.CreateInMemoryDbContext();
+            await SeedDependenciesAsync(context);
+
+            var variant = await context.ProductVariants.FindAsync(1);
+            variant!.LengthCm = 40;
+            variant.WidthCm = 30;
+            variant.HeightCm = 20; // 40x30x20 / 1,000,000 = 0.024 CBM / unit
+            variant.UnitCbm = 0.024m;
+            variant.GrossWeightKg = 3.5m; // 3.5 kg / unit
+            await context.SaveChangesAsync();
+
+            var service = new InventoryIssueService(context, _mapper);
+
+            var createDto = new InventoryIssueCreateDto
+            {
+                WarehouseId = 1,
+                Note = "Xuất kho bán hàng",
+                ReceiverName = "Cửa hàng Chi nhánh 1",
+                Details = new List<InventoryIssueDetailCreateDto>
+                {
+                    new InventoryIssueDetailCreateDto
+                    {
+                        VariantId = 1,
+                        BatchId = 1,
+                        UoMId = 1,
+                        Quantity = 50 // 50 * 0.024 = 1.2 CBM, 50 * 3.5 = 175 kg
+                    }
+                }
+            };
+
+            // Act
+            var issueId = await service.CreateAsync(createDto, currentUserId: 1);
+
+            // Assert
+            var issue = await context.InventoryIssues
+                .Include(i => i.Details)
+                .FirstOrDefaultAsync(i => i.Id == issueId);
+
+            issue.Should().NotBeNull();
+            issue!.Details.Should().HaveCount(1);
+            var detail = issue.Details.First();
+            detail.TotalCbm.Should().Be(1.2m);
+            detail.TotalWeightKg.Should().Be(175m);
+        }
+        #endregion
     }
 }

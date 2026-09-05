@@ -245,14 +245,14 @@ namespace backend.Services
 
                     var existingInventories = await _context.WarehouseInventories
                         .Include(w => w.Variant)
-                        .Where(w => w.WarehouseId == receipt.WarehouseId && (w.QuantityAvailable > 0 || w.QuantityReserved > 0 || w.QuantityQC > 0))
+                        .Where(w => w.WarehouseId == receipt.WarehouseId && (w.QuantityAvailable > 0 || w.QuantityReserved > 0 || w.QuantityQC > 0 || w.QuantityDamaged > 0))
                         .AsNoTracking()
                         .ToListAsync();
 
                     decimal currentOccupiedCbm = 0;
                     foreach (var inv in existingInventories)
                     {
-                        var totalQty = inv.QuantityAvailable + inv.QuantityReserved + inv.QuantityQC;
+                        var totalQty = inv.QuantityAvailable + inv.QuantityReserved + inv.QuantityQC + inv.QuantityDamaged;
                         var uCbm = inv.Variant?.UnitCbm ?? (
                             (inv.Variant?.LengthCm > 0 && inv.Variant?.WidthCm > 0 && inv.Variant?.HeightCm > 0)
                                 ? (inv.Variant.LengthCm.Value * inv.Variant.WidthCm.Value * inv.Variant.HeightCm.Value) / 1000000m

@@ -614,8 +614,8 @@ namespace backend.Tests.Modules.Module15_AiChatbot
         }
         #endregion
 
-        #region TC13: LIVE GỌI THỰC TẾ LÊN GOOGLE GEMINI API (ĐÃ TẮT ĐỂ BẢO TOÀN QUOTA)
-        [Fact(Skip = "Test gọi mạng thật đến Google Gemini API - Tạm tắt để bảo toàn quota Rate Limit cho buổi bảo vệ")]
+        #region TC13: LIVE GỌI THỰC TẾ LÊN GOOGLE GEMINI API
+        [Fact]
         public async Task SendMessageAsync_WithRealHttpClient_ShouldCallLiveGeminiApiAndReceiveNaturalReply()
         {
             // Arrange: Sử dụng Real HttpClient kết nối mạng thật đến Google Generative Language API

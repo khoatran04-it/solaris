@@ -100,6 +100,21 @@ describe('Module 10 - InventoryReceiptForm Component', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     (warehouseApi.getAllList as any).mockResolvedValue(mockWarehouses);
+    (warehouseApi.getCapacityStatus as any).mockResolvedValue({
+      warehouseId: 1,
+      warehouseCode: 'WH-01',
+      warehouseName: 'Kho Test',
+      totalCapacityCbm: 500,
+      occupiedCbm: 50,
+      availableCbm: 450,
+      occupancyRateCbm: 10,
+      maxWeightCapacityKg: 100000,
+      occupiedWeightKg: 5000,
+      availableWeightKg: 95000,
+      occupancyRateWeight: 5,
+      warningThresholdPercent: 85,
+      status: 'Safe',
+    });
     (supplierApi.getAllList as any).mockResolvedValue(mockSuppliers);
     (productVariantApi.getAllList as any).mockResolvedValue(mockVariants);
     (uomApi.getAllList as any).mockResolvedValue(mockUoms);
@@ -242,4 +257,38 @@ describe('Module 10 - InventoryReceiptForm Component', () => {
       { timeout: 2500 }
     );
   });
+
+  // #region TC04: HIỂN THỊ THANH TRẠNG THÁI SỨC CHỨA KHO HÀNG (CAPACITY GAUGE)
+  it('TC04 - Render thanh trạng thái Sức chứa Kho hàng (Capacity Gauge) khi chọn kho tiếp nhận', async () => {
+    render(
+      <MemoryRouter>
+        <InventoryReceiptForm />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(warehouseApi.getAllList).toHaveBeenCalled();
+      expect(screen.getByText('Kho Lưu Trữ')).toBeInTheDocument();
+    });
+
+    // 1. Chọn Kho Lưu Trữ
+    const whLabel = screen.getByText('Kho Lưu Trữ');
+    const whSelectTrigger = whLabel.nextElementSibling as HTMLElement;
+    fireEvent.click(whSelectTrigger);
+    const whOption = await screen.findByText('Tổng Kho Hà Nội');
+    fireEvent.click(whOption);
+
+    // 2. Kiểm tra hiển thị thanh đo sức chứa kho
+    await waitFor(() => {
+      // Capacity gauge API được gọi với đúng warehouseId
+      expect(warehouseApi.getCapacityStatus).toHaveBeenCalledWith(1);
+      // Tiêu đề gauge hiển thị tên + mã kho
+      expect(screen.getByText(/Sức chứa kho: Kho Test \(WH-01\)/i)).toBeInTheDocument();
+      // CBM đã dùng / tổng CBM và tỷ lệ chiếm dụng
+      expect(screen.getByText(/50 \/ 500 m³ \(Đang chứa 10%\)/i)).toBeInTheDocument();
+      // Tải trọng sàn
+      expect(screen.getByText(/Tải trọng sàn: 5000 \/ 100000 kg \(5%\)/i)).toBeInTheDocument();
+    });
+  });
+  // #endregion
 });

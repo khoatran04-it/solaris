@@ -307,4 +307,100 @@ describe('Module 08 - WarehouseForm Component', () => {
     });
   });
   // #endregion
+
+  // #region TC06: THIẾT LẬP VÀ SUBMIT THÔNG SỐ SỨC CHỨA VẬT LÝ (CBM, TẢI TRỌNG, PALLET)
+  it('TC06 - Điền thông số sức chứa vật lý (CBM, Tải trọng, Diện tích, Pallet, Ngưỡng cảnh báo) và submit thành công', async () => {
+    (warehouseApi.create as any).mockResolvedValue(99);
+
+    render(
+      <MemoryRouter initialEntries={['/warehouses/create']}>
+        <Routes>
+          <Route path="/warehouses/create" element={<WarehouseForm />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(warehouseApi.getAllList).toHaveBeenCalled();
+    });
+
+    // Điền thông tin định danh
+    fireEvent.change(screen.getByPlaceholderText('VD: HUB-HCM-01'), { target: { value: 'WH-CAP-99' } });
+    fireEvent.change(screen.getByPlaceholderText('VD: Kho Tổng Miền Nam'), { target: { value: 'Kho Sức Chứa 99' } });
+
+    // Chọn loại kho
+    const typeTrigger = screen.getByText('-- Chọn loại kho --');
+    fireEvent.click(typeTrigger);
+    await waitFor(() => {
+      expect(screen.getByText('Kho Tổng (Master Hub)')).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByText('Kho Tổng (Master Hub)'));
+
+    // Chọn địa chỉ GHN
+    const provinceSelect = screen.getByText('Chọn Tỉnh / Thành...');
+    fireEvent.click(provinceSelect);
+    await waitFor(() => {
+      expect(screen.getByText('Đà Nẵng')).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByText('Đà Nẵng'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Chọn Quận / Huyện...')).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByText('Chọn Quận / Huyện...'));
+    await waitFor(() => {
+      expect(screen.getByText('Hải Châu')).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByText('Hải Châu'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Chọn Phường / Xã...')).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByText('Chọn Phường / Xã...'));
+    await waitFor(() => {
+      expect(screen.getByText('Hòa Cường Bắc')).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByText('Hòa Cường Bắc'));
+
+    // Điền địa chỉ chi tiết
+    fireEvent.change(screen.getByPlaceholderText('VD: 123 Đường Số 7, KCN Tân Tạo'), {
+      target: { value: 'Số 99 Đại Lộ Kho' },
+    });
+
+    // Điền thông số sức chứa vật lý
+    const cbmInput = screen.getByPlaceholderText('VD: 500');
+    fireEvent.change(cbmInput, { target: { value: '350' } });
+
+    const weightInput = screen.getByPlaceholderText('VD: 100000 (100 Tấn)');
+    fireEvent.change(weightInput, { target: { value: '80000' } });
+
+    const areaInput = screen.getByPlaceholderText('VD: 1200');
+    fireEvent.change(areaInput, { target: { value: '950' } });
+
+    const palletInput = screen.getByPlaceholderText('VD: 300');
+    fireEvent.change(palletInput, { target: { value: '180' } });
+
+    const thresholdInput = screen.getByDisplayValue('85');
+    fireEvent.change(thresholdInput, { target: { value: '80' } });
+
+    // Submit
+    const submitBtn = screen.getByRole('button', { name: /TẠO MỚI/i });
+    fireEvent.click(submitBtn);
+
+    await waitFor(() => {
+      expect(warehouseApi.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          code: 'WH-CAP-99',
+          name: 'Kho Sức Chứa 99',
+          warehouseType: 'Kho Tổng',
+          totalCapacityCbm: 350,
+          maxWeightCapacityKg: 80000,
+          totalAreaSqm: 950,
+          maxPalletPositions: 180,
+          warningThresholdPercent: 80,
+        })
+      );
+    });
+  });
+  // #endregion
 });

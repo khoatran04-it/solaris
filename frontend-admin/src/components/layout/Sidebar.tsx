@@ -33,9 +33,14 @@ interface MenuItem {
 const MENU_CONFIG: MenuItem[] = [
   {
     id: 'dashboard',
-    label: 'Tổng quan',
+    label: 'Bảng điều khiển & Báo cáo',
     icon: LayoutDashboard,
-    path: '/',
+    children: [
+      { label: 'Tổng quan kinh doanh', path: '/' },
+      { label: 'Doanh số & Địa lý', path: '/dashboards/sales' },
+      { label: 'Tồn kho & Sức chứa', path: '/dashboards/inventory' },
+      { label: 'Chất lượng & Hạn dùng', path: '/dashboards/quality' },
+    ],
   },
   {
     id: 'sales',
@@ -246,7 +251,11 @@ export const Sidebar: React.FC = () => {
     } else {
       // Khi không search, mở menu chứa url hiện tại
       const activeParent = displayMenu.find((m) =>
-        m.children?.some((c) => location.pathname.startsWith(c.path))
+        m.children?.some((c) =>
+          c.path === '/'
+            ? location.pathname === '/'
+            : location.pathname === c.path || location.pathname.startsWith(c.path + '/')
+        )
       );
       if (activeParent && !openMenus.includes(activeParent.id)) {
         setOpenMenus((prev) => [...prev, activeParent.id]);
@@ -311,7 +320,11 @@ export const Sidebar: React.FC = () => {
           const Icon = item.icon;
           const isOpen = openMenus.includes(item.id);
 
-          const isChildActive = item.children?.some((c) => location.pathname.startsWith(c.path));
+          const isChildActive = item.children?.some((c) =>
+            c.path === '/'
+              ? location.pathname === '/'
+              : location.pathname === c.path || location.pathname.startsWith(c.path + '/')
+          );
           const isActive = (item.path && location.pathname === item.path) || isChildActive;
 
           return (
@@ -356,7 +369,10 @@ export const Sidebar: React.FC = () => {
                     <div className="absolute left-5 top-0 bottom-2 w-px bg-slate-200" />
 
                     {item.children.map((child) => {
-                      const isSubActive = location.pathname.startsWith(child.path);
+                      const isSubActive =
+                        child.path === '/'
+                          ? location.pathname === '/'
+                          : location.pathname === child.path || location.pathname.startsWith(child.path + '/');
                       return (
                         <button
                           key={child.path}

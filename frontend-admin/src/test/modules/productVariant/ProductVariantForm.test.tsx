@@ -253,4 +253,50 @@ describe('Module 05 - ProductVariantForm Component', () => {
     });
   });
   // #endregion
+
+  // #region TC06: QUY CÁCH ĐÓNG GÓI, KÍCH THƯỚC VẬT LÝ VÀ TÍNH TOÁN CBM
+  it('TC06 - Nhập kích thước Dài, Rộng, Cao tự động tính toán Thể tích CBM và lưu Khối lượng cả bì', async () => {
+    render(
+      <MemoryRouter initialEntries={['/product-variants/create']}>
+        <Routes>
+          <Route path="/product-variants/create" element={<ProductVariantForm />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText('VD: TH-500G')).toBeInTheDocument();
+    });
+
+    // 1. Điền kích thước đóng gói ban đầu: 50 x 40 x 25 cm
+    const lengthInput = screen.getByPlaceholderText('VD: 30');
+    fireEvent.change(lengthInput, { target: { value: '50' } });
+
+    const widthInput = screen.getByPlaceholderText('VD: 20');
+    fireEvent.change(widthInput, { target: { value: '40' } });
+
+    const heightInput = screen.getByPlaceholderText('VD: 15');
+    fireEvent.change(heightInput, { target: { value: '25' } });
+
+    // 2. Kiểm tra ô CBM tự động tính toán: 50 * 40 * 25 / 1,000,000 = 0.05
+    const cbmInput = screen.getByPlaceholderText('Tự động tính') as HTMLInputElement;
+    await waitFor(() => {
+      expect(cbmInput.value).toBe('0.05');
+    });
+
+    // 3. Thay đổi kích thước sang kiện lớn: 100 x 50 x 40 cm -> CBM = 0.2
+    fireEvent.change(lengthInput, { target: { value: '100' } });
+    fireEvent.change(widthInput, { target: { value: '50' } });
+    fireEvent.change(heightInput, { target: { value: '40' } });
+
+    await waitFor(() => {
+      expect(cbmInput.value).toBe('0.2');
+    });
+
+    // 4. Điền khối lượng cả bì (Gross Weight)
+    const weightInput = screen.getByPlaceholderText('VD: 1.5') as HTMLInputElement;
+    fireEvent.change(weightInput, { target: { value: '18.5' } });
+    expect(weightInput.value).toBe('18.5');
+  });
+  // #endregion
 });

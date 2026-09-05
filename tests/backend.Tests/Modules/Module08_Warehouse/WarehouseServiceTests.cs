@@ -739,6 +739,230 @@ namespace backend.Tests.Modules.Module08_Warehouse
             status.Status.Should().Be("Critical"); // > 100% weight capacity
         }
 
+        /// <summary>
+        /// TC12: Kho trống (chưa có tồn kho) tính toán Occupied = 0 và Status = Safe.
+        /// </summary>
+        [Fact]
+        public async Task TC12_GetCapacityStatusAsync_EmptyWarehouse_ShouldReturnZeroOccupancyAndSafeStatus()
+        {
+            // Arrange
+            using var context = TestFactories.CreateInMemoryDbContext();
+            var warehouse = new Warehouse
+            {
+                Id = 10,
+                Code = "WH-EMPTY",
+                Name = "Kho Mới Hoàn Toàn",
+                TotalCapacityCbm = 200m,
+                MaxWeightCapacityKg = 50000m,
+                WarningThresholdPercent = 80,
+                IsActive = true
+            };
+            context.Warehouses.Add(warehouse);
+            await context.SaveChangesAsync();
+
+            var service = new WarehouseService(context, _mapper);
+
+            // Act
+            var status = await service.GetCapacityStatusAsync(10);
+
+            // Assert
+            status.Should().NotBeNull();
+            status.OccupiedCbm.Should().Be(0m);
+            status.AvailableCbm.Should().Be(200m);
+            status.OccupancyRateCbm.Should().Be(0m);
+            status.OccupiedWeightKg.Should().Be(0m);
+            status.AvailableWeightKg.Should().Be(50000m);
+            status.OccupancyRateWeight.Should().Be(0m);
+            status.Status.Should().Be("Safe");
+        }
+
+        /// <summary>
+        /// TC13: Kho lấp đầy trong khoảng Warning threshold (80% <= rate <= 100%) trả về trạng thái Warning.
+        /// </summary>
+        [Fact]
+        public async Task TC13_GetCapacityStatusAsync_WhenNearWarningThreshold_ShouldReturnWarningStatus()
+        {
+            // Arrange
+            using var context = TestFactories.CreateInMemoryDbContext();
+            var warehouse = new Warehouse
+            {
+                Id = 20,
+                Code = "WH-WARN",
+                Name = "Kho Sắp Đầy",
+                TotalCapacityCbm = 100m,
+                MaxWeightCapacityKg = 10000m,
+                WarningThresholdPercent = 80,
+                IsActive = true
+            };
+            context.Warehouses.Add(warehouse);
+
+            // 1 variant: 0.05 CBM, 5 kg
+            var v = new ProductVariant { Id = 5, Code = "SKU-05", Name = "Cam Sành", UnitCbm = 0.05m, GrossWeightKg = 5m };
+            context.ProductVariants.Add(v);
+
+            // 1700 units => 1700 * 0.05 = 85 CBM (85% >= 80% threshold, < 100%), weight = 1700 * 5 = 8500 kg (85%)
+            context.WarehouseInventories.Add(new WarehouseInventory
+            {
+                WarehouseId = 20,
+                VariantId = 5,
+                BatchId = 1,
+                QuantityAvailable = 1700,
+                QuantityReserved = 0,
+                QuantityQC = 0
+            });
+            await context.SaveChangesAsync();
+
+            var service = new WarehouseService(context, _mapper);
+
+            // Act
+            var status = await service.GetCapacityStatusAsync(20);
+
+            // Assert
+            status.OccupancyRateCbm.Should().Be(85m);
+            status.OccupancyRateWeight.Should().Be(85m);
+            status.Status.Should().Be("Warning");
+        }
+
+        /// <summary>
+        /// TC14: Sức chứa vật lý tính gộp toàn bộ hàng ở cả 4 ngăn (Available, Reserved, QC, Damaged).
+        /// </summary>
+        [Fact]
+        public async Task TC14_GetCapacityStatusAsync_ShouldIncludeAllCompartmentsInPhysicalOccupancy()
+        {
+            // Arrange
+            using var context = TestFactories.CreateInMemoryDbContext();
+            var warehouse = new Warehouse
+            {
+                Id = 30,
+                Code = "WH-MULTI-COMP",
+                Name = "Kho 4 Ngăn",
+                TotalCapacityCbm = 100m,
+                MaxWeightCapacityKg = 20000m,
+                WarningThresholdPercent = 85,
+                IsActive = true
+            };
+            context.Warehouses.Add(warehouse);
+
+            var v = new ProductVariant { Id = 6, Code = "SKU-06", Name = "Bơ 034", UnitCbm = 0.02m, GrossWeightKg = 4m };
+            context.ProductVariants.Add(v);
+
+            // Total units = 100 (Avail) + 50 (Reserved) + 30 (QC) + 20 (Damaged) = 200 units
+            // 200 units * 0.02 CBM = 4 CBM
+            // 200 units * 4 kg = 800 kg
+            context.WarehouseInventories.Add(new WarehouseInventory
+            {
+                WarehouseId = 30,
+                VariantId = 6,
+                BatchId = 1,
+                QuantityAvailable = 100,
+                QuantityReserved = 50,
+                QuantityQC = 30,
+                QuantityDamaged = 20
+            });
+            await context.SaveChangesAsync();
+
+            var service = new WarehouseService(context, _mapper);
+
+            // Act
+            var status = await service.GetCapacityStatusAsync(30);
+
+            // Assert
+            status.OccupiedCbm.Should().Be(4m);
+            status.OccupiedWeightKg.Should().Be(800m);
+            status.AvailableCbm.Should().Be(96m);
+            status.AvailableWeightKg.Should().Be(19200m);
+            status.Status.Should().Be("Safe");
+        }
+
+        /// <summary>
+        /// TC15: Create và Update Warehouse lưu trữ và làm phẳng đầy đủ các trường sức chứa vật lý.
+        /// </summary>
+        [Fact]
+        public async Task TC15_CreateAndUpdateWarehouse_WithPhysicalCapacityAttributes_ShouldPersistAllProperties()
+        {
+            // Arrange
+            using var context = TestFactories.CreateInMemoryDbContext();
+            var service = new WarehouseService(context, _mapper);
+
+            var createDto = new WarehouseCreateDto
+            {
+                Code = "WH-PHYSICAL",
+                Name = "Kho Vật Lý Chuẩn",
+                WarehouseType = "Cold Storage",
+                TotalAreaSqm = 1250.5m,
+                TotalCapacityCbm = 3500.75m,
+                MaxWeightCapacityKg = 150000m,
+                MaxPalletPositions = 450,
+                WarningThresholdPercent = 85,
+                Address = new WarehouseAddressPayload
+                {
+                    Province = "Lâm Đồng",
+                    District = "Đà Lạt",
+                    Ward = "Phường 1",
+                    StreetAddress = "123 Hùng Vương"
+                }
+            };
+
+            // Act 1: Tạo mới
+            var newId = await service.CreateAsync(createDto);
+            var created = await service.GetByIdAsync(newId);
+
+            // Assert 1
+            created.Should().NotBeNull();
+            created!.TotalAreaSqm.Should().Be(1250.5m);
+            created.TotalCapacityCbm.Should().Be(3500.75m);
+            created.MaxWeightCapacityKg.Should().Be(150000m);
+            created.MaxPalletPositions.Should().Be(450);
+            created.WarningThresholdPercent.Should().Be(85);
+
+            // Act 2: Cập nhật mở rộng kho
+            var updateDto = new WarehouseUpdateDto
+            {
+                Name = "Kho Vật Lý Mở Rộng",
+                WarehouseType = "Cold Storage",
+                TotalAreaSqm = 2000m,
+                TotalCapacityCbm = 5000m,
+                MaxWeightCapacityKg = 250000m,
+                MaxPalletPositions = 700,
+                WarningThresholdPercent = 90,
+                Address = new WarehouseAddressPayload
+                {
+                    Province = "Lâm Đồng",
+                    District = "Đà Lạt",
+                    Ward = "Phường 1",
+                    StreetAddress = "123 Hùng Vương"
+                }
+            };
+            await service.UpdateAsync(newId, updateDto);
+            var updated = await service.GetByIdAsync(newId);
+
+            // Assert 2
+            updated.Should().NotBeNull();
+            updated!.TotalAreaSqm.Should().Be(2000m);
+            updated.TotalCapacityCbm.Should().Be(5000m);
+            updated.MaxWeightCapacityKg.Should().Be(250000m);
+            updated.MaxPalletPositions.Should().Be(700);
+            updated.WarningThresholdPercent.Should().Be(90);
+        }
+
+        /// <summary>
+        /// TC16: GetCapacityStatusAsync quăng lỗi KeyNotFoundException khi kho không tồn tại.
+        /// </summary>
+        [Fact]
+        public async Task TC16_GetCapacityStatusAsync_NonExistentWarehouse_ShouldThrowKeyNotFoundException()
+        {
+            // Arrange
+            using var context = TestFactories.CreateInMemoryDbContext();
+            var service = new WarehouseService(context, _mapper);
+
+            // Act
+            var act = async () => await service.GetCapacityStatusAsync(99999);
+
+            // Assert
+            await act.Should().ThrowAsync<KeyNotFoundException>()
+                .WithMessage("*99999*");
+        }
+
         #endregion
     }
 }
