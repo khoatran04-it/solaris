@@ -3,12 +3,14 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Package, Calendar, Eye, User, MapPin, RotateCcw, ArrowRight } from 'lucide-react';
+import { Package, Calendar, Eye } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import shopOrderApi from '@/api/shopOrderApi';
 import { formatVND, formatDateTime } from '@/lib/utils';
 import { PagedResult } from '@/types/common';
 import { ShopOrder } from '@/types/order';
+import AccountSidebar from '@/components/account/AccountSidebar';
+import EmptyState from '@/components/common/EmptyState';
 
 export default function DonHangListPage() {
     const router = useRouter();
@@ -74,39 +76,7 @@ export default function DonHangListPage() {
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
                     
                     {/* Navigation Sidebar */}
-                    <div className="lg:col-span-4 bg-white rounded-3xl border border-slate-200/80 p-5 space-y-1.5 shadow-[0_2px_15px_-3px_rgba(0,0,0,0.03)]">
-                        <Link
-                            href="/tai-khoan"
-                            className="flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-700 hover:bg-emerald-50 hover:text-emerald-800 font-bold text-xs transition-colors"
-                        >
-                            <User className="w-4 h-4 text-slate-400" />
-                            <span>Hồ sơ cá nhân & Thẻ VIP</span>
-                        </Link>
-
-                        <Link
-                            href="/tai-khoan/don-hang"
-                            className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-emerald-600 text-white font-extrabold text-xs shadow-xs"
-                        >
-                            <Package className="w-4 h-4" />
-                            <span>Lịch sử đơn hàng</span>
-                        </Link>
-
-                        <Link
-                            href="/tai-khoan/dia-chi"
-                            className="flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-700 hover:bg-emerald-50 hover:text-emerald-800 font-bold text-xs transition-colors"
-                        >
-                            <MapPin className="w-4 h-4 text-slate-400" />
-                            <span>Sổ địa chỉ nhận hàng</span>
-                        </Link>
-
-                        <Link
-                            href="/tai-khoan/tra-hang"
-                            className="flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-700 hover:bg-emerald-50 hover:text-emerald-800 font-bold text-xs transition-colors"
-                        >
-                            <RotateCcw className="w-4 h-4 text-slate-400" />
-                            <span>Yêu cầu đổi trả nông sản (RMA)</span>
-                        </Link>
-                    </div>
+                    <AccountSidebar activeTab="orders" className="lg:col-span-4" />
 
                     {/* Orders List */}
                     <div className="lg:col-span-8 space-y-4">
@@ -175,20 +145,13 @@ export default function DonHangListPage() {
                                 </div>
                             ))
                         ) : (
-                            <div className="bg-white rounded-3xl border border-slate-200/80 p-16 text-center space-y-4 shadow-2xs">
-                                <div className="w-16 h-16 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto shadow-2xs">
-                                    <Package className="w-8 h-8" />
-                                </div>
-                                <h3 className="text-base font-bold text-slate-900">Bạn chưa có đơn hàng nào</h3>
-                                <p className="text-xs text-slate-500 max-w-sm mx-auto">Hãy trải nghiệm đặt mua những mặt hàng nông sản tươi ngon cho gia đình hôm nay!</p>
-                                <Link
-                                    href="/san-pham"
-                                    className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-2xl transition-all shadow-md shadow-emerald-600/20 active:scale-95"
-                                >
-                                    <span>Mua sắm ngay</span>
-                                    <ArrowRight className="w-3.5 h-3.5" />
-                                </Link>
-                            </div>
+                            <EmptyState
+                                icon={<Package className="w-8 h-8" />}
+                                title="Bạn chưa có đơn hàng nào"
+                                description="Hãy trải nghiệm đặt mua những mặt hàng nông sản tươi ngon cho gia đình hôm nay!"
+                                actionText="Mua sắm ngay"
+                                actionHref="/san-pham"
+                            />
                         )}
                     </div>
 

@@ -18,10 +18,10 @@ export const InventoryTransferStatusLabels: Record<InventoryTransferStatus, stri
 };
 
 export const InventoryTransferStatusColors: Record<InventoryTransferStatus, string> = {
-  [InventoryTransferStatus.Draft]: 'bg-slate-100 text-slate-600 border-slate-200',
-  [InventoryTransferStatus.InTransit]: 'bg-amber-100 text-amber-700 border-amber-200',
-  [InventoryTransferStatus.Completed]: 'bg-emerald-100 text-emerald-800 border-emerald-200',
-  [InventoryTransferStatus.Cancelled]: 'bg-rose-100 text-rose-700 border-rose-200',
+  [InventoryTransferStatus.Draft]: 'bg-slate-50 text-slate-600 border-slate-200',
+  [InventoryTransferStatus.InTransit]: 'bg-amber-50 text-amber-700 border-amber-200',
+  [InventoryTransferStatus.Completed]: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  [InventoryTransferStatus.Cancelled]: 'bg-rose-50 text-rose-700 border-rose-200',
 };
 
 // =========================================================

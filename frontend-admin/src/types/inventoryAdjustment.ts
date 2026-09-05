@@ -16,9 +16,9 @@ export const InventoryAdjustmentStatusLabels: Record<InventoryAdjustmentStatus, 
 };
 
 export const InventoryAdjustmentStatusColors: Record<InventoryAdjustmentStatus, string> = {
-  [InventoryAdjustmentStatus.Draft]: 'bg-slate-100 text-slate-600 border-slate-200',
-  [InventoryAdjustmentStatus.Approved]: 'bg-emerald-100 text-emerald-800 border-emerald-200',
-  [InventoryAdjustmentStatus.Cancelled]: 'bg-rose-100 text-rose-700 border-rose-200',
+  [InventoryAdjustmentStatus.Draft]: 'bg-slate-50 text-slate-600 border-slate-200',
+  [InventoryAdjustmentStatus.Approved]: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  [InventoryAdjustmentStatus.Cancelled]: 'bg-rose-50 text-rose-700 border-rose-200',
 };
 
 export enum InventoryAdjustmentReason {

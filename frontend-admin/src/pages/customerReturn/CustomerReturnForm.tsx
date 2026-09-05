@@ -13,6 +13,7 @@ import {
   FormSection,
 } from '../../components/commons/FormUI';
 import { Toast } from '../../components/commons/Toast';
+import CustomDatePicker from '../../components/commons/CustomDatePicker';
 
 import { customerReturnApi } from '../../api/customerReturnApi';
 import { orderApi } from '../../api/orderApi';
@@ -438,11 +439,12 @@ const CustomerReturnForm: React.FC = () => {
                 placeholder="-- Chọn kho tiếp nhận --"
               />
 
-              <FormInput
+              <CustomDatePicker
                 label="Ngày tiếp nhận"
-                type="date"
-                value={formData.returnDate}
-                onChange={(e) => handleFieldChange('returnDate', e.target.value)}
+                value={formData.returnDate ? new Date(formData.returnDate) : null}
+                onChange={(date) =>
+                  handleFieldChange('returnDate', date ? date.toLocaleDateString('en-CA') : '')
+                }
                 required
               />
 

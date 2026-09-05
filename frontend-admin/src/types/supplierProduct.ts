@@ -19,6 +19,7 @@ export interface SupplierProduct {
   variantSKU?: string;
   variantBarcode?: string;
   variantImage?: string;
+  variantImagePath?: string;
   supplierCode?: string;
   supplierName?: string;
   purchaseUoMName?: string;

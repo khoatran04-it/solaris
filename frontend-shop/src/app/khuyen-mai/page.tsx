@@ -2,6 +2,7 @@ import React from 'react';
 import { Metadata } from 'next';
 import Link from 'next/link';
 import { Sparkles, Clock, ArrowRight, Tag, Gift } from 'lucide-react';
+import EmptyState from '@/components/common/EmptyState';
 import shopProductApi from '@/api/shopProductApi';
 import { formatDate } from '@/lib/utils';
 import { ShopPromotionBadge } from '@/types/product';
@@ -79,13 +80,13 @@ export default async function KhuyenMaiPage() {
                     ))}
                 </div>
             ) : (
-                <div className="bg-white rounded-3xl border border-slate-200/80 p-16 text-center space-y-3 shadow-2xs">
-                    <div className="w-16 h-16 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mx-auto">
-                        <Gift className="w-8 h-8" />
-                    </div>
-                    <h3 className="text-base font-bold text-slate-900">Chưa có chương trình mới hôm nay</h3>
-                    <p className="text-xs text-slate-500 max-w-sm mx-auto">Vui lòng quay lại sau để đón nhận các đợt ưu đãi nông sản vụ mùa mới!</p>
-                </div>
+                <EmptyState
+                    icon={<Gift className="w-7 h-7" />}
+                    title="Chưa có chương trình mới hôm nay"
+                    description="Vui lòng quay lại sau để đón nhận các đợt ưu đãi nông sản vụ mùa mới!"
+                    actionText="Xem tất cả sản phẩm"
+                    actionHref="/san-pham"
+                />
             )}
 
         </div>

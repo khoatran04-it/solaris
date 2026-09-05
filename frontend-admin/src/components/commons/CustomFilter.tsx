@@ -53,13 +53,13 @@ export const CustomFilter: React.FC<CustomFilterProps> = ({
       <div
         onClick={() => setIsOpen(!isOpen)}
         className={`flex items-center gap-1.5 cursor-pointer select-none transition-colors duration-200 ${
-          isFiltered ? 'text-green-500' : 'text-slate-500 hover:text-slate-800'
+          isFiltered ? 'text-amber-600 font-bold' : 'text-slate-500 hover:text-slate-800'
         }`}
       >
         {title}
         <Filter
           size={14}
-          className={isFiltered ? 'fill-green-500 text-green-500' : 'text-slate-400'}
+          className={isFiltered ? 'fill-amber-500 text-amber-500' : 'text-slate-400'}
         />
       </div>
 
@@ -76,7 +76,7 @@ export const CustomFilter: React.FC<CustomFilterProps> = ({
                   onClick={() => toggleSelection(opt.value)}
                   className={`
                                         flex items-center gap-3 px-3 py-2 cursor-pointer rounded-lg transition-colors duration-200 text-[13px] font-medium
-                                        ${isSelected ? 'bg-green-50/50 text-slate-900' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}
+                                        ${isSelected ? 'bg-amber-50/70 text-slate-900 font-semibold' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}
                                     `}
                   title={opt.label}
                 >
@@ -84,7 +84,7 @@ export const CustomFilter: React.FC<CustomFilterProps> = ({
                   <div
                     className={`
                                         w-4 h-4 shrink-0 flex items-center justify-center rounded-sm border transition-all duration-200
-                                        ${isSelected ? 'bg-green-500 border-green-500 shadow-sm shadow-green-500/30' : 'bg-white border-slate-300'}
+                                        ${isSelected ? 'bg-amber-500 border-amber-500 shadow-xs' : 'bg-white border-slate-300'}
                                     `}
                   >
                     {isSelected && <Check size={12} className="text-white" strokeWidth={3.5} />}

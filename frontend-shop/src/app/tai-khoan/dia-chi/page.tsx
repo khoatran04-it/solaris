@@ -1,13 +1,14 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { MapPin, User, Package, RotateCcw, Plus, Trash2, CheckCircle2 } from 'lucide-react';
+import { MapPin, Plus, Trash2, CheckCircle2 } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import shopCustomerApi from '@/api/shopCustomerApi';
 import { ShopAddress, ShopAddressPayload } from '@/types/customer';
 import GhnAddressSelect from '@/components/address/GhnAddressSelect';
+import AccountSidebar from '@/components/account/AccountSidebar';
+import EmptyState from '@/components/common/EmptyState';
 
 export default function DiaChiPage() {
     const router = useRouter();
@@ -110,39 +111,7 @@ export default function DiaChiPage() {
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
                     
                     {/* Sidebar */}
-                    <div className="lg:col-span-4 bg-white rounded-3xl border border-slate-200/80 p-5 space-y-1.5 shadow-[0_2px_15px_-3px_rgba(0,0,0,0.03)]">
-                        <Link
-                            href="/tai-khoan"
-                            className="flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-700 hover:bg-emerald-50 hover:text-emerald-800 font-bold text-xs transition-colors"
-                        >
-                            <User className="w-4 h-4 text-slate-400" />
-                            <span>Hồ sơ cá nhân & Thẻ VIP</span>
-                        </Link>
-
-                        <Link
-                            href="/tai-khoan/don-hang"
-                            className="flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-700 hover:bg-emerald-50 hover:text-emerald-800 font-bold text-xs transition-colors"
-                        >
-                            <Package className="w-4 h-4 text-slate-400" />
-                            <span>Lịch sử đơn hàng</span>
-                        </Link>
-
-                        <Link
-                            href="/tai-khoan/dia-chi"
-                            className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-emerald-600 text-white font-extrabold text-xs shadow-xs"
-                        >
-                            <MapPin className="w-4 h-4" />
-                            <span>Sổ địa chỉ nhận hàng</span>
-                        </Link>
-
-                        <Link
-                            href="/tai-khoan/tra-hang"
-                            className="flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-700 hover:bg-emerald-50 hover:text-emerald-800 font-bold text-xs transition-colors"
-                        >
-                            <RotateCcw className="w-4 h-4 text-slate-400" />
-                            <span>Yêu cầu đổi trả nông sản (RMA)</span>
-                        </Link>
-                    </div>
+                    <AccountSidebar activeTab="addresses" className="lg:col-span-4" />
 
                     {/* Content */}
                     <div className="lg:col-span-8 space-y-6">
@@ -249,53 +218,63 @@ export default function DiaChiPage() {
                             </div>
                         )}
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            {addresses.map((addr) => (
-                                <div
-                                    key={addr.id}
-                                    className={`bg-white rounded-3xl border p-5 sm:p-6 transition-all hover:border-emerald-300 shadow-[0_2px_15px_-3px_rgba(0,0,0,0.03)] flex flex-col justify-between space-y-4 ${
-                                        addr.isDefault ? 'border-emerald-500 ring-2 ring-emerald-500/20 bg-emerald-50/20' : 'border-slate-200/80'
-                                    }`}
-                                >
-                                    <div className="space-y-2">
-                                        <div className="flex items-center justify-between">
-                                            <h4 className="font-bold text-xs text-slate-900 flex items-center gap-1.5">
-                                                <span>{addr.receiverName}</span>
-                                            </h4>
-                                            {addr.isDefault && (
-                                                <span className="px-2.5 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-extrabold rounded-full flex items-center gap-1">
-                                                    <CheckCircle2 className="w-3 h-3" />
-                                                    Mặc định
-                                                </span>
-                                            )}
+                        {addresses.length > 0 ? (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                {addresses.map((addr) => (
+                                    <div
+                                        key={addr.id}
+                                        className={`bg-white rounded-3xl border p-5 sm:p-6 transition-all hover:border-emerald-300 shadow-[0_2px_15px_-3px_rgba(0,0,0,0.03)] flex flex-col justify-between space-y-4 ${
+                                            addr.isDefault ? 'border-emerald-500 ring-2 ring-emerald-500/20 bg-emerald-50/20' : 'border-slate-200/80'
+                                        }`}
+                                    >
+                                        <div className="space-y-2">
+                                            <div className="flex items-center justify-between">
+                                                <h4 className="font-bold text-xs text-slate-900 flex items-center gap-1.5">
+                                                    <span>{addr.receiverName}</span>
+                                                </h4>
+                                                {addr.isDefault && (
+                                                    <span className="px-2.5 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-extrabold rounded-full flex items-center gap-1">
+                                                        <CheckCircle2 className="w-3 h-3" />
+                                                        Mặc định
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <p className="text-xs text-slate-600 font-semibold">{addr.phone}</p>
+                                            <p className="text-xs text-slate-500 leading-relaxed font-medium">
+                                                {addr.streetAddress}, {addr.ward}, {addr.district}, {addr.province}
+                                            </p>
                                         </div>
-                                        <p className="text-xs text-slate-600 font-semibold">{addr.phone}</p>
-                                        <p className="text-xs text-slate-500 leading-relaxed font-medium">
-                                            {addr.streetAddress}, {addr.ward}, {addr.district}, {addr.province}
-                                        </p>
-                                    </div>
 
-                                    <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
-                                        {!addr.isDefault ? (
+                                        <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+                                            {!addr.isDefault ? (
+                                                <button
+                                                    onClick={() => handleSetDefault(addr.id)}
+                                                    className="text-emerald-700 hover:text-emerald-800 font-bold text-xs cursor-pointer"
+                                                >
+                                                    Đặt làm mặc định
+                                                </button>
+                                            ) : <div />}
+
                                             <button
-                                                onClick={() => handleSetDefault(addr.id)}
-                                                className="text-emerald-700 hover:text-emerald-800 font-bold text-xs cursor-pointer"
+                                                onClick={() => handleDelete(addr.id)}
+                                                className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer"
+                                                title="Xóa địa chỉ"
                                             >
-                                                Đặt làm mặc định
+                                                <Trash2 className="w-4 h-4" />
                                             </button>
-                                        ) : <div />}
-
-                                        <button
-                                            onClick={() => handleDelete(addr.id)}
-                                            className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer"
-                                            title="Xóa địa chỉ"
-                                        >
-                                            <Trash2 className="w-4 h-4" />
-                                        </button>
+                                        </div>
                                     </div>
-                                </div>
-                            ))}
-                        </div>
+                                ))}
+                            </div>
+                        ) : !showAddForm ? (
+                            <EmptyState
+                                icon={<MapPin className="w-8 h-8" />}
+                                title="Chưa có địa chỉ nào được lưu"
+                                description="Thêm địa chỉ giao hàng để đặt mua nông sản nhanh chóng và thuận tiện hơn."
+                                actionText="Thêm địa chỉ mới"
+                                onAction={() => setShowAddForm(true)}
+                            />
+                        ) : null}
                     </div>
 
                 </div>

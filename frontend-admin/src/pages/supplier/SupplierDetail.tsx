@@ -36,7 +36,7 @@ import {
   InfoField,
   DetailProfileCard,
 } from '../../components/commons/TabUI';
-import { DateTimeCell, TableEmpty } from '../../components/commons/ListUI';
+import { DateTimeCell, TableEmpty, StatusBadge } from '../../components/commons/ListUI';
 
 type TabType = 'detail' | 'products' | 'addresses';
 
@@ -432,13 +432,29 @@ const SupplierDetail: React.FC = () => {
                         className="hover:bg-slate-50/80 transition-colors duration-200 group"
                       >
                         <td className="py-4 px-6">
-                          <div className="flex flex-col">
-                            <span className="font-bold text-slate-800 text-[13px]">
-                              {sp.variantName || `Biến thể #${sp.variantId}`}
-                            </span>
-                            <span className="text-[10px] font-bold text-blue-600 mt-0.5">
-                              {sp.variantCode || sp.variantSKU || `#${sp.variantId}`}
-                            </span>
+                          <div className="flex items-center gap-3.5">
+                            <div className="w-12 h-12 rounded-xl bg-white border border-slate-200 shadow-2xs flex items-center justify-center shrink-0 overflow-hidden">
+                              {sp.variantImagePath || sp.variantImage ? (
+                                <img
+                                  src={sp.variantImagePath || sp.variantImage}
+                                  alt={sp.variantName || 'Sản phẩm'}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <Package size={22} className="text-slate-300" />
+                              )}
+                            </div>
+                            <div className="flex flex-col min-w-0">
+                              <span
+                                className="font-bold text-slate-800 text-[13px] truncate max-w-56 leading-tight"
+                                title={sp.variantName}
+                              >
+                                {sp.variantName || `Biến thể #${sp.variantId}`}
+                              </span>
+                              <span className="text-[10px] font-bold text-blue-600 mt-1">
+                                {sp.variantCode || sp.variantSKU || `#${sp.variantId}`}
+                              </span>
+                            </div>
                           </div>
                         </td>
 
@@ -476,19 +492,14 @@ const SupplierDetail: React.FC = () => {
                         </td>
 
                         <td className="py-4 px-4 text-center">
-                          <button
-                            onClick={() => handleToggleProductActive(sp.id, sp.isActive)}
-                            className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold cursor-pointer ${
-                              sp.isActive
-                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                                : 'bg-slate-100 text-slate-600 border border-slate-200'
-                            }`}
-                          >
-                            <span
-                              className={`w-1.5 h-1.5 rounded-full ${sp.isActive ? 'bg-emerald-500' : 'bg-slate-400'}`}
-                            ></span>
-                            {sp.isActive ? 'Cung ứng' : 'Tạm ngưng'}
-                          </button>
+                          <div className="flex justify-center">
+                            <StatusBadge
+                              label={sp.isActive ? 'Cung ứng' : 'Tạm ngưng'}
+                              variant={sp.isActive ? 'emerald' : 'rose'}
+                              onClick={() => handleToggleProductActive(sp.id, sp.isActive)}
+                              title="Nhấn để đổi trạng thái"
+                            />
+                          </div>
                         </td>
 
                         <td className="py-4 px-6 text-center">

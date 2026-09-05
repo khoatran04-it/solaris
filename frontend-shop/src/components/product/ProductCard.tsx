@@ -10,25 +10,25 @@ interface ProductCardProps {
 
 export default function ProductCard({ product }: ProductCardProps) {
     return (
-        <div className="group relative bg-white rounded-3xl border border-slate-200/70 shadow-[0_2px_15px_-3px_rgba(0,0,0,0.04)] hover:shadow-[0_12px_30px_-5px_rgba(0,0,0,0.08)] hover:border-emerald-300 hover:-translate-y-1 transition-all duration-300 flex flex-col overflow-hidden">
+        <div className="group relative bg-white rounded-3xl border border-slate-200/60 shadow-[0_2px_12px_-3px_rgba(0,0,0,0.03)] hover:shadow-[0_10px_25px_-5px_rgba(0,0,0,0.06)] hover:border-emerald-300 transition-all duration-300 flex flex-col overflow-hidden">
             
-            {/* 1. Badges: Khuyến mãi & Chứng nhận & Hết hàng */}
-            <div className="absolute top-3.5 left-3.5 z-10 flex flex-col gap-1.5 items-start">
+            {/* 1. Badges: Khuyến mãi & Tạm hết hàng */}
+            <div className="absolute top-3 left-3 z-10 flex items-center gap-1.5">
                 {product.hasPromotion && product.discountPercent > 0 && (
-                    <span className="bg-gradient-to-r from-rose-500 to-red-600 text-white text-[11px] font-black px-2.5 py-0.5 rounded-full shadow-xs tracking-wide">
+                    <span className="bg-rose-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-2xs">
                         -{product.discountPercent}%
                     </span>
                 )}
                 {product.certification && (
-                    <span className="bg-emerald-600/90 backdrop-blur-xs text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full shadow-xs flex items-center gap-0.5">
-                        <CheckCircle2 className="w-2.5 h-2.5" />
+                    <span className="bg-white/90 backdrop-blur-xs text-emerald-800 border border-emerald-200/60 text-[10px] font-bold px-2 py-0.5 rounded-full shadow-2xs flex items-center gap-0.5">
+                        <CheckCircle2 className="w-2.5 h-2.5 text-emerald-600" />
                         {product.certification}
                     </span>
                 )}
             </div>
 
             {!product.isInStock && (
-                <div className="absolute top-3.5 right-3.5 z-10 bg-slate-900/80 backdrop-blur-xs text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full shadow-xs">
+                <div className="absolute top-3 right-3 z-10 bg-slate-900/80 backdrop-blur-xs text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full shadow-2xs">
                     Tạm hết hàng
                 </div>
             )}

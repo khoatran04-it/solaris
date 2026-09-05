@@ -4,7 +4,6 @@ import {
   LayoutDashboard,
   Package,
   ShieldCheck,
-  Settings,
   Sun,
   ChevronLeft,
   ChevronRight,
@@ -391,16 +390,6 @@ export const Sidebar: React.FC = () => {
 
       {/* --- FOOTER --- */}
       <div className="p-3 border-t border-slate-200 flex flex-col gap-1 shrink-0">
-        <button
-          className={`w-full flex items-center gap-3 p-3 rounded-xl transition-colors group text-slate-600 hover:bg-slate-50 hover:text-slate-900 ${isCollapsed ? 'justify-center' : ''}`}
-        >
-          <Settings
-            size={20}
-            className="shrink-0 text-slate-400 group-hover:rotate-90 group-hover:text-slate-600 transition-all duration-300"
-          />
-          {!isCollapsed && <span className="text-sm font-medium whitespace-nowrap">Cài đặt</span>}
-        </button>
-
         <button
           onClick={handleLogout}
           className={`w-full flex items-center gap-3 p-3 rounded-xl transition-colors group text-slate-600 hover:bg-red-50 hover:text-red-600 ${isCollapsed ? 'justify-center' : ''}`}

@@ -1,9 +1,8 @@
 'use client';
 
 import React, { useState, useEffect, Suspense } from 'react';
-import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { RotateCcw, User, Package, MapPin, Plus } from 'lucide-react';
+import { RotateCcw, Plus } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import shopOrderApi from '@/api/shopOrderApi';
 import shopReturnApi from '@/api/shopReturnApi';
@@ -11,6 +10,8 @@ import { formatVND, formatDateTime } from '@/lib/utils';
 import { PagedResult } from '@/types/common';
 import { ShopReturn } from '@/types/return';
 import { ShopOrder } from '@/types/order';
+import AccountSidebar from '@/components/account/AccountSidebar';
+import EmptyState from '@/components/common/EmptyState';
 
 function TraHangContent() {
     const router = useRouter();
@@ -112,39 +113,7 @@ function TraHangContent() {
     return (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
             {/* Sidebar */}
-            <div className="lg:col-span-4 bg-white rounded-3xl border border-slate-200/80 p-5 space-y-1.5 shadow-[0_2px_15px_-3px_rgba(0,0,0,0.03)]">
-                <Link
-                    href="/tai-khoan"
-                    className="flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-700 hover:bg-emerald-50 hover:text-emerald-800 font-bold text-xs transition-colors"
-                >
-                    <User className="w-4 h-4 text-slate-400" />
-                    <span>Hồ sơ cá nhân & Thẻ VIP</span>
-                </Link>
-
-                <Link
-                    href="/tai-khoan/don-hang"
-                    className="flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-700 hover:bg-emerald-50 hover:text-emerald-800 font-bold text-xs transition-colors"
-                >
-                    <Package className="w-4 h-4 text-slate-400" />
-                    <span>Lịch sử đơn hàng</span>
-                </Link>
-
-                <Link
-                    href="/tai-khoan/dia-chi"
-                    className="flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-700 hover:bg-emerald-50 hover:text-emerald-800 font-bold text-xs transition-colors"
-                >
-                    <MapPin className="w-4 h-4 text-slate-400" />
-                    <span>Sổ địa chỉ nhận hàng</span>
-                </Link>
-
-                <Link
-                    href="/tai-khoan/tra-hang"
-                    className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-emerald-600 text-white font-extrabold text-xs shadow-xs"
-                >
-                    <RotateCcw className="w-4 h-4" />
-                    <span>Yêu cầu đổi trả nông sản (RMA)</span>
-                </Link>
-            </div>
+            <AccountSidebar activeTab="returns" className="lg:col-span-4" />
 
             {/* Content */}
             <div className="lg:col-span-8 space-y-6">
@@ -314,15 +283,11 @@ function TraHangContent() {
                             </div>
                         ))
                     ) : (
-                        <div className="bg-white rounded-3xl border border-slate-200/80 p-16 text-center space-y-3 shadow-2xs">
-                            <div className="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto">
-                                <RotateCcw className="w-7 h-7" />
-                            </div>
-                            <h3 className="text-sm font-bold text-slate-900">Bạn chưa có yêu cầu đổi trả nào</h3>
-                            <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                                Solaris cam kết bảo hành 1 đổi 1 hoặc hoàn tiền trong 12H nếu sản phẩm dập nát, héo úa hoặc không đạt chuẩn an toàn.
-                            </p>
-                        </div>
+                        <EmptyState
+                            icon={<RotateCcw className="w-7 h-7" />}
+                            title="Bạn chưa có yêu cầu đổi trả nào"
+                            description="Solaris cam kết bảo hành 1 đổi 1 hoặc hoàn tiền trong 12H nếu sản phẩm dập nát, héo úa hoặc không đạt chuẩn an toàn."
+                        />
                     )}
                 </div>
             </div>

@@ -1,9 +1,10 @@
-﻿import React from 'react';
+import React from 'react';
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { Sparkles, Clock, Tag } from 'lucide-react';
 import ProductCard from '@/components/product/ProductCard';
+import EmptyState from '@/components/common/EmptyState';
 import shopProductApi from '@/api/shopProductApi';
 import { formatDate } from '@/lib/utils';
 import { ShopProductCard } from '@/types/product';
@@ -101,18 +102,13 @@ export default async function PromoDetailPage({ params }: PromoDetailPageProps) 
                         ))}
                     </div>
                 ) : (
-                    <div className="bg-white rounded-3xl border border-slate-200/80 p-16 text-center space-y-3 shadow-2xs">
-                        <div className="w-16 h-16 rounded-2xl bg-slate-50 text-slate-400 flex items-center justify-center mx-auto">
-                            <Tag className="w-8 h-8" />
-                        </div>
-                        <h3 className="text-base font-bold text-slate-900">Các mặt hàng đang được chuẩn bị lên kệ</h3>
-                        <Link
-                            href="/san-pham"
-                            className="inline-block px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-2xl transition-all shadow-md"
-                        >
-                            Xem tất cả sản phẩm khác
-                        </Link>
-                    </div>
+                    <EmptyState
+                        icon={<Tag className="w-7 h-7" />}
+                        title="Các mặt hàng đang được chuẩn bị lên kệ"
+                        description="Các sản phẩm áp dụng mức chiết khấu này sẽ sớm xuất hiện tại cửa hàng."
+                        actionText="Xem tất cả sản phẩm khác"
+                        actionHref="/san-pham"
+                    />
                 )}
             </div>
 

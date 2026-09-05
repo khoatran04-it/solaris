@@ -1,5 +1,5 @@
 import React from 'react';
-import { Bell, User, ChevronDown } from 'lucide-react';
+import { Bell } from 'lucide-react';
 import { useAuthStore } from '../../stores/useAuthStore';
 
 export const Header: React.FC = () => {
@@ -13,7 +13,7 @@ export const Header: React.FC = () => {
 
   return (
     <header className="h-16 bg-white border-b border-slate-100 flex items-center justify-end px-8 sticky top-0 z-40 shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
-      <div className="flex items-center gap-8">
+      <div className="flex items-center gap-6">
         {/* --- KHU VỰC THÔNG BÁO --- */}
         <button className="relative group p-2 rounded-full hover:bg-slate-50 transition-all duration-300 cursor-pointer">
           <Bell
@@ -35,10 +35,10 @@ export const Header: React.FC = () => {
         </button>
 
         {/* --- KHU VỰC THÔNG TIN NGƯỜI DÙNG --- */}
-        <div className="flex items-center gap-4 group cursor-pointer p-1.5 pr-3 rounded-2xl hover:bg-slate-50 transition-all duration-300 border border-transparent hover:border-slate-100">
+        <div className="flex items-center gap-3.5 select-none p-1.5 pr-2 rounded-2xl border border-transparent">
           {/* Nội dung Text */}
           <div className="flex flex-col items-end">
-            <span className="font-black text-[13px] text-slate-800 tracking-tight leading-none group-hover:text-amber-600 transition-colors uppercase">
+            <span className="font-black text-[13px] text-slate-800 tracking-tight leading-none uppercase">
               {displayName}
             </span>
             <div className="flex items-center gap-1.5 mt-1">
@@ -51,7 +51,7 @@ export const Header: React.FC = () => {
 
           {/* Avatar Container */}
           <div className="relative">
-            <div className="w-10 h-10 rounded-xl border-2 border-slate-100 flex items-center justify-center bg-white shadow-xs group-hover:border-amber-400 group-hover:shadow-md transition-all duration-300 overflow-hidden">
+            <div className="w-10 h-10 rounded-xl border-2 border-slate-100 flex items-center justify-center bg-white shadow-xs overflow-hidden">
               {userInfo?.avatarUrl ? (
                 <img
                   src={userInfo.avatarUrl}
@@ -59,7 +59,7 @@ export const Header: React.FC = () => {
                   className="w-full h-full object-cover"
                 />
               ) : (
-                <div className="bg-slate-800 w-full h-full flex items-center justify-center text-amber-400 group-hover:bg-amber-400 group-hover:text-slate-900 transition-all duration-300 font-black text-sm">
+                <div className="bg-slate-800 w-full h-full flex items-center justify-center text-amber-400 font-black text-sm">
                   {displayName.charAt(0).toUpperCase()}
                 </div>
               )}
@@ -67,12 +67,6 @@ export const Header: React.FC = () => {
             {/* Status dot */}
             <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 border-2 border-white rounded-full shadow-xs"></div>
           </div>
-
-          {/* Nút dropdown nhỏ */}
-          <ChevronDown
-            size={14}
-            className="text-slate-300 group-hover:text-slate-500 transition-all duration-300"
-          />
         </div>
       </div>
     </header>

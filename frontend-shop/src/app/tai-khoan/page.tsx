@@ -1,11 +1,11 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { User, Package, MapPin, RotateCcw, CheckCircle2, Award, Sparkles } from 'lucide-react';
+import { CheckCircle2, Award, Sparkles } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import shopCustomerApi from '@/api/shopCustomerApi';
+import AccountSidebar from '@/components/account/AccountSidebar';
 
 export default function TaiKhoanPage() {
     const router = useRouter();
@@ -91,39 +91,7 @@ export default function TaiKhoanPage() {
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
                     
                     {/* Navigation Sidebar */}
-                    <div className="lg:col-span-4 bg-white rounded-3xl border border-slate-200/80 p-5 space-y-1.5 shadow-[0_2px_15px_-3px_rgba(0,0,0,0.03)]">
-                        <Link
-                            href="/tai-khoan"
-                            className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-emerald-600 text-white font-extrabold text-xs shadow-xs"
-                        >
-                            <User className="w-4 h-4" />
-                            <span>Hồ sơ cá nhân & Thẻ VIP</span>
-                        </Link>
-
-                        <Link
-                            href="/tai-khoan/don-hang"
-                            className="flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-700 hover:bg-emerald-50 hover:text-emerald-800 font-bold text-xs transition-colors"
-                        >
-                            <Package className="w-4 h-4 text-slate-400" />
-                            <span>Lịch sử đơn hàng</span>
-                        </Link>
-
-                        <Link
-                            href="/tai-khoan/dia-chi"
-                            className="flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-700 hover:bg-emerald-50 hover:text-emerald-800 font-bold text-xs transition-colors"
-                        >
-                            <MapPin className="w-4 h-4 text-slate-400" />
-                            <span>Sổ địa chỉ nhận hàng</span>
-                        </Link>
-
-                        <Link
-                            href="/tai-khoan/tra-hang"
-                            className="flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-700 hover:bg-emerald-50 hover:text-emerald-800 font-bold text-xs transition-colors"
-                        >
-                            <RotateCcw className="w-4 h-4 text-slate-400" />
-                            <span>Yêu cầu đổi trả nông sản (RMA)</span>
-                        </Link>
-                    </div>
+                    <AccountSidebar activeTab="profile" className="lg:col-span-4" />
 
                     {/* Main Content Area */}
                     <div className="lg:col-span-8 space-y-6">

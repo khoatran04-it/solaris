@@ -1,12 +1,12 @@
 'use client';
 
 import React, { useEffect } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ShoppingBag, Trash2, ArrowRight, ShieldCheck, Truck, RotateCcw, Sparkles } from 'lucide-react';
 import { useCartStore } from '@/stores/cartStore';
 import { useAuthStore } from '@/stores/authStore';
 import { formatVND } from '@/lib/utils';
+import EmptyState from '@/components/common/EmptyState';
 
 export default function GioHangPage() {
     const router = useRouter();
@@ -209,24 +209,14 @@ export default function GioHangPage() {
 
                 </div>
             ) : (
-                <div className="bg-white rounded-3xl border border-slate-200/80 p-16 text-center space-y-5 max-w-lg mx-auto shadow-sm">
-                    <div className="w-20 h-20 rounded-3xl bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto shadow-2xs">
-                        <ShoppingBag className="w-10 h-10" />
-                    </div>
-                    <div className="space-y-1.5">
-                        <h3 className="text-xl font-black text-slate-900">Giỏ hàng của bạn đang trống</h3>
-                        <p className="text-xs text-slate-500 leading-relaxed max-w-sm mx-auto">
-                            Hãy dạo quanh nông trại Solaris để chọn những món rau củ quả tươi sạch cho gia đình nhé!
-                        </p>
-                    </div>
-                    <Link
-                        href="/san-pham"
-                        className="inline-flex items-center gap-2 px-6 py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-2xl transition-all shadow-md shadow-emerald-600/20 active:scale-95"
-                    >
-                        <span>Khám phá sản phẩm ngay</span>
-                        <ArrowRight className="w-4 h-4" />
-                    </Link>
-                </div>
+                <EmptyState
+                    icon={<ShoppingBag className="w-8 h-8" />}
+                    title="Giỏ hàng của bạn đang trống"
+                    description="Hãy dạo quanh nông trại Solaris để chọn những món rau củ quả tươi sạch cho gia đình nhé!"
+                    actionText="Khám phá sản phẩm ngay"
+                    actionHref="/san-pham"
+                    className="max-w-lg mx-auto"
+                />
             )}
 
         </div>

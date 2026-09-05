@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { X, Package, Save } from 'lucide-react';
 import { FormInput, FormSelect } from '../commons/FormUI';
 import { SupplierProductPayload, SupplierProduct } from '../../types/supplierProduct';
+import { ProductVariant } from '../../types/productVariant';
 import { supplierApi } from '../../api/supplierApi';
 import { productVariantApi } from '../../api/productVariantApi';
 import { uomApi } from '../../api/uomApi';
@@ -40,11 +41,13 @@ export const ModalSupplierProduct: React.FC<ModalSupplierProductProps> = ({
   const [supplierOptions, setSupplierOptions] = useState<{ value: number; label: string }[]>([]);
   const [variantOptions, setVariantOptions] = useState<{ value: number; label: string }[]>([]);
   const [uomOptions, setUomOptions] = useState<{ value: number; label: string }[]>([]);
+  const [variantsList, setVariantsList] = useState<ProductVariant[]>([]);
 
   useEffect(() => {
     if (isOpen) {
       Promise.all([supplierApi.getAllList(), productVariantApi.getAllList(), uomApi.getAllList()])
         .then(([suppliers, variants, uoms]) => {
+          setVariantsList(variants);
           setSupplierOptions(
             suppliers.map((s) => ({ value: s.id, label: `${s.code} - ${s.name}` }))
           );
@@ -75,6 +78,10 @@ export const ModalSupplierProduct: React.FC<ModalSupplierProductProps> = ({
   }, [isOpen, initialData, fixedSupplierId]);
 
   if (!isOpen) return null;
+
+  const selectedVariant = variantsList.find((v) => v.id === Number(formData.variantId));
+  const variantImage =
+    selectedVariant?.imagePath || initialData?.variantImagePath || initialData?.variantImage;
 
   const handleFieldChange = (field: keyof SupplierProductPayload, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -197,6 +204,43 @@ export const ModalSupplierProduct: React.FC<ModalSupplierProductProps> = ({
                   disabled={Boolean(initialData) || isSubmitting}
                   onSelect={(val) => handleFieldChange('variantId', val)}
                 />
+
+                {/* Preview hình ảnh và thông tin biến thể được chọn */}
+                {Boolean(formData.variantId) && (selectedVariant || initialData) && (
+                  <div className="flex items-center gap-3.5 p-3 rounded-xl bg-slate-50 border border-slate-200/80 mt-3">
+                    <div className="w-14 h-14 rounded-lg bg-white border border-slate-200 shadow-2xs flex items-center justify-center shrink-0 overflow-hidden">
+                      {variantImage ? (
+                        <img
+                          src={variantImage}
+                          alt="Ảnh sản phẩm"
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <Package size={24} className="text-slate-300" />
+                      )}
+                    </div>
+                    <div className="flex flex-col min-w-0">
+                      <span className="font-extrabold text-slate-800 text-[13px] truncate">
+                        {selectedVariant?.name ||
+                          initialData?.variantName ||
+                          `Biến thể #${formData.variantId}`}
+                      </span>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-[10px] font-bold bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-200/50 uppercase tracking-widest">
+                          {selectedVariant?.code || initialData?.variantCode || `#${formData.variantId}`}
+                        </span>
+                        {selectedVariant?.prices && selectedVariant.prices.length > 0 && (
+                          <span className="text-[11px] text-slate-500 font-medium">
+                            Giá bán niêm yết:{' '}
+                            <strong className="text-slate-700">
+                              {selectedVariant.prices[0].price.toLocaleString('vi-VN')} ₫
+                            </strong>
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 

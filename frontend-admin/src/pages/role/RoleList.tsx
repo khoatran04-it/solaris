@@ -20,6 +20,7 @@ import {
   TableEmpty,
   ListPagination,
   DateTimeCell,
+  StatusBadge,
 } from '../../components/commons/ListUI';
 
 const RoleList: React.FC = () => {
@@ -188,24 +189,19 @@ const RoleList: React.FC = () => {
                       </div>
                     </td>
                     <td className="py-4 px-2 text-center">
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[13px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200">
                         <Settings size={14} /> {item.permissionIds?.length || 0} Quyền
                       </span>
                     </td>
                     <td className="py-4 px-2 text-center">
-                      <button
-                        onClick={() => handleToggleActive(item.id, item.isActive)}
-                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold border transition-colors ${
-                          item.isActive
-                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200/40 hover:bg-red-50 hover:text-red-600 hover:border-red-200'
-                            : 'bg-slate-100 text-slate-400 border-slate-200/50 hover:bg-emerald-50 hover:text-emerald-600 hover:border-emerald-200'
-                        }`}
-                      >
-                        <span
-                          className={`w-1.5 h-1.5 rounded-full mr-1.5 ${item.isActive ? 'bg-emerald-500' : 'bg-slate-300'}`}
-                        ></span>
-                        {item.isActive ? 'Hoạt động' : 'Tạm khóa'}
-                      </button>
+                      <div className="flex justify-center">
+                        <StatusBadge
+                          label={item.isActive ? 'Hoạt động' : 'Tạm khóa'}
+                          variant={item.isActive ? 'emerald' : 'rose'}
+                          onClick={() => handleToggleActive(item.id, item.isActive)}
+                          title="Nhấn để đổi trạng thái"
+                        />
+                      </div>
                     </td>
                     <td className="py-4 px-6">
                       <div className="flex justify-center gap-1.5 opacity-40 group-hover:opacity-100 transition-all duration-300">

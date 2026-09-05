@@ -1,6 +1,9 @@
 import React from 'react';
 import { Search, Plus, Loader2, Inbox, ChevronLeft, ChevronRight, LucideIcon } from 'lucide-react';
 
+// Re-export Badge System
+export * from './Badge';
+
 // 0. Container riêng cho trang Danh sách
 export const ListPageContainer: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <div className="h-full flex flex-col p-6 bg-slate-50/30 overflow-y-auto font-sans">

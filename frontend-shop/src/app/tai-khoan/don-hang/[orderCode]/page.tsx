@@ -16,6 +16,7 @@ import { useAuthStore } from '@/stores/authStore';
 import shopOrderApi from '@/api/shopOrderApi';
 import { formatVND, formatDateTime } from '@/lib/utils';
 import { ShopOrder } from '@/types/order';
+import EmptyState from '@/components/common/EmptyState';
 
 export default function OrderDetailPage() {
     const params = useParams();
@@ -95,14 +96,14 @@ export default function OrderDetailPage() {
 
     if (!order) {
         return (
-            <div className="max-w-7xl mx-auto px-4 py-16 text-center space-y-4">
-                <div className="w-16 h-16 rounded-2xl bg-slate-50 text-slate-400 flex items-center justify-center mx-auto">
-                    <Package className="w-8 h-8" />
-                </div>
-                <h3 className="text-base font-bold text-slate-900">Không tìm thấy đơn hàng</h3>
-                <Link href="/tai-khoan/don-hang" className="inline-block px-6 py-3 bg-emerald-600 text-white text-xs font-bold rounded-2xl shadow-md">
-                    Quay lại danh sách đơn hàng
-                </Link>
+            <div className="max-w-7xl mx-auto px-4 py-16">
+                <EmptyState
+                    icon={<Package className="w-8 h-8" />}
+                    title="Không tìm thấy đơn hàng"
+                    description="Đơn hàng không tồn tại hoặc bạn không có quyền truy cập."
+                    actionText="Quay lại danh sách đơn hàng"
+                    actionHref="/tai-khoan/don-hang"
+                />
             </div>
         );
     }

@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { ChatSession, ChatMessage } from '@/types/chat';
 import shopAiApi from '@/api/shopAiApi';
+import ChatMessageContent from './ChatMessageContent';
 import ProductCardMini from './ProductCardMini';
 import InteractiveOrderCard from './InteractiveOrderCard';
 import OrderSuccessCard from './OrderSuccessCard';
@@ -324,12 +325,12 @@ export default function ChatbotWidget() {
 
                                     <div className={`max-w-[85%] space-y-2.5 ${m.role === 'user' ? 'items-end' : 'items-start'}`}>
                                         {/* Main Message Bubble */}
-                                        <div className={`p-3 rounded-2xl leading-relaxed whitespace-pre-wrap ${
+                                        <div className={`p-3.5 rounded-2xl leading-relaxed ${
                                             m.role === 'user'
                                                 ? 'bg-emerald-600 text-white rounded-tr-xs shadow-xs font-medium'
-                                                : 'bg-white text-slate-800 rounded-tl-xs shadow-xs border border-slate-100'
+                                                : 'bg-white text-slate-800 rounded-tl-xs shadow-2xs border border-slate-200/70'
                                         }`}>
-                                            {m.content}
+                                            <ChatMessageContent content={m.content} isUser={m.role === 'user'} />
                                         </div>
 
                                         {/* Render Payload: Product Cards */}
