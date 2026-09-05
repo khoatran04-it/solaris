@@ -1,8 +1,8 @@
-import React from 'react';
+﻿import React from 'react';
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { Sparkles, Clock } from 'lucide-react';
+import { Sparkles, Clock, Tag } from 'lucide-react';
 import ProductCard from '@/components/product/ProductCard';
 import shopProductApi from '@/api/shopProductApi';
 import { formatDate } from '@/lib/utils';
@@ -48,42 +48,46 @@ export default async function PromoDetailPage({ params }: PromoDetailPageProps) 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-10">
             
             {/* Breadcrumb */}
-            <div className="flex items-center gap-2 text-xs text-slate-500">
-                <Link href="/" className="hover:text-emerald-600">Trang chủ</Link>
+            <div className="flex items-center gap-2 text-xs text-slate-500 font-medium">
+                <Link href="/" className="hover:text-emerald-700 transition-colors">Trang chủ</Link>
                 <span>/</span>
-                <Link href="/khuyen-mai" className="hover:text-emerald-600">Khuyến mãi</Link>
+                <Link href="/khuyen-mai" className="hover:text-emerald-700 transition-colors">Khuyến mãi</Link>
                 <span>/</span>
-                <span className="font-semibold text-slate-800 truncate max-w-xs">{promo.name}</span>
+                <span className="font-bold text-slate-900 truncate max-w-xs">{promo.name}</span>
             </div>
 
             {/* Campaign Hero Banner */}
-            <div className="bg-gradient-to-r from-rose-700 via-pink-700 to-amber-600 text-white rounded-3xl p-8 sm:p-12 shadow-xl space-y-4">
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-white/20 backdrop-blur-xs rounded-full text-xs font-bold tracking-wide">
-                    <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-                    <span>ƯU ĐÃI: {promo.isPercentage ? `GIẢM ${promo.discountValue}%` : `GIẢM ${promo.discountValue}Đ`}</span>
-                </div>
+            <div className="bg-gradient-to-r from-rose-700 via-pink-700 to-amber-700 text-white rounded-3xl p-8 sm:p-12 shadow-xl space-y-4 relative overflow-hidden">
+                <div className="absolute right-0 top-0 w-96 h-96 bg-white/10 rounded-full blur-3xl pointer-events-none" />
+                
+                <div className="relative z-10 space-y-3">
+                    <div className="inline-flex items-center gap-1.5 px-3.5 py-1 bg-white/20 backdrop-blur-xs rounded-full text-xs font-extrabold tracking-wide">
+                        <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
+                        <span>ƯU ĐÃI ĐẶC BIỆT: {promo.isPercentage ? `GIẢM ${promo.discountValue}%` : `GIẢM ${promo.discountValue}Đ`}</span>
+                    </div>
 
-                <h1 className="text-2xl sm:text-4xl font-black tracking-tight leading-tight">
-                    {promo.name}
-                </h1>
+                    <h1 className="text-2xl sm:text-4xl font-black tracking-tight leading-tight">
+                        {promo.name}
+                    </h1>
 
-                {promo.description && (
-                    <p className="text-xs sm:text-sm text-pink-100/90 max-w-2xl leading-relaxed">
-                        {promo.description}
-                    </p>
-                )}
+                    {promo.description && (
+                        <p className="text-xs sm:text-sm text-pink-100/90 max-w-2xl leading-relaxed font-medium">
+                            {promo.description}
+                        </p>
+                    )}
 
-                <div className="flex items-center gap-2 text-xs text-amber-200 font-semibold pt-2">
-                    <Clock className="w-4 h-4" />
-                    <span>Thời gian áp dụng: {formatDate(promo.startDate)} đến {formatDate(promo.endDate)}</span>
+                    <div className="flex items-center gap-2 text-xs text-amber-200 font-bold pt-2">
+                        <Clock className="w-4 h-4" />
+                        <span>Thời gian áp dụng: {formatDate(promo.startDate)} đến {formatDate(promo.endDate)}</span>
+                    </div>
                 </div>
             </div>
 
             {/* Products Grid */}
             <div className="space-y-6">
                 <div>
-                    <h2 className="text-xl font-black text-slate-900">
-                        Sản Phẩm Trong Chương Trình ({promo.products.length})
+                    <h2 className="text-xl font-black text-slate-900 tracking-tight">
+                        Sản Phẩm Áp Dụng Ưu Đãi ({promo.products.length})
                     </h2>
                     <p className="text-xs text-slate-500 mt-0.5">
                         Giá hiển thị đã được tự động áp dụng mức chiết khấu của chương trình
@@ -97,12 +101,14 @@ export default async function PromoDetailPage({ params }: PromoDetailPageProps) 
                         ))}
                     </div>
                 ) : (
-                    <div className="bg-white rounded-3xl border border-slate-200 p-12 text-center space-y-3">
-                        <div className="text-6xl">🏷️</div>
-                        <h3 className="text-lg font-bold text-slate-800">Các mặt hàng đang được chuẩn bị lên kệ</h3>
+                    <div className="bg-white rounded-3xl border border-slate-200/80 p-16 text-center space-y-3 shadow-2xs">
+                        <div className="w-16 h-16 rounded-2xl bg-slate-50 text-slate-400 flex items-center justify-center mx-auto">
+                            <Tag className="w-8 h-8" />
+                        </div>
+                        <h3 className="text-base font-bold text-slate-900">Các mặt hàng đang được chuẩn bị lên kệ</h3>
                         <Link
                             href="/san-pham"
-                            className="inline-block px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-full transition-colors"
+                            className="inline-block px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-2xl transition-all shadow-md"
                         >
                             Xem tất cả sản phẩm khác
                         </Link>
@@ -113,4 +119,3 @@ export default async function PromoDetailPage({ params }: PromoDetailPageProps) 
         </div>
     );
 }
-

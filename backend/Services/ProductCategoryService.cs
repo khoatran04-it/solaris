@@ -199,6 +199,7 @@ namespace backend.Services
                 var entity = _mapper.Map<ProductCategory>(dto);
                 entity.Code = upperCode;
                 entity.Name = dto.Name.Trim();
+                entity.Slug = SlugHelper.GenerateSlug(entity.Name);
                 entity.Description = dto.Description?.Trim();
                 entity.ImagePath = dto.ImagePath?.Trim();
                 entity.CreatedAt = DateTime.UtcNow;
@@ -241,6 +242,7 @@ namespace backend.Services
                 _mapper.Map(dto, entity);
                 entity.Code = upperCode;
                 entity.Name = dto.Name.Trim();
+                entity.Slug = SlugHelper.GenerateSlug(entity.Name);
                 entity.Description = dto.Description?.Trim();
                 entity.ImagePath = dto.ImagePath?.Trim();
                 entity.UpdatedAt = DateTime.UtcNow;

@@ -165,10 +165,10 @@ export default function GhnAddressSelect({
     };
 
     return (
-        <div className={`grid grid-cols-1 sm:grid-cols-3 gap-4 ${className}`}>
+        <div className={`grid grid-cols-1 sm:grid-cols-3 gap-3.5 ${className}`}>
             {/* Tỉnh / Thành phố */}
             <div className="space-y-1">
-                <label className="text-xs font-semibold text-slate-700">
+                <label className="text-xs font-extrabold text-slate-700 uppercase tracking-wide block">
                     Tỉnh / Thành phố {required && <span className="text-rose-500">*</span>}
                 </label>
                 <select
@@ -176,7 +176,7 @@ export default function GhnAddressSelect({
                     onChange={handleProvinceSelect}
                     disabled={disabled}
                     required={required}
-                    className="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-emerald-500 focus:outline-none transition-colors"
+                    className="w-full text-xs h-11 px-3 bg-slate-50/70 hover:bg-white border border-slate-200 rounded-xl focus:bg-white focus:border-emerald-600 focus:ring-4 focus:ring-emerald-500/15 focus:outline-none transition-all text-slate-800 font-medium"
                 >
                     <option value="">-- Chọn Tỉnh/Thành --</option>
                     {provinces.map((p) => (
@@ -189,7 +189,7 @@ export default function GhnAddressSelect({
 
             {/* Quận / Huyện */}
             <div className="space-y-1">
-                <label className="text-xs font-semibold text-slate-700">
+                <label className="text-xs font-extrabold text-slate-700 uppercase tracking-wide block">
                     Quận / Huyện {required && <span className="text-rose-500">*</span>}
                 </label>
                 <select
@@ -197,7 +197,7 @@ export default function GhnAddressSelect({
                     onChange={handleDistrictSelect}
                     disabled={disabled || !selectedProvinceId}
                     required={required}
-                    className="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-emerald-500 focus:outline-none transition-colors disabled:opacity-50"
+                    className="w-full text-xs h-11 px-3 bg-slate-50/70 hover:bg-white border border-slate-200 rounded-xl focus:bg-white focus:border-emerald-600 focus:ring-4 focus:ring-emerald-500/15 focus:outline-none transition-all text-slate-800 font-medium disabled:opacity-50"
                 >
                     <option value="">-- Chọn Quận/Huyện --</option>
                     {districts.map((d) => (
@@ -210,7 +210,7 @@ export default function GhnAddressSelect({
 
             {/* Phường / Xã */}
             <div className="space-y-1">
-                <label className="text-xs font-semibold text-slate-700">
+                <label className="text-xs font-extrabold text-slate-700 uppercase tracking-wide block">
                     Phường / Xã {required && <span className="text-rose-500">*</span>}
                 </label>
                 <select
@@ -218,7 +218,7 @@ export default function GhnAddressSelect({
                     onChange={handleWardSelect}
                     disabled={disabled || !selectedDistrictId}
                     required={required}
-                    className="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-emerald-500 focus:outline-none transition-colors disabled:opacity-50"
+                    className="w-full text-xs h-11 px-3 bg-slate-50/70 hover:bg-white border border-slate-200 rounded-xl focus:bg-white focus:border-emerald-600 focus:ring-4 focus:ring-emerald-500/15 focus:outline-none transition-all text-slate-800 font-medium disabled:opacity-50"
                 >
                     <option value="">-- Chọn Phường/Xã --</option>
                     {wards.map((w) => (

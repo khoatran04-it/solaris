@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using System.Threading.Tasks;
 using backend.Enums;
+using backend.Helpers;
 using backend.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -63,19 +64,16 @@ namespace backend.Data
                 {
                     context.IAPermissions.Add(new IAPermission
                     {
-                        Module = def.Module,
                         Code = def.Code,
-                        Name = def.Name
+                        Name = def.Name,
+                        Module = def.Module
                     });
                 }
             }
             await context.SaveChangesAsync();
 
-            // 2. Khởi tạo Vai trò Quản trị viên tối cao (ADMIN)
-            var adminRole = await context.IARoles
-                .Include(r => r.RolePermissions)
-                .FirstOrDefaultAsync(r => r.Code == "ADMIN");
-
+            // 2. Khởi tạo Vai trò ADMIN (Super Admin Role)
+            var adminRole = await context.IARoles.FirstOrDefaultAsync(r => r.Code == "ADMIN");
             if (adminRole == null)
             {
                 adminRole = new IARole
@@ -170,6 +168,41 @@ namespace backend.Data
                     });
                 }
             }
+            await context.SaveChangesAsync();
+
+            // 6. Backfill Slugs cho Nhóm ngành hàng, Danh mục, Sản phẩm, Khuyến mãi
+            var groupsToUpdate = await context.ProductCategoryGroups
+                .Where(g => string.IsNullOrEmpty(g.Slug) || g.Slug.All(char.IsDigit))
+                .ToListAsync();
+            foreach (var g in groupsToUpdate)
+            {
+                g.Slug = SlugHelper.GenerateSlug(g.Name);
+            }
+
+            var catsToUpdate = await context.ProductCategories
+                .Where(c => string.IsNullOrEmpty(c.Slug) || c.Slug.All(char.IsDigit))
+                .ToListAsync();
+            foreach (var c in catsToUpdate)
+            {
+                c.Slug = SlugHelper.GenerateSlug(c.Name);
+            }
+
+            var prodsToUpdate = await context.Products
+                .Where(p => string.IsNullOrEmpty(p.Slug) || p.Slug.All(char.IsDigit))
+                .ToListAsync();
+            foreach (var p in prodsToUpdate)
+            {
+                p.Slug = SlugHelper.GenerateSlug(p.Name);
+            }
+
+            var promosToUpdate = await context.PromotionCampaigns
+                .Where(pc => string.IsNullOrEmpty(pc.Slug) || pc.Slug.All(char.IsDigit))
+                .ToListAsync();
+            foreach (var pc in promosToUpdate)
+            {
+                pc.Slug = SlugHelper.GenerateSlug(pc.Name);
+            }
+
             await context.SaveChangesAsync();
         }
     }

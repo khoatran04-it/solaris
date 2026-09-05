@@ -1,7 +1,7 @@
 import React from 'react';
 import { Metadata } from 'next';
 import Link from 'next/link';
-import { Sparkles, Clock, ArrowRight, Tag } from 'lucide-react';
+import { Sparkles, Clock, ArrowRight, Tag, Gift } from 'lucide-react';
 import shopProductApi from '@/api/shopProductApi';
 import { formatDate } from '@/lib/utils';
 import { ShopPromotionBadge } from '@/types/product';
@@ -26,17 +26,18 @@ export default async function KhuyenMaiPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-10">
             
             {/* Header Banner */}
-            <div className="bg-gradient-to-r from-rose-600 via-pink-600 to-amber-600 text-white rounded-3xl p-8 sm:p-12 shadow-xl relative overflow-hidden">
+            <div className="bg-gradient-to-r from-rose-700 via-pink-700 to-amber-700 text-white rounded-3xl p-8 sm:p-12 shadow-xl relative overflow-hidden">
+                <div className="absolute right-0 top-0 w-96 h-96 bg-white/10 rounded-full blur-3xl pointer-events-none" />
                 <div className="relative z-10 space-y-3 max-w-xl">
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-white/20 backdrop-blur-xs rounded-full text-xs font-bold tracking-wide">
-                        <Sparkles className="w-3.5 h-3.5 text-amber-200" />
+                    <span className="inline-flex items-center gap-1.5 px-3.5 py-1 bg-white/20 backdrop-blur-xs rounded-full text-xs font-extrabold tracking-wide">
+                        <Sparkles className="w-3.5 h-3.5 text-amber-200 animate-pulse" />
                         ĐẠI TIỆC NÔNG SẢN TƯƠI SẠCH
                     </span>
                     <h1 className="text-3xl sm:text-4xl font-black tracking-tight">
                         Chương Trình Khuyến Mãi
                     </h1>
-                    <p className="text-xs sm:text-sm text-pink-100 leading-relaxed">
-                        Săn nông sản sạch đạt chuẩn VietGAP với mức giá siêu ưu đãi từ vườn.
+                    <p className="text-xs sm:text-sm text-pink-100/90 leading-relaxed font-medium">
+                        Săn nông sản sạch đạt chuẩn VietGAP & GlobalGAP với mức giá siêu ưu đãi trực tiếp từ các nông trường công nghệ cao.
                     </p>
                 </div>
             </div>
@@ -47,11 +48,11 @@ export default async function KhuyenMaiPage() {
                     {promotions.map((promo) => (
                         <div
                             key={promo.id}
-                            className="bg-white rounded-3xl border border-slate-200 p-6 shadow-xs hover:shadow-xl hover:border-pink-200 transition-all flex flex-col justify-between space-y-4 group"
+                            className="bg-white rounded-3xl border border-slate-200/80 p-6 sm:p-7 shadow-[0_2px_15px_-3px_rgba(0,0,0,0.03)] hover:shadow-xl hover:border-pink-300 hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between space-y-5 group"
                         >
-                            <div className="space-y-3">
+                            <div className="space-y-3.5">
                                 <div className="flex items-center justify-between">
-                                    <span className="px-3 py-1 bg-rose-50 text-rose-700 font-extrabold text-xs rounded-full border border-rose-200">
+                                    <span className="px-3 py-1 bg-rose-50 text-rose-700 font-black text-xs rounded-full border border-rose-200">
                                         Giảm {promo.isPercentage ? `${promo.discountValue}%` : `${promo.discountValue}đ`}
                                     </span>
                                     <Tag className="w-4 h-4 text-slate-400 group-hover:text-rose-600 transition-colors" />
@@ -61,15 +62,15 @@ export default async function KhuyenMaiPage() {
                                     {promo.name}
                                 </h3>
 
-                                <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                                <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium">
                                     <Clock className="w-3.5 h-3.5 text-amber-500" />
-                                    <span>Hết hạn: {formatDate(promo.endDate)}</span>
+                                    <span>Hạn ưu đãi: {formatDate(promo.endDate)}</span>
                                 </div>
                             </div>
 
                             <Link
                                 href={`/khuyen-mai/${promo.slug}`}
-                                className="inline-flex items-center justify-center gap-2 w-full py-2.5 bg-slate-900 group-hover:bg-rose-600 text-white rounded-xl text-xs font-bold transition-colors"
+                                className="inline-flex items-center justify-center gap-2 w-full py-3 bg-slate-900 group-hover:bg-rose-600 text-white rounded-2xl text-xs font-extrabold transition-all shadow-md active:scale-98"
                             >
                                 <span>Xem sản phẩm ưu đãi</span>
                                 <ArrowRight className="w-3.5 h-3.5" />
@@ -78,14 +79,15 @@ export default async function KhuyenMaiPage() {
                     ))}
                 </div>
             ) : (
-                <div className="bg-white rounded-3xl border border-slate-200 p-12 text-center space-y-3">
-                    <div className="text-6xl">🎁</div>
-                    <h3 className="text-lg font-bold text-slate-800">Chưa có chương trình mới hôm nay</h3>
-                    <p className="text-xs text-slate-500">Vui lòng quay lại sau để đón nhận các đợt ưu đãi vụ mùa mới!</p>
+                <div className="bg-white rounded-3xl border border-slate-200/80 p-16 text-center space-y-3 shadow-2xs">
+                    <div className="w-16 h-16 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mx-auto">
+                        <Gift className="w-8 h-8" />
+                    </div>
+                    <h3 className="text-base font-bold text-slate-900">Chưa có chương trình mới hôm nay</h3>
+                    <p className="text-xs text-slate-500 max-w-sm mx-auto">Vui lòng quay lại sau để đón nhận các đợt ưu đãi nông sản vụ mùa mới!</p>
                 </div>
             )}
 
         </div>
     );
 }
-
