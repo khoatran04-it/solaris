@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import { CheckCircle, AlertTriangle, XCircle } from 'lucide-react';
 
 interface ToastProps {
@@ -20,7 +20,7 @@ export const Toast: React.FC<ToastProps> = ({ show, type, message }) => {
   const currentType = show ? type : displayContent.type;
   const currentMessage = show ? message : displayContent.message;
 
-  // 💡 DICTIONARY PATTERN: Khai báo cấu hình giao diện cho từng loại Toast
+  // Dictionary Pattern: Cấu hình giao diện theo từng loại Toast
   const styleConfig = {
     success: {
       wrapper: 'bg-emerald-500 text-white',

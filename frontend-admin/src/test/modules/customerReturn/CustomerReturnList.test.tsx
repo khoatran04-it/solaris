@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+﻿import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter } from 'react-router-dom';
@@ -36,8 +36,8 @@ vi.mock('react-router-dom', async () => {
 
 /**
  * ============================================================================
- * 📦 MODULE 13: SALES ORDERS & CUSTOMER RETURNS
- * 🧪 COMPONENT TEST: CustomerReturnList (Danh Sách Phiếu Khách Hàng Trả Hàng)
+ * MODULE 13: SALES ORDERS & CUSTOMER RETURNS
+ * COMPONENT TEST: CustomerReturnList (Danh Sách Phiếu Khách Hàng Trả Hàng)
  * ============================================================================
  */
 describe('Module 13 - CustomerReturnList Component', () => {
@@ -203,7 +203,9 @@ describe('Module 13 - CustomerReturnList Component', () => {
 
   // TC06: Mở modal xóa và xác nhận xóa phiếu trả hàng
   it('TC06 - Mở modal xác nhận xóa và gọi API delete khi xác nhận', async () => {
-    (customerReturnApi.delete as any).mockResolvedValue({ message: 'Xóa phiếu trả hàng thành công' });
+    (customerReturnApi.delete as any).mockResolvedValue({
+      message: 'Xóa phiếu trả hàng thành công',
+    });
 
     render(
       <MemoryRouter>

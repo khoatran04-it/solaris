@@ -1,4 +1,4 @@
-using AutoMapper;
+﻿using AutoMapper;
 using backend.DTOs.ProductCategoryDTOs;
 using backend.Models;
 using backend.Services;
@@ -11,8 +11,8 @@ namespace backend.Tests.Modules.Module04_Product
 {
     /// <summary>
     /// ============================================================================
-    /// 📦 MODULE 4: PRODUCT MASTER DATA
-    /// 🧪 UNIT TEST: ProductCategoryService (Quản lý Danh Mục Sản Phẩm)
+    /// MODULE 4: PRODUCT MASTER DATA
+    /// UNIT TEST: ProductCategoryService (Quản lý Danh Mục Sản Phẩm)
     /// ============================================================================
     /// </summary>
     public class ProductCategoryServiceTests

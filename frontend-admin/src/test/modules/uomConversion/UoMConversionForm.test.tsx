@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+﻿import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
@@ -30,8 +30,8 @@ vi.mock('../../../api/productApi', () => ({
 
 /**
  * ============================================================================
- * 📦 MODULE 2: UNIT OF MEASURE (UoM)
- * 🧪 COMPONENT TEST: UoMConversionForm (Form Thiết lập Tỷ lệ Quy đổi)
+ * MODULE 2: UNIT OF MEASURE (UoM)
+ * COMPONENT TEST: UoMConversionForm (Form Thiết lập Tỷ lệ Quy đổi)
  * ============================================================================
  */
 describe('Module 02 - UoMConversionForm Component', () => {
@@ -40,9 +40,7 @@ describe('Module 02 - UoMConversionForm Component', () => {
     { id: 2, code: 'KG', name: 'Kilogram' },
   ];
 
-  const mockProducts = [
-    { id: 10, code: 'WATER', name: 'Nước khoáng Lavie' },
-  ];
+  const mockProducts = [{ id: 10, code: 'WATER', name: 'Nước khoáng Lavie' }];
 
   beforeEach(() => {
     vi.clearAllMocks();

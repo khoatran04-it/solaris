@@ -1,4 +1,4 @@
-﻿using backend.Models;
+using backend.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -13,7 +13,7 @@ namespace backend.Configurations
 
             builder.Property(x => x.IsRequired).HasDefaultValue(false);
 
-            // 🔥 COMPOSITE INDEX: Đảm bảo 1 Danh mục không bị gán trùng 1 thuộc tính 2 lần
+            // Composite Unique Index: Đảm bảo 1 Danh mục không bị gán trùng 1 thuộc tính 2 lần
             builder.HasIndex(x => new { x.CategoryId, x.AttributeDefinitionId }).IsUnique();
 
             // --- CONFIGURATION KHÓA NGOẠI ---

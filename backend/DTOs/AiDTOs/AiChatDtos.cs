@@ -91,6 +91,12 @@ namespace backend.DTOs.AiDTOs
         public decimal UnitPrice { get; set; }
         public decimal DiscountAmount { get; set; }
         public decimal TotalPrice { get; set; }
+
+        /// <summary>Số lượng khả dụng thực tế trong kho.</summary>
+        public decimal AvailableStock { get; set; }
+
+        /// <summary>Thông báo cảnh báo nếu số lượng bị điều chỉnh theo tồn kho khả dụng.</summary>
+        public string? WarningMessage { get; set; }
     }
 
     /// <summary>
@@ -106,6 +112,9 @@ namespace backend.DTOs.AiDTOs
         public string? PreviousOrderCode { get; set; }
 
         public List<InteractiveOrderItemDto> Items { get; set; } = new List<InteractiveOrderItemDto>();
+
+        /// <summary>Cảnh báo tồn kho nếu khách yêu cầu số lượng vượt quá khả dụng thực tế trong kho.</summary>
+        public string? StockWarning { get; set; }
 
         #region Tiền bạc & Upsell Freeship
         public decimal SubTotal { get; set; }
@@ -135,6 +144,7 @@ namespace backend.DTOs.AiDTOs
         public int SessionId { get; set; }
 
         public List<InteractiveOrderItemDto> Items { get; set; } = new List<InteractiveOrderItemDto>();
+        public int? CustomerAddressId { get; set; }
         public string? ReceiverName { get; set; }
         public string? ReceiverPhone { get; set; }
         public string? DeliveryAddress { get; set; }
@@ -179,6 +189,7 @@ namespace backend.DTOs.AiDTOs
     {
         public int Id { get; set; }
         public int VariantId { get; set; }
+        public int UoMId { get; set; }
         public required string Name { get; set; }
         public required string Slug { get; set; }
         public string? ImagePath { get; set; }
@@ -197,6 +208,37 @@ namespace backend.DTOs.AiDTOs
 
         /// <summary>Cờ báo hiệu còn hàng hay không, giúp Frontend disable nút "Thêm vào giỏ" nếu hết hàng.</summary>
         public bool IsInStock { get; set; }
+    }
+    #endregion
+
+    #region 6. Tra cứu Đơn hàng (Order Tracking Payload)
+    public class AiOrderTrackingItemDto
+    {
+        public string VariantName { get; set; } = string.Empty;
+        public decimal Quantity { get; set; }
+        public string UoMName { get; set; } = "Kg";
+        public decimal TotalPrice { get; set; }
+    }
+
+    public class AiOrderTrackingDto
+    {
+        public int OrderId { get; set; }
+        public required string OrderCode { get; set; }
+        public DateTime OrderDate { get; set; }
+        public int Status { get; set; }
+        public string StatusName { get; set; } = string.Empty;
+        public int PaymentStatus { get; set; }
+        public string PaymentStatusName { get; set; } = string.Empty;
+        public int PaymentMethod { get; set; }
+        public string PaymentMethodName { get; set; } = string.Empty;
+        public decimal SubTotal { get; set; }
+        public decimal ShippingFee { get; set; }
+        public decimal TotalAmount { get; set; }
+        public string? ReceiverName { get; set; }
+        public string? ReceiverPhone { get; set; }
+        public string? DeliveryAddress { get; set; }
+        public string? ShippingProvider { get; set; }
+        public List<AiOrderTrackingItemDto> Items { get; set; } = new List<AiOrderTrackingItemDto>();
     }
     #endregion
 }

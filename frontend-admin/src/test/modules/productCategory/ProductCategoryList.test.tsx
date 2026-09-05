@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+﻿import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter } from 'react-router-dom';
@@ -23,8 +23,8 @@ vi.mock('../../../api/productCategoryGroupApi', () => ({
 
 /**
  * ============================================================================
- * 📦 MODULE 4: PRODUCT CATEGORY
- * 🧪 COMPONENT TEST: ProductCategoryList (Danh sách Danh Mục Sản Phẩm)
+ * MODULE 4: PRODUCT CATEGORY
+ * COMPONENT TEST: ProductCategoryList (Danh sách Danh Mục Sản Phẩm)
  * ============================================================================
  */
 describe('Module 04 - ProductCategoryList Component', () => {
@@ -129,7 +129,9 @@ describe('Module 04 - ProductCategoryList Component', () => {
     });
 
     const filterButtons = screen.getAllByRole('button');
-    const groupFilterBtn = filterButtons.find((btn) => btn.textContent?.includes('NHÓM NGÀNH HÀNG'));
+    const groupFilterBtn = filterButtons.find((btn) =>
+      btn.textContent?.includes('NHÓM NGÀNH HÀNG')
+    );
     if (groupFilterBtn) {
       fireEvent.click(groupFilterBtn);
     }

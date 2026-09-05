@@ -202,9 +202,15 @@ const WarehouseForm: React.FC = () => {
         warehouseType: formData.warehouseType?.trim() || undefined,
         totalAreaSqm: formData.totalAreaSqm ? Number(formData.totalAreaSqm) : undefined,
         totalCapacityCbm: formData.totalCapacityCbm ? Number(formData.totalCapacityCbm) : undefined,
-        maxWeightCapacityKg: formData.maxWeightCapacityKg ? Number(formData.maxWeightCapacityKg) : undefined,
-        maxPalletPositions: formData.maxPalletPositions ? Number(formData.maxPalletPositions) : undefined,
-        warningThresholdPercent: formData.warningThresholdPercent ? Number(formData.warningThresholdPercent) : 85,
+        maxWeightCapacityKg: formData.maxWeightCapacityKg
+          ? Number(formData.maxWeightCapacityKg)
+          : undefined,
+        maxPalletPositions: formData.maxPalletPositions
+          ? Number(formData.maxPalletPositions)
+          : undefined,
+        warningThresholdPercent: formData.warningThresholdPercent
+          ? Number(formData.warningThresholdPercent)
+          : 85,
         managerId: formData.managerId === 0 ? null : formData.managerId,
         address: {
           province: formData.address.province.trim(),

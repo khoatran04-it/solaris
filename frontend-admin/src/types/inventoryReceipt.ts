@@ -84,7 +84,7 @@ export interface InventoryReceipt {
 
 export interface InventoryReceiptDetailPayload {
   variantId: number;
-  batchId: number; // 🔥 LƯU Ý: Vì luồng của sếp bắt buộc BatchId, ta sẽ phải có UI tạo Lô hàng ngay trên màn hình Nhận hàng.
+  batchId: number; // Bắt buộc chỉ định BatchId để quản lý theo dõi lô hàng
   uoMId: number;
   purchaseOrderDetailId?: number;
 

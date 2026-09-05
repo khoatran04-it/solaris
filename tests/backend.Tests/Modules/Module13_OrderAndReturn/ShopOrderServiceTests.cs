@@ -1,4 +1,4 @@
-using AutoMapper;
+﻿using AutoMapper;
 using backend.Data;
 using backend.DTOs.ShopDTOs;
 using backend.Models;
@@ -18,8 +18,8 @@ namespace backend.Tests.Modules.Module13_OrderAndReturn
 {
     /// <summary>
     /// ============================================================================
-    /// 📦 MODULE 13: SALES ORDERS & CUSTOMER RETURNS
-    /// 🧪 UNIT TEST: ShopOrderService (B2C Checkout, FEFO Lot Selection & Customer History)
+    /// MODULE 13: SALES ORDERS & CUSTOMER RETURNS
+    /// UNIT TEST: ShopOrderService (B2C Checkout, FEFO Lot Selection & Customer History)
     /// ============================================================================
     /// </summary>
     public class ShopOrderServiceTests

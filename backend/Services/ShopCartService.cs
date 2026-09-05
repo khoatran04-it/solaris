@@ -198,6 +198,74 @@ namespace backend.Services
             });
         }
 
+        /// <inheritdoc />
+        public async Task<ShopCartDto> GetGuestCartPreviewAsync(ShopSyncGuestCartDto request)
+        {
+            if (request?.Items == null || request.Items.Count == 0)
+            {
+                return new ShopCartDto
+                {
+                    CartId = 0,
+                    Items = new List<ShopCartItemDto>(),
+                    TotalItems = 0,
+                    SubTotal = 0,
+                    TotalDiscount = 0,
+                    EstimatedTotal = 0
+                };
+            }
+
+            var variantIds = request.Items.Select(i => i.VariantId).Distinct().ToList();
+            var uomIds = request.Items.Select(i => i.UoMId).Distinct().ToList();
+
+            var variants = await _context.ProductVariants
+                .Include(v => v.Product)
+                .Include(v => v.Prices.Where(pr => pr.IsActive && !pr.IsDeleted))
+                    .ThenInclude(pr => pr.UoM)
+                .Include(v => v.Attributes)
+                    .ThenInclude(a => a.AttributeDefinition)
+                .Include(v => v.PromotionVariants)
+                    .ThenInclude(pv => pv.PromotionCampaign)
+                .Where(v => variantIds.Contains(v.Id) && v.IsActive && !v.IsDeleted)
+                .ToListAsync();
+
+            var uoms = await _context.UoMs
+                .Where(u => uomIds.Contains(u.Id) && u.IsActive && !u.IsDeleted)
+                .ToListAsync();
+
+            var tempCart = new ShoppingCart
+            {
+                Id = 0,
+                CustomerId = 0,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+                Items = new List<ShoppingCartItem>()
+            };
+
+            int tempItemId = 1;
+            foreach (var guestItem in request.Items)
+            {
+                if (guestItem.Quantity <= 0) continue;
+                var variant = variants.FirstOrDefault(v => v.Id == guestItem.VariantId);
+                if (variant == null) continue;
+                var uom = uoms.FirstOrDefault(u => u.Id == guestItem.UoMId) ?? variant.Prices.FirstOrDefault()?.UoM;
+
+                tempCart.Items.Add(new ShoppingCartItem
+                {
+                    Id = tempItemId++,
+                    CartId = 0,
+                    VariantId = variant.Id,
+                    Variant = variant,
+                    UoMId = guestItem.UoMId,
+                    UoM = uom,
+                    Quantity = guestItem.Quantity,
+                    AddedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                });
+            }
+
+            return await BuildCartDtoAsync(tempCart);
+        }
+
         #endregion
 
         #region 3. HELPER METHODS

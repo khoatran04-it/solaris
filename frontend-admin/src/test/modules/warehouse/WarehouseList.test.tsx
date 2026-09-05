@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+﻿import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter } from 'react-router-dom';
@@ -26,8 +26,8 @@ vi.mock('react-router-dom', async () => {
 
 /**
  * ============================================================================
- * 📦 MODULE 08: WAREHOUSE & PHYSICAL ADDRESS MANAGEMENT
- * 🧪 COMPONENT TEST: WarehouseList (Danh sách Kho Hàng & Địa chỉ)
+ * MODULE 08: WAREHOUSE & PHYSICAL ADDRESS MANAGEMENT
+ * COMPONENT TEST: WarehouseList (Danh sách Kho Hàng & Địa chỉ)
  * ============================================================================
  */
 describe('Module 08 - WarehouseList Component', () => {
@@ -95,7 +95,9 @@ describe('Module 08 - WarehouseList Component', () => {
     await waitFor(() => {
       expect(screen.getByText('Tổng Kho Hà Nội')).toBeInTheDocument();
       expect(screen.getByText('WH-HN-01')).toBeInTheDocument();
-      expect(screen.getByText('Số 123 Nguyễn Sơn, Gia Thụy, Long Biên, Hà Nội')).toBeInTheDocument();
+      expect(
+        screen.getByText('Số 123 Nguyễn Sơn, Gia Thụy, Long Biên, Hà Nội')
+      ).toBeInTheDocument();
       expect(screen.getByText('Nguyễn Văn Trưởng Kho')).toBeInTheDocument();
 
       expect(screen.getByText('Kho Nam Sài Gòn')).toBeInTheDocument();
@@ -202,7 +204,9 @@ describe('Module 08 - WarehouseList Component', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText(/Thử thay đổi từ khóa tìm kiếm hoặc bộ lọc khu vực/i)).toBeInTheDocument();
+      expect(
+        screen.getByText(/Thử thay đổi từ khóa tìm kiếm hoặc bộ lọc khu vực/i)
+      ).toBeInTheDocument();
     });
   });
   // #endregion

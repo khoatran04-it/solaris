@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+﻿import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter } from 'react-router-dom';
@@ -29,8 +29,8 @@ vi.mock('../../../api/attributeDefinitionApi', () => ({
 
 /**
  * ============================================================================
- * 📦 MODULE 4: CATEGORY ATTRIBUTE
- * 🧪 COMPONENT TEST: CategoryAttributeList (Cấu Hình Thuộc Tính Danh Mục)
+ * MODULE 4: CATEGORY ATTRIBUTE
+ * COMPONENT TEST: CategoryAttributeList (Cấu Hình Thuộc Tính Danh Mục)
  * ============================================================================
  */
 describe('Module 04 - CategoryAttributeList Component', () => {

@@ -1,4 +1,4 @@
-using backend.DTOs.AuthDTOs;
+﻿using backend.DTOs.AuthDTOs;
 using backend.Models;
 using backend.Services;
 using backend.Tests.Common;
@@ -9,8 +9,8 @@ namespace backend.Tests.Modules.Module01_Auth
 {
     /// <summary>
     /// ============================================================================
-    /// 📦 MODULE 1: IDENTITY & ACCESS MANAGEMENT (IAM)
-    /// 🧪 UNIT TEST: AuthService (Xác thực JWT Token & Phân quyền RBAC)
+    /// MODULE 1: IDENTITY & ACCESS MANAGEMENT (IAM)
+    /// UNIT TEST: AuthService (Xác thực JWT Token & Phân quyền RBAC)
     /// ============================================================================
     /// </summary>
     public class AuthServiceTests

@@ -1,8 +1,8 @@
-import React from 'react';
+﻿import React from 'react';
 
 /**
  * ============================================================================
- * 🎨 SOLARIS ADMIN DESIGN SYSTEM - BADGE & STATUS SYSTEM
+ * SOLARIS ADMIN DESIGN SYSTEM - BADGE & STATUS SYSTEM
  * Tập trung toàn bộ quy chuẩn:
  * - Font chữ: Inter / System Font, cỡ chữ text-xs, font-bold
  * - Kích thước: padding px-2.5 py-1, bo góc rounded-full (Pill shape)
@@ -71,32 +71,32 @@ export const BADGE_BASE_CLASS =
 export const BADGE_DOT_BASE_CLASS = 'w-1.5 h-1.5 rounded-full shrink-0';
 
 export const BADGE_VARIANTS: Record<BadgeVariant, BadgeStyleConfig> = {
-  // 🟢 Hoạt động / Đang bán / Đã duyệt / Hoàn tất / Đã thanh toán
+  // Hoạt động / Đang bán / Đã duyệt / Hoàn tất / Đã thanh toán
   emerald: {
     wrapper: 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100/70',
     dot: 'bg-emerald-500',
   },
-  // 🟡 Chờ xử lý / Đang giao / Cảnh báo / Chờ duyệt
+  // Chờ xử lý / Đang giao / Cảnh báo / Chờ duyệt
   amber: {
     wrapper: 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100/70',
     dot: 'bg-amber-500',
   },
-  // 🔴 Tạm khóa / Ngừng bán / Đã hủy / Từ chối / Lỗi
+  // Tạm khóa / Ngừng bán / Đã hủy / Từ chối / Lỗi
   rose: {
     wrapper: 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100/70',
     dot: 'bg-rose-500',
   },
-  // ⚪ Lưu nháp / Chưa thanh toán / Mặc định
+  // Lưu nháp / Chưa thanh toán / Mặc định
   slate: {
     wrapper: 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100/70',
     dot: 'bg-slate-400',
   },
-  // 🔵 Đã xác nhận / Đang kiểm đếm / Thông tin
+  // Đã xác nhận / Đang kiểm đếm / Thông tin
   blue: {
     wrapper: 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100/70',
     dot: 'bg-blue-500',
   },
-  // 🟣 Đang đóng gói / Đang xử lý
+  // Đang đóng gói / Đang xử lý
   indigo: {
     wrapper: 'bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100/70',
     dot: 'bg-indigo-500',

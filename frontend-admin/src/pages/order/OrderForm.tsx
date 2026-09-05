@@ -634,7 +634,10 @@ const OrderForm: React.FC = () => {
                       {routingPreview.suggestedSourceWarehouseName && (
                         <div className="pt-2 border-t border-amber-100 text-amber-950 font-medium bg-amber-50/50 p-2 rounded-xl">
                           💡 Gợi ý điều phối: Có thể lập lệnh chuyển kho từ{' '}
-                          <strong className="text-amber-950 font-extrabold">{routingPreview.suggestedSourceWarehouseName}</strong> về.
+                          <strong className="text-amber-950 font-extrabold">
+                            {routingPreview.suggestedSourceWarehouseName}
+                          </strong>{' '}
+                          về.
                         </div>
                       )}
                     </div>
@@ -715,7 +718,9 @@ const OrderForm: React.FC = () => {
                   </div>
                   <div className="flex justify-between text-base font-black text-slate-900 pt-2 border-t border-slate-200">
                     <span>TỔNG THANH TOÁN:</span>
-                    <span className="text-xl text-emerald-600 font-black">{totalAmount.toLocaleString('vi-VN')} đ</span>
+                    <span className="text-xl text-emerald-600 font-black">
+                      {totalAmount.toLocaleString('vi-VN')} đ
+                    </span>
                   </div>
                 </div>
               </div>

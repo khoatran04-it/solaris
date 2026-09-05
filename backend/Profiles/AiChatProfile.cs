@@ -43,32 +43,67 @@ namespace backend.Profiles
                     src.Variants.Where(v => !v.IsDeleted && v.IsActive).Select(v => v.Id).FirstOrDefault() != 0 
                         ? src.Variants.Where(v => !v.IsDeleted && v.IsActive).Select(v => v.Id).FirstOrDefault() 
                         : src.Id))
+                .ForMember(dest => dest.UoMId, opt => opt.MapFrom(src => 
+                    src.Variants.Where(v => !v.IsDeleted && v.IsActive)
+                        .SelectMany(v => v.Prices.Where(p => !p.IsDeleted && p.IsActive))
+                        .Select(p => p.UoMId)
+                        .FirstOrDefault() != 0
+                            ? src.Variants.Where(v => !v.IsDeleted && v.IsActive)
+                                .SelectMany(v => v.Prices.Where(p => !p.IsDeleted && p.IsActive))
+                                .Select(p => p.UoMId)
+                                .FirstOrDefault()
+                            : src.BaseUoMId))
                 .ForMember(dest => dest.Slug, opt => opt.MapFrom(src => src.Slug ?? "san-pham"))
                 .ForMember(dest => dest.UoMName, opt => opt.MapFrom(src => src.BaseUoM != null ? src.BaseUoM.Name : "Kg"))
                 .ForMember(dest => dest.Price, opt => opt.MapFrom(src => 
                     src.Variants.Where(v => !v.IsDeleted && v.IsActive)
                         .SelectMany(v => v.Prices.Where(p => !p.IsDeleted))
                         .Select(p => p.Price)
-                        .FirstOrDefault() != 0 
-                            ? src.Variants.Where(v => !v.IsDeleted && v.IsActive)
-                                .SelectMany(v => v.Prices.Where(p => !p.IsDeleted))
-                                .Select(p => p.Price)
-                                .FirstOrDefault() 
-                            : 60000m))
+                        .FirstOrDefault()))
                 .ForMember(dest => dest.DiscountedPrice, opt => opt.MapFrom(src => 
                     src.Variants.Where(v => !v.IsDeleted && v.IsActive)
                         .SelectMany(v => v.Prices.Where(p => !p.IsDeleted))
                         .Select(p => p.Price)
-                        .FirstOrDefault() != 0 
-                            ? src.Variants.Where(v => !v.IsDeleted && v.IsActive)
-                                .SelectMany(v => v.Prices.Where(p => !p.IsDeleted))
-                                .Select(p => p.Price)
-                                .FirstOrDefault() 
-                            : 60000m))
-                .ForMember(dest => dest.Origin, opt => opt.MapFrom(src => "Đà Lạt, Lâm Đồng"))
-                .ForMember(dest => dest.Certification, opt => opt.MapFrom(src => "VietGAP"))
-                .ForMember(dest => dest.BrixLevel, opt => opt.MapFrom(src => "15°Bx"))
-                .ForMember(dest => dest.IsInStock, opt => opt.MapFrom(src => true));
+                        .FirstOrDefault()))
+                .ForMember(dest => dest.Origin, opt => opt.MapFrom(src => 
+                    src.Variants.SelectMany(v => v.Attributes)
+                        .Where(a => a.AttributeDefinition != null && a.AttributeDefinition.Name.ToLower().Contains("xuất xứ"))
+                        .Select(a => a.AttributeValue)
+                        .FirstOrDefault()))
+                .ForMember(dest => dest.Certification, opt => opt.MapFrom(src => 
+                    src.Variants.SelectMany(v => v.Attributes)
+                        .Where(a => a.AttributeDefinition != null && (a.AttributeDefinition.Name.ToLower().Contains("chứng nhận") || a.AttributeDefinition.Name.ToLower().Contains("tiêu chuẩn")))
+                        .Select(a => a.AttributeValue)
+                        .FirstOrDefault()))
+                .ForMember(dest => dest.BrixLevel, opt => opt.MapFrom(src => 
+                    src.Variants.SelectMany(v => v.Attributes)
+                        .Where(a => a.AttributeDefinition != null && (a.AttributeDefinition.Name.ToLower().Contains("độ ngọt") || a.AttributeDefinition.Name.ToLower().Contains("brix")))
+                        .Select(a => a.AttributeValue)
+                        .FirstOrDefault()))
+                .ForMember(dest => dest.IsInStock, opt => opt.MapFrom(src => src.Variants.Any(v => v.IsActive && !v.IsDeleted)));
+            #endregion
+
+            #region Order -> AiOrderTrackingDto
+            CreateMap<Order, AiOrderTrackingDto>()
+                .ForMember(dest => dest.OrderId, opt => opt.MapFrom(src => src.Id))
+                .ForMember(dest => dest.Status, opt => opt.MapFrom(src => (int)src.Status))
+                .ForMember(dest => dest.StatusName, opt => opt.MapFrom(src =>
+                    src.Status == backend.Models.Enums.OrderStatus.Pending ? "Chờ xử lý" :
+                    src.Status == backend.Models.Enums.OrderStatus.Confirmed ? "Đã xác nhận" :
+                    src.Status == backend.Models.Enums.OrderStatus.Shipping ? "Đang giao hàng" :
+                    src.Status == backend.Models.Enums.OrderStatus.Completed ? "Đã giao thành công" :
+                    src.Status == backend.Models.Enums.OrderStatus.Cancelled ? "Đã hủy" : "Không xác định"))
+                .ForMember(dest => dest.PaymentStatus, opt => opt.MapFrom(src => (int)src.PaymentStatus))
+                .ForMember(dest => dest.PaymentStatusName, opt => opt.MapFrom(src =>
+                    src.PaymentStatus == backend.Models.Enums.PaymentStatus.Paid ? "Đã thanh toán" : "Chưa thanh toán"))
+                .ForMember(dest => dest.PaymentMethod, opt => opt.MapFrom(src => (int)src.PaymentMethod))
+                .ForMember(dest => dest.PaymentMethodName, opt => opt.MapFrom(src =>
+                    src.PaymentMethod == backend.Models.Enums.PaymentMethod.COD ? "Thanh toán khi nhận (COD)" : "Cổng VNPay Sandbox"))
+                .ForMember(dest => dest.Items, opt => opt.MapFrom(src => src.Details));
+
+            CreateMap<OrderDetail, AiOrderTrackingItemDto>()
+                .ForMember(dest => dest.VariantName, opt => opt.MapFrom(src => src.Variant != null ? src.Variant.Name : "Sản phẩm"))
+                .ForMember(dest => dest.UoMName, opt => opt.MapFrom(src => src.UoM != null ? src.UoM.Name : "Kg"));
             #endregion
         }
     }

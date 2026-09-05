@@ -1,4 +1,4 @@
-using AutoMapper;
+﻿using AutoMapper;
 using backend.DTOs.InventoryAuditDTOs;
 using backend.Models;
 using backend.Models.Enums;
@@ -16,8 +16,8 @@ namespace backend.Tests.Modules.Module11_InventoryAudit
 {
     /// <summary>
     /// ============================================================================
-    /// 📋 MODULE 11: INVENTORY AUDIT & STOCKTAKE RECONCILIATION
-    /// 🧪 TEST SUITE: InventoryAuditServiceTests
+    /// MODULE 11: INVENTORY AUDIT & STOCKTAKE RECONCILIATION
+    /// TEST SUITE: InventoryAuditServiceTests
     /// ============================================================================
     /// Kiểm thử toàn diện tầng nghiệp vụ Kiểm kê kho hàng:
     /// - Phân trang, tìm kiếm mã đợt, lọc theo Kho, Trạng thái, Loại kiểm kê, Khoảng ngày

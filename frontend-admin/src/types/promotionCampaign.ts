@@ -7,7 +7,7 @@ export interface CampaignAppliedVariant {
   variantName: string;
   productName?: string;
   defaultPrice: number;
-  defaultUoMName?: string; // 🔥 BỔ SUNG: Tên đơn vị tính mặc định (Ví dụ: Kg, Thùng...)
+  defaultUoMName?: string; // Tên đơn vị tính mặc định (Ví dụ: Kg, Thùng...)
   imagePath?: string;
 }
 

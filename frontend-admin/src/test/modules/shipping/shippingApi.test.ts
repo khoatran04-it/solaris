@@ -42,9 +42,7 @@ describe('Module 14 - Shipping API Client (Admin)', () => {
   });
 
   it('TC03 - getWards gọi GET /shipping/wards/{districtId}', async () => {
-    const mockWards = [
-      { wardCode: '20101', districtID: 1442, wardName: 'Phường Bến Nghé' },
-    ];
+    const mockWards = [{ wardCode: '20101', districtID: 1442, wardName: 'Phường Bến Nghé' }];
     (axiosClient.get as any).mockResolvedValue(mockWards);
 
     const res = await shippingApi.getWards(1442);

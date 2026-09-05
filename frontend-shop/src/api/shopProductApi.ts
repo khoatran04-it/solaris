@@ -1,36 +1,40 @@
-import axiosClient from './axiosClient';
-import { ShopProductCard, ShopProductDetail, ShopCategoryTree, ShopProductFilterParams } from '@/types/product';
-import { ShopPromotionBadge } from '@/types/product';
-import { ShopPromotionDetail } from '@/types/promotion';
-import { PagedResult } from '@/types/common';
+import axiosClient from "./axiosClient";
+import {
+  ShopProductCard,
+  ShopProductDetail,
+  ShopCategoryTree,
+  ShopProductFilterParams,
+} from "@/types/product";
+import { ShopPromotionBadge } from "@/types/product";
+import { ShopPromotionDetail } from "@/types/promotion";
+import { PagedResult } from "@/types/common";
 
 const shopProductApi = {
-    getAll: (params?: ShopProductFilterParams) =>
-        axiosClient.get<PagedResult<ShopProductCard>>('/products', { params }),
+  getAll: (params?: ShopProductFilterParams) =>
+    axiosClient.get<PagedResult<ShopProductCard>>("/products", { params }),
 
-    getBySlug: (slug: string) =>
-        axiosClient.get<ShopProductDetail>(`/products/${slug}`),
+  getBySlug: (slug: string) =>
+    axiosClient.get<ShopProductDetail>(`/products/${slug}`),
 
-    getCategories: () =>
-        axiosClient.get<ShopCategoryTree[]>('/products/categories'),
+  getCategories: () =>
+    axiosClient.get<ShopCategoryTree[]>("/products/categories"),
 
-    getFeatured: (limit: number = 8) =>
-        axiosClient.get<ShopProductCard[]>(`/products/featured?limit=${limit}`),
+  getFeatured: (limit: number = 8) =>
+    axiosClient.get<ShopProductCard[]>(`/products/featured?limit=${limit}`),
 
-    getNewArrivals: (limit: number = 8) =>
-        axiosClient.get<ShopProductCard[]>(`/products/new-arrivals?limit=${limit}`),
+  getNewArrivals: (limit: number = 8) =>
+    axiosClient.get<ShopProductCard[]>(`/products/new-arrivals?limit=${limit}`),
 
-    getOrigins: () =>
-        axiosClient.get<string[]>('/products/origins'),
+  getOrigins: () => axiosClient.get<string[]>("/products/origins"),
 
-    getCertifications: () =>
-        axiosClient.get<string[]>('/products/certifications'),
+  getCertifications: () =>
+    axiosClient.get<string[]>("/products/certifications"),
 
-    getPromotions: () =>
-        axiosClient.get<ShopPromotionBadge[]>('/products/promotions'),
+  getPromotions: () =>
+    axiosClient.get<ShopPromotionBadge[]>("/products/promotions"),
 
-    getPromotionBySlug: (slug: string) =>
-        axiosClient.get<ShopPromotionDetail>(`/products/promotions/${slug}`),
+  getPromotionBySlug: (slug: string) =>
+    axiosClient.get<ShopPromotionDetail>(`/products/promotions/${slug}`),
 };
 
 export default shopProductApi;

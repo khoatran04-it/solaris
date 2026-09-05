@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+﻿import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeftRight, Eye, Plus } from 'lucide-react';
 import {
@@ -46,7 +46,7 @@ const InventoryTransferList: React.FC = () => {
   // --- OPTIONS ---
   const [warehouseOptions, setWarehouseOptions] = useState<{ label: string; value: number }[]>([]);
 
-  // 🔥 Dùng Object.keys để lấy Enum an toàn, tránh lỗi Reverse Mapping
+  // Sử dụng Object.keys để lấy Enum an toàn, tránh lỗi Reverse Mapping
   const statusOptions = Object.keys(InventoryTransferStatusLabels).map((key) => ({
     label: InventoryTransferStatusLabels[Number(key) as InventoryTransferStatus],
     value: Number(key),
@@ -261,12 +261,12 @@ const InventoryTransferList: React.FC = () => {
                               year: 'numeric',
                             })
                           : transfer.createdAt
-                          ? new Date(transfer.createdAt).toLocaleDateString('vi-VN', {
-                              day: '2-digit',
-                              month: '2-digit',
-                              year: 'numeric',
-                            })
-                          : '---'}
+                            ? new Date(transfer.createdAt).toLocaleDateString('vi-VN', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                year: 'numeric',
+                              })
+                            : '---'}
                       </div>
                     </td>
 

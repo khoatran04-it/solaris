@@ -133,5 +133,20 @@ namespace backend.Controllers.Shop
             var cart = await _cartService.SyncGuestCartAsync(customerId, request);
             return Ok(cart);
         }
+
+        /// <summary>
+        /// Báo giá và kiểm tra tồn kho thời gian thực cho danh sách món của khách vãng lai (Guest Cart Preview).
+        /// Cho phép khách chưa đăng nhập xem chi tiết giỏ hàng, đơn giá, khuyến mãi và tồn kho.
+        /// </summary>
+        /// <param name="request">Danh sách các món hàng vãng lai kèm số lượng.</param>
+        /// <response code="200">Tính toán thành công, trả về chi tiết giỏ hàng đầy đủ.</response>
+        [HttpPost("guest-preview")]
+        [AllowAnonymous]
+        [ProducesResponseType(typeof(ShopCartDto), StatusCodes.Status200OK)]
+        public async Task<ActionResult<ShopCartDto>> GetGuestCartPreview([FromBody] ShopSyncGuestCartDto request)
+        {
+            var cart = await _cartService.GetGuestCartPreviewAsync(request);
+            return Ok(cart);
+        }
     }
 }

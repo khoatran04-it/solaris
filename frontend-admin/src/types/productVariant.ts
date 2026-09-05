@@ -18,7 +18,7 @@ export interface AttributeInput {
   attributeValue: string;
 }
 
-// 🔥 3. Phụ trợ (MỚI): Bảng giá hiển thị (Match VariantPriceReadDto)
+// 3. Phụ trợ: Bảng giá hiển thị (Match VariantPriceReadDto)
 export interface VariantPrice {
   id: number;
   uoMId: number;
@@ -28,7 +28,7 @@ export interface VariantPrice {
   isDefault: boolean;
 }
 
-// 🔥 4. Phụ trợ (MỚI): Dữ liệu Bảng giá gửi lên (Match VariantPriceInputDto)
+// 4. Phụ trợ: Dữ liệu Bảng giá gửi lên (Match VariantPriceInputDto)
 export interface VariantPriceInput {
   uoMId: number;
   price: number;
@@ -47,8 +47,6 @@ export interface ProductVariant {
   description?: string;
   imagePath?: string;
 
-  // 🔥 ĐÃ XÓA: defaultPrice và promotionalPrice ở gốc
-
   inventoryGuideline: number;
   isActive: boolean;
   createdAt: string;
@@ -65,7 +63,7 @@ export interface ProductVariant {
 
   // Ngăn chứa dữ liệu con
   attributes: VariantAttribute[];
-  prices: VariantPrice[]; // 🔥 BỔ SUNG: Mảng quy cách bán hàng
+  prices: VariantPrice[]; // Mảng quy cách bán hàng (bảng giá theo ĐVT)
 }
 
 // 6. Dữ liệu ghi (Match với ProductVariantCreateDto / ProductVariantUpdateDto)
@@ -88,7 +86,7 @@ export interface ProductVariantPayload {
 
   // Mảng dữ liệu con (Gửi lên 1 cục để BE xử lý Transaction)
   attributes: AttributeInput[];
-  prices: VariantPriceInput[]; // 🔥 BỔ SUNG: Mảng quy cách bán hàng
+  prices: VariantPriceInput[]; // Mảng quy cách bán hàng
 }
 
 // 7. Tham số truy vấn (Lọc danh sách)

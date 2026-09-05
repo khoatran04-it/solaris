@@ -160,10 +160,10 @@ const InventoryAuditForm: React.FC = () => {
             <div className="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-2xl flex gap-3 items-start text-xs text-amber-900 leading-relaxed shadow-2xs">
               <AlertCircle className="w-5 h-5 shrink-0 text-amber-600 mt-0.5" />
               <div>
-                <span className="font-bold">Lưu ý quản trị:</span> Khi nhấn "TẠO MỚI", hệ
-                thống sẽ lưu lại toàn bộ số dư tồn kho khả dụng hiện tại làm mốc so sánh (System
-                Quantity). Nhân viên đi đếm có thể sử dụng chế độ{' '}
-                <strong>Đếm Mù (Blind Count)</strong> để ghi nhận số liệu khách quan nhất.
+                <span className="font-bold">Lưu ý quản trị:</span> Khi nhấn "TẠO MỚI", hệ thống sẽ
+                lưu lại toàn bộ số dư tồn kho khả dụng hiện tại làm mốc so sánh (System Quantity).
+                Nhân viên đi đếm có thể sử dụng chế độ <strong>Đếm Mù (Blind Count)</strong> để ghi
+                nhận số liệu khách quan nhất.
               </div>
             </div>
           </FormSection>

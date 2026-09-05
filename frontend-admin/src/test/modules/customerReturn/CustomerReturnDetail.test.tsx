@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+﻿import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
@@ -29,8 +29,8 @@ vi.mock('react-router-dom', async () => {
 
 /**
  * ============================================================================
- * 📦 MODULE 13: SALES ORDERS & CUSTOMER RETURNS
- * 🧪 COMPONENT TEST: CustomerReturnDetail (Chi Tiết & Nghiệm Thu QC Phiếu Trả)
+ * MODULE 13: SALES ORDERS & CUSTOMER RETURNS
+ * COMPONENT TEST: CustomerReturnDetail (Chi Tiết & Nghiệm Thu QC Phiếu Trả)
  * ============================================================================
  */
 describe('Module 13 - CustomerReturnDetail Component', () => {
@@ -160,9 +160,13 @@ describe('Module 13 - CustomerReturnDetail Component', () => {
     });
 
     const notesInput = screen.getByPlaceholderText(/Hàng đạt 80% chất lượng ban đầu/i);
-    fireEvent.change(notesInput, { target: { value: 'Đã kiểm tra: 1 hộp bình thường, 1 hộp dập' } });
+    fireEvent.change(notesInput, {
+      target: { value: 'Đã kiểm tra: 1 hộp bình thường, 1 hộp dập' },
+    });
 
-    const confirmQcBtn = screen.getByRole('button', { name: /Lưu Kết Quả Kiểm Định & Chuyển Sang Xử Lý/i });
+    const confirmQcBtn = screen.getByRole('button', {
+      name: /Lưu Kết Quả Kiểm Định & Chuyển Sang Xử Lý/i,
+    });
     fireEvent.click(confirmQcBtn);
 
     await waitFor(() => {
@@ -238,7 +242,10 @@ describe('Module 13 - CustomerReturnDetail Component', () => {
     fireEvent.click(confirmRejectBtn);
 
     await waitFor(() => {
-      expect(customerReturnApi.reject).toHaveBeenCalledWith(50, 'Sản phẩm đã quá hạn đổi trả quy định');
+      expect(customerReturnApi.reject).toHaveBeenCalledWith(
+        50,
+        'Sản phẩm đã quá hạn đổi trả quy định'
+      );
     });
   });
 

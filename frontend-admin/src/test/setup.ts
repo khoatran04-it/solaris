@@ -19,6 +19,10 @@ vi.mock('recharts', async (importOriginal) => {
   return {
     ...original,
     ResponsiveContainer: ({ children }: any) =>
-      React.createElement('div', { className: 'recharts-responsive-container', style: { width: 400, height: 300 } }, children),
+      React.createElement(
+        'div',
+        { className: 'recharts-responsive-container', style: { width: 400, height: 300 } },
+        children
+      ),
   };
 });

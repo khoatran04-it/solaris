@@ -1,4 +1,4 @@
-using AutoMapper;
+﻿using AutoMapper;
 using backend.DTOs.InventoryTransferDTOs;
 using backend.Models;
 using backend.Models.Enums;
@@ -16,8 +16,8 @@ namespace backend.Tests.Modules.Module10_Inventory
 {
     /// <summary>
     /// ============================================================================
-    /// 🚚 MODULE 10: INVENTORY TRANSFERS (2-STEP DISPATCH & RECEIVE)
-    /// 🧪 TEST SUITE: InventoryTransferServiceTests
+    /// MODULE 10: INVENTORY TRANSFERS (2-STEP DISPATCH & RECEIVE)
+    /// TEST SUITE: InventoryTransferServiceTests
     /// ============================================================================
     /// Kiểm thử toàn diện tầng nghiệp vụ Quản lý Phiếu Điều Chuyển Hàng Liên Kho:
     /// - Phân trang, tìm kiếm mã phiếu, lọc theo Kho Nguồn, Kho Đích, Trạng thái, Khoảng ngày

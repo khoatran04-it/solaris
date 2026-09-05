@@ -8,7 +8,7 @@ export const inventoryApi = {
     return axiosClient.get('/inventories', { params });
   },
 
-  // 2. GET ALL (Lấy tất cả - Dùng khi sếp làm tính năng Xuất file Excel toàn bộ tồn kho)
+  // 2. GET ALL (Lấy tất cả - Dùng cho tính năng Xuất file Excel toàn bộ tồn kho)
   getAllList: (): Promise<Inventory[]> => {
     return axiosClient.get('/inventories/all');
   },
@@ -18,7 +18,7 @@ export const inventoryApi = {
     return axiosClient.get(`/inventories/${id}`);
   },
 
-  // 💡 LƯU Ý KỸ THUẬT:
+  // Lưu ý kỹ thuật:
   // Không có các hàm Create, Update, Delete ở đây.
   // Số liệu Tồn kho CHỈ ĐƯỢC PHÉP thay đổi thông qua các module Chứng từ Nhập/Xuất/Điều chỉnh (Phase 3 & 4).
 };

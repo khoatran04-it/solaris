@@ -1,4 +1,4 @@
-using AutoMapper;
+﻿using AutoMapper;
 using backend.DTOs.ShopDTOs;
 using backend.Models;
 using backend.Services;
@@ -15,8 +15,8 @@ namespace backend.Tests.Modules.Module12_ShoppingCart
 {
     /// <summary>
     /// ============================================================================
-    /// 🛒 MODULE 12: SHOPPING CART (GIỎ HÀNG MUA SẮM)
-    /// 🧪 UNIT TEST: ShopCartService (Quản Lý Giỏ Hàng, Tồn Kho Thời Gian Thực & Đồng Bộ Khách Vãng Lai)
+    /// MODULE 12: SHOPPING CART (GIỎ HÀNG MUA SẮM)
+    /// UNIT TEST: ShopCartService (Quản Lý Giỏ Hàng, Tồn Kho Thời Gian Thực & Đồng Bộ Khách Vãng Lai)
     /// ============================================================================
     /// </summary>
     public class ShopCartServiceTests

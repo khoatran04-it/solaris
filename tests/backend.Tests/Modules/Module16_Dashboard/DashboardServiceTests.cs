@@ -1,4 +1,4 @@
-using backend.Data;
+﻿using backend.Data;
 using backend.Models;
 using backend.Models.Enums;
 using backend.Services;
@@ -10,8 +10,8 @@ namespace backend.Tests.Modules.Module16_Dashboard
 {
     /// <summary>
     /// ============================================================================
-    /// 📊 MODULE 16: EXECUTIVE DASHBOARDS & ANALYTICS
-    /// 🧪 TEST SUITE: DashboardServiceTests
+    /// MODULE 16: EXECUTIVE DASHBOARDS & ANALYTICS
+    /// TEST SUITE: DashboardServiceTests
     /// ============================================================================
     /// Kiểm thử toàn diện 4 bảng điều khiển quản trị:
     /// - Dashboard 1: Tổng quan Kinh doanh & Doanh thu (Overview)

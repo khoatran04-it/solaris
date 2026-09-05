@@ -1,4 +1,4 @@
-using AutoMapper;
+﻿using AutoMapper;
 using backend.Data;
 using backend.DTOs.AiDTOs;
 using backend.DTOs.PaymentDTOs;
@@ -26,8 +26,8 @@ namespace backend.Tests.Modules.Module15_AiChatbot
 {
     /// <summary>
     /// ============================================================================
-    /// 🤖 MODULE 15: AI CHATBOT & CONVERSATIONAL COMMERCE
-    /// 🧪 UNIT TEST: GeminiChatService (Quản lý Phiên, LLM Agentic Workflow & Chốt Đơn Chat)
+    /// MODULE 15: AI CHATBOT & CONVERSATIONAL COMMERCE
+    /// UNIT TEST: GeminiChatService (Quản lý Phiên, LLM Agentic Workflow & Chốt Đơn Chat)
     /// ============================================================================
     /// </summary>
     public class GeminiChatServiceTests
@@ -452,6 +452,18 @@ namespace backend.Tests.Modules.Module15_AiChatbot
             context.UoMs.Add(uom);
             context.Products.Add(product);
             context.ProductVariants.Add(variant);
+            var batch = new ProductBatch { Id = 1, BatchCode = "BATCH-SR-01", VariantId = 301, ExpiryDate = DateTime.UtcNow.AddMonths(1) };
+            context.ProductBatches.Add(batch);
+            context.WarehouseInventories.Add(new WarehouseInventory
+            {
+                Id = 1,
+                WarehouseId = 1,
+                VariantId = 301,
+                BatchId = 1,
+                QuantityAvailable = 50,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            });
             await context.SaveChangesAsync();
 
             var service = new GeminiChatService(CreateMockHttpClient(), _config, context, _mapper, _mockVnPayService, _mockHttpContextAccessor);
@@ -517,6 +529,18 @@ namespace backend.Tests.Modules.Module15_AiChatbot
             context.UoMs.Add(uom);
             context.Products.Add(product);
             context.ProductVariants.Add(variant);
+            var batch = new ProductBatch { Id = 2, BatchCode = "BATCH-CAM-01", VariantId = 401, ExpiryDate = DateTime.UtcNow.AddMonths(1) };
+            context.ProductBatches.Add(batch);
+            context.WarehouseInventories.Add(new WarehouseInventory
+            {
+                Id = 2,
+                WarehouseId = 1,
+                VariantId = 401,
+                BatchId = 2,
+                QuantityAvailable = 50,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            });
             await context.SaveChangesAsync();
 
             _mockVnPayService
@@ -614,39 +638,234 @@ namespace backend.Tests.Modules.Module15_AiChatbot
         }
         #endregion
 
-        #region TC13: LIVE GỌI THỰC TẾ LÊN GOOGLE GEMINI API
+        #region TC14: LÊN ĐƠN TRỰC TIẾP CHO 1 SẢN PHẨM CỤ THỂ -> THẺ ĐƠN HÀNG CHỈ CHỨA ĐÚNG SẢN PHẨM ĐÓ
         [Fact]
-        public async Task SendMessageAsync_WithRealHttpClient_ShouldCallLiveGeminiApiAndReceiveNaturalReply()
+        public async Task SendMessageAsync_WhenOrderingSpecificProductInSharedCategory_ShouldOnlyIncludeRequestedProduct()
         {
-            // Arrange: Sử dụng Real HttpClient kết nối mạng thật đến Google Generative Language API
+            // Arrange
             using var context = TestFactories.CreateInMemoryDbContext();
-            using var realHttpClient = new HttpClient();
 
-            var realConfig = new ConfigurationBuilder()
-                .AddInMemoryCollection(new Dictionary<string, string?>
+            var cat = new ProductCategory { Id = 1, Name = "Bơ Sáp & Sầu Riêng", Code = "CAT-BO-SR", IsActive = true, IsDeleted = false };
+            var uomKg = new UoM { Id = 1, Name = "Kilogram", Code = "KG" };
+            var uomTrai = new UoM { Id = 5, Name = "Trái/Quả/Củ", Code = "TRAI" };
+
+            var boSap = new Product
+            {
+                Id = 1,
+                Name = "Bơ Sáp 034 Lâm Đồng (Loại 1)",
+                Code = "SP-BO-034",
+                Slug = "bo-sap-034-lam-dong-loai-1",
+                CategoryId = 1,
+                Category = cat,
+                BaseUoMId = 1,
+                BaseUoM = uomKg,
+                IsActive = true,
+                IsDeleted = false
+            };
+            var varBo = new ProductVariant
+            {
+                Id = 3,
+                ProductId = 1,
+                Product = boSap,
+                Name = "Bơ Sáp 034 - Loại 1 (Size VIP 2-3 trái/kg)",
+                Code = "SKU-BO034-VIP",
+                IsActive = true,
+                IsDeleted = false,
+                Prices = new List<ProductVariantPrice>
                 {
-                    { "GeminiSettings:ApiKey", "AQ.Ab8RN6Ko-9K1tmb7cmtOnCitJg-3nNntiZFmh7jvycBIdFmEfg" },
-                    { "GeminiSettings:Model", "gemini-3.5-flash-lite" },
-                    { "GeminiSettings:BaseUrl", "https://generativelanguage.googleapis.com/v1beta/models/" }
-                })
-                .Build();
+                    new ProductVariantPrice { Id = 1, VariantId = 3, UoMId = 1, Price = 90000, IsActive = true, IsDeleted = false }
+                }
+            };
+            boSap.Variants.Add(varBo);
 
-            var service = new GeminiChatService(realHttpClient, realConfig, context, _mapper, _mockVnPayService, _mockHttpContextAccessor);
+            var sauRieng = new Product
+            {
+                Id = 2,
+                Name = "Sầu Riêng",
+                Code = "SP-BO-035",
+                Slug = "sau-rieng",
+                CategoryId = 1,
+                Category = cat,
+                BaseUoMId = 5,
+                BaseUoM = uomTrai,
+                IsActive = true,
+                IsDeleted = false
+            };
+            var varSR = new ProductVariant
+            {
+                Id = 4,
+                ProductId = 2,
+                Product = sauRieng,
+                Name = "Sầu Riêng Loại 1 Trái",
+                Code = "SR-1",
+                IsActive = true,
+                IsDeleted = false,
+                Prices = new List<ProductVariantPrice>
+                {
+                    new ProductVariantPrice { Id = 2, VariantId = 4, UoMId = 5, Price = 100000, IsActive = true, IsDeleted = false }
+                }
+            };
+            sauRieng.Variants.Add(varSR);
+
+            context.ProductCategories.Add(cat);
+            context.UoMs.AddRange(uomKg, uomTrai);
+            context.Products.AddRange(boSap, sauRieng);
+            context.ProductVariants.AddRange(varBo, varSR);
+
+            var batchBo = new ProductBatch { Id = 1, BatchCode = "BATCH-BO-01", VariantId = 3, ExpiryDate = DateTime.UtcNow.AddMonths(1) };
+            var batchSR = new ProductBatch { Id = 2, BatchCode = "BATCH-SR-01", VariantId = 4, ExpiryDate = DateTime.UtcNow.AddMonths(1) };
+            context.ProductBatches.AddRange(batchBo, batchSR);
+
+            // Tồn kho: Bơ có 34kg, Sầu riêng chỉ còn 8 trái
+            context.WarehouseInventories.AddRange(
+                new WarehouseInventory { Id = 1, WarehouseId = 1, VariantId = 3, BatchId = 1, QuantityAvailable = 34, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow },
+                new WarehouseInventory { Id = 2, WarehouseId = 1, VariantId = 4, BatchId = 2, QuantityAvailable = 8, QuantityReserved = 0, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow }
+            );
+
+            await context.SaveChangesAsync();
+
+            var client = CreateMockHttpClient("Dạ kho Solaris hiện chỉ còn 8 trái sầu riêng, hệ thống đã điều chỉnh số lượng.");
+            var service = new GeminiChatService(client, _config, context, _mapper, _mockVnPayService, _mockHttpContextAccessor);
 
             var request = new AiSendMessageRequestDto
             {
-                Message = "Chào em! Cho anh hỏi nông sản tại Solaris có những chứng nhận an toàn gì?"
+                Message = "Cho tôi 10 quả sầu riêng"
             };
 
-            // Act: Bắn request thật qua Internet lên máy chủ Google Gemini
-            var result = await service.SendMessageAsync(request, 1, "127.0.0.1");
+            // Act
+            var result = await service.SendMessageAsync(request, 10, "127.0.0.1");
 
             // Assert
             result.Should().NotBeNull();
-            result.SessionId.Should().BeGreaterThan(0);
-            result.Content.Should().NotBeNullOrWhiteSpace();
-            // Gemini phản hồi bằng văn bản tiếng Việt tự nhiên
-            result.Content.Length.Should().BeGreaterThan(10);
+            result.PayloadType.Should().Be("interactive_order");
+            result.Payload.Should().BeOfType<InteractiveOrderPayloadDto>();
+
+            var order = (InteractiveOrderPayloadDto)result.Payload!;
+            // CHỈ CÓ ĐÚNG 1 SẢN PHẨM LÀ SẦU RIÊNG, TUYỆT ĐỐI KHÔNG CÓ BƠ SÁP
+            order.Items.Should().HaveCount(1);
+            order.Items[0].VariantId.Should().Be(4);
+            order.Items[0].VariantName.Should().Be("Sầu Riêng");
+            order.Items[0].Quantity.Should().Be(8); // Capped at available stock (8)
+            order.Items[0].UnitPrice.Should().Be(100000);
+            order.Items[0].TotalPrice.Should().Be(800000);
+            order.StockWarning.Should().Contain("chỉ còn 8");
+            order.StockWarning.Should().Contain("10");
+
+            // Đảm bảo không có Bơ Sáp trong đơn
+            order.Items.Any(i => i.VariantName.Contains("Bơ")).Should().BeFalse();
+        }
+        #endregion
+
+        #region TC15: LÊN ĐƠN KHI NGƯỜI DÙNG YÊU CẦU NHIỀU SẢN PHẨM KHÁC NHAU
+        [Fact]
+        public async Task SendMessageAsync_WhenOrderingMultipleProductsExplicitly_ShouldExtractCorrectQuantities()
+        {
+            // Arrange
+            using var context = TestFactories.CreateInMemoryDbContext();
+
+            var cat = new ProductCategory { Id = 1, Name = "Bơ Sáp & Sầu Riêng", Code = "CAT-BO-SR", IsActive = true, IsDeleted = false };
+            var uomKg = new UoM { Id = 1, Name = "Kilogram", Code = "KG" };
+            var uomTrai = new UoM { Id = 5, Name = "Trái/Quả/Củ", Code = "TRAI" };
+
+            var boSap = new Product
+            {
+                Id = 1,
+                Name = "Bơ Sáp 034 Lâm Đồng (Loại 1)",
+                Code = "SP-BO-034",
+                Slug = "bo-sap-034-lam-dong-loai-1",
+                CategoryId = 1,
+                Category = cat,
+                BaseUoMId = 1,
+                BaseUoM = uomKg,
+                IsActive = true,
+                IsDeleted = false
+            };
+            var varBo = new ProductVariant
+            {
+                Id = 3,
+                ProductId = 1,
+                Product = boSap,
+                Name = "Bơ Sáp 034",
+                Code = "SKU-BO034",
+                IsActive = true,
+                IsDeleted = false,
+                Prices = new List<ProductVariantPrice>
+                {
+                    new ProductVariantPrice { Id = 1, VariantId = 3, UoMId = 1, Price = 90000, IsActive = true, IsDeleted = false }
+                }
+            };
+            boSap.Variants.Add(varBo);
+
+            var sauRieng = new Product
+            {
+                Id = 2,
+                Name = "Sầu Riêng",
+                Code = "SP-BO-035",
+                Slug = "sau-rieng",
+                CategoryId = 1,
+                Category = cat,
+                BaseUoMId = 5,
+                BaseUoM = uomTrai,
+                IsActive = true,
+                IsDeleted = false
+            };
+            var varSR = new ProductVariant
+            {
+                Id = 4,
+                ProductId = 2,
+                Product = sauRieng,
+                Name = "Sầu Riêng",
+                Code = "SR-1",
+                IsActive = true,
+                IsDeleted = false,
+                Prices = new List<ProductVariantPrice>
+                {
+                    new ProductVariantPrice { Id = 2, VariantId = 4, UoMId = 5, Price = 100000, IsActive = true, IsDeleted = false }
+                }
+            };
+            sauRieng.Variants.Add(varSR);
+
+            context.ProductCategories.Add(cat);
+            context.UoMs.AddRange(uomKg, uomTrai);
+            context.Products.AddRange(boSap, sauRieng);
+            context.ProductVariants.AddRange(varBo, varSR);
+
+            var batchBo = new ProductBatch { Id = 10, BatchCode = "BATCH-BO-02", VariantId = 3, ExpiryDate = DateTime.UtcNow.AddMonths(1) };
+            var batchSR = new ProductBatch { Id = 20, BatchCode = "BATCH-SR-02", VariantId = 4, ExpiryDate = DateTime.UtcNow.AddMonths(1) };
+            context.ProductBatches.AddRange(batchBo, batchSR);
+
+            context.WarehouseInventories.AddRange(
+                new WarehouseInventory { Id = 1, WarehouseId = 1, VariantId = 3, BatchId = 10, QuantityAvailable = 50, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow },
+                new WarehouseInventory { Id = 2, WarehouseId = 1, VariantId = 4, BatchId = 20, QuantityAvailable = 50, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow }
+            );
+
+            await context.SaveChangesAsync();
+
+            var client = CreateMockHttpClient("Dạ em đã chuẩn bị đơn gồm 2kg bơ và 1 quả sầu riêng cho anh rồi ạ!");
+            var service = new GeminiChatService(client, _config, context, _mapper, _mockVnPayService, _mockHttpContextAccessor);
+
+            var request = new AiSendMessageRequestDto
+            {
+                Message = "Cho tôi 2kg bơ và 1 quả sầu riêng"
+            };
+
+            // Act
+            var result = await service.SendMessageAsync(request, 10, "127.0.0.1");
+
+            // Assert
+            result.Should().NotBeNull();
+            result.PayloadType.Should().Be("interactive_order");
+            var order = (InteractiveOrderPayloadDto)result.Payload!;
+
+            order.Items.Should().HaveCount(2);
+
+            var boItem = order.Items.FirstOrDefault(i => i.VariantId == 3);
+            boItem.Should().NotBeNull();
+            boItem!.Quantity.Should().Be(2);
+
+            var srItem = order.Items.FirstOrDefault(i => i.VariantId == 4);
+            srItem.Should().NotBeNull();
+            srItem!.Quantity.Should().Be(1);
         }
         #endregion
     }

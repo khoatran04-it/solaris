@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+﻿import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter } from 'react-router-dom';
@@ -86,8 +86,8 @@ vi.mock('react-router-dom', async () => {
 
 /**
  * ============================================================================
- * 📥 MODULE 10: INVENTORY RECEIPTS & QUALITY CONTROL (GRN)
- * 🧪 COMPONENT TEST: InventoryReceiptForm (Tạo Mới Phiếu Nhập Kho & Kiểm Đếm)
+ * MODULE 10: INVENTORY RECEIPTS & QUALITY CONTROL (GRN)
+ * COMPONENT TEST: InventoryReceiptForm (Tạo Mới Phiếu Nhập Kho & Kiểm Đếm)
  * ============================================================================
  */
 describe('Module 10 - InventoryReceiptForm Component', () => {
@@ -222,8 +222,8 @@ describe('Module 10 - InventoryReceiptForm Component', () => {
     // 5. Nhập số lượng thực nhận và dự kiến
     const numberInputs = screen.getAllByRole('spinbutton');
     fireEvent.change(numberInputs[0], { target: { value: '100' } }); // Dự kiến
-    fireEvent.change(numberInputs[1], { target: { value: '95' } });  // Thực nhận
-    fireEvent.change(numberInputs[2], { target: { value: '5' } });   // Trả về
+    fireEvent.change(numberInputs[1], { target: { value: '95' } }); // Thực nhận
+    fireEvent.change(numberInputs[2], { target: { value: '5' } }); // Trả về
 
     // 6. Nhập lý do lỗi nếu có trả về
     const reasonInput = screen.getByPlaceholderText(/Lý do.../i);

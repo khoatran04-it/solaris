@@ -1,4 +1,4 @@
-using AutoMapper;
+﻿using AutoMapper;
 using backend.DTOs.InventoryReceiptDTOs;
 using backend.Models;
 using backend.Models.Enums;
@@ -16,8 +16,8 @@ namespace backend.Tests.Modules.Module10_Inventory
 {
     /// <summary>
     /// ============================================================================
-    /// 📥 MODULE 10: INVENTORY RECEIPTS & QUALITY CONTROL (GRN)
-    /// 🧪 TEST SUITE: InventoryReceiptServiceTests
+    /// MODULE 10: INVENTORY RECEIPTS & QUALITY CONTROL (GRN)
+    /// TEST SUITE: InventoryReceiptServiceTests
     /// ============================================================================
     /// Kiểm thử toàn diện tầng nghiệp vụ Quản lý Phiếu Nhập Kho và Kiểm đếm nông sản:
     /// - Phân trang, tìm kiếm mã phiếu, lọc theo Kho, Nhà cung cấp, Trạng thái, Khoảng ngày

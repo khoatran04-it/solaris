@@ -1,4 +1,4 @@
-using AutoMapper;
+﻿using AutoMapper;
 using backend.DTOs.InventoryIssueDTOs;
 using backend.Models;
 using backend.Models.Enums;
@@ -16,8 +16,8 @@ namespace backend.Tests.Modules.Module10_Inventory
 {
     /// <summary>
     /// ============================================================================
-    /// 📤 MODULE 10: INVENTORY ISSUES & FEFO SMART PICKER
-    /// 🧪 TEST SUITE: InventoryIssueServiceTests
+    /// MODULE 10: INVENTORY ISSUES & FEFO SMART PICKER
+    /// TEST SUITE: InventoryIssueServiceTests
     /// ============================================================================
     /// Kiểm thử toàn diện tầng nghiệp vụ Quản lý Phiếu Xuất Kho và Thuật toán đề xuất xuất hàng FEFO:
     /// - Phân trang, tìm kiếm mã phiếu, người nhận, mã đơn hàng, lọc theo Kho, Trạng thái, Khoảng ngày

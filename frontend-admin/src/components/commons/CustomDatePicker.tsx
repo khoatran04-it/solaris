@@ -22,7 +22,7 @@ const DatePicker: React.FC<DatePickerProps> = ({
   placeholder = 'Chọn ngày/tháng/năm...',
   alignRight = false,
 }) => {
-  const activeDate = value !== undefined ? value : (selectedDate !== undefined ? selectedDate : null);
+  const activeDate = value !== undefined ? value : selectedDate !== undefined ? selectedDate : null;
   const [isOpen, setIsOpen] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(activeDate || new Date());
   const wrapperRef = useRef<HTMLDivElement>(null);

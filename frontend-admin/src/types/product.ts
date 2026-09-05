@@ -1,6 +1,6 @@
 import { PaginationParams } from './common';
 
-// 🔥 BỔ SUNG: Type hứng cấu hình thuộc tính động (EAV) từ Backend
+// Cấu hình thuộc tính động (EAV) từ Backend
 export interface ProductAttributeConfig {
   id: number;
   name: string;

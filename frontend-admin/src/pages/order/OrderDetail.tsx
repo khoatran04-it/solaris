@@ -88,7 +88,13 @@ const OrderDetail: React.FC = () => {
         data.details && data.details.some((d: any) => (d.issuedQuantity || 0) < d.quantity);
 
       // Phân tích tình trạng tồn kho đa kho cho đơn hàng CHỈ KHI đơn đang chờ xuất và chưa xuất đủ
-      if (data && data.details && data.details.length > 0 && isPendingOrConfirmed && hasUnissuedItems) {
+      if (
+        data &&
+        data.details &&
+        data.details.length > 0 &&
+        isPendingOrConfirmed &&
+        hasUnissuedItems
+      ) {
         try {
           setLoadingRouting(true);
           const routing = await orderApi.previewRouting({
@@ -277,7 +283,10 @@ const OrderDetail: React.FC = () => {
                     showToast('success', 'ĐÃ CẬP NHẬT ĐƠN HÀNG: GIAO THÀNH CÔNG & ĐÃ THANH TOÁN!');
                     fetchOrder();
                   } catch (err: any) {
-                    showToast('error', err.response?.data?.message || 'Lỗi cập nhật trạng thái đơn');
+                    showToast(
+                      'error',
+                      err.response?.data?.message || 'Lỗi cập nhật trạng thái đơn'
+                    );
                   } finally {
                     setActionLoading(false);
                   }
@@ -335,7 +344,11 @@ const OrderDetail: React.FC = () => {
                     ⚠️ Cảnh Báo Thiếu Hàng Xuất
                   </span>
                   <span className="text-sm font-bold text-amber-950">
-                    Kho xuất hiện tại (<strong className="text-indigo-800 font-extrabold">{order.warehouseName || 'Chưa gán'}</strong>) đang thiếu {routingAnalysis.missingItems.length} mặt hàng để xuất đơn!
+                    Kho xuất hiện tại (
+                    <strong className="text-indigo-800 font-extrabold">
+                      {order.warehouseName || 'Chưa gán'}
+                    </strong>
+                    ) đang thiếu {routingAnalysis.missingItems.length} mặt hàng để xuất đơn!
                   </span>
                 </div>
 
@@ -349,7 +362,9 @@ const OrderDetail: React.FC = () => {
                       <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
                       <span>{item.variantName}:</span>
                       <span className="text-rose-600 font-black">Thiếu {item.missingQuantity}</span>
-                      <span className="text-slate-400 font-medium">(Cần {item.requestedQuantity}, Có {item.availableQuantity})</span>
+                      <span className="text-slate-400 font-medium">
+                        (Cần {item.requestedQuantity}, Có {item.availableQuantity})
+                      </span>
                     </span>
                   ))}
                 </div>
@@ -379,7 +394,9 @@ const OrderDetail: React.FC = () => {
               className="px-5 py-3.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-black text-xs uppercase tracking-wider rounded-2xl transition-all shadow-md shadow-amber-500/25 hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2.5 shrink-0 border border-amber-400"
             >
               <Truck size={18} />
-              <span>Lập Lệnh Chuyển Kho Bổ Sung ({routingAnalysis.missingItems.length} SP Thiếu)</span>
+              <span>
+                Lập Lệnh Chuyển Kho Bổ Sung ({routingAnalysis.missingItems.length} SP Thiếu)
+              </span>
               <ArrowRight size={16} />
             </button>
           </div>
@@ -396,7 +413,10 @@ const OrderDetail: React.FC = () => {
           <div className="bg-emerald-50/90 border border-emerald-200 rounded-2xl px-5 py-3.5 mb-6 flex items-center justify-between text-xs text-emerald-900 font-bold shadow-2xs">
             <div className="flex items-center gap-2.5">
               <CheckCircle size={18} className="text-emerald-600 shrink-0" />
-              <span>Kho xuất <strong>{order.warehouseName}</strong> có đủ 100% tồn kho khả dụng để thực hiện xuất kho cho đơn hàng này.</span>
+              <span>
+                Kho xuất <strong>{order.warehouseName}</strong> có đủ 100% tồn kho khả dụng để thực
+                hiện xuất kho cho đơn hàng này.
+              </span>
             </div>
             <span className="px-2.5 py-1 bg-emerald-600 text-white rounded-lg text-[10px] font-black uppercase tracking-wider shrink-0">
               Sẵn sàng xuất hàng
@@ -421,9 +441,18 @@ const OrderDetail: React.FC = () => {
                 </span>
               </div>
               <p className="text-xs text-slate-600 pt-1 font-medium">
-                Đơn vị vận chuyển: <strong className="text-blue-900 font-black">{order.shippingProvider || 'GHN'}</strong>
+                Đơn vị vận chuyển:{' '}
+                <strong className="text-blue-900 font-black">
+                  {order.shippingProvider || 'GHN'}
+                </strong>
                 {order.trackingCode && (
-                  <> | Mã vận đơn: <strong className="font-mono text-indigo-700 bg-white px-2 py-0.5 rounded border border-blue-200 font-bold">{order.trackingCode}</strong></>
+                  <>
+                    {' '}
+                    | Mã vận đơn:{' '}
+                    <strong className="font-mono text-indigo-700 bg-white px-2 py-0.5 rounded border border-blue-200 font-bold">
+                      {order.trackingCode}
+                    </strong>
+                  </>
                 )}
               </p>
             </div>
@@ -604,7 +633,9 @@ const OrderDetail: React.FC = () => {
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-sm">
                   {order.details?.map((item, idx) => {
-                    const missing = routingAnalysis?.missingItems?.find((m) => m.variantId === item.variantId);
+                    const missing = routingAnalysis?.missingItems?.find(
+                      (m) => m.variantId === item.variantId
+                    );
                     return (
                       <tr key={item.id || idx} className="hover:bg-slate-50/80 transition-colors">
                         <td className="px-4 py-3 text-center text-slate-400 font-medium">
@@ -636,17 +667,22 @@ const OrderDetail: React.FC = () => {
                         {/* Cột Tình trạng kho xuất */}
                         <td className="px-4 py-3 text-center border-l border-slate-100">
                           {(() => {
-                            if (order.status === OrderStatus.Shipping || order.status === OrderStatus.Completed) {
+                            if (
+                              order.status === OrderStatus.Shipping ||
+                              order.status === OrderStatus.Completed
+                            ) {
                               if (item.issuedQuantity >= item.quantity) {
                                 return (
                                   <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                    <CheckCircle size={13} /> Đã xuất đủ ({item.issuedQuantity}/{item.quantity})
+                                    <CheckCircle size={13} /> Đã xuất đủ ({item.issuedQuantity}/
+                                    {item.quantity})
                                   </span>
                                 );
                               }
                               return (
                                 <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200">
-                                  <AlertCircle size={13} /> Đã xuất {item.issuedQuantity}/{item.quantity}
+                                  <AlertCircle size={13} /> Đã xuất {item.issuedQuantity}/
+                                  {item.quantity}
                                 </span>
                               );
                             }
@@ -662,7 +698,8 @@ const OrderDetail: React.FC = () => {
                             if (missing && missing.missingQuantity > 0) {
                               return (
                                 <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200">
-                                  <AlertCircle size={13} /> Thiếu {missing.missingQuantity} (Có {missing.availableQuantity})
+                                  <AlertCircle size={13} /> Thiếu {missing.missingQuantity} (Có{' '}
+                                  {missing.availableQuantity})
                                 </span>
                               );
                             }

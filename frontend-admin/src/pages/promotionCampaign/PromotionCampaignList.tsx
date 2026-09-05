@@ -130,15 +130,13 @@ const PromotionCampaignList: React.FC = () => {
 
   // --- HELPER FUNC: Lấy màu và nhãn cho thời hạn chiến dịch ---
   const getCampaignTimeStatus = (startStr: string, endStr: string, isActive: boolean) => {
-    if (!isActive)
-      return { text: 'Đã khóa', variant: 'rose' as const };
+    if (!isActive) return { text: 'Đã khóa', variant: 'rose' as const };
 
     const now = new Date().getTime();
     const start = new Date(startStr).getTime();
     const end = new Date(endStr).getTime();
 
-    if (now < start)
-      return { text: 'Sắp diễn ra', variant: 'amber' as const };
+    if (now < start) return { text: 'Sắp diễn ra', variant: 'amber' as const };
     if (now > end)
       return {
         text: 'Đã kết thúc',
@@ -265,10 +263,7 @@ const PromotionCampaignList: React.FC = () => {
 
                       {/* CELL 3: TRẠNG THÁI CHIẾN DỊCH (TÁCH CỘT RIÊNG) */}
                       <td className="py-3 px-2 text-center">
-                        <StatusBadge
-                          label={timeStatus.text}
-                          variant={timeStatus.variant}
-                        />
+                        <StatusBadge label={timeStatus.text} variant={timeStatus.variant} />
                       </td>
 
                       {/* CELL 4: TRẠNG THÁI HỆ THỐNG */}

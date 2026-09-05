@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+﻿import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
@@ -29,12 +29,14 @@ vi.mock('../../../api/shippingApi', () => ({
       { provinceID: 201, provinceName: 'Hồ Chí Minh', code: 'HCM' },
       { provinceID: 203, provinceName: 'Đà Nẵng', code: 'DN' },
     ]),
-    getDistricts: vi.fn().mockResolvedValue([
-      { districtID: 1442, provinceID: 203, districtName: 'Hải Châu', code: 'HC' },
-    ]),
-    getWards: vi.fn().mockResolvedValue([
-      { wardCode: '20101', districtID: 1442, wardName: 'Hòa Cường Bắc' },
-    ]),
+    getDistricts: vi
+      .fn()
+      .mockResolvedValue([
+        { districtID: 1442, provinceID: 203, districtName: 'Hải Châu', code: 'HC' },
+      ]),
+    getWards: vi
+      .fn()
+      .mockResolvedValue([{ wardCode: '20101', districtID: 1442, wardName: 'Hòa Cường Bắc' }]),
     calculateFee: vi.fn(),
     createGhnOrder: vi.fn(),
   },
@@ -51,8 +53,8 @@ vi.mock('react-router-dom', async () => {
 
 /**
  * ============================================================================
- * 📦 MODULE 08: WAREHOUSE & PHYSICAL ADDRESS MANAGEMENT
- * 🧪 COMPONENT TEST: WarehouseForm (Thêm / Sửa Kho Hàng & Địa chỉ)
+ * MODULE 08: WAREHOUSE & PHYSICAL ADDRESS MANAGEMENT
+ * COMPONENT TEST: WarehouseForm (Thêm / Sửa Kho Hàng & Địa chỉ)
  * ============================================================================
  */
 describe('Module 08 - WarehouseForm Component', () => {
@@ -325,8 +327,12 @@ describe('Module 08 - WarehouseForm Component', () => {
     });
 
     // Điền thông tin định danh
-    fireEvent.change(screen.getByPlaceholderText('VD: HUB-HCM-01'), { target: { value: 'WH-CAP-99' } });
-    fireEvent.change(screen.getByPlaceholderText('VD: Kho Tổng Miền Nam'), { target: { value: 'Kho Sức Chứa 99' } });
+    fireEvent.change(screen.getByPlaceholderText('VD: HUB-HCM-01'), {
+      target: { value: 'WH-CAP-99' },
+    });
+    fireEvent.change(screen.getByPlaceholderText('VD: Kho Tổng Miền Nam'), {
+      target: { value: 'Kho Sức Chứa 99' },
+    });
 
     // Chọn loại kho
     const typeTrigger = screen.getByText('-- Chọn loại kho --');

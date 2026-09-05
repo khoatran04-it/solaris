@@ -1,4 +1,4 @@
-using backend.Services;
+﻿using backend.Services;
 using FluentAssertions;
 using Xunit;
 
@@ -6,8 +6,8 @@ namespace backend.Tests.Modules.Module08_Warehouse
 {
     /// <summary>
     /// ============================================================================
-    /// 📦 MODULE 08: GEOSPATIAL & DISTANCE CALCULATION SERVICE
-    /// 🧪 TEST SUITE: DistanceServiceTests
+    /// MODULE 08: GEOSPATIAL & DISTANCE CALCULATION SERVICE
+    /// TEST SUITE: DistanceServiceTests
     /// ============================================================================
     /// Kiểm thử thuật toán Haversine tính toán khoảng cách đại hình cầu giữa 2 tọa độ GPS (Kho Hàng <-> Khách Hàng).
     /// </summary>

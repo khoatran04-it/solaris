@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+﻿import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import UoMConversionList from '../../../pages/uomConversion/UoMConversionList';
@@ -22,8 +22,8 @@ vi.mock('../../../api/productApi', () => ({
 
 /**
  * ============================================================================
- * 📦 MODULE 2: UNIT OF MEASURE (UoM)
- * 🧪 COMPONENT TEST: UoMConversionList (Danh sách Quy tắc Quy đổi Đơn vị tính)
+ * MODULE 2: UNIT OF MEASURE (UoM)
+ * COMPONENT TEST: UoMConversionList (Danh sách Quy tắc Quy đổi Đơn vị tính)
  * ============================================================================
  */
 describe('Module 02 - UoMConversionList Component', () => {

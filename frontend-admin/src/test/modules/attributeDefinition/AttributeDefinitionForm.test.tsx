@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+﻿import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
@@ -17,8 +17,8 @@ vi.mock('../../../api/attributeDefinitionApi', () => ({
 
 /**
  * ============================================================================
- * 📦 MODULE 4: ATTRIBUTE DEFINITION
- * 🧪 COMPONENT TEST: AttributeDefinitionForm (Form Thêm / Sửa Từ Điển Thuộc Tính)
+ * MODULE 4: ATTRIBUTE DEFINITION
+ * COMPONENT TEST: AttributeDefinitionForm (Form Thêm / Sửa Từ Điển Thuộc Tính)
  * ============================================================================
  */
 describe('Module 04 - AttributeDefinitionForm Component', () => {

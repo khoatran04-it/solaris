@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+﻿import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
@@ -38,16 +38,14 @@ vi.mock('../../../api/uomConversionApi', () => ({
 
 /**
  * ============================================================================
- * 📦 MODULE 5: PRODUCT & PRICING
- * 🧪 COMPONENT TEST: ProductVariantForm (Form Thêm / Sửa Biến Thể 3 Tabs & Bảng Giá)
+ * MODULE 5: PRODUCT & PRICING
+ * COMPONENT TEST: ProductVariantForm (Form Thêm / Sửa Biến Thể 3 Tabs & Bảng Giá)
  * ============================================================================
  */
 describe('Module 05 - ProductVariantForm Component', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    (productApi.getAllList as any).mockResolvedValue([
-      { id: 1, name: 'Táo Envy New Zealand' },
-    ]);
+    (productApi.getAllList as any).mockResolvedValue([{ id: 1, name: 'Táo Envy New Zealand' }]);
     (productApi.getAttributesConfig as any).mockResolvedValue([
       { id: 100, name: 'Độ ngọt Brix', isRequired: true },
       { id: 101, name: 'Vùng trồng', isRequired: false },
@@ -209,12 +207,8 @@ describe('Module 05 - ProductVariantForm Component', () => {
       inventoryGuideline: 100,
       isActive: true,
       productId: 1,
-      attributes: [
-        { attributeDefinitionId: 100, attributeValue: '16' },
-      ],
-      prices: [
-        { uoMId: 1, price: 120000, isDefault: true },
-      ],
+      attributes: [{ attributeDefinitionId: 100, attributeValue: '16' }],
+      prices: [{ uoMId: 1, price: 120000, isDefault: true }],
     });
     (productVariantApi.update as any).mockResolvedValue({});
 

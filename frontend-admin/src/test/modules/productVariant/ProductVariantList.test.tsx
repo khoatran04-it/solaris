@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+﻿import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter } from 'react-router-dom';
@@ -23,8 +23,8 @@ vi.mock('../../../api/productApi', () => ({
 
 /**
  * ============================================================================
- * 📦 MODULE 5: PRODUCT & PRICING
- * 🧪 COMPONENT TEST: ProductVariantList (Danh sách Biến Thể SKU & Bảng Giá)
+ * MODULE 5: PRODUCT & PRICING
+ * COMPONENT TEST: ProductVariantList (Danh sách Biến Thể SKU & Bảng Giá)
  * ============================================================================
  */
 describe('Module 05 - ProductVariantList Component', () => {

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+﻿import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter } from 'react-router-dom';
@@ -16,8 +16,8 @@ vi.mock('../../../api/customerGroupApi', () => ({
 
 /**
  * ============================================================================
- * 📦 MODULE 6: CUSTOMER MASTER DATA
- * 🧪 COMPONENT TEST: CustomerGroupList (Danh sách Nhóm Khách Hàng)
+ * MODULE 6: CUSTOMER MASTER DATA
+ * COMPONENT TEST: CustomerGroupList (Danh sách Nhóm Khách Hàng)
  * ============================================================================
  */
 describe('Module 06 - CustomerGroupList Component', () => {

@@ -1,7 +1,7 @@
-﻿import React, { useState, useEffect } from "react";
-import { RefreshCw, AlertCircle, Warehouse, Layers, Coins } from "lucide-react";
-import { dashboardApi } from "../../api/dashboardApi";
-import type { DashboardInventoryCapacityDto } from "../../types/dashboard";
+﻿import React, { useState, useEffect } from 'react';
+import { RefreshCw, AlertCircle, Warehouse, Layers, Coins } from 'lucide-react';
+import { dashboardApi } from '../../api/dashboardApi';
+import type { DashboardInventoryCapacityDto } from '../../types/dashboard';
 import {
   CapacityGauge,
   DonutChart,
@@ -9,7 +9,7 @@ import {
   DashCard,
   fmtVnd,
   fmtNum,
-} from "../../components/dashboard/DashboardCharts";
+} from '../../components/dashboard/DashboardCharts';
 
 export default function InventoryCapacityDashboard() {
   const [data, setData] = useState<DashboardInventoryCapacityDto | null>(null);
@@ -40,24 +40,24 @@ export default function InventoryCapacityDashboard() {
   const compartmentData = comp
     ? [
         {
-          label: "Khả dụng",
+          label: 'Khả dụng',
           value: comp.availableQty,
-          percent: totalQty > 0 ? +(comp.availableQty / totalQty * 100).toFixed(1) : 0,
+          percent: totalQty > 0 ? +((comp.availableQty / totalQty) * 100).toFixed(1) : 0,
         },
         {
-          label: "Giữ chỗ (Đơn hàng)",
+          label: 'Giữ chỗ (Đơn hàng)',
           value: comp.reservedQty,
-          percent: totalQty > 0 ? +(comp.reservedQty / totalQty * 100).toFixed(1) : 0,
+          percent: totalQty > 0 ? +((comp.reservedQty / totalQty) * 100).toFixed(1) : 0,
         },
         {
-          label: "Đang kiểm định (QC)",
+          label: 'Đang kiểm định (QC)',
           value: comp.inQcQty,
-          percent: totalQty > 0 ? +(comp.inQcQty / totalQty * 100).toFixed(1) : 0,
+          percent: totalQty > 0 ? +((comp.inQcQty / totalQty) * 100).toFixed(1) : 0,
         },
         {
-          label: "Hàng hỏng / Hủy",
+          label: 'Hàng hỏng / Hủy',
           value: comp.damagedQty,
-          percent: totalQty > 0 ? +(comp.damagedQty / totalQty * 100).toFixed(1) : 0,
+          percent: totalQty > 0 ? +((comp.damagedQty / totalQty) * 100).toFixed(1) : 0,
         },
       ]
     : [];
@@ -86,7 +86,7 @@ export default function InventoryCapacityDashboard() {
             disabled={loading}
             className="flex items-center gap-2 px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 hover:text-slate-900 hover:bg-slate-50 transition-all shadow-xs disabled:opacity-50"
           >
-            <RefreshCw size={13} className={loading ? "animate-spin" : ""} />
+            <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
             Làm mới
           </button>
         </div>
@@ -119,9 +119,7 @@ export default function InventoryCapacityDashboard() {
                   <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">
                     Tổng Lượng Tồn Kho
                   </span>
-                  <div className="text-2xl font-black text-slate-800">
-                    {fmtNum(totalQty)}
-                  </div>
+                  <div className="text-2xl font-black text-slate-800">{fmtNum(totalQty)}</div>
                   <span className="text-xs text-slate-400 mt-0.5 block">đơn vị (cả 4 ngăn)</span>
                 </div>
                 <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-600">
@@ -162,9 +160,7 @@ export default function InventoryCapacityDashboard() {
                       className="flex flex-col items-center bg-slate-50/70 rounded-2xl p-4 border border-slate-200/70"
                     >
                       <div className="text-center mb-3">
-                        <div className="text-xs font-bold text-slate-800">
-                          {w.warehouseName}
-                        </div>
+                        <div className="text-xs font-bold text-slate-800">{w.warehouseName}</div>
                         <div className="text-[11px] font-mono text-slate-400">
                           {w.warehouseCode}
                         </div>
@@ -191,18 +187,18 @@ export default function InventoryCapacityDashboard() {
                         />
                       </div>
 
-                      {w.status !== "Safe" && (
+                      {w.status !== 'Safe' && (
                         <div
                           className={`mt-3 w-full text-center text-[11px] font-semibold py-1 px-2.5 rounded-lg flex items-center justify-center gap-1.5 ${
-                            w.status === "Critical"
-                              ? "bg-rose-100/80 text-rose-700"
-                              : "bg-amber-100/80 text-amber-700"
+                            w.status === 'Critical'
+                              ? 'bg-rose-100/80 text-rose-700'
+                              : 'bg-amber-100/80 text-amber-700'
                           }`}
                         >
                           <AlertCircle size={12} />
-                          {w.status === "Critical"
-                            ? "Nguy hiểm: Đã vượt 95% sức chứa"
-                            : "Cảnh báo: Đang tiệm cận ngưỡng tối đa"}
+                          {w.status === 'Critical'
+                            ? 'Nguy hiểm: Đã vượt 95% sức chứa'
+                            : 'Cảnh báo: Đang tiệm cận ngưỡng tối đa'}
                         </div>
                       )}
                     </div>

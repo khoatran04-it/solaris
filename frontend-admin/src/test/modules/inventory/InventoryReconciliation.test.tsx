@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+﻿import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter } from 'react-router-dom';
@@ -22,8 +22,8 @@ vi.mock('../../../api/inventoryReconciliationApi', () => ({
 
 /**
  * ============================================================================
- * 📦 MODULE 10: INVENTORY
- * 🧪 COMPONENT TEST: InventoryReconciliation (Bảng Cân Đối Phát Sinh & Sổ Cái)
+ * MODULE 10: INVENTORY
+ * COMPONENT TEST: InventoryReconciliation (Bảng Cân Đối Phát Sinh & Sổ Cái)
  * ============================================================================
  */
 describe('Module 10 - InventoryReconciliation Component', () => {
@@ -152,7 +152,9 @@ describe('Module 10 - InventoryReconciliation Component', () => {
       expect(screen.getByText('SKU-XOAI-01')).toBeInTheDocument();
     });
 
-    const ledgerTabBtn = screen.getByRole('button', { name: /2\. SỔ CÁI GIAO DỊCH \(AUDIT TRAIL\)/i });
+    const ledgerTabBtn = screen.getByRole('button', {
+      name: /2\. SỔ CÁI GIAO DỊCH \(AUDIT TRAIL\)/i,
+    });
     fireEvent.click(ledgerTabBtn);
 
     await waitFor(() => {

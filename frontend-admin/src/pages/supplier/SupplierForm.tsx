@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Hexagon, Save, Plus, MapPin, Building2 } from 'lucide-react';
 
-// API & Types (Sếp nhớ tạo các file API này tương tự bên Customer nhé)
+// API & Types
 import { supplierApi } from '../../api/supplierApi';
 import { supplierTypeApi } from '../../api/supplierTypeApi';
 import { SupplierPayload } from '../../types/supplier';
@@ -195,7 +195,8 @@ const SupplierForm: React.FC = () => {
           newErrors.address_contactName = 'Người liên hệ không được để trống';
         if (!addr.contactPhone.trim())
           newErrors.address_contactPhone = 'Số điện thoại liên hệ không được để trống';
-        if (!addr.province.trim()) newErrors.address_province = 'Tỉnh/Thành phố không được để trống';
+        if (!addr.province.trim())
+          newErrors.address_province = 'Tỉnh/Thành phố không được để trống';
         if (!addr.district.trim()) newErrors.address_district = 'Quận/Huyện không được để trống';
         if (!addr.ward.trim()) newErrors.address_ward = 'Phường/Xã không được để trống';
         if (!addr.streetAddress.trim())

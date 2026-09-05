@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+﻿import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -16,7 +16,7 @@ import {
   Search,
 } from 'lucide-react';
 
-// 🔥 Import store và constants quyền
+// Quản lý quyền truy cập menu
 import { useAuthStore } from '../../stores/useAuthStore';
 import { PERMISSIONS } from '../../constants/permissions';
 
@@ -100,7 +100,11 @@ const MENU_CONFIG: MenuItem[] = [
     label: 'Quản lý Kho bãi',
     icon: Package,
     children: [
-      { label: 'Tổng quan Tồn kho', path: '/inventories', permission: PERMISSIONS.INVENTORY.RECEIPT_VIEW },
+      {
+        label: 'Tổng quan Tồn kho',
+        path: '/inventories',
+        permission: PERMISSIONS.INVENTORY.RECEIPT_VIEW,
+      },
       {
         label: 'Phiếu nhập kho',
         path: '/inventory-receipts',
@@ -116,7 +120,11 @@ const MENU_CONFIG: MenuItem[] = [
         path: '/inventory-transfers',
         permission: PERMISSIONS.INVENTORY.TRANSFER_VIEW,
       },
-      { label: 'Kiểm kê kho', path: '/inventory-audits', permission: PERMISSIONS.INVENTORY.AUDIT_VIEW },
+      {
+        label: 'Kiểm kê kho',
+        path: '/inventory-audits',
+        permission: PERMISSIONS.INVENTORY.AUDIT_VIEW,
+      },
       {
         label: 'Điều chỉnh tồn kho',
         path: '/inventory-adjustments',
@@ -190,7 +198,7 @@ export const Sidebar: React.FC = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [openMenus, setOpenMenus] = useState<string[]>([]);
 
-  // 🔥 State cho thanh tìm kiếm
+  // State tìm kiếm menu điều hướng
   const [searchTerm, setSearchTerm] = useState('');
 
   const handleLogout = () => {
@@ -361,7 +369,7 @@ export const Sidebar: React.FC = () => {
 
               {/* Submenu Area */}
               {item.children && !isCollapsed && (
-                /* 🔥 FIXED BUG: Đã xóa "|| isActive" khỏi class điều kiện, menu giờ chỉ mở nếu isOpen = true */
+                /* Submenu chỉ hiển thị khi isOpen = true */
                 <div
                   className={`grid transition-all duration-300 ease-in-out ${isOpen ? 'grid-rows-[1fr] opacity-100 mt-1' : 'grid-rows-[0fr] opacity-0'}`}
                 >
@@ -372,7 +380,8 @@ export const Sidebar: React.FC = () => {
                       const isSubActive =
                         child.path === '/'
                           ? location.pathname === '/'
-                          : location.pathname === child.path || location.pathname.startsWith(child.path + '/');
+                          : location.pathname === child.path ||
+                            location.pathname.startsWith(child.path + '/');
                       return (
                         <button
                           key={child.path}

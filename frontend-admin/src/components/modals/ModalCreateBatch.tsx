@@ -32,7 +32,10 @@ export const ModalCreateBatch: React.FC<ModalCreateBatchProps> = ({
   // Sinh mã Lô hàng tự động chuẩn Việt Nam (YYYYMMDD)
   const generateBatchCode = () => {
     const codePrefix = variantCode
-      ? variantCode.replace(/[^a-zA-Z0-9]/g, '').slice(0, 8).toUpperCase()
+      ? variantCode
+          .replace(/[^a-zA-Z0-9]/g, '')
+          .slice(0, 8)
+          .toUpperCase()
       : 'LOT';
     const now = new Date();
     const year = now.getFullYear();
@@ -189,7 +192,9 @@ export const ModalCreateBatch: React.FC<ModalCreateBatchProps> = ({
             <div className="p-3.5 bg-amber-50/80 text-amber-900 text-xs rounded-2xl border border-amber-200/80 flex items-start gap-2.5 leading-relaxed">
               <AlertCircle className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
               <span>
-                <strong>Quản trị Lô theo FEFO (First Expired, First Out):</strong> Khi xuất kho giao hàng cho khách lẻ, hệ thống Solaris sẽ tự động đề xuất xuất Lô có Hạn sử dụng gần nhất trước để chống thối rữa và giảm hao hụt nông sản.
+                <strong>Quản trị Lô theo FEFO (First Expired, First Out):</strong> Khi xuất kho giao
+                hàng cho khách lẻ, hệ thống Solaris sẽ tự động đề xuất xuất Lô có Hạn sử dụng gần
+                nhất trước để chống thối rữa và giảm hao hụt nông sản.
               </span>
             </div>
           </div>

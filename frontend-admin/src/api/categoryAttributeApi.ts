@@ -23,7 +23,10 @@ export const categoryAttributeApi = {
     return axiosClient.get(`/CategoryAttributes/category/${categoryId}`);
   },
 
-  sync: (data: { categoryId: number; attributes: { attributeDefinitionId: number; isRequired: boolean }[] }): Promise<{ message: string }> => {
+  sync: (data: {
+    categoryId: number;
+    attributes: { attributeDefinitionId: number; isRequired: boolean }[];
+  }): Promise<{ message: string }> => {
     return axiosClient.post('/CategoryAttributes/sync', data);
   },
 

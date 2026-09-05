@@ -383,9 +383,14 @@ const CustomerReturnForm: React.FC = () => {
                       </div>
                       <div className="text-xs text-slate-600 mt-1">
                         Khách hàng:{' '}
-                        <strong className="text-slate-900 font-bold">{selectedOrder.customerName}</strong>
+                        <strong className="text-slate-900 font-bold">
+                          {selectedOrder.customerName}
+                        </strong>
                         {selectedOrder.customerPhone && (
-                          <span className="text-slate-500 font-medium"> • SĐT: {selectedOrder.customerPhone}</span>
+                          <span className="text-slate-500 font-medium">
+                            {' '}
+                            • SĐT: {selectedOrder.customerPhone}
+                          </span>
                         )}
                       </div>
                     </div>
@@ -393,7 +398,9 @@ const CustomerReturnForm: React.FC = () => {
 
                   <div className="flex items-center gap-8 text-right pr-2">
                     <div>
-                      <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Kho xuất hàng</div>
+                      <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                        Kho xuất hàng
+                      </div>
                       <div className="text-xs font-bold text-slate-800 mt-0.5">
                         {selectedOrder.warehouseName || 'Chưa gán kho'}
                       </div>
@@ -611,10 +618,16 @@ const CustomerReturnForm: React.FC = () => {
                 </tbody>
                 <tfoot className="bg-slate-50/80 border-t border-slate-200">
                   <tr>
-                    <td colSpan={5} className="px-4 py-3.5 text-right font-bold text-slate-600 uppercase text-xs tracking-wider">
+                    <td
+                      colSpan={5}
+                      className="px-4 py-3.5 text-right font-bold text-slate-600 uppercase text-xs tracking-wider"
+                    >
                       Tổng tiền dự kiến hoàn trả:
                     </td>
-                    <td colSpan={2} className="px-4 py-3.5 text-right font-black text-rose-600 text-base">
+                    <td
+                      colSpan={2}
+                      className="px-4 py-3.5 text-right font-black text-rose-600 text-base"
+                    >
                       {formatCurrency(totalEstimatedRefund)}
                     </td>
                     <td></td>
@@ -644,10 +657,7 @@ const CustomerReturnForm: React.FC = () => {
               Hủy Bỏ
             </button>
 
-            <SubmitButton
-              loading={loading}
-              isEditMode={false}
-            />
+            <SubmitButton loading={loading} isEditMode={false} />
           </div>
         </form>
       </FormCard>

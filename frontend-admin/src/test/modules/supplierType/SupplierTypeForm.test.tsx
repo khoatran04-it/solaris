@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+﻿import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
@@ -17,8 +17,8 @@ vi.mock('../../../api/supplierTypeApi', () => ({
 
 /**
  * ============================================================================
- * 📦 MODULE 3: SUPPLIER
- * 🧪 COMPONENT TEST: SupplierTypeForm (Form Thêm / Sửa Phân loại NCC)
+ * MODULE 3: SUPPLIER
+ * COMPONENT TEST: SupplierTypeForm (Form Thêm / Sửa Phân loại NCC)
  * ============================================================================
  */
 describe('Module 03 - SupplierTypeForm Component', () => {
@@ -41,8 +41,12 @@ describe('Module 03 - SupplierTypeForm Component', () => {
 
     expect(screen.getByText('Thêm Mới Loại Nhà Cung Cấp')).toBeInTheDocument();
     expect(screen.getByPlaceholderText('VD: FARM, COOP, IMPORT')).toBeInTheDocument();
-    expect(screen.getByPlaceholderText('VD: Nhà vườn, Hợp tác xã, Nhập khẩu...')).toBeInTheDocument();
-    expect(screen.getByPlaceholderText('Nhập ghi chú hoặc mô tả chi tiết về loại nhà cung cấp này...')).toBeInTheDocument();
+    expect(
+      screen.getByPlaceholderText('VD: Nhà vườn, Hợp tác xã, Nhập khẩu...')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByPlaceholderText('Nhập ghi chú hoặc mô tả chi tiết về loại nhà cung cấp này...')
+    ).toBeInTheDocument();
   });
   // #endregion
 

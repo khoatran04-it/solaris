@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+﻿import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
@@ -24,8 +24,8 @@ vi.mock('../../../api/supplierTypeApi', () => ({
 
 /**
  * ============================================================================
- * 📦 MODULE 3: SUPPLIER
- * 🧪 COMPONENT TEST: SupplierForm (Form Thêm mới & Cập nhật Hồ sơ NCC)
+ * MODULE 3: SUPPLIER
+ * COMPONENT TEST: SupplierForm (Form Thêm mới & Cập nhật Hồ sơ NCC)
  * ============================================================================
  */
 describe('Module 03 - SupplierForm Component', () => {
@@ -34,9 +34,7 @@ describe('Module 03 - SupplierForm Component', () => {
     { id: 2, code: 'COOP', name: 'Hợp tác xã' },
   ];
 
-  const mockExistingSuppliers = [
-    { id: 1, code: 'ncc01', name: 'NCC Số 1', phone: '0901234567' },
-  ];
+  const mockExistingSuppliers = [{ id: 1, code: 'ncc01', name: 'NCC Số 1', phone: '0901234567' }];
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -147,9 +145,15 @@ describe('Module 03 - SupplierForm Component', () => {
 
     // Điền thông tin cơ bản
     fireEvent.change(screen.getByPlaceholderText('NCC-001'), { target: { value: 'NCC_NEW' } });
-    fireEvent.change(screen.getByPlaceholderText('Công ty TNHH...'), { target: { value: 'Nông Trại Mới' } });
-    fireEvent.change(screen.getByPlaceholderText('0901234567'), { target: { value: '0933999888' } });
-    fireEvent.change(screen.getByPlaceholderText('contact@company.com'), { target: { value: 'contact@newfarm.com' } });
+    fireEvent.change(screen.getByPlaceholderText('Công ty TNHH...'), {
+      target: { value: 'Nông Trại Mới' },
+    });
+    fireEvent.change(screen.getByPlaceholderText('0901234567'), {
+      target: { value: '0933999888' },
+    });
+    fireEvent.change(screen.getByPlaceholderText('contact@company.com'), {
+      target: { value: 'contact@newfarm.com' },
+    });
 
     // Chọn phân loại (click dropdown)
     const selectType = screen.getByText('Chọn loại...');

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { BookType, Save, Plus } from 'lucide-react';
 
@@ -48,7 +48,7 @@ const AttributeDefinitionForm: React.FC = () => {
   const [formData, setFormData] = useState<AttributeDefinitionPayload>(INITIAL_STATE);
   const [errors, setErrors] = useState<Partial<Record<string, string>>>({});
 
-  // 🔥 BỔ SUNG STATE KIỂM TRA TRÙNG LẶP
+  // Kiểm tra trùng lặp mã thuộc tính
   const [existingNames, setExistingNames] = useState<string[]>([]);
   const [originalName, setOriginalName] = useState('');
 

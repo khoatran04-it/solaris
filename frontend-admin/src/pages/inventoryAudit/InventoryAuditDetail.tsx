@@ -363,11 +363,19 @@ const InventoryAuditDetail: React.FC = () => {
                       >
                         <td className="px-3 py-3 text-center text-slate-400">{idx + 1}</td>
                         <td className="px-4 py-3">
-                          <div className="font-bold text-slate-900 text-[13px]">{detail.variantName}</div>
-                          <div className="text-[11px] font-semibold text-slate-400">{detail.variantCode}</div>
+                          <div className="font-bold text-slate-900 text-[13px]">
+                            {detail.variantName}
+                          </div>
+                          <div className="text-[11px] font-semibold text-slate-400">
+                            {detail.variantCode}
+                          </div>
                         </td>
-                        <td className="px-4 py-3 font-bold text-amber-800 text-[12px]">{detail.batchCode}</td>
-                        <td className="px-3 py-3 text-center text-slate-600 font-medium">{detail.uoMName}</td>
+                        <td className="px-4 py-3 font-bold text-amber-800 text-[12px]">
+                          {detail.batchCode}
+                        </td>
+                        <td className="px-3 py-3 text-center text-slate-600 font-medium">
+                          {detail.uoMName}
+                        </td>
 
                         {/* Tồn hệ thống */}
                         {!isBlindCount && (
@@ -464,21 +472,21 @@ const InventoryAuditDetail: React.FC = () => {
                                 }}
                               />
 
-                              {(!AUDIT_REASON_OPTIONS.slice(0, 7).some(
+                              {!AUDIT_REASON_OPTIONS.slice(0, 7).some(
                                 (o) => o.value === currentVal.reasonNote
                               ) &&
-                                currentVal.reasonNote !== '') && (
-                                <input
-                                  type="text"
-                                  placeholder="Nhập chi tiết lý do..."
-                                  value={currentVal.reasonNote}
-                                  onChange={(e) =>
-                                    handleCountChange(detail.id, 'reasonNote', e.target.value)
-                                  }
-                                  className="w-full px-3 py-1.5 border border-amber-300 rounded-xl text-xs focus:ring-2 focus:ring-amber-400 outline-none bg-amber-50/40 text-amber-950 font-medium"
-                                  autoFocus
-                                />
-                              )}
+                                currentVal.reasonNote !== '' && (
+                                  <input
+                                    type="text"
+                                    placeholder="Nhập chi tiết lý do..."
+                                    value={currentVal.reasonNote}
+                                    onChange={(e) =>
+                                      handleCountChange(detail.id, 'reasonNote', e.target.value)
+                                    }
+                                    className="w-full px-3 py-1.5 border border-amber-300 rounded-xl text-xs focus:ring-2 focus:ring-amber-400 outline-none bg-amber-50/40 text-amber-950 font-medium"
+                                    autoFocus
+                                  />
+                                )}
                             </div>
                           ) : (
                             <span className="inline-flex text-xs font-medium text-slate-700 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200">

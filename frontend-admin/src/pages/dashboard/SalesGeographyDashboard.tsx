@@ -1,22 +1,22 @@
-﻿import React, { useState, useEffect } from "react";
-import { RefreshCw } from "lucide-react";
-import { dashboardApi } from "../../api/dashboardApi";
-import type { DashboardSalesGeographyDto, DashboardPeriod } from "../../types/dashboard";
+﻿import React, { useState, useEffect } from 'react';
+import { RefreshCw } from 'lucide-react';
+import { dashboardApi } from '../../api/dashboardApi';
+import type { DashboardSalesGeographyDto, DashboardPeriod } from '../../types/dashboard';
 import {
   RankedBarChart,
   DonutChart,
   DashCard,
   fmtVnd,
   fmtNum,
-} from "../../components/dashboard/DashboardCharts";
+} from '../../components/dashboard/DashboardCharts';
 
 const PERIODS: { label: string; value: DashboardPeriod }[] = [
-  { label: "30 ngày", value: "30days" },
-  { label: "Năm nay", value: "year" },
+  { label: '30 ngày', value: '30days' },
+  { label: 'Năm nay', value: 'year' },
 ];
 
 export default function SalesGeographyDashboard() {
-  const [period, setPeriod] = useState<DashboardPeriod>("30days");
+  const [period, setPeriod] = useState<DashboardPeriod>('30days');
   const [data, setData] = useState<DashboardSalesGeographyDto | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -84,8 +84,8 @@ export default function SalesGeographyDashboard() {
                   onClick={() => setPeriod(p.value)}
                   className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${
                     period === p.value
-                      ? "bg-slate-900 text-white shadow-xs"
-                      : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                      ? 'bg-slate-900 text-white shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
                   }`}
                 >
                   {p.label}
@@ -98,7 +98,7 @@ export default function SalesGeographyDashboard() {
               title="Làm mới dữ liệu"
               className="p-2 bg-white border border-slate-200 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-all shadow-xs disabled:opacity-50"
             >
-              <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
+              <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
             </button>
           </div>
         </div>
@@ -115,7 +115,12 @@ export default function SalesGeographyDashboard() {
                 title={`Top ${data?.topProducts.length ?? 0} Sản phẩm Bán chạy`}
                 subtitle="Xếp hạng các SKU đóng góp doanh thu cao nhất"
               >
-                <RankedBarChart data={topProductsData} color="#f59e0b" formatValue={fmtVnd} height={240} />
+                <RankedBarChart
+                  data={topProductsData}
+                  color="#f59e0b"
+                  formatValue={fmtVnd}
+                  height={240}
+                />
               </DashCard>
 
               {/* Category Breakdown */}

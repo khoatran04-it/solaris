@@ -7,9 +7,7 @@ export const Header: React.FC = () => {
 
   const displayName = userInfo?.fullName || userInfo?.username || 'Người dùng';
   const roleDisplay =
-    userInfo?.roles && userInfo.roles.length > 0
-      ? userInfo.roles.join(' • ')
-      : 'Nhân viên';
+    userInfo?.roles && userInfo.roles.length > 0 ? userInfo.roles.join(' • ') : 'Nhân viên';
 
   return (
     <header className="h-16 bg-white border-b border-slate-100 flex items-center justify-end px-8 sticky top-0 z-40 shadow-[0_1px_2px_rgba(0,0,0,0.03)]">

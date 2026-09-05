@@ -1,4 +1,4 @@
-import React from "react";
+import React from 'react';
 import {
   ResponsiveContainer,
   AreaChart,
@@ -12,7 +12,7 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-} from "recharts";
+} from 'recharts';
 
 // ============================================================
 // DASHBOARD CHARTS — Recharts + Solaris Design System
@@ -20,24 +20,23 @@ import {
 // ============================================================
 
 export const fmtVnd = (v: number) =>
-  new Intl.NumberFormat("vi-VN", {
-    style: "currency",
-    currency: "VND",
+  new Intl.NumberFormat('vi-VN', {
+    style: 'currency',
+    currency: 'VND',
     maximumFractionDigits: 0,
   }).format(v);
 
-export const fmtNum = (v: number) =>
-  new Intl.NumberFormat("vi-VN").format(v);
+export const fmtNum = (v: number) => new Intl.NumberFormat('vi-VN').format(v);
 
 export const CHART_PALETTE = [
-  "#f59e0b", // amber-500
-  "#3b82f6", // blue-500
-  "#10b981", // emerald-500
-  "#8b5cf6", // purple-500
-  "#f43f5e", // rose-500
-  "#64748b", // slate-500
-  "#06b6d4", // cyan-500
-  "#ec4899", // pink-500
+  '#f59e0b', // amber-500
+  '#3b82f6', // blue-500
+  '#10b981', // emerald-500
+  '#8b5cf6', // purple-500
+  '#f43f5e', // rose-500
+  '#64748b', // slate-500
+  '#06b6d4', // cyan-500
+  '#ec4899', // pink-500
 ];
 
 // --- Custom Recharts Tooltip ---
@@ -59,9 +58,7 @@ export const ModernTooltip: React.FC<CustomTooltipProps> = ({
   return (
     <div className="bg-slate-900 text-white text-xs rounded-xl px-3.5 py-2.5 shadow-xl border border-slate-800">
       <div className="text-slate-400 font-medium text-[11px] mb-0.5">{label || item.name}</div>
-      <div className="text-sm font-bold text-white">
-        {valueFormatter(item.value)}
-      </div>
+      <div className="text-sm font-bold text-white">{valueFormatter(item.value)}</div>
     </div>
   );
 };
@@ -100,8 +97,8 @@ export const KpiMetricCard: React.FC<KpiMetricCardProps> = ({
         <span
           className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
             badgePositive
-              ? "bg-emerald-50 text-emerald-700 border border-emerald-200/60"
-              : "bg-rose-50 text-rose-700 border border-rose-200/60"
+              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/60'
+              : 'bg-rose-50 text-rose-700 border border-rose-200/60'
           }`}
         >
           {badge}
@@ -118,7 +115,7 @@ export const DashCard: React.FC<{
   children: React.ReactNode;
   className?: string;
   action?: React.ReactNode;
-}> = ({ title, subtitle, children, className = "", action }) => (
+}> = ({ title, subtitle, children, className = '', action }) => (
   <div
     className={`bg-white rounded-2xl shadow-[0_1px_8px_-2px_rgba(0,0,0,0.05)] border border-slate-200/80 p-6 ${className}`}
   >
@@ -143,7 +140,7 @@ interface AreaLineChartProps {
 
 export const AreaLineChart: React.FC<AreaLineChartProps> = ({
   data,
-  color = "#f59e0b",
+  color = '#f59e0b',
   height = 200,
   formatTooltip = fmtVnd,
 }) => {
@@ -155,10 +152,10 @@ export const AreaLineChart: React.FC<AreaLineChartProps> = ({
     );
   }
 
-  const gradId = `areaGrad-${color.replace("#", "")}`;
+  const gradId = `areaGrad-${color.replace('#', '')}`;
 
   return (
-    <div style={{ width: "100%", height }}>
+    <div style={{ width: '100%', height }}>
       <ResponsiveContainer width="100%" height="100%">
         <AreaChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
           <defs>
@@ -173,7 +170,7 @@ export const AreaLineChart: React.FC<AreaLineChartProps> = ({
             stroke="#94a3b8"
             fontSize={11}
             tickLine={false}
-            axisLine={{ stroke: "#f1f5f9" }}
+            axisLine={{ stroke: '#f1f5f9' }}
           />
           <YAxis
             stroke="#94a3b8"
@@ -181,7 +178,11 @@ export const AreaLineChart: React.FC<AreaLineChartProps> = ({
             tickLine={false}
             axisLine={false}
             tickFormatter={(v) =>
-              v >= 1000000 ? `${(v / 1000000).toFixed(1)}M` : v >= 1000 ? `${(v / 1000).toFixed(0)}k` : `${v}`
+              v >= 1000000
+                ? `${(v / 1000000).toFixed(1)}M`
+                : v >= 1000
+                  ? `${(v / 1000).toFixed(0)}k`
+                  : `${v}`
             }
           />
           <Tooltip content={<ModernTooltip valueFormatter={formatTooltip} />} />
@@ -192,7 +193,7 @@ export const AreaLineChart: React.FC<AreaLineChartProps> = ({
             strokeWidth={2.5}
             fillOpacity={1}
             fill={`url(#${gradId})`}
-            activeDot={{ r: 5, stroke: color, strokeWidth: 2, fill: "#ffffff" }}
+            activeDot={{ r: 5, stroke: color, strokeWidth: 2, fill: '#ffffff' }}
           />
         </AreaChart>
       </ResponsiveContainer>
@@ -283,7 +284,7 @@ interface RankedBarChartProps {
 
 export const RankedBarChart: React.FC<RankedBarChartProps> = ({
   data,
-  color = "#3b82f6",
+  color = '#3b82f6',
   formatValue = fmtNum,
   maxItems = 8,
 }) => {
@@ -343,7 +344,7 @@ interface CapacityGaugeProps {
   max: number;
   percent: number;
   unit?: string;
-  status?: "Safe" | "Warning" | "Critical";
+  status?: 'Safe' | 'Warning' | 'Critical';
   warningThreshold?: number;
 }
 
@@ -352,16 +353,16 @@ export const CapacityGauge: React.FC<CapacityGaugeProps> = ({
   value,
   max,
   percent,
-  unit = "m³",
-  status = "Safe",
+  unit = 'm³',
+  status = 'Safe',
 }) => {
   const clamped = Math.min(100, Math.max(0, percent));
   const remaining = 100 - clamped;
-  const color = status === "Critical" ? "#f43f5e" : status === "Warning" ? "#f59e0b" : "#10b981";
+  const color = status === 'Critical' ? '#f43f5e' : status === 'Warning' ? '#f59e0b' : '#10b981';
 
   const gaugeData = [
-    { name: "Đã dùng", value: clamped },
-    { name: "Còn trống", value: remaining },
+    { name: 'Đã dùng', value: clamped },
+    { name: 'Còn trống', value: remaining },
   ];
 
   return (

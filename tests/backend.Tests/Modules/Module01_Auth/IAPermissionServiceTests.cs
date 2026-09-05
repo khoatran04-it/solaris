@@ -1,4 +1,4 @@
-using backend.Data;
+﻿using backend.Data;
 using backend.Enums;
 using backend.Models;
 using backend.Services;
@@ -13,8 +13,8 @@ namespace backend.Tests.Modules.Module01_Auth
 {
     /// <summary>
     /// ============================================================================
-    /// 📦 MODULE 1: IDENTITY & ACCESS MANAGEMENT (IAM)
-    /// 🧪 UNIT TEST: IAPermissionService (Đồng bộ danh mục Quyền hạn từ Enum)
+    /// MODULE 1: IDENTITY & ACCESS MANAGEMENT (IAM)
+    /// UNIT TEST: IAPermissionService (Đồng bộ danh mục Quyền hạn từ Enum)
     /// ============================================================================
     /// </summary>
     public class IAPermissionServiceTests

@@ -251,9 +251,7 @@ describe('Module 16 - Executive Dashboards', () => {
           estimatedLossValue: 3400000,
         },
       ],
-      qcRejectReasons: [
-        { reason: 'Trái cây dập nát', count: 30, percent: 66.7 },
-      ],
+      qcRejectReasons: [{ reason: 'Trái cây dập nát', count: 30, percent: 66.7 }],
     };
 
     it('TC04 - Render Nhóm FEFO hạn sử dụng, Tỷ lệ Inbound QC & Danh sách lô hàng cận date', async () => {

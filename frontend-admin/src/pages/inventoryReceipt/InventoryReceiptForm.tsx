@@ -215,7 +215,10 @@ const InventoryReceiptForm: React.FC = () => {
               };
             });
             setDetails(loadedDetails);
-            showToast('success', `Đã tải ${loadedDetails.length} mặt hàng từ đơn mua ${data.orderCode}!`);
+            showToast(
+              'success',
+              `Đã tải ${loadedDetails.length} mặt hàng từ đơn mua ${data.orderCode}!`
+            );
           }
         }
       } catch (error) {
@@ -225,52 +228,48 @@ const InventoryReceiptForm: React.FC = () => {
     [warehouses]
   );
 
-  const loadCustomerReturn = useCallback(
-    async (id: number) => {
-      try {
-        const data = await customerReturnApi.getById(id);
-        if (data) {
-          setWarehouseId(data.warehouseId || '');
-          setNotes(
-            `Phiếu nhập kho thu hồi theo yêu cầu trả hàng ${data.returnCode} (Đơn hàng: ${data.orderCode})`
-          );
+  const loadCustomerReturn = useCallback(async (id: number) => {
+    try {
+      const data = await customerReturnApi.getById(id);
+      if (data) {
+        setWarehouseId(data.warehouseId || '');
+        setNotes(
+          `Phiếu nhập kho thu hồi theo yêu cầu trả hàng ${data.returnCode} (Đơn hàng: ${data.orderCode})`
+        );
 
-          if (data.details && data.details.length > 0) {
-            const loadedDetails = data.details.map((d: any): DetailRow => {
-              const accepted =
-                d.acceptedQuantity > 0
-                  ? d.acceptedQuantity
-                  : d.damagedQuantity === 0
+        if (data.details && data.details.length > 0) {
+          const loadedDetails = data.details.map((d: any): DetailRow => {
+            const accepted =
+              d.acceptedQuantity > 0
+                ? d.acceptedQuantity
+                : d.damagedQuantity === 0
                   ? d.returnedQuantity
                   : 0;
-              const damaged = d.damagedQuantity;
-              const reason =
-                damaged > 0 ? d.rejectReason || 'Hàng dập nát/hỏng khi khách trả' : '';
+            const damaged = d.damagedQuantity;
+            const reason = damaged > 0 ? d.rejectReason || 'Hàng dập nát/hỏng khi khách trả' : '';
 
-              return {
-                id: crypto.randomUUID(),
-                variantId: d.variantId || '',
-                batchId: d.batchId || '',
-                uoMId: d.uoMId || '',
-                expectedQuantity: d.returnedQuantity,
-                acceptedQuantity: accepted,
-                rejectedQuantity: damaged,
-                rejectReason: reason,
-              };
-            });
-            setDetails(loadedDetails);
-            showToast(
-              'success',
-              `Đã tải ${loadedDetails.length} mặt hàng từ Phiếu trả hàng ${data.returnCode}!`
-            );
-          }
+            return {
+              id: crypto.randomUUID(),
+              variantId: d.variantId || '',
+              batchId: d.batchId || '',
+              uoMId: d.uoMId || '',
+              expectedQuantity: d.returnedQuantity,
+              acceptedQuantity: accepted,
+              rejectedQuantity: damaged,
+              rejectReason: reason,
+            };
+          });
+          setDetails(loadedDetails);
+          showToast(
+            'success',
+            `Đã tải ${loadedDetails.length} mặt hàng từ Phiếu trả hàng ${data.returnCode}!`
+          );
         }
-      } catch (error) {
-        showToast('error', 'Không thể tải thông tin Phiếu trả hàng!');
       }
-    },
-    []
-  );
+    } catch (error) {
+      showToast('error', 'Không thể tải thông tin Phiếu trả hàng!');
+    }
+  }, []);
 
   useEffect(() => {
     loadOptions();
@@ -432,7 +431,10 @@ const InventoryReceiptForm: React.FC = () => {
                 ? (v.lengthCm * v.widthCm * v.heightCm) / 1000000
                 : 0.02);
             const unitWeight = v?.grossWeightKg || 1;
-            const qty = Number(d.acceptedQuantity) > 0 ? Number(d.acceptedQuantity) : Number(d.expectedQuantity);
+            const qty =
+              Number(d.acceptedQuantity) > 0
+                ? Number(d.acceptedQuantity)
+                : Number(d.expectedQuantity);
             return {
               variantId: d.variantId as number,
               batchId: d.batchId as number,
@@ -564,19 +566,22 @@ const InventoryReceiptForm: React.FC = () => {
                   <div className="flex-1 w-full space-y-2">
                     <div className="flex justify-between items-center text-xs font-bold">
                       <span className="text-slate-700">
-                        📦 Sức chứa kho: {capacityStatus.warehouseName} ({capacityStatus.warehouseCode})
+                        📦 Sức chứa kho: {capacityStatus.warehouseName} (
+                        {capacityStatus.warehouseCode})
                       </span>
                       <span
                         className={
                           capacityStatus.status === 'Critical' ||
-                          capacityStatus.occupiedCbm + totalIncomingCbm > capacityStatus.totalCapacityCbm
+                          capacityStatus.occupiedCbm + totalIncomingCbm >
+                            capacityStatus.totalCapacityCbm
                             ? 'text-rose-600 font-extrabold'
                             : capacityStatus.status === 'Warning'
-                            ? 'text-amber-600 font-extrabold'
-                            : 'text-emerald-600 font-extrabold'
+                              ? 'text-amber-600 font-extrabold'
+                              : 'text-emerald-600 font-extrabold'
                         }
                       >
-                        {capacityStatus.occupiedCbm} / {capacityStatus.totalCapacityCbm} m³ (Đang chứa {capacityStatus.occupancyRateCbm}%)
+                        {capacityStatus.occupiedCbm} / {capacityStatus.totalCapacityCbm} m³ (Đang
+                        chứa {capacityStatus.occupancyRateCbm}%)
                       </span>
                     </div>
                     {/* Progress Bar */}
@@ -601,14 +606,18 @@ const InventoryReceiptForm: React.FC = () => {
                     </div>
                     <div className="flex justify-between text-[11px] text-slate-500">
                       <span>
-                        Tải trọng sàn: {capacityStatus.occupiedWeightKg} / {capacityStatus.maxWeightCapacityKg} kg ({capacityStatus.occupancyRateWeight}%)
+                        Tải trọng sàn: {capacityStatus.occupiedWeightKg} /{' '}
+                        {capacityStatus.maxWeightCapacityKg} kg (
+                        {capacityStatus.occupancyRateWeight}%)
                       </span>
                       <span className="font-semibold text-indigo-600">
-                        + Lô chuẩn bị nhập: ~{totalIncomingCbm.toFixed(2)} m³ | ~{totalIncomingWeightKg.toFixed(1)} kg
+                        + Lô chuẩn bị nhập: ~{totalIncomingCbm.toFixed(2)} m³ | ~
+                        {totalIncomingWeightKg.toFixed(1)} kg
                       </span>
                     </div>
                   </div>
-                  {capacityStatus.occupiedCbm + totalIncomingCbm > capacityStatus.totalCapacityCbm && (
+                  {capacityStatus.occupiedCbm + totalIncomingCbm >
+                    capacityStatus.totalCapacityCbm && (
                     <div className="px-3 py-1.5 rounded-xl bg-rose-100 text-rose-800 text-xs font-bold shrink-0">
                       ⚠️ Cảnh báo: Vượt sức chứa kho!
                     </div>
@@ -649,9 +658,7 @@ const InventoryReceiptForm: React.FC = () => {
                     <th className="px-2 py-3.5 w-18 text-center bg-rose-50/70 text-rose-800 whitespace-nowrap">
                       Trả về
                     </th>
-                    <th className="px-3 py-3.5 w-36 min-w-[120px] whitespace-nowrap">
-                      Lý do lỗi
-                    </th>
+                    <th className="px-3 py-3.5 w-36 min-w-[120px] whitespace-nowrap">Lý do lỗi</th>
                     <th className="px-2 py-3.5 w-10 text-center"></th>
                   </tr>
                 </thead>
@@ -730,7 +737,10 @@ const InventoryReceiptForm: React.FC = () => {
                             value={row.expectedQuantity}
                             onFocus={(e) => e.target.select()}
                             onChange={(e) => {
-                              const val = e.target.value === '' ? 0 : Math.max(0, parseInt(e.target.value, 10) || 0);
+                              const val =
+                                e.target.value === ''
+                                  ? 0
+                                  : Math.max(0, parseInt(e.target.value, 10) || 0);
                               handleDetailChange(row.id, 'expectedQuantity', val);
                             }}
                             className="w-16 h-10 mx-auto block text-center font-bold text-slate-600 bg-slate-100 border border-slate-200 rounded-xl text-sm outline-none"
@@ -744,25 +754,30 @@ const InventoryReceiptForm: React.FC = () => {
                             value={row.acceptedQuantity}
                             onFocus={(e) => e.target.select()}
                             onChange={(e) => {
-                              const val = e.target.value === '' ? 0 : Math.max(0, parseInt(e.target.value, 10) || 0);
+                              const val =
+                                e.target.value === ''
+                                  ? 0
+                                  : Math.max(0, parseInt(e.target.value, 10) || 0);
                               handleDetailChange(row.id, 'acceptedQuantity', val);
                             }}
                             className="w-16 h-10 mx-auto block text-center font-black text-emerald-700 bg-white border border-emerald-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-400 outline-none shadow-2xs"
                           />
-                          {Boolean(row.variantId && row.acceptedQuantity > 0) && (() => {
-                            const v = rawVariants.find((rv) => rv.id === row.variantId);
-                            const uCbm =
-                              v?.unitCbm ||
-                              (v?.lengthCm && v?.widthCm && v?.heightCm
-                                ? (v.lengthCm * v.widthCm * v.heightCm) / 1000000
-                                : 0.02);
-                            const uWeight = v?.grossWeightKg || 1;
-                            return (
-                              <div className="text-[10px] text-slate-500 font-medium mt-1 whitespace-nowrap">
-                                {(uCbm * row.acceptedQuantity).toFixed(2)} m³ | {(uWeight * row.acceptedQuantity).toFixed(1)} kg
-                              </div>
-                            );
-                          })()}
+                          {Boolean(row.variantId && row.acceptedQuantity > 0) &&
+                            (() => {
+                              const v = rawVariants.find((rv) => rv.id === row.variantId);
+                              const uCbm =
+                                v?.unitCbm ||
+                                (v?.lengthCm && v?.widthCm && v?.heightCm
+                                  ? (v.lengthCm * v.widthCm * v.heightCm) / 1000000
+                                  : 0.02);
+                              const uWeight = v?.grossWeightKg || 1;
+                              return (
+                                <div className="text-[10px] text-slate-500 font-medium mt-1 whitespace-nowrap">
+                                  {(uCbm * row.acceptedQuantity).toFixed(2)} m³ |{' '}
+                                  {(uWeight * row.acceptedQuantity).toFixed(1)} kg
+                                </div>
+                              );
+                            })()}
                         </td>
                         <td className="p-2 bg-rose-50/20 border-l border-rose-100 text-center">
                           <input
@@ -771,7 +786,10 @@ const InventoryReceiptForm: React.FC = () => {
                             value={row.rejectedQuantity}
                             onFocus={(e) => e.target.select()}
                             onChange={(e) => {
-                              const val = e.target.value === '' ? 0 : Math.max(0, parseInt(e.target.value, 10) || 0);
+                              const val =
+                                e.target.value === ''
+                                  ? 0
+                                  : Math.max(0, parseInt(e.target.value, 10) || 0);
                               handleDetailChange(row.id, 'rejectedQuantity', val);
                             }}
                             className="w-16 h-10 mx-auto block text-center font-bold text-rose-700 bg-white border border-rose-300 rounded-xl text-sm focus:ring-2 focus:ring-rose-400 outline-none shadow-2xs"

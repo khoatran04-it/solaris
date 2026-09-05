@@ -1,33 +1,33 @@
-﻿import React, { useState, useEffect } from "react";
-import { RefreshCw, AlertTriangle, CheckCircle2 } from "lucide-react";
-import { dashboardApi } from "../../api/dashboardApi";
-import type { DashboardQualityExpiryDto } from "../../types/dashboard";
+﻿import React, { useState, useEffect } from 'react';
+import { RefreshCw, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { dashboardApi } from '../../api/dashboardApi';
+import type { DashboardQualityExpiryDto } from '../../types/dashboard';
 import {
   DonutChart,
   RankedBarChart,
   DashCard,
   fmtVnd,
   fmtNum,
-} from "../../components/dashboard/DashboardCharts";
+} from '../../components/dashboard/DashboardCharts';
 
 const EXPIRY_CARD_STYLES = {
-  expired: "bg-rose-50/80 border-rose-200/80 text-rose-800",
-  critical: "bg-amber-50/80 border-amber-200/80 text-amber-800",
-  warning: "bg-yellow-50/80 border-yellow-200/80 text-yellow-800",
-  safe: "bg-emerald-50/80 border-emerald-200/80 text-emerald-800",
+  expired: 'bg-rose-50/80 border-rose-200/80 text-rose-800',
+  critical: 'bg-amber-50/80 border-amber-200/80 text-amber-800',
+  warning: 'bg-yellow-50/80 border-yellow-200/80 text-yellow-800',
+  safe: 'bg-emerald-50/80 border-emerald-200/80 text-emerald-800',
 };
 
 function getDaysLabel(days: number) {
   if (days < 0) return `Quá hạn ${Math.abs(days)} ngày`;
-  if (days === 0) return "Hết hạn hôm nay";
+  if (days === 0) return 'Hết hạn hôm nay';
   return `Còn ${days} ngày`;
 }
 
 function getDaysBadge(days: number) {
-  if (days < 0) return "bg-rose-100 text-rose-700 font-bold border border-rose-200/80";
-  if (days < 3) return "bg-amber-100 text-amber-700 font-bold border border-amber-200/80";
-  if (days < 7) return "bg-yellow-100 text-yellow-700 font-semibold border border-yellow-200/80";
-  return "bg-emerald-100 text-emerald-700 font-medium border border-emerald-200/80";
+  if (days < 0) return 'bg-rose-100 text-rose-700 font-bold border border-rose-200/80';
+  if (days < 3) return 'bg-amber-100 text-amber-700 font-bold border border-amber-200/80';
+  if (days < 7) return 'bg-yellow-100 text-yellow-700 font-semibold border border-yellow-200/80';
+  return 'bg-emerald-100 text-emerald-700 font-medium border border-emerald-200/80';
 }
 
 export default function QualityExpiryDashboard() {
@@ -51,17 +51,17 @@ export default function QualityExpiryDashboard() {
 
   const expiryDonutData = data
     ? [
-        { label: "Đã quá hạn", value: data.expiryOverview.expiredCount, percent: 0 },
-        { label: "Khẩn cấp (< 3 ngày)", value: data.expiryOverview.criticalCount, percent: 0 },
-        { label: "Cảnh báo (3-7 ngày)", value: data.expiryOverview.warningCount, percent: 0 },
-        { label: "An toàn (> 7 ngày)", value: data.expiryOverview.safeCount, percent: 0 },
+        { label: 'Đã quá hạn', value: data.expiryOverview.expiredCount, percent: 0 },
+        { label: 'Khẩn cấp (< 3 ngày)', value: data.expiryOverview.criticalCount, percent: 0 },
+        { label: 'Cảnh báo (3-7 ngày)', value: data.expiryOverview.warningCount, percent: 0 },
+        { label: 'An toàn (> 7 ngày)', value: data.expiryOverview.safeCount, percent: 0 },
       ].map((d) => {
         const total =
           (data?.expiryOverview.expiredCount ?? 0) +
           (data?.expiryOverview.criticalCount ?? 0) +
           (data?.expiryOverview.warningCount ?? 0) +
           (data?.expiryOverview.safeCount ?? 0);
-        return { ...d, percent: total > 0 ? +(d.value / total * 100).toFixed(1) : 0 };
+        return { ...d, percent: total > 0 ? +((d.value / total) * 100).toFixed(1) : 0 };
       })
     : [];
 
@@ -90,7 +90,7 @@ export default function QualityExpiryDashboard() {
             disabled={loading}
             className="flex items-center gap-2 px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 hover:text-slate-900 hover:bg-slate-50 transition-all shadow-xs disabled:opacity-50"
           >
-            <RefreshCw size={13} className={loading ? "animate-spin" : ""} />
+            <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
             Làm mới
           </button>
         </div>
@@ -105,22 +105,22 @@ export default function QualityExpiryDashboard() {
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               {[
                 {
-                  label: "Đã Quá Hạn",
+                  label: 'Đã Quá Hạn',
                   count: data?.expiryOverview.expiredCount ?? 0,
                   style: EXPIRY_CARD_STYLES.expired,
                 },
                 {
-                  label: "Khẩn Cấp (< 3 ngày)",
+                  label: 'Khẩn Cấp (< 3 ngày)',
                   count: data?.expiryOverview.criticalCount ?? 0,
                   style: EXPIRY_CARD_STYLES.critical,
                 },
                 {
-                  label: "Cảnh Báo (3-7 ngày)",
+                  label: 'Cảnh Báo (3-7 ngày)',
                   count: data?.expiryOverview.warningCount ?? 0,
                   style: EXPIRY_CARD_STYLES.warning,
                 },
                 {
-                  label: "An Toàn (> 7 ngày)",
+                  label: 'An Toàn (> 7 ngày)',
                   count: data?.expiryOverview.safeCount ?? 0,
                   style: EXPIRY_CARD_STYLES.safe,
                 },
@@ -149,7 +149,8 @@ export default function QualityExpiryDashboard() {
                     {data?.inboundQcRejectRatePercent ?? 0}%
                   </span>
                   <span className="text-xs text-slate-500 font-medium">
-                    ({fmtNum(data?.totalRejectedItems ?? 0)} / {fmtNum(data?.totalInboundItems ?? 0)} đơn vị lỗi)
+                    ({fmtNum(data?.totalRejectedItems ?? 0)} /{' '}
+                    {fmtNum(data?.totalInboundItems ?? 0)} đơn vị lỗi)
                   </span>
                 </div>
                 <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
@@ -171,7 +172,8 @@ export default function QualityExpiryDashboard() {
                     {data?.customerReturnRatePercent ?? 0}%
                   </span>
                   <span className="text-xs text-slate-500 font-medium">
-                    ({fmtNum(data?.totalReturnOrders ?? 0)} / {fmtNum(data?.totalOrders ?? 0)} đơn hoàn)
+                    ({fmtNum(data?.totalReturnOrders ?? 0)} / {fmtNum(data?.totalOrders ?? 0)} đơn
+                    hoàn)
                   </span>
                 </div>
                 <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
@@ -236,7 +238,7 @@ export default function QualityExpiryDashboard() {
                         <tr
                           key={i}
                           className={`hover:bg-slate-50/60 transition-colors ${
-                            b.daysRemaining < 0 ? "bg-rose-50/30" : ""
+                            b.daysRemaining < 0 ? 'bg-rose-50/30' : ''
                           }`}
                         >
                           <td className="py-3 pr-4 font-mono font-bold text-slate-800">
@@ -254,10 +256,10 @@ export default function QualityExpiryDashboard() {
                             {b.warehouseName}
                           </td>
                           <td className="py-3 pr-4 text-slate-600 font-mono text-[11px]">
-                            {new Date(b.expiryDate).toLocaleDateString("vi-VN", {
-                              day: "2-digit",
-                              month: "2-digit",
-                              year: "numeric",
+                            {new Date(b.expiryDate).toLocaleDateString('vi-VN', {
+                              day: '2-digit',
+                              month: '2-digit',
+                              year: 'numeric',
                             })}
                           </td>
                           <td className="py-3 pr-4">
@@ -273,7 +275,7 @@ export default function QualityExpiryDashboard() {
                             {fmtNum(b.quantityAvailable)}
                           </td>
                           <td className="py-3 text-right font-bold text-rose-600">
-                            {b.estimatedLossValue > 0 ? fmtVnd(b.estimatedLossValue) : "—"}
+                            {b.estimatedLossValue > 0 ? fmtVnd(b.estimatedLossValue) : '—'}
                           </td>
                         </tr>
                       ))}
@@ -284,16 +286,15 @@ export default function QualityExpiryDashboard() {
             </DashCard>
 
             {/* Warning banner */}
-            {(data?.expiryOverview.expiredCount ?? 0) +
-              (data?.expiryOverview.criticalCount ?? 0) >
+            {(data?.expiryOverview.expiredCount ?? 0) + (data?.expiryOverview.criticalCount ?? 0) >
               0 && (
               <div className="flex items-start gap-3 bg-amber-50/80 border border-amber-200/80 rounded-2xl p-4">
                 <AlertTriangle size={17} className="text-amber-600 shrink-0 mt-0.5" />
                 <div>
                   <div className="text-xs font-bold text-amber-900">
-                    Cần hành động: Phát hiện{" "}
+                    Cần hành động: Phát hiện{' '}
                     {(data?.expiryOverview.expiredCount ?? 0) +
-                      (data?.expiryOverview.criticalCount ?? 0)}{" "}
+                      (data?.expiryOverview.criticalCount ?? 0)}{' '}
                     lô hàng đang ở mức khẩn cấp hoặc quá hạn
                   </div>
                   <p className="text-[11px] text-amber-700 mt-0.5 leading-relaxed">

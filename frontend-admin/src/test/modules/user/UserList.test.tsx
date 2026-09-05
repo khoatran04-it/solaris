@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+﻿import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import UserList from '../../../pages/user/UserList';
@@ -22,8 +22,8 @@ vi.mock('../../../api/roleApi', () => ({
 
 /**
  * ============================================================================
- * 📦 MODULE 1: IDENTITY & ACCESS MANAGEMENT (IAM)
- * 🧪 COMPONENT TEST: UserList (Danh sách Tài khoản & Nhân viên)
+ * MODULE 1: IDENTITY & ACCESS MANAGEMENT (IAM)
+ * COMPONENT TEST: UserList (Danh sách Tài khoản & Nhân viên)
  * ============================================================================
  */
 describe('Module 01 - UserList Component', () => {

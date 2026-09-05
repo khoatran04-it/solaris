@@ -1,4 +1,4 @@
-using AutoMapper;
+﻿using AutoMapper;
 using backend.DTOs.ShopDTOs;
 using backend.Models;
 using backend.Services;
@@ -11,8 +11,8 @@ namespace backend.Tests.Modules.Module05_ProductPricing
 {
     /// <summary>
     /// ============================================================================
-    /// 📦 MODULE 5: PRODUCT & PRICING
-    /// 🧪 UNIT TEST: ShopProductService (Dữ liệu Cửa hàng B2C/B2B & Tìm Kiếm Đa Chiều)
+    /// MODULE 5: PRODUCT & PRICING
+    /// UNIT TEST: ShopProductService (Dữ liệu Cửa hàng B2C/B2B & Tìm Kiếm Đa Chiều)
     /// ============================================================================
     /// </summary>
     public class ShopProductServiceTests

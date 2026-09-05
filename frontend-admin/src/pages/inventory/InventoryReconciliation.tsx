@@ -346,9 +346,13 @@ const InventoryReconciliation: React.FC = () => {
                     shiftData.items.map((row, idx) => (
                       <tr key={row.variantId} className="hover:bg-slate-50/70 transition-colors">
                         <td className="px-4 py-3 text-center text-slate-400">{idx + 1}</td>
-                        <td className="px-4 py-3 font-mono font-bold text-indigo-700">{row.variantCode}</td>
+                        <td className="px-4 py-3 font-mono font-bold text-indigo-700">
+                          {row.variantCode}
+                        </td>
                         <td className="px-4 py-3 font-bold text-slate-800">{row.variantName}</td>
-                        <td className="px-4 py-3 text-center text-slate-600 font-medium">{row.uomName}</td>
+                        <td className="px-4 py-3 text-center text-slate-600 font-medium">
+                          {row.uomName}
+                        </td>
 
                         <td className="px-4 py-3 text-center font-bold text-[13px] text-slate-700 bg-slate-50/40 border-l border-slate-100">
                           {row.openingStock}

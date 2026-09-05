@@ -1,10 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import {
-  Warehouse as WarehouseIcon,
-  Search,
-  Filter,
-  AlertTriangle,
-} from 'lucide-react';
+﻿import React, { useEffect, useState } from 'react';
+import { Warehouse as WarehouseIcon, Search, Filter, AlertTriangle } from 'lucide-react';
 
 // API & Types
 import { inventoryApi } from '../../api/inventoryApi';
@@ -120,7 +115,7 @@ const InventoryDashboard: React.FC = () => {
     return new Date(isoString).toLocaleDateString('vi-VN');
   };
 
-  // 🔥 LOGIC BÔI MÀU CẢNH BÁO NÔNG SẢN
+  // Xác định mức độ cảnh báo hạn sử dụng nông sản
   const renderExpiryBadge = (days: number) => {
     if (days < 0)
       return (
@@ -289,9 +284,7 @@ const InventoryDashboard: React.FC = () => {
                         </div>
                         <div className="text-[11px] text-slate-500 font-medium">
                           NSX: {formatDate(item.manufactureDate)} &nbsp;|&nbsp; HSD:{' '}
-                          <strong className="text-slate-800">
-                            {formatDate(item.expiryDate)}
-                          </strong>
+                          <strong className="text-slate-800">{formatDate(item.expiryDate)}</strong>
                         </div>
                         {item.supplierName && (
                           <div

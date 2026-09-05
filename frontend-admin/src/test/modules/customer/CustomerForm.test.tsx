@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+﻿import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
@@ -38,22 +38,16 @@ vi.mock('../../../api/customerGroupApi', () => ({
 
 /**
  * ============================================================================
- * 📦 MODULE 6: CUSTOMER MASTER DATA
- * 🧪 COMPONENT TEST: CustomerForm (Form Thêm / Sửa Hồ Sơ Khách Hàng)
+ * MODULE 6: CUSTOMER MASTER DATA
+ * COMPONENT TEST: CustomerForm (Form Thêm / Sửa Hồ Sơ Khách Hàng)
  * ============================================================================
  */
 describe('Module 06 - CustomerForm Component', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    (customerTypeApi.getAllList as any).mockResolvedValue([
-      { id: 1, name: 'Khách sỉ' },
-    ]);
-    (customerTierApi.getAllList as any).mockResolvedValue([
-      { id: 1, name: 'Hạng Vàng' },
-    ]);
-    (customerGroupApi.getAllList as any).mockResolvedValue([
-      { id: 1, name: 'Khách VIP' },
-    ]);
+    (customerTypeApi.getAllList as any).mockResolvedValue([{ id: 1, name: 'Khách sỉ' }]);
+    (customerTierApi.getAllList as any).mockResolvedValue([{ id: 1, name: 'Hạng Vàng' }]);
+    (customerGroupApi.getAllList as any).mockResolvedValue([{ id: 1, name: 'Khách VIP' }]);
     (customerApi.getAllList as any).mockResolvedValue([
       { id: 1, code: 'KH001', phoneNumber: '0901234567' },
     ]);

@@ -267,7 +267,10 @@ const PurchaseOrderDetail: React.FC = () => {
 
                   <InfoField label="Người Lập Đơn" value={po.createdByName} />
                   <InfoField label="Ngày Lập Đơn" value={formatDate(po.orderDate)} />
-                  <InfoField label="Ngày Giao Dự Kiến" value={formatDate(po.expectedDeliveryDate)} />
+                  <InfoField
+                    label="Ngày Giao Dự Kiến"
+                    value={formatDate(po.expectedDeliveryDate)}
+                  />
                   <InfoField
                     label="Tổng Tiền Thanh Toán"
                     value={

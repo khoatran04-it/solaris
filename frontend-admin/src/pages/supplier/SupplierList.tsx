@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Hexagon, Edit3, Trash2, Eye, Building2, Mail, Phone } from 'lucide-react';
 
@@ -133,7 +133,7 @@ const SupplierList: React.FC = () => {
     }
   };
 
-  // 🔥 XỬ LÝ TOGGLE TRẠNG THÁI
+  // Cập nhật trạng thái hoạt động
   const handleToggleActive = async (id: number, currentStatus: boolean) => {
     try {
       await supplierApi.toggleActive(id);
@@ -272,7 +272,8 @@ const SupplierList: React.FC = () => {
                         )}
                         {item.taxCode ? (
                           <span className="text-[11px] text-slate-500 font-medium">
-                            MST: <span className="font-semibold text-slate-700">{item.taxCode}</span>
+                            MST:{' '}
+                            <span className="font-semibold text-slate-700">{item.taxCode}</span>
                           </span>
                         ) : (
                           <span className="text-[11px] text-slate-300 italic">Chưa có MST</span>

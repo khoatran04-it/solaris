@@ -34,13 +34,6 @@ namespace backend.DTOs.Validators
             RuleFor(x => x.Password)
                 .MinimumLength(6).WithMessage("Mật khẩu phải có ít nhất 6 ký tự.")
                 .When(x => !string.IsNullOrWhiteSpace(x.Password));
-
-            /* 
-             * Nếu DTO của sếp có: public List<int> GroupIds { get; set; }
-             * Sếp có thể bắt lỗi nếu cần:
-             * RuleFor(x => x.GroupIds)
-             *     .NotEmpty().WithMessage("Khách hàng phải thuộc ít nhất một nhóm.");
-             */
         }
     }
 

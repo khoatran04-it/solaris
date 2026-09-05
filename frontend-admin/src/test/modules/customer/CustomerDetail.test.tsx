@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+﻿import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
@@ -41,8 +41,8 @@ vi.mock('react-router-dom', async () => {
 
 /**
  * ============================================================================
- * 📦 MODULE 06: CUSTOMER
- * 🧪 COMPONENT TEST: CustomerDetail (Chi tiết Khách hàng, Sổ địa chỉ & Lịch sử mua hàng)
+ * MODULE 06: CUSTOMER
+ * COMPONENT TEST: CustomerDetail (Chi tiết Khách hàng, Sổ địa chỉ & Lịch sử mua hàng)
  * ============================================================================
  */
 describe('Module 06 - CustomerDetail Component', () => {
@@ -172,7 +172,9 @@ describe('Module 06 - CustomerDetail Component', () => {
 
     await waitFor(() => {
       expect(screen.getByText('123 Lê Lợi, Phường Bến Nghé, Quận 1, TP.HCM')).toBeInTheDocument();
-      expect(screen.getByText('456 Nguyễn Huệ, Phường Bến Thành, Quận 1, TP.HCM')).toBeInTheDocument();
+      expect(
+        screen.getByText('456 Nguyễn Huệ, Phường Bến Thành, Quận 1, TP.HCM')
+      ).toBeInTheDocument();
       expect(screen.getByText('Văn Phòng A')).toBeInTheDocument();
     });
   });

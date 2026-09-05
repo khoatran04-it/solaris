@@ -1,4 +1,4 @@
-using AutoMapper;
+﻿using AutoMapper;
 using backend.Data;
 using backend.DTOs.OrderDTOs;
 using backend.Models;
@@ -18,8 +18,8 @@ namespace backend.Tests.Modules.Module13_OrderAndReturn
 {
     /// <summary>
     /// ============================================================================
-    /// 📦 MODULE 13: SALES ORDERS & CUSTOMER RETURNS
-    /// 🧪 UNIT TEST: OrderService (Quản Lý Đơn Bán Hàng, Định Tuyến & Giữ Chỗ Tồn Kho)
+    /// MODULE 13: SALES ORDERS & CUSTOMER RETURNS
+    /// UNIT TEST: OrderService (Quản Lý Đơn Bán Hàng, Định Tuyến & Giữ Chỗ Tồn Kho)
     /// ============================================================================
     /// </summary>
     public class OrderServiceTests

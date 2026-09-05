@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+﻿import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter } from 'react-router-dom';
@@ -16,8 +16,8 @@ vi.mock('../../../api/customerTypeApi', () => ({
 
 /**
  * ============================================================================
- * 📦 MODULE 6: CUSTOMER MASTER DATA
- * 🧪 COMPONENT TEST: CustomerTypeList (Danh sách Phân loại Khách hàng)
+ * MODULE 6: CUSTOMER MASTER DATA
+ * COMPONENT TEST: CustomerTypeList (Danh sách Phân loại Khách hàng)
  * ============================================================================
  */
 describe('Module 06 - CustomerTypeList Component', () => {

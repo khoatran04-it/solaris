@@ -45,7 +45,7 @@ const CategoryAttributeForm: React.FC = () => {
   const [selectedCategoryId, setSelectedCategoryId] = useState<number>(initialCatId);
   const [categories, setCategories] = useState<ProductCategory[]>([]);
   const [attributes, setAttributes] = useState<AttributeDefinition[]>([]);
-  
+
   // Map lưu trạng thái chọn của từng AttributeId: { [attributeId]: { isSelected: boolean, isRequired: boolean } }
   const [selectedMap, setSelectedMap] = useState<Record<number, AttributeSelectionState>>({});
 
@@ -176,9 +176,20 @@ const CategoryAttributeForm: React.FC = () => {
 
       const matchType =
         selectedTypeFilter === 'ALL' ||
-        (selectedTypeFilter === 'TEXT' && (!attr.dataType || attr.dataType.toLowerCase().includes('text') || attr.dataType.toLowerCase().includes('string') || attr.dataType.toLowerCase().includes('văn bản'))) ||
-        (selectedTypeFilter === 'NUMBER' && (attr.dataType?.toLowerCase().includes('number') || attr.dataType?.toLowerCase().includes('số') || attr.dataType?.toLowerCase().includes('int') || attr.dataType?.toLowerCase().includes('decimal'))) ||
-        (selectedTypeFilter === 'SELECT' && (attr.dataType?.toLowerCase().includes('select') || attr.dataType?.toLowerCase().includes('option') || attr.dataType?.toLowerCase().includes('lựa chọn')));
+        (selectedTypeFilter === 'TEXT' &&
+          (!attr.dataType ||
+            attr.dataType.toLowerCase().includes('text') ||
+            attr.dataType.toLowerCase().includes('string') ||
+            attr.dataType.toLowerCase().includes('văn bản'))) ||
+        (selectedTypeFilter === 'NUMBER' &&
+          (attr.dataType?.toLowerCase().includes('number') ||
+            attr.dataType?.toLowerCase().includes('số') ||
+            attr.dataType?.toLowerCase().includes('int') ||
+            attr.dataType?.toLowerCase().includes('decimal'))) ||
+        (selectedTypeFilter === 'SELECT' &&
+          (attr.dataType?.toLowerCase().includes('select') ||
+            attr.dataType?.toLowerCase().includes('option') ||
+            attr.dataType?.toLowerCase().includes('lựa chọn')));
 
       return matchKeyword && matchType;
     });
@@ -207,7 +218,10 @@ const CategoryAttributeForm: React.FC = () => {
         attributes: payloadAttributes,
       });
 
-      showToast('success', `ĐÃ ĐỒNG BỘ ${payloadAttributes.length} THUỘC TÍNH CHO DANH MỤC THÀNH CÔNG!`);
+      showToast(
+        'success',
+        `ĐÃ ĐỒNG BỘ ${payloadAttributes.length} THUỘC TÍNH CHO DANH MỤC THÀNH CÔNG!`
+      );
       setTimeout(() => navigate('/category-attributes'), 1200);
     } catch (error: any) {
       const errorMessage = error.response?.data?.message || 'Có lỗi xảy ra khi lưu cấu hình.';
@@ -220,7 +234,12 @@ const CategoryAttributeForm: React.FC = () => {
   // Helper render Badge kiểu dữ liệu
   const renderDataTypeBadge = (dataType?: string) => {
     const type = (dataType || 'text').toLowerCase();
-    if (type.includes('num') || type.includes('số') || type.includes('int') || type.includes('decimal')) {
+    if (
+      type.includes('num') ||
+      type.includes('số') ||
+      type.includes('int') ||
+      type.includes('decimal')
+    ) {
       return (
         <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-purple-50 text-purple-700 border border-purple-200">
           Số (Number)
@@ -278,9 +297,19 @@ const CategoryAttributeForm: React.FC = () => {
                 <div className="flex items-center gap-3 p-3.5 bg-yellow-50/70 border border-yellow-200/60 rounded-xl">
                   <Sparkles className="w-5 h-5 text-yellow-600 shrink-0" />
                   <div className="text-xs text-yellow-900 leading-relaxed">
-                    Đang thiết lập cho: <strong className="font-bold">{categories.find((c) => c.id === selectedCategoryId)?.name}</strong>
+                    Đang thiết lập cho:{' '}
+                    <strong className="font-bold">
+                      {categories.find((c) => c.id === selectedCategoryId)?.name}
+                    </strong>
                     <span className="block text-yellow-700 mt-0.5">
-                      Đã chọn: <strong>{selectedCount}</strong> thuộc tính (trong đó <strong>{Object.values(selectedMap).filter((v) => v.isSelected && v.isRequired).length}</strong> thuộc tính bắt buộc).
+                      Đã chọn: <strong>{selectedCount}</strong> thuộc tính (trong đó{' '}
+                      <strong>
+                        {
+                          Object.values(selectedMap).filter((v) => v.isSelected && v.isRequired)
+                            .length
+                        }
+                      </strong>{' '}
+                      thuộc tính bắt buộc).
                     </span>
                   </div>
                 </div>
@@ -441,9 +470,7 @@ const CategoryAttributeForm: React.FC = () => {
               isEditMode={true}
               disabled={selectedCategoryId === 0}
               label={
-                selectedCount > 0
-                  ? `Lưu Ma Trận (${selectedCount} thuộc tính)`
-                  : 'Lưu Cấu Hình'
+                selectedCount > 0 ? `Lưu Ma Trận (${selectedCount} thuộc tính)` : 'Lưu Cấu Hình'
               }
               icon={Save}
             />

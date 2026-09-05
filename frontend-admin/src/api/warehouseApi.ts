@@ -1,6 +1,11 @@
 import axiosClient from './axiosClient';
 import { PagedResult } from '../types/common';
-import { Warehouse, WarehousePayload, WarehouseQueryParams, WarehouseCapacityStatus } from '../types/warehouse';
+import {
+  Warehouse,
+  WarehousePayload,
+  WarehouseQueryParams,
+  WarehouseCapacityStatus,
+} from '../types/warehouse';
 
 export const warehouseApi = {
   // 1. GET (Có phân trang & Lọc)

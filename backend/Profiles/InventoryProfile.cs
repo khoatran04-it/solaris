@@ -20,8 +20,7 @@ namespace backend.Profiles
                 .ForMember(dest => dest.VariantCode, opt => opt.MapFrom(src => src.Variant != null ? src.Variant.Code : ""))
                 .ForMember(dest => dest.VariantName, opt => opt.MapFrom(src => src.Variant != null ? src.Variant.Name : ""))
 
-                // 💡 LƯU Ý ĐVT: Tùy vào việc sếp để khóa ngoại BaseUoM ở bảng Product gốc hay bảng Variant. 
-                // Giả sử ĐVT nằm ở Product gốc (Parent Product):
+                // Ánh xạ Đơn vị tính (UoM) cơ sở từ Product gốc
                 .ForMember(dest => dest.BaseUoMName, opt => opt.MapFrom(src =>
                     (src.Variant != null && src.Variant.Product != null && src.Variant.Product.BaseUoM != null)
                     ? src.Variant.Product.BaseUoM.Name : ""))
@@ -31,7 +30,7 @@ namespace backend.Profiles
                 .ForMember(dest => dest.ManufactureDate, opt => opt.MapFrom(src => src.Batch != null ? src.Batch.ManufactureDate : default))
                 .ForMember(dest => dest.ExpiryDate, opt => opt.MapFrom(src => src.Batch != null ? src.Batch.ExpiryDate : default))
 
-                // 4. Flatten Nhà cung cấp (Chọc từ Lô hàng -> NCC)
+                // 4. Flatten thông tin Nhà cung cấp từ Batch liên kết
                 .ForMember(dest => dest.SupplierName, opt => opt.MapFrom(src =>
                     (src.Batch != null && src.Batch.Supplier != null)
                     ? src.Batch.Supplier.Name : ""));

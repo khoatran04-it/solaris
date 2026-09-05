@@ -259,11 +259,19 @@ const CustomerDetail: React.FC = () => {
                           <p className="text-xs text-slate-600 mt-1.5 leading-relaxed">
                             {customer.nextTierName ? (
                               <>
-                                Mua thêm <strong className="text-amber-700 font-black">{(customer.amountToNextTier || 0).toLocaleString('vi-VN')} đ</strong> để thăng cấp lên bậc <strong className="text-amber-800 font-black">{customer.nextTierName}</strong>
+                                Mua thêm{' '}
+                                <strong className="text-amber-700 font-black">
+                                  {(customer.amountToNextTier || 0).toLocaleString('vi-VN')} đ
+                                </strong>{' '}
+                                để thăng cấp lên bậc{' '}
+                                <strong className="text-amber-800 font-black">
+                                  {customer.nextTierName}
+                                </strong>
                               </>
                             ) : (
                               <span className="text-emerald-700 font-bold flex items-center gap-1">
-                                <Sparkles size={14} className="text-amber-500" /> Khách hàng đã đạt thứ hạng thành viên cao nhất (VIP)!
+                                <Sparkles size={14} className="text-amber-500" /> Khách hàng đã đạt
+                                thứ hạng thành viên cao nhất (VIP)!
                               </span>
                             )}
                           </p>
@@ -294,14 +302,24 @@ const CustomerDetail: React.FC = () => {
                     {/* Thanh tiến độ Loyalty Progress Bar */}
                     <div className="space-y-1.5 pt-1">
                       <div className="flex items-center justify-between text-xs font-bold text-slate-700">
-                        <span className="text-amber-800 font-extrabold">{customer.customerTierName || 'Thành Viên'}</span>
-                        <span className="text-emerald-700 font-black">{customer.tierProgressPercent || 0}%</span>
-                        <span className="text-slate-500">{customer.nextTierName ? `Mục tiêu: ${customer.nextTierName}` : '🌟 VIP Tối Đa'}</span>
+                        <span className="text-amber-800 font-extrabold">
+                          {customer.customerTierName || 'Thành Viên'}
+                        </span>
+                        <span className="text-emerald-700 font-black">
+                          {customer.tierProgressPercent || 0}%
+                        </span>
+                        <span className="text-slate-500">
+                          {customer.nextTierName
+                            ? `Mục tiêu: ${customer.nextTierName}`
+                            : '🌟 VIP Tối Đa'}
+                        </span>
                       </div>
                       <div className="w-full h-3 bg-amber-200/50 rounded-full overflow-hidden p-0.5 border border-amber-200">
                         <div
                           className="h-full bg-gradient-to-r from-amber-500 to-emerald-500 rounded-full transition-all duration-500 shadow-xs"
-                          style={{ width: `${Math.min(100, Math.max(0, customer.tierProgressPercent || 0))}%` }}
+                          style={{
+                            width: `${Math.min(100, Math.max(0, customer.tierProgressPercent || 0))}%`,
+                          }}
                         />
                       </div>
                     </div>
@@ -534,11 +552,16 @@ const CustomerDetail: React.FC = () => {
               <div className="flex items-center gap-3">
                 <div className="px-4 py-2 bg-emerald-50 text-emerald-800 rounded-xl border border-emerald-200 text-xs font-bold flex items-center gap-2">
                   <CreditCard size={16} />
-                  <span>Đã thanh toán: <strong>{(customer.totalSpent || 0).toLocaleString('vi-VN')} đ</strong></span>
+                  <span>
+                    Đã thanh toán:{' '}
+                    <strong>{(customer.totalSpent || 0).toLocaleString('vi-VN')} đ</strong>
+                  </span>
                 </div>
                 <div className="px-4 py-2 bg-blue-50 text-blue-800 rounded-xl border border-blue-200 text-xs font-bold flex items-center gap-2">
                   <ShoppingBag size={16} />
-                  <span>Tổng đơn: <strong>{orders.length} đơn</strong></span>
+                  <span>
+                    Tổng đơn: <strong>{orders.length} đơn</strong>
+                  </span>
                 </div>
               </div>
             </div>
@@ -591,7 +614,8 @@ const CustomerDetail: React.FC = () => {
                               'bg-slate-100 text-slate-700 border-slate-200'
                             }`}
                           >
-                            {PaymentStatusLabels[ord.paymentStatus as PaymentStatus] || 'Chưa thanh toán'}
+                            {PaymentStatusLabels[ord.paymentStatus as PaymentStatus] ||
+                              'Chưa thanh toán'}
                           </span>
                           <span className="block text-[11px] text-slate-400 mt-1">
                             {PaymentMethodLabels[ord.paymentMethod as PaymentMethod] || 'COD'}

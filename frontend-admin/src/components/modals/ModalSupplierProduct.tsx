@@ -227,7 +227,9 @@ export const ModalSupplierProduct: React.FC<ModalSupplierProductProps> = ({
                       </span>
                       <div className="flex items-center gap-2 mt-1">
                         <span className="text-[10px] font-bold bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-200/50 uppercase tracking-widest">
-                          {selectedVariant?.code || initialData?.variantCode || `#${formData.variantId}`}
+                          {selectedVariant?.code ||
+                            initialData?.variantCode ||
+                            `#${formData.variantId}`}
                         </span>
                         {selectedVariant?.prices && selectedVariant.prices.length > 0 && (
                           <span className="text-[11px] text-slate-500 font-medium">

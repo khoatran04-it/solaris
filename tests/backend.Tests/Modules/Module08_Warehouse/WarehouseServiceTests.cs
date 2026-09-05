@@ -1,4 +1,4 @@
-using AutoMapper;
+﻿using AutoMapper;
 using backend.DTOs.InventoryDTOs;
 using backend.Models;
 using backend.Models.Enums;
@@ -12,8 +12,8 @@ namespace backend.Tests.Modules.Module08_Warehouse
 {
     /// <summary>
     /// ============================================================================
-    /// 📦 MODULE 08: WAREHOUSE & PHYSICAL ADDRESS MANAGEMENT
-    /// 🧪 TEST SUITE: WarehouseServiceTests
+    /// MODULE 08: WAREHOUSE & PHYSICAL ADDRESS MANAGEMENT
+    /// TEST SUITE: WarehouseServiceTests
     /// ============================================================================
     /// Kiểm thử toàn diện tầng nghiệp vụ Quản lý Kho Hàng (Warehouse):
     /// - Quản lý hồ sơ kho vật lý và tọa độ địa lý GPS (WarehouseAddress)

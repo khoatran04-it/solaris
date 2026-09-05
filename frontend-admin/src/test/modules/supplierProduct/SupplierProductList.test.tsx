@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+﻿import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter } from 'react-router-dom';
@@ -23,14 +23,12 @@ vi.mock('../../../api/supplierApi', () => ({
 
 /**
  * ============================================================================
- * 📦 MODULE 3: SUPPLIER
- * 🧪 COMPONENT TEST: SupplierProductList (Bảng giá & Mặt hàng cung cấp)
+ * MODULE 3: SUPPLIER
+ * COMPONENT TEST: SupplierProductList (Bảng giá & Mặt hàng cung cấp)
  * ============================================================================
  */
 describe('Module 03 - SupplierProductList Component', () => {
-  const mockSuppliers = [
-    { id: 1, code: 'NCC01', name: 'Nông trại Xanh Đà Lạt' },
-  ];
+  const mockSuppliers = [{ id: 1, code: 'NCC01', name: 'Nông trại Xanh Đà Lạt' }];
 
   const mockSupplierProducts = [
     {
@@ -108,7 +106,9 @@ describe('Module 03 - SupplierProductList Component', () => {
       expect(screen.getByText('Bơ Sáp 034')).toBeInTheDocument();
     });
 
-    const searchInput = screen.getByPlaceholderText(/Tìm kiếm theo mã SKU, tên sản phẩm, tên NCC.../i);
+    const searchInput = screen.getByPlaceholderText(
+      /Tìm kiếm theo mã SKU, tên sản phẩm, tên NCC.../i
+    );
     fireEvent.change(searchInput, { target: { value: 'Bơ Sáp' } });
 
     await waitFor(
@@ -137,7 +137,9 @@ describe('Module 03 - SupplierProductList Component', () => {
     });
 
     const filterButtons = screen.getAllByRole('button');
-    const supplierFilterBtn = filterButtons.find((btn) => btn.textContent?.includes('Nhà cung cấp'));
+    const supplierFilterBtn = filterButtons.find((btn) =>
+      btn.textContent?.includes('Nhà cung cấp')
+    );
     if (supplierFilterBtn) {
       fireEvent.click(supplierFilterBtn);
     }

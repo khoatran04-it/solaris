@@ -1,4 +1,4 @@
-// File này tạo ra 1 đại diện (instance) của axios để sử dụng trong toàn bộ dự án,
+﻿// File này tạo ra 1 đại diện (instance) của axios để sử dụng trong toàn bộ dự án,
 // giúp quản lý các request và response một cách tập trung và dễ dàng hơn.
 
 import axios from 'axios';
@@ -12,7 +12,7 @@ const axiosClient = axios.create({
   },
 });
 
-// 🔥 BỔ SUNG 1: REQUEST INTERCEPTOR (Tự động kẹp Token vào mọi API gửi đi)
+// Request Interceptor: Tự động đính kèm Token vào headers request
 axiosClient.interceptors.request.use(
   (config) => {
     // Lấy token từ localStorage (Nơi chúng ta sẽ lưu token khi Login thành công)
@@ -29,7 +29,7 @@ axiosClient.interceptors.request.use(
   }
 );
 
-// 🔥 CẬP NHẬT 2: RESPONSE INTERCEPTOR (Xử lý Data và bắt lỗi 401)
+// Response Interceptor: Trích xuất response data và xử lý lỗi 401 Unauthorized
 axiosClient.interceptors.response.use(
   (response) => {
     return response.data; // Chỉ nhận phần data của response

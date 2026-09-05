@@ -1,4 +1,4 @@
-using backend.Data;
+﻿using backend.Data;
 using backend.DTOs.PaymentDTOs;
 using backend.Models;
 using backend.Models.Enums;
@@ -19,8 +19,8 @@ namespace backend.Tests.Modules.Module14_PaymentAndShipping
 {
     /// <summary>
     /// ============================================================================
-    /// 📦 MODULE 14: PAYMENT & 3PL LOGISTICS
-    /// 🧪 UNIT TEST: VnPayService (Cổng Thanh Toán VNPay Sandbox, Callback & IPN)
+    /// MODULE 14: PAYMENT & 3PL LOGISTICS
+    /// UNIT TEST: VnPayService (Cổng Thanh Toán VNPay Sandbox, Callback & IPN)
     /// ============================================================================
     /// </summary>
     public class VnPayServiceTests

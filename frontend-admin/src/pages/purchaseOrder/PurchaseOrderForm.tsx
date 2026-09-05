@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+﻿import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ShoppingCart, Plus, Trash2, Save, Filter, AlertCircle } from 'lucide-react';
 
@@ -86,7 +86,9 @@ const PurchaseOrderForm: React.FC = () => {
       setRawVariants(variantRes);
       setAllVariants(variantRes.map((v: any) => ({ value: v.id, label: v.name })));
       setUoms(uomRes.map((u: any) => ({ value: u.id, label: u.name })));
-      setWarehouses(whRes.map((w: any) => ({ value: w.id, label: `${w.code || 'KHO'} - ${w.name}` })));
+      setWarehouses(
+        whRes.map((w: any) => ({ value: w.id, label: `${w.code || 'KHO'} - ${w.name}` }))
+      );
     } catch (error) {
       showToast('error', 'Không thể tải dữ liệu danh mục bổ trợ');
     }
@@ -177,7 +179,7 @@ const PurchaseOrderForm: React.FC = () => {
     const newDetails = [...details];
     newDetails[index] = { ...newDetails[index], [field]: value };
 
-    // 🔥 SMART AUTO-FILL: Khi chọn Sản phẩm -> Tự động điền Giá nhập và ĐVT mua từ bảng giá của NCC
+    // Tự động điền giá nhập và ĐVT mua từ bảng giá của nhà cung cấp
     if (field === 'variantId' && value && supplierProducts.length > 0) {
       const sp = supplierProducts.find((p) => p.variantId === Number(value));
       if (sp) {
@@ -412,7 +414,9 @@ const PurchaseOrderForm: React.FC = () => {
                 ) : (
                   <div className="flex items-center gap-1.5 text-xs text-amber-800 bg-amber-100/70 px-3 py-1 rounded-xl border border-amber-300/60 font-semibold">
                     <AlertCircle size={14} className="text-amber-700 shrink-0" />
-                    <span>NCC này chưa có bảng giá riêng, hệ thống đang mở toàn bộ danh mục sản phẩm.</span>
+                    <span>
+                      NCC này chưa có bảng giá riêng, hệ thống đang mở toàn bộ danh mục sản phẩm.
+                    </span>
                   </div>
                 )}
               </div>
@@ -486,11 +490,16 @@ const PurchaseOrderForm: React.FC = () => {
                               <div className="flex flex-wrap items-center gap-1.5 mt-2 px-0.5">
                                 {spInfo?.minimumOrderQuantity ? (
                                   <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200/80">
-                                    MOQ: {spInfo.minimumOrderQuantity} {spInfo.purchaseUoMName || ''}
+                                    MOQ: {spInfo.minimumOrderQuantity}{' '}
+                                    {spInfo.purchaseUoMName || ''}
                                   </span>
                                 ) : null}
                                 <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200/80">
-                                  SKU: {spInfo?.variantCode || spInfo?.variantSKU || rawVariants.find((v) => v.id === Number(row.variantId))?.code || `SKU-${row.variantId}`}
+                                  SKU:{' '}
+                                  {spInfo?.variantCode ||
+                                    spInfo?.variantSKU ||
+                                    rawVariants.find((v) => v.id === Number(row.variantId))?.code ||
+                                    `SKU-${row.variantId}`}
                                 </span>
                                 {spInfo?.supplierSKU ? (
                                   <span className="text-[10px] font-medium text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">

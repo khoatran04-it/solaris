@@ -400,9 +400,7 @@ const InventoryAdjustmentForm: React.FC = () => {
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {details.map((row, idx) => {
-                    const rowBatches = batches.filter(
-                      (b) => b.variantId === Number(row.variantId)
-                    );
+                    const rowBatches = batches.filter((b) => b.variantId === Number(row.variantId));
 
                     return (
                       <tr
@@ -494,11 +492,7 @@ const InventoryAdjustmentForm: React.FC = () => {
                             value={row.quantity}
                             error={errors[`quantity_${idx}`]}
                             onChange={(e) =>
-                              handleDetailChange(
-                                idx,
-                                'quantity',
-                                parseFloat(e.target.value) || 0
-                              )
+                              handleDetailChange(idx, 'quantity', parseFloat(e.target.value) || 0)
                             }
                           />
                         </td>
@@ -513,11 +507,7 @@ const InventoryAdjustmentForm: React.FC = () => {
                             className="text-right font-medium text-slate-700"
                             value={row.unitPrice}
                             onChange={(e) =>
-                              handleDetailChange(
-                                idx,
-                                'unitPrice',
-                                parseFloat(e.target.value) || 0
-                              )
+                              handleDetailChange(idx, 'unitPrice', parseFloat(e.target.value) || 0)
                             }
                           />
                         </td>

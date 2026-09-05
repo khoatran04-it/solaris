@@ -1,7 +1,7 @@
-﻿import React, { useState, useEffect } from "react";
-import { TrendingUp, ShoppingBag, CheckCircle2, DollarSign, RefreshCw } from "lucide-react";
-import { dashboardApi } from "../../api/dashboardApi";
-import type { DashboardOverviewDto, DashboardPeriod } from "../../types/dashboard";
+﻿import React, { useState, useEffect } from 'react';
+import { TrendingUp, ShoppingBag, CheckCircle2, DollarSign, RefreshCw } from 'lucide-react';
+import { dashboardApi } from '../../api/dashboardApi';
+import type { DashboardOverviewDto, DashboardPeriod } from '../../types/dashboard';
 import {
   KpiMetricCard,
   AreaLineChart,
@@ -10,36 +10,36 @@ import {
   DashCard,
   fmtVnd,
   fmtNum,
-} from "../../components/dashboard/DashboardCharts";
+} from '../../components/dashboard/DashboardCharts';
 
 const PERIODS: { label: string; value: DashboardPeriod }[] = [
-  { label: "Hôm nay", value: "today" },
-  { label: "7 ngày", value: "7days" },
-  { label: "30 ngày", value: "30days" },
-  { label: "Năm nay", value: "year" },
+  { label: 'Hôm nay', value: 'today' },
+  { label: '7 ngày', value: '7days' },
+  { label: '30 ngày', value: '30days' },
+  { label: 'Năm nay', value: 'year' },
 ];
 
 const STATUS_LABEL: Record<string, string> = {
-  Draft: "Nháp",
-  Pending: "Chờ duyệt",
-  Confirmed: "Đã xác nhận",
-  Processing: "Đang xử lý",
-  Shipping: "Đang giao",
-  Completed: "Hoàn tất",
-  Cancelled: "Đã hủy",
+  Draft: 'Nháp',
+  Pending: 'Chờ duyệt',
+  Confirmed: 'Đã xác nhận',
+  Processing: 'Đang xử lý',
+  Shipping: 'Đang giao',
+  Completed: 'Hoàn tất',
+  Cancelled: 'Đã hủy',
 };
 
 const STATUS_COLOR: Record<string, string> = {
-  Completed: "bg-emerald-50 text-emerald-700 border border-emerald-200/60",
-  Shipping: "bg-blue-50 text-blue-700 border border-blue-200/60",
-  Pending: "bg-amber-50 text-amber-700 border border-amber-200/60",
-  Cancelled: "bg-rose-50 text-rose-700 border border-rose-200/60",
-  Processing: "bg-indigo-50 text-indigo-700 border border-indigo-200/60",
-  default: "bg-slate-100 text-slate-700 border border-slate-200/60",
+  Completed: 'bg-emerald-50 text-emerald-700 border border-emerald-200/60',
+  Shipping: 'bg-blue-50 text-blue-700 border border-blue-200/60',
+  Pending: 'bg-amber-50 text-amber-700 border border-amber-200/60',
+  Cancelled: 'bg-rose-50 text-rose-700 border border-rose-200/60',
+  Processing: 'bg-indigo-50 text-indigo-700 border border-indigo-200/60',
+  default: 'bg-slate-100 text-slate-700 border border-slate-200/60',
 };
 
 export default function OverviewDashboard() {
-  const [period, setPeriod] = useState<DashboardPeriod>("30days");
+  const [period, setPeriod] = useState<DashboardPeriod>('30days');
   const [data, setData] = useState<DashboardOverviewDto | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -64,13 +64,13 @@ export default function OverviewDashboard() {
   const paymentData =
     data?.paymentMethodBreakdown.map((p) => ({
       label:
-        p.method === "COD"
-          ? "COD (Thu hộ)"
-          : p.method === "EWallet" || p.method === "VNPay"
-          ? "Ví điện tử / VNPay"
-          : p.method === "BankTransfer"
-          ? "Chuyển khoản"
-          : p.method,
+        p.method === 'COD'
+          ? 'COD (Thu hộ)'
+          : p.method === 'EWallet' || p.method === 'VNPay'
+            ? 'Ví điện tử / VNPay'
+            : p.method === 'BankTransfer'
+              ? 'Chuyển khoản'
+              : p.method,
       value: p.amount,
       percent: p.percent,
     })) ?? [];
@@ -101,8 +101,8 @@ export default function OverviewDashboard() {
                   onClick={() => setPeriod(p.value)}
                   className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${
                     period === p.value
-                      ? "bg-slate-900 text-white shadow-xs"
-                      : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                      ? 'bg-slate-900 text-white shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
                   }`}
                 >
                   {p.label}
@@ -115,7 +115,7 @@ export default function OverviewDashboard() {
               title="Làm mới dữ liệu"
               className="p-2 bg-white border border-slate-200 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-all shadow-xs disabled:opacity-50"
             >
-              <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
+              <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
             </button>
           </div>
         </div>
@@ -134,7 +134,7 @@ export default function OverviewDashboard() {
                 subtitle="Đơn hàng hoàn tất"
                 badge={
                   data && data.revenueGrowthPercent !== 0
-                    ? `${data.revenueGrowthPercent > 0 ? "+" : ""}${data.revenueGrowthPercent}%`
+                    ? `${data.revenueGrowthPercent > 0 ? '+' : ''}${data.revenueGrowthPercent}%`
                     : undefined
                 }
                 badgePositive={(data?.revenueGrowthPercent ?? 0) >= 0}
@@ -181,7 +181,12 @@ export default function OverviewDashboard() {
                 subtitle="Số lượng đơn theo các giai đoạn xử lý"
                 className="lg:col-span-2"
               >
-                <RankedBarChart data={statusData} color="#3b82f6" formatValue={fmtNum} height={200} />
+                <RankedBarChart
+                  data={statusData}
+                  color="#3b82f6"
+                  formatValue={fmtNum}
+                  height={200}
+                />
               </DashCard>
             </div>
 
@@ -207,9 +212,7 @@ export default function OverviewDashboard() {
                         <td className="py-3 pr-4 font-mono font-bold text-slate-800">
                           {o.orderCode}
                         </td>
-                        <td className="py-3 pr-4 text-slate-700 font-medium">
-                          {o.customerName}
-                        </td>
+                        <td className="py-3 pr-4 text-slate-700 font-medium">{o.customerName}</td>
                         <td className="py-3 pr-4 font-bold text-slate-900">
                           {fmtVnd(o.totalAmount)}
                         </td>
@@ -223,10 +226,10 @@ export default function OverviewDashboard() {
                           </span>
                         </td>
                         <td className="py-3 text-right text-slate-500 text-[11px]">
-                          {new Date(o.orderDate).toLocaleDateString("vi-VN", {
-                            day: "2-digit",
-                            month: "2-digit",
-                            year: "numeric",
+                          {new Date(o.orderDate).toLocaleDateString('vi-VN', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: 'numeric',
                           })}
                         </td>
                       </tr>

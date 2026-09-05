@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+﻿import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import LoginPage from '../../../pages/login/LoginPage';
@@ -13,8 +13,8 @@ vi.mock('../../../api/axiosClient', () => ({
 
 /**
  * ============================================================================
- * 📦 MODULE 1: IDENTITY & ACCESS MANAGEMENT (IAM)
- * 🧪 COMPONENT TEST: LoginPage (Giao diện Đăng nhập Hệ thống)
+ * MODULE 1: IDENTITY & ACCESS MANAGEMENT (IAM)
+ * COMPONENT TEST: LoginPage (Giao diện Đăng nhập Hệ thống)
  * ============================================================================
  */
 describe('Module 01 - LoginPage Component', () => {

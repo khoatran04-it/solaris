@@ -128,7 +128,7 @@ namespace backend.Migrations
 
                     b.HasIndex("SessionId");
 
-                    b.ToTable("ChatMessages");
+                    b.ToTable("ChatMessages", (string)null);
                 });
 
             modelBuilder.Entity("backend.Models.ChatSession", b =>
@@ -163,7 +163,7 @@ namespace backend.Migrations
 
                     b.HasIndex("CustomerId");
 
-                    b.ToTable("ChatSessions");
+                    b.ToTable("ChatSessions", (string)null);
                 });
 
             modelBuilder.Entity("backend.Models.Customer", b =>
