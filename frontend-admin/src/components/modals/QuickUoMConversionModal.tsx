@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Save, Repeat, ArrowRight, PackageOpen, Loader2 } from 'lucide-react';
 import { FormInput, FormSelect } from '../commons/FormUI';
 import { uomConversionApi } from '../../api/uomConversionApi';
@@ -43,6 +44,29 @@ export const QuickUoMConversionModal: React.FC<QuickUoMConversionModalProps> = (
       setError('');
     }
   }, [isOpen, initialFromUoMId, baseUoMId]);
+
+  // UX: Đóng modal khi bấm phím Escape
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen && !isSubmitting) {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose, isSubmitting]);
+
+  // UX: Khóa cuộn trang (scroll) khi mở modal
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -98,9 +122,16 @@ export const QuickUoMConversionModal: React.FC<QuickUoMConversionModalProps> = (
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4 animate-in fade-in">
-      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-visible animate-in zoom-in-95 duration-200 border border-slate-100">
+  const modalContent = (
+    <div
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 animate-in fade-in"
+      onClick={(e) => {
+        if (e.target === e.currentTarget && !isSubmitting) {
+          onClose();
+        }
+      }}
+    >
+      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-visible animate-in zoom-in-95 duration-200 border border-slate-100 relative">
         {/* MODAL HEADER */}
         <div className="flex justify-between items-center px-6 py-4.5 bg-amber-50/80 border-b border-amber-200/60 rounded-t-3xl">
           <div className="flex items-center gap-3">
@@ -255,4 +286,9 @@ export const QuickUoMConversionModal: React.FC<QuickUoMConversionModalProps> = (
       </div>
     </div>
   );
+
+  if (typeof document !== 'undefined') {
+    return createPortal(modalContent, document.body);
+  }
+  return modalContent;
 };
