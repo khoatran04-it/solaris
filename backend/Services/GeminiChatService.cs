@@ -1108,7 +1108,8 @@ namespace backend.Services
                             string? cert = v.Attributes.FirstOrDefault(a => a.AttributeDefinition != null && (a.AttributeDefinition.Name.ToLower().Contains("chứng nhận") || a.AttributeDefinition.Name.ToLower().Contains("tiêu chuẩn")))?.AttributeValue;
                             string? brix = v.Attributes.FirstOrDefault(a => a.AttributeDefinition != null && (a.AttributeDefinition.Name.ToLower().Contains("độ ngọt") || a.AttributeDefinition.Name.ToLower().Contains("brix")))?.AttributeValue;
 
-                            sb.AppendLine($"       + SKU [ID:{v.Id}]: {v.Name} (Mã: {v.Code}) | Giá: {price:N0} ₫/{uom} | Tồn kho khả dụng: {(inStock ? $"{availableQty:G29} {uom} (Còn hàng)" : "0 (Tạm hết)")} | Xuất xứ: {origin ?? "Lâm Đồng"} | Tiêu chuẩn: {cert ?? "VietGAP"} | Độ ngọt: {(string.IsNullOrEmpty(brix) ? "Chuẩn vị" : $"{brix}°Bx")}");
+                            string descSnippet = !string.IsNullOrEmpty(v.Description) ? $" | Đặc điểm: {v.Description.Trim()}" : string.Empty;
+                            sb.AppendLine($"       + SKU [ID:{v.Id}]: {v.Name} (Mã: {v.Code}) | Giá: {price:N0} ₫/{uom} | Tồn kho khả dụng: {(inStock ? $"{availableQty:G29} {uom} (Còn hàng)" : "0 (Tạm hết)")} | Xuất xứ: {origin ?? "Lâm Đồng"} | Tiêu chuẩn: {cert ?? "VietGAP"} | Độ ngọt: {(string.IsNullOrEmpty(brix) ? "Chuẩn vị" : $"{brix}°Bx")}{descSnippet}");
                         }
                     }
                 }

@@ -99,4 +99,30 @@ describe("Module 12 - ProductDetailClient Component", () => {
 
     expect(await screen.findByText(/Đã thêm vào giỏ/i)).toBeInTheDocument();
   });
+
+  // TC03: ĐỒNG BỘ MÔ TẢ CHI TIẾT TỪ BIẾN THỂ (PRODUCT VARIANT DESCRIPTION)
+  it("TC03 - Hiển thị mô tả riêng của biến thể khi admin nhập trong form biến thể", () => {
+    const productWithVariantDesc = {
+      ...mockProduct,
+      description: "Thịt Heo nuôi chuẩn VietGAP",
+      variants: [
+        {
+          ...mockProduct.variants[0],
+          description:
+            "Thịt heo ba chỉ là phần thịt nằm ở bụng heo, có lớp mỡ và nạc xen kẽ.",
+        },
+      ],
+    };
+
+    render(<ProductDetailClient product={productWithVariantDesc as any} />);
+
+    expect(
+      screen.getByText(
+        /Thịt heo ba chỉ là phần thịt nằm ở bụng heo, có lớp mỡ và nạc xen kẽ./,
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Thịt Heo nuôi chuẩn VietGAP/),
+    ).toBeInTheDocument();
+  });
 });

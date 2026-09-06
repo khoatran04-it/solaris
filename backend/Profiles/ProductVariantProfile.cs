@@ -24,7 +24,8 @@ namespace backend.Profiles
 
             // 3. Ánh xạ Biến thể tổng (gộp Giá và Thuộc tính)
             CreateMap<ProductVariant, ProductVariantReadDto>()
-                .ForMember(dest => dest.ProductName, opt => opt.MapFrom(src => src.Product != null ? src.Product.Name : null));
+                .ForMember(dest => dest.ProductName, opt => opt.MapFrom(src => src.Product != null ? src.Product.Name : null))
+                .ForMember(dest => dest.QuantityAvailable, opt => opt.Ignore());
             #endregion
 
             #region DTO Đầu vào -> Entity (Dữ liệu thành phần)
