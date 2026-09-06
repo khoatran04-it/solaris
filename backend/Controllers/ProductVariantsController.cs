@@ -4,6 +4,7 @@ using backend.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace backend.Controllers
 {
@@ -89,9 +90,13 @@ namespace backend.Controllers
             {
                 return BadRequest(new { message = ex.Message });
             }
+            catch (DbUpdateException dbEx)
+            {
+                return BadRequest(new { message = GetInnermostMessage(dbEx) });
+            }
             catch (Exception ex)
             {
-                return BadRequest(new { message = ex.Message });
+                return BadRequest(new { message = GetInnermostMessage(ex) });
             }
         }
 
@@ -117,9 +122,13 @@ namespace backend.Controllers
             {
                 return BadRequest(new { message = ex.Message });
             }
+            catch (DbUpdateException dbEx)
+            {
+                return BadRequest(new { message = GetInnermostMessage(dbEx) });
+            }
             catch (Exception ex)
             {
-                return BadRequest(new { message = ex.Message });
+                return BadRequest(new { message = GetInnermostMessage(ex) });
             }
         }
 
@@ -145,9 +154,13 @@ namespace backend.Controllers
             {
                 return BadRequest(new { message = ex.Message });
             }
+            catch (DbUpdateException dbEx)
+            {
+                return BadRequest(new { message = GetInnermostMessage(dbEx) });
+            }
             catch (Exception ex)
             {
-                return BadRequest(new { message = ex.Message });
+                return BadRequest(new { message = GetInnermostMessage(ex) });
             }
         }
 
@@ -174,10 +187,24 @@ namespace backend.Controllers
             {
                 return BadRequest(new { message = ex.Message });
             }
+            catch (DbUpdateException dbEx)
+            {
+                return BadRequest(new { message = GetInnermostMessage(dbEx) });
+            }
             catch (Exception ex)
             {
-                return BadRequest(new { message = ex.Message });
+                return BadRequest(new { message = GetInnermostMessage(ex) });
             }
+        }
+
+        private static string GetInnermostMessage(Exception ex)
+        {
+            var current = ex;
+            while (current.InnerException != null)
+            {
+                current = current.InnerException;
+            }
+            return current.Message;
         }
     }
 }

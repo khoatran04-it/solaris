@@ -1,4 +1,4 @@
-﻿import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
@@ -291,6 +291,42 @@ describe('Module 05 - ProductVariantForm Component', () => {
     const weightInput = screen.getByPlaceholderText('VD: 1.5') as HTMLInputElement;
     fireEvent.change(weightInput, { target: { value: '18.5' } });
     expect(weightInput.value).toBe('18.5');
+  });
+  // #endregion
+
+  // #region TC07: TỰ ĐỘNG NHẬN DIỆN VÀ ĐIỀN ĐƠN VỊ TÍNH CƠ SỞ VÀO DÒNG 1 KHI CHUYỂN TAB QUY CÁCH
+  it('TC07 - Tự động nhận diện Đơn vị tính cơ sở của sản phẩm và điền vào dòng đầu tiên khi chuyển sang Tab 3', async () => {
+    (productApi.getAllList as any).mockResolvedValue([
+      { id: 1, name: 'Táo Envy New Zealand', baseUoMId: 1, baseUoMName: 'Kilogram' },
+    ]);
+
+    render(
+      <MemoryRouter initialEntries={['/product-variants/create']}>
+        <Routes>
+          <Route path="/product-variants/create" element={<ProductVariantForm />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Chọn sản phẩm...')).toBeInTheDocument();
+    });
+
+    // 1. Chọn Sản phẩm gốc có baseUoMId = 1 (Kilogram)
+    const productSelect = screen.getByText('Chọn sản phẩm...');
+    fireEvent.click(productSelect);
+    const option = await screen.findByText('Táo Envy New Zealand');
+    fireEvent.click(option);
+
+    // 2. Chuyển sang Tab 3 (Quy cách bán hàng)
+    const pricingTab = screen.getByText(/3. QUY CÁCH BÁN HÀNG/i);
+    fireEvent.click(pricingTab);
+
+    // 3. Kiểm tra dòng đầu tiên tự động nhận diện và điền sẵn Kilogram (Đơn vị cơ sở)
+    await waitFor(() => {
+      expect(screen.getByText(/Đơn vị cơ sở \(Kilogram\)/i)).toBeInTheDocument();
+      expect(screen.getByTitle('Đang làm mặc định')).toBeInTheDocument();
+    });
   });
   // #endregion
 });
