@@ -54,6 +54,9 @@ namespace backend.Services
             // Áp dụng khuyến mãi lên từng dòng giá của biến thể
             ApplyPromotionsToDtos(items, dtos);
 
+            // Tính tồn kho khả dụng thực tế
+            await PopulateAvailableStockAsync(dtos);
+
             return dtos;
         }
 
@@ -111,6 +114,9 @@ namespace backend.Services
             // Áp dụng khuyến mãi lên từng dòng giá
             ApplyPromotionsToDtos(items, dtos);
 
+            // Tính tồn kho khả dụng thực tế
+            await PopulateAvailableStockAsync(dtos);
+
             return new PagedResult<ProductVariantReadDto>
             {
                 Items = dtos,
@@ -137,9 +143,13 @@ namespace backend.Services
             if (entity == null) throw new KeyNotFoundException("Không tìm thấy biến thể sản phẩm.");
 
             var dto = _mapper.Map<ProductVariantReadDto>(entity);
+            var dtoList = new List<ProductVariantReadDto> { dto };
 
             // Áp dụng khuyến mãi
-            ApplyPromotionsToDtos(new List<ProductVariant> { entity }, new List<ProductVariantReadDto> { dto });
+            ApplyPromotionsToDtos(new List<ProductVariant> { entity }, dtoList);
+
+            // Tính tồn kho khả dụng thực tế
+            await PopulateAvailableStockAsync(dtoList);
 
             return dto;
         }
@@ -389,6 +399,33 @@ namespace backend.Services
                         priceDto.PromotionalPrice = bestPrice;
                     }
                 }
+            }
+        }
+
+        /// <summary>
+        /// Tính toán tổng tồn kho khả dụng từ két sắt tồn kho 4 ngăn (WarehouseInventories),
+        /// chỉ tính các lô hàng còn hạn sử dụng (FEFO) và gán vào DTO biến thể.
+        /// </summary>
+        private async Task PopulateAvailableStockAsync(List<ProductVariantReadDto> dtos)
+        {
+            if (dtos == null || dtos.Count == 0) return;
+
+            var variantIds = dtos.Select(x => x.Id).ToList();
+            var now = DateTime.UtcNow;
+
+            var stockDict = await _context.WarehouseInventories
+                .AsNoTracking()
+                .Include(wi => wi.Batch)
+                .Where(wi => variantIds.Contains(wi.VariantId) &&
+                             wi.QuantityAvailable > 0 &&
+                             (wi.Batch == null || wi.Batch.ExpiryDate > now))
+                .GroupBy(wi => wi.VariantId)
+                .Select(g => new { VariantId = g.Key, TotalAvailable = g.Sum(x => x.QuantityAvailable) })
+                .ToDictionaryAsync(x => x.VariantId, x => x.TotalAvailable);
+
+            foreach (var dto in dtos)
+            {
+                dto.QuantityAvailable = stockDict.TryGetValue(dto.Id, out var s) ? s : 0;
             }
         }
 

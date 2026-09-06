@@ -48,6 +48,7 @@ export interface ProductVariant {
   imagePath?: string;
 
   inventoryGuideline: number;
+  quantityAvailable?: number;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;

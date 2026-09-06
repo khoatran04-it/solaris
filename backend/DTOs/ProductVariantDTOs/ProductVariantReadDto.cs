@@ -74,6 +74,9 @@ namespace backend.DTOs.ProductVariantDTOs
         /// <summary>Mức tồn kho an toàn tối thiểu (Safety Stock).</summary>
         public int InventoryGuideline { get; set; }
 
+        /// <summary>Số lượng tồn kho khả dụng thực tế (tính từ các lô hàng còn hạn).</summary>
+        public decimal QuantityAvailable { get; set; }
+
         public decimal? GrossWeightKg { get; set; }
         public decimal? LengthCm { get; set; }
         public decimal? WidthCm { get; set; }

@@ -157,11 +157,11 @@ const ProductVariantList: React.FC = () => {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-slate-50/70 border-b border-slate-100">
-                <th className="w-[24%] py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider text-left">
+                <th className="w-[22%] py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider text-left">
                   Thông Tin Biến Thể
                 </th>
 
-                <th className="w-[14%] py-4 px-2 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                <th className="w-[13%] py-4 px-2 text-xs font-bold text-slate-500 uppercase tracking-wider">
                   <CustomFilter
                     title="SẢN PHẨM GỐC"
                     options={productOptions}
@@ -170,15 +170,19 @@ const ProductVariantList: React.FC = () => {
                   />
                 </th>
 
-                <th className="w-[13%] py-4 px-2 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                <th className="w-[12%] py-4 px-2 text-xs font-bold text-slate-500 uppercase tracking-wider">
                   Giá Mặc Định
                 </th>
 
-                <th className="w-[11%] py-4 px-2 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">
-                  Tồn Kho
+                <th className="w-[9%] py-4 px-2 text-xs font-bold text-slate-500 uppercase tracking-wider text-center" title="Mức định mức tồn kho tối thiểu (Safety Stock)">
+                  Tồn Tối Thiểu
                 </th>
 
-                <th className="w-[13%] py-4 px-2 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                <th className="w-[11%] py-4 px-2 text-xs font-bold text-slate-500 uppercase tracking-wider text-center" title="Số lượng tồn kho khả dụng thực tế hiện có trong các kho">
+                  Tồn Khả Dụng
+                </th>
+
+                <th className="w-[11%] py-4 px-2 text-xs font-bold text-slate-500 uppercase tracking-wider">
                   <div className="flex justify-center">
                     <CustomFilter
                       title="TRẠNG THÁI"
@@ -199,7 +203,7 @@ const ProductVariantList: React.FC = () => {
                   </div>
                 </th>
 
-                <th className="w-[15%] py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">
+                <th className="w-[12%] py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">
                   Thao Tác
                 </th>
               </tr>
@@ -207,7 +211,7 @@ const ProductVariantList: React.FC = () => {
 
             <tbody className="divide-y divide-slate-100">
               {isLoading ? (
-                <TableLoading colSpan={7} />
+                <TableLoading colSpan={8} />
               ) : data.length > 0 ? (
                 data.map((item) => {
                   const defaultPriceInfo =
@@ -301,14 +305,47 @@ const ProductVariantList: React.FC = () => {
                         )}
                       </td>
 
-                      {/* CELL 4: TỒN KHO */}
+                      {/* CELL 4: TỒN TỐI THIỂU */}
                       <td className="py-3 px-2 text-center">
-                        <span className="inline-flex px-2 py-1 rounded-md text-[13px] font-bold bg-slate-100 text-slate-600">
+                        <span
+                          className="inline-flex px-2 py-1 rounded-md text-[13px] font-semibold bg-slate-100 text-slate-600"
+                          title="Mức định mức tồn kho an toàn tối thiểu"
+                        >
                           {item.inventoryGuideline.toLocaleString('vi-VN')}
                         </span>
                       </td>
 
-                      {/* CELL 5: TRẠNG THÁI */}
+                      {/* CELL 5: TỒN KHẢ DỤNG */}
+                      <td className="py-3 px-2 text-center">
+                        {(() => {
+                          const available = item.quantityAvailable ?? 0;
+                          const minStock = item.inventoryGuideline;
+                          let badgeClass =
+                            'bg-emerald-50 text-emerald-700 border-emerald-200';
+                          let title = `Tồn khả dụng: ${available.toLocaleString('vi-VN')} (Dồi dào)`;
+
+                          if (available === 0) {
+                            badgeClass =
+                              'bg-rose-50 text-rose-700 border-rose-200';
+                            title = 'Hết hàng khả dụng';
+                          } else if (available <= minStock) {
+                            badgeClass =
+                              'bg-amber-50 text-amber-700 border-amber-200';
+                            title = `Tồn khả dụng: ${available.toLocaleString('vi-VN')} (Sắp hết / Dưới mức an toàn)`;
+                          }
+
+                          return (
+                            <span
+                              className={`inline-flex items-center px-2 py-0.5 rounded-md text-[13px] font-bold border ${badgeClass}`}
+                              title={title}
+                            >
+                              {available.toLocaleString('vi-VN')}
+                            </span>
+                          );
+                        })()}
+                      </td>
+
+                      {/* CELL 6: TRẠNG THÁI */}
                       <td className="py-3 px-2 text-center">
                         <div className="flex justify-center">
                           <StatusBadge
@@ -320,12 +357,12 @@ const ProductVariantList: React.FC = () => {
                         </div>
                       </td>
 
-                      {/* CELL 6: NGÀY TẠO */}
+                      {/* CELL 7: NGÀY TẠO */}
                       <td className="py-3 px-2 text-center">
                         <DateTimeCell isoString={item.createdAt} />
                       </td>
 
-                      {/* CELL 7: THAO TÁC */}
+                      {/* CELL 8: THAO TÁC */}
                       <td className="py-3 px-6">
                         <div className="flex justify-center gap-1.5 opacity-40 group-hover:opacity-100 transition-all duration-300">
                           <button
@@ -352,7 +389,7 @@ const ProductVariantList: React.FC = () => {
                 })
               ) : (
                 <TableEmpty
-                  colSpan={7}
+                  colSpan={8}
                   message="Thử thay đổi từ khóa tìm kiếm hoặc điều kiện lọc."
                 />
               )}

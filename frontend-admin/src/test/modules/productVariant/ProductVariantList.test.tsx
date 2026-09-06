@@ -1,4 +1,4 @@
-﻿import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter } from 'react-router-dom';
@@ -36,6 +36,7 @@ describe('Module 05 - ProductVariantList Component', () => {
       productId: 1,
       productName: 'Táo Envy New Zealand',
       inventoryGuideline: 100,
+      quantityAvailable: 150,
       imagePath: 'https://example.com/tao1kg.jpg',
       isActive: true,
       createdAt: '2026-08-20T10:00:00Z',
@@ -58,6 +59,7 @@ describe('Module 05 - ProductVariantList Component', () => {
       productId: 2,
       productName: 'Cà chua bi Đà Lạt',
       inventoryGuideline: 50,
+      quantityAvailable: 20,
       imagePath: null,
       isActive: false,
       createdAt: '2026-08-21T10:00:00Z',
@@ -91,7 +93,7 @@ describe('Module 05 - ProductVariantList Component', () => {
   });
 
   // #region TC01: RENDER DANH SÁCH BIẾN THỂ
-  it('TC01 - Render danh sách biến thể với mã SKU, giá bán niêm yết/khuyến mãi và tồn kho', async () => {
+  it('TC01 - Render danh sách biến thể với mã SKU, giá bán niêm yết/khuyến mãi và 2 cột tồn kho (tối thiểu & khả dụng)', async () => {
     render(
       <MemoryRouter>
         <ProductVariantList />
@@ -108,6 +110,11 @@ describe('Module 05 - ProductVariantList Component', () => {
       expect(screen.getByText('SKU-CACHUA-500G')).toBeInTheDocument();
       expect(screen.getByText('Cà chua bi Đà Lạt')).toBeInTheDocument();
       expect(screen.getByText(/35.000 ₫/i)).toBeInTheDocument();
+
+      // Kiểm tra 2 cột Tồn Tối Thiểu và Tồn Khả Dụng
+      expect(screen.getByText(/Tồn Tối Thiểu/i)).toBeInTheDocument();
+      expect(screen.getByText(/Tồn Khả Dụng/i)).toBeInTheDocument();
+      expect(screen.getByText('150')).toBeInTheDocument();
     });
 
     expect(productVariantApi.getAll).toHaveBeenCalled();

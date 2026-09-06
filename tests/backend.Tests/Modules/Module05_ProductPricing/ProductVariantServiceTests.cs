@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+using AutoMapper;
 using backend.DTOs.ProductVariantDTOs;
 using backend.Models;
 using backend.Services;
@@ -540,6 +540,57 @@ namespace backend.Tests.Modules.Module05_ProductPricing
             var variant = await context.ProductVariants.FindAsync(50);
             variant!.UnitCbm.Should().Be(0.2m);
             variant.GrossWeightKg.Should().Be(22m);
+        }
+        #endregion
+
+        #region TC10: TÍNH TOÁN TỒN KHO KHẢ DỤNG THỰC TẾ (QUANTITY AVAILABLE & FEFO EXPIRED BATCH FILTER)
+        /// <summary>
+        /// TC10: Kiểm tra tính toán tồn kho khả dụng từ Két sắt tồn kho 4 ngăn (WarehouseInventories), 
+        /// tự động lọc bỏ các lô hàng đã hết hạn sử dụng.
+        /// </summary>
+        [Fact]
+        public async Task GetPagedAsync_ShouldCalculateQuantityAvailableCorrectly()
+        {
+            // Arrange
+            using var context = TestFactories.CreateInMemoryDbContext();
+            context.Products.Add(new Product { Id = 1, Code = "P1", Name = "Xoài Cát Chu", BaseUoMId = 1 });
+
+            context.ProductVariants.AddRange(
+                new ProductVariant { Id = 101, Code = "SKU-XOAI-1", Name = "Xoài Size 1", ProductId = 1, InventoryGuideline = 50, IsActive = true },
+                new ProductVariant { Id = 102, Code = "SKU-XOAI-2", Name = "Xoài Size 2", ProductId = 1, InventoryGuideline = 30, IsActive = true }
+            );
+
+            var validBatch = new ProductBatch { Id = 1, BatchCode = "BATCH-01", ExpiryDate = DateTime.UtcNow.AddDays(10), VariantId = 101 };
+            var expiredBatch = new ProductBatch { Id = 2, BatchCode = "BATCH-02", ExpiryDate = DateTime.UtcNow.AddDays(-2), VariantId = 101 };
+            var validBatch2 = new ProductBatch { Id = 3, BatchCode = "BATCH-03", ExpiryDate = DateTime.UtcNow.AddDays(5), VariantId = 101 };
+
+            context.ProductBatches.AddRange(validBatch, expiredBatch, validBatch2);
+
+            context.WarehouseInventories.AddRange(
+                // Kho 1: Lô còn hạn (khả dụng 80)
+                new WarehouseInventory { Id = 1, WarehouseId = 1, VariantId = 101, BatchId = 1, Batch = validBatch, QuantityAvailable = 80 },
+                // Kho 2: Lô đã hết hạn (không được tính vào khả dụng)
+                new WarehouseInventory { Id = 2, WarehouseId = 2, VariantId = 101, BatchId = 2, Batch = expiredBatch, QuantityAvailable = 25 },
+                // Kho 2: Lô khác còn hạn (khả dụng 20)
+                new WarehouseInventory { Id = 3, WarehouseId = 2, VariantId = 101, BatchId = 3, Batch = validBatch2, QuantityAvailable = 20 }
+                // Variant 102: Không có tồn kho
+            );
+            await context.SaveChangesAsync();
+
+            var service = new ProductVariantService(context, _mapper);
+
+            // Act
+            var result = await service.GetPagedAsync(null, "1", null, null, null, 1, 10);
+
+            // Assert
+            var sku1 = result.Items.First(x => x.Id == 101);
+            var sku2 = result.Items.First(x => x.Id == 102);
+
+            sku1.InventoryGuideline.Should().Be(50);
+            sku1.QuantityAvailable.Should().Be(100); // 80 + 20 (lô hết hạn 25 bị loại bỏ)
+
+            sku2.InventoryGuideline.Should().Be(30);
+            sku2.QuantityAvailable.Should().Be(0);
         }
         #endregion
     }
