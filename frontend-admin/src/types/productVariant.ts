@@ -54,6 +54,8 @@ export interface ProductVariant {
   updatedAt: string;
   productId: number;
   productName: string;
+  baseUoMId?: number;
+  baseUoMName?: string;
 
   // Thông số Kích thước & Trọng lượng
   grossWeightKg?: number;

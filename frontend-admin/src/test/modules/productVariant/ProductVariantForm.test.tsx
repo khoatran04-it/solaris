@@ -33,6 +33,7 @@ vi.mock('../../../api/uomApi', () => ({
 vi.mock('../../../api/uomConversionApi', () => ({
   uomConversionApi: {
     getAllList: vi.fn(),
+    create: vi.fn(),
   },
 }));
 
@@ -326,6 +327,148 @@ describe('Module 05 - ProductVariantForm Component', () => {
     await waitFor(() => {
       expect(screen.getByText(/Đơn vị cơ sở \(Kilogram\)/i)).toBeInTheDocument();
       expect(screen.getByTitle('Đang làm mặc định')).toBeInTheDocument();
+    });
+  });
+  // #endregion
+
+  // #region TC08: QUY ĐỔI ĐẶC THÙ KHÓA ĐƠN VỊ CƠ SỞ VÀ TỰ ĐỘNG ĐIỀN ĐƠN VỊ LỚN VÀO BẢNG GIÁ
+  it('TC08 - Cấu hình quy đổi nhanh: Đơn vị đích bị khóa theo ĐV cơ sở của sản phẩm và tự động điền ĐVT LỚN vào bảng quy cách', async () => {
+    (productApi.getAllList as any).mockResolvedValue([
+      { id: 1, name: 'Táo Envy New Zealand', baseUoMId: 1, baseUoMName: 'Kilogram' },
+    ]);
+    (uomConversionApi.create as any).mockResolvedValue({
+      id: 99,
+      fromUoMId: 2,
+      fromUoMName: 'Thùng 10Kg',
+      toUoMId: 1,
+      toUoMName: 'Kilogram',
+      conversionFactor: 10,
+      productId: 1,
+      isActive: true,
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/product-variants/create']}>
+        <Routes>
+          <Route path="/product-variants/create" element={<ProductVariantForm />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Chọn sản phẩm...')).toBeInTheDocument();
+    });
+
+    // 1. Chọn Sản phẩm gốc
+    fireEvent.click(screen.getByText('Chọn sản phẩm...'));
+    fireEvent.click(await screen.findByText('Táo Envy New Zealand'));
+
+    // 2. Chuyển sang Tab 3
+    fireEvent.click(screen.getByText(/3. QUY CÁCH BẢNG HÀNG|3. QUY CÁCH BÁN HÀNG/i));
+
+    // 3. Bấm nút "Cấu hình quy đổi đặc thù"
+    const openModalBtn = await screen.findByText(/Cấu hình quy đổi đặc thù/i);
+    fireEvent.click(openModalBtn);
+
+    // 4. Modal hiển thị: Kiểm tra Đơn vị cơ sở đã được khóa cố định theo sản phẩm
+    await waitFor(() => {
+      expect(screen.getByText(/Cấu Hình Quy Đổi Nhanh/i)).toBeInTheDocument();
+      expect(
+        screen.getByText(/Cố định theo đơn vị cơ sở/i)
+      ).toBeInTheDocument();
+    });
+
+    // 5. Chọn ĐVT lớn (Thùng 10Kg)
+    const fromSelect = screen.getByText('Chọn ĐVT đóng gói...');
+    fireEvent.click(fromSelect);
+    const boxOption = await screen.findByText('Thùng 10Kg');
+    fireEvent.click(boxOption);
+
+    // 6. Nhập hệ số quy đổi
+    const factorInput = screen.getByPlaceholderText('VD: 24');
+    fireEvent.change(factorInput, { target: { value: '10' } });
+
+    // 7. Bấm "Lưu Quy Đổi"
+    const submitBtn = screen.getByText('Lưu Quy Đổi');
+    fireEvent.click(submitBtn);
+
+    // 8. Kiểm tra sau khi lưu: Bảng quy cách bán hàng tự động xuất hiện ĐVT lớn "Thùng 10Kg"
+    await waitFor(() => {
+      expect(screen.getByText(/Đã lưu quy đổi/i)).toBeInTheDocument();
+      expect(screen.getAllByText(/Thùng 10Kg/i).length).toBeGreaterThan(0);
+    });
+  });
+  // #endregion
+
+  // #region TC09: BẤM CẤU HÌNH NGAY TẠI DÒNG QUY CÁCH CỤ THỂ
+  it('TC09 - Bấm Cấu hình ngay tại dòng quy cách: Sau khi lưu, tự động điền ĐVT LỚN vào chính dòng đó', async () => {
+    (productApi.getAllList as any).mockResolvedValue([
+      { id: 1, name: 'Táo Envy New Zealand', baseUoMId: 1, baseUoMName: 'Kilogram' },
+    ]);
+    (uomApi.getAllList as any).mockResolvedValue([
+      { id: 1, name: 'Kilogram', code: 'KG' },
+      { id: 2, name: 'Thùng 10Kg', code: 'BOX' },
+      { id: 3, name: 'Hộp 500g', code: 'BOX500' },
+    ]);
+    (uomConversionApi.getAllList as any).mockResolvedValue([]); // Chưa có quy đổi nào
+    (uomConversionApi.create as any).mockResolvedValue({
+      id: 101,
+      fromUoMId: 3,
+      fromUoMName: 'Hộp 500g',
+      toUoMId: 1,
+      toUoMName: 'Kilogram',
+      conversionFactor: 0.5,
+      productId: 1,
+      isActive: true,
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/product-variants/create']}>
+        <Routes>
+          <Route path="/product-variants/create" element={<ProductVariantForm />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Chọn sản phẩm...')).toBeInTheDocument();
+    });
+
+    // 1. Chọn Sản phẩm gốc
+    fireEvent.click(screen.getByText('Chọn sản phẩm...'));
+    fireEvent.click(await screen.findByText('Táo Envy New Zealand'));
+
+    // 2. Chuyển sang Tab 3
+    fireEvent.click(screen.getByText(/3. QUY CÁCH BẢNG HÀNG|3. QUY CÁCH BÁN HÀNG/i));
+
+    // 3. Thêm 1 dòng quy cách bán mới
+    const addRowBtn = screen.getByText(/THÊM QUY CÁCH BÁN/i);
+    fireEvent.click(addRowBtn);
+
+    // 4. Ở dòng thứ 2: Chọn ĐVT chưa có quy đổi (Hộp 500g)
+    const selectInputs = screen.getAllByText('Chọn ĐVT...');
+    fireEvent.click(selectInputs[0]); // Mở dropdown dòng 2
+    fireEvent.click(await screen.findByText('Hộp 500g'));
+
+    // 5. Kiểm tra cảnh báo "Chưa cấu hình quy đổi" và bấm "Cấu hình ngay"
+    const configNowBtn = await screen.findByText(/Cấu hình ngay/i);
+    fireEvent.click(configNowBtn);
+
+    // 6. Modal mở ra, nhập hệ số và Lưu
+    await waitFor(() => {
+      expect(screen.getByText(/Cấu Hình Quy Đổi Nhanh/i)).toBeInTheDocument();
+    });
+
+    const factorInput = screen.getByPlaceholderText('VD: 24');
+    fireEvent.change(factorInput, { target: { value: '0.5' } });
+
+    const submitBtn = screen.getByText('Lưu Quy Đổi');
+    fireEvent.click(submitBtn);
+
+    // 7. Kiểm tra sau khi lưu: Dòng quy cách thứ 2 đã được gán và hiển thị thành công
+    await waitFor(() => {
+      expect(screen.getByText(/Đã lưu quy đổi/i)).toBeInTheDocument();
+      expect(screen.getAllByText(/Hộp 500g/i).length).toBeGreaterThan(0);
     });
   });
   // #endregion

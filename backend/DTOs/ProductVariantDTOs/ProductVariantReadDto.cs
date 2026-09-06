@@ -90,6 +90,12 @@ namespace backend.DTOs.ProductVariantDTOs
 
         /// <summary>Tên hiển thị Sản phẩm cha trực thuộc.</summary>
         public string? ProductName { get; set; }
+
+        /// <summary>Mã định danh Đơn vị tính cơ sở của Sản phẩm cha.</summary>
+        public int? BaseUoMId { get; set; }
+
+        /// <summary>Tên hiển thị Đơn vị tính cơ sở của Sản phẩm cha.</summary>
+        public string? BaseUoMName { get; set; }
         #endregion
 
         #region Dữ liệu Liên kết trực thuộc (Collections)

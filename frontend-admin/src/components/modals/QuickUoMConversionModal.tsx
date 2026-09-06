@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Save, Repeat, ArrowRight, PackageOpen, Loader2 } from 'lucide-react';
 import { FormInput, FormSelect } from '../commons/FormUI';
@@ -68,26 +68,48 @@ export const QuickUoMConversionModal: React.FC<QuickUoMConversionModalProps> = (
     };
   }, [isOpen]);
 
+  // Nghiệp vụ: Đơn vị lớn (Bao bì) loại trừ Đơn vị cơ sở ra (tránh đổi Gói -> Gói)
+  const fromUoMOptions = useMemo(() => {
+    if (!baseUoMId) return uomOptions;
+    return uomOptions.filter((u) => u.value !== baseUoMId);
+  }, [uomOptions, baseUoMId]);
+
+  // Nghiệp vụ: Đơn vị đích BẮT BUỘC và DUY NHẤT là Đơn vị cơ sở của sản phẩm
+  const toUoMOptions = useMemo(() => {
+    if (!baseUoMId) return [];
+    return [
+      {
+        label: `${baseUoMName || 'Đơn vị cơ sở'} (Đơn vị cơ sở của sản phẩm)`,
+        value: baseUoMId,
+      },
+    ];
+  }, [baseUoMId, baseUoMName]);
+
   if (!isOpen) return null;
 
-  const selectedFrom = uomOptions.find((u) => u.value === fromUoMId);
-  const selectedTo = uomOptions.find((u) => u.value === toUoMId);
+  const selectedFrom = fromUoMOptions.find((u) => u.value === fromUoMId) || uomOptions.find((u) => u.value === fromUoMId);
+  const selectedTo = toUoMOptions.find((u) => u.value === (baseUoMId || toUoMId)) || {
+    label: baseUoMName || 'Đơn vị cơ sở',
+    value: baseUoMId || 0,
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const effectiveToUoMId = baseUoMId || toUoMId;
+
     if (!productId || productId <= 0) {
       setError('Thiếu thông tin sản phẩm áp dụng.');
       return;
     }
     if (!fromUoMId || fromUoMId <= 0) {
-      setError('Vui lòng chọn đơn vị nguồn (quy cách đóng gói).');
+      setError('Vui lòng chọn đơn vị nguồn (quy cách đóng gói lớn: Thùng, Lốc, Hộp...).');
       return;
     }
-    if (!toUoMId || toUoMId <= 0) {
-      setError('Vui lòng chọn đơn vị đích (đơn vị cơ sở).');
+    if (!effectiveToUoMId || effectiveToUoMId <= 0) {
+      setError('Sản phẩm này chưa có Đơn vị tính cơ sở hợp lệ!');
       return;
     }
-    if (fromUoMId === toUoMId) {
+    if (fromUoMId === effectiveToUoMId) {
       setError('Đơn vị đóng gói và đơn vị cơ sở không được trùng nhau!');
       return;
     }
@@ -102,7 +124,7 @@ export const QuickUoMConversionModal: React.FC<QuickUoMConversionModalProps> = (
 
       const res = await uomConversionApi.create({
         fromUoMId,
-        toUoMId,
+        toUoMId: effectiveToUoMId,
         conversionFactor,
         productId,
         isActive: true,
@@ -212,8 +234,8 @@ export const QuickUoMConversionModal: React.FC<QuickUoMConversionModalProps> = (
                 label="Từ đơn vị tính (Bao bì / Lớn)"
                 required
                 showSearch
-                placeholder="Chọn ĐVT..."
-                options={uomOptions}
+                placeholder="Chọn ĐVT đóng gói..."
+                options={fromUoMOptions}
                 value={fromUoMId}
                 onSelect={(val) => {
                   setFromUoMId(Number(val));
@@ -225,7 +247,7 @@ export const QuickUoMConversionModal: React.FC<QuickUoMConversionModalProps> = (
                 label="Hệ số quy đổi (Số lượng)"
                 required
                 type="number"
-                placeholder="VD: 30"
+                placeholder="VD: 24"
                 value={conversionFactor}
                 onChange={(e) => {
                   setConversionFactor(Number(e.target.value));
@@ -236,19 +258,19 @@ export const QuickUoMConversionModal: React.FC<QuickUoMConversionModalProps> = (
 
             <div>
               <FormSelect
-                label="Đến đơn vị tính (Đơn vị cơ sở)"
+                label="Đến đơn vị tính (Đơn vị cơ sở của sản phẩm)"
                 required
-                showSearch
-                placeholder="Chọn ĐVT đích..."
-                options={uomOptions}
-                value={toUoMId}
-                onSelect={(val) => {
-                  setToUoMId(Number(val));
-                  setError('');
-                }}
+                disabled={true}
+                placeholder="Đơn vị tính cơ sở..."
+                options={toUoMOptions}
+                value={baseUoMId || toUoMId}
+                onSelect={() => {}}
               />
-              <p className="text-[11px] text-slate-400 mt-1 italic">
-                * Mặc định là đơn vị cơ sở ({baseUoMName || 'Gốc'}) của sản phẩm này.
+              <p className="text-[11px] text-amber-800 font-semibold mt-1.5 flex items-center gap-1.5 bg-amber-50/80 px-3 py-1.5 rounded-xl border border-amber-200">
+                <span>🔒</span>
+                <span>
+                  Cố định theo đơn vị cơ sở (<b>{baseUoMName || 'Gốc'}</b>). Quy cách đóng gói đặc thù của sản phẩm chỉ được quy đổi về đơn vị cơ sở này.
+                </span>
               </p>
             </div>
           </div>

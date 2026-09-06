@@ -1,10 +1,13 @@
 import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Package, Save } from 'lucide-react';
 import { FormInput, FormSelect } from '../commons/FormUI';
 import { SupplierProductPayload, SupplierProduct } from '../../types/supplierProduct';
 import { ProductVariant } from '../../types/productVariant';
+import { Product } from '../../types/product';
 import { supplierApi } from '../../api/supplierApi';
 import { productVariantApi } from '../../api/productVariantApi';
+import { productApi } from '../../api/productApi';
 import { uomApi } from '../../api/uomApi';
 
 interface ModalSupplierProductProps {
@@ -37,22 +40,55 @@ export const ModalSupplierProduct: React.FC<ModalSupplierProductProps> = ({
   const [errors, setErrors] = useState<Partial<Record<keyof SupplierProductPayload, string>>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Options dropdowns
+  // Options dropdowns & data caches
   const [supplierOptions, setSupplierOptions] = useState<{ value: number; label: string }[]>([]);
   const [variantOptions, setVariantOptions] = useState<{ value: number; label: string }[]>([]);
   const [uomOptions, setUomOptions] = useState<{ value: number; label: string }[]>([]);
   const [variantsList, setVariantsList] = useState<ProductVariant[]>([]);
+  const [productsList, setProductsList] = useState<Product[]>([]);
 
+  // UX: Đóng modal khi bấm phím Escape
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen && !isSubmitting) {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose, isSubmitting]);
+
+  // UX: Khóa cuộn trang (scroll) khi mở modal
   useEffect(() => {
     if (isOpen) {
-      Promise.all([supplierApi.getAllList(), productVariantApi.getAllList(), uomApi.getAllList()])
-        .then(([suppliers, variants, uoms]) => {
-          setVariantsList(variants);
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isOpen]);
+
+  // Tải danh mục bổ trợ: Nhà cung cấp, Biến thể SKU, Đơn vị tính, Sản phẩm gốc
+  useEffect(() => {
+    if (isOpen) {
+      Promise.all([
+        supplierApi.getAllList(),
+        productVariantApi.getAllList(),
+        uomApi.getAllList(),
+        productApi.getAllList().catch(() => []),
+      ])
+        .then(([suppliers, variants, uoms, prods]) => {
+          setVariantsList(variants || []);
+          setProductsList(prods || []);
           setSupplierOptions(
-            suppliers.map((s) => ({ value: s.id, label: `${s.code} - ${s.name}` }))
+            (suppliers || []).map((s) => ({ value: s.id, label: `${s.code} - ${s.name}` }))
           );
-          setVariantOptions(variants.map((v) => ({ value: v.id, label: `${v.code} - ${v.name}` })));
-          setUomOptions(uoms.map((u) => ({ value: u.id, label: u.name })));
+          setVariantOptions(
+            (variants || []).map((v) => ({ value: v.id, label: `${v.code} - ${v.name}` }))
+          );
+          setUomOptions((uoms || []).map((u) => ({ value: u.id, label: u.name })));
         })
         .catch((err) => console.error('Lỗi tải danh mục bổ trợ:', err));
 
@@ -80,8 +116,53 @@ export const ModalSupplierProduct: React.FC<ModalSupplierProductProps> = ({
   if (!isOpen) return null;
 
   const selectedVariant = variantsList.find((v) => v.id === Number(formData.variantId));
+  const parentProduct = productsList.find((p) => p.id === selectedVariant?.productId);
+  const defaultPrice = selectedVariant?.prices?.find((p) => p.isDefault) || selectedVariant?.prices?.[0];
+
+  // Nhận diện ĐVT của biến thể:
+  // 1. Từ BaseUoMId của biến thể (BE map sẵn)
+  // 2. Từ BaseUoMId của Product cha
+  // 3. Từ uoMId của dòng giá mặc định
+  const detectedUoMId =
+    selectedVariant?.baseUoMId ||
+    parentProduct?.baseUoMId ||
+    defaultPrice?.uoMId ||
+    0;
+
+  const detectedUoMName =
+    selectedVariant?.baseUoMName ||
+    parentProduct?.baseUoMName ||
+    defaultPrice?.uoMName ||
+    uomOptions.find((u) => u.value === (formData.purchaseUoMId || detectedUoMId))?.label ||
+    initialData?.purchaseUoMName ||
+    '';
+
   const variantImage =
     selectedVariant?.imagePath || initialData?.variantImagePath || initialData?.variantImage;
+
+  // Xử lý khi người dùng chọn Biến thể SKU -> Tự động điền và khóa cứng ĐVT
+  const handleVariantSelect = (variantIdVal: any) => {
+    const vId = Number(variantIdVal);
+    const variant = variantsList.find((v) => v.id === vId);
+    const prod = productsList.find((p) => p.id === variant?.productId);
+    const defPrice = variant?.prices?.find((p) => p.isDefault) || variant?.prices?.[0];
+    const autoUoMId = variant?.baseUoMId || prod?.baseUoMId || defPrice?.uoMId || 0;
+
+    setFormData((prev) => ({
+      ...prev,
+      variantId: vId,
+      purchaseUoMId: autoUoMId,
+    }));
+
+    if (errors.variantId || errors.purchaseUoMId) {
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next.variantId;
+        delete next.purchaseUoMId;
+        return next;
+      });
+    }
+  };
 
   const handleFieldChange = (field: keyof SupplierProductPayload, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -104,7 +185,7 @@ export const ModalSupplierProduct: React.FC<ModalSupplierProductProps> = ({
       newErrors.variantId = 'Vui lòng chọn sản phẩm biến thể.';
     }
     if (!formData.purchaseUoMId || formData.purchaseUoMId <= 0) {
-      newErrors.purchaseUoMId = 'Vui lòng chọn đơn vị tính mua hàng.';
+      newErrors.purchaseUoMId = 'Vui lòng chọn sản phẩm biến thể để xác định đơn vị tính.';
     }
     if (formData.lastImportPrice === undefined || formData.lastImportPrice < 0) {
       newErrors.lastImportPrice = 'Đơn giá nhập phải >= 0.';
@@ -146,38 +227,46 @@ export const ModalSupplierProduct: React.FC<ModalSupplierProductProps> = ({
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-100 flex items-center justify-center p-4">
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity"
-        onClick={!isSubmitting ? onClose : undefined}
-      ></div>
-
-      {/* Modal Box */}
-      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/50">
-          <div className="flex items-center gap-2.5 text-slate-800">
-            <Package size={20} className="text-yellow-500" />
-            <h3 className="font-bold text-[16px] uppercase tracking-wide">
-              {initialData ? 'Cập Nhật Sản Phẩm & Bảng Giá NCC' : 'Thêm Sản Phẩm Vào Danh Mục NCC'}
-            </h3>
+  const modalContent = (
+    <div
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 animate-in fade-in"
+      onClick={(e) => {
+        if (e.target === e.currentTarget && !isSubmitting) {
+          onClose();
+        }
+      }}
+    >
+      <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-visible animate-in zoom-in-95 duration-200 border border-slate-100">
+        {/* MODAL HEADER THEME SOLARIS */}
+        <div className="flex items-center justify-between px-6 py-4.5 bg-amber-50/80 border-b border-amber-200/60 rounded-t-3xl">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-amber-400 text-slate-900 rounded-xl shadow-xs">
+              <Package size={20} strokeWidth={2.5} />
+            </div>
+            <div>
+              <h3 className="text-base font-extrabold text-slate-900 leading-tight">
+                {initialData ? 'Cập Nhật Sản Phẩm & Bảng Giá NCC' : 'Thêm Sản Phẩm Vào Danh Mục NCC'}
+              </h3>
+              <p className="text-xs text-slate-500 font-medium">
+                Thiết lập đơn giá nhập và chính sách cung ứng từ nhà cung cấp
+              </p>
+            </div>
           </div>
           <button
+            type="button"
             onClick={onClose}
             disabled={isSubmitting}
-            className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-200 rounded-lg transition-colors"
+            className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 rounded-xl transition-colors cursor-pointer"
           >
             <X size={20} />
           </button>
         </div>
 
-        {/* Body */}
+        {/* MODAL BODY */}
         <div className="p-6">
           <form id="supplierProductForm" onSubmit={handleSubmit} className="flex flex-col gap-6">
-            {/* Row 1: Nhà cung cấp & Biến thể */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* ROW 1: NHÀ CUNG CẤP & BIẾN THỂ */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               {!fixedSupplierId ? (
                 <FormSelect
                   label="Nhà Cung Cấp"
@@ -188,7 +277,7 @@ export const ModalSupplierProduct: React.FC<ModalSupplierProductProps> = ({
                   options={supplierOptions}
                   error={errors.supplierId}
                   disabled={Boolean(initialData) || isSubmitting}
-                  onSelect={(val) => handleFieldChange('supplierId', val)}
+                  onSelect={(val) => handleFieldChange('supplierId', Number(val))}
                 />
               ) : null}
 
@@ -202,13 +291,13 @@ export const ModalSupplierProduct: React.FC<ModalSupplierProductProps> = ({
                   options={variantOptions}
                   error={errors.variantId}
                   disabled={Boolean(initialData) || isSubmitting}
-                  onSelect={(val) => handleFieldChange('variantId', val)}
+                  onSelect={handleVariantSelect}
                 />
 
-                {/* Preview hình ảnh và thông tin biến thể được chọn */}
+                {/* THẺ PREVIEW BIẾN THỂ ĐƯỢC CHỌN */}
                 {Boolean(formData.variantId) && (selectedVariant || initialData) && (
-                  <div className="flex items-center gap-3.5 p-3 rounded-xl bg-slate-50 border border-slate-200/80 mt-3">
-                    <div className="w-14 h-14 rounded-lg bg-white border border-slate-200 shadow-2xs flex items-center justify-center shrink-0 overflow-hidden">
+                  <div className="flex items-center gap-3.5 p-3.5 rounded-2xl bg-slate-50/80 border border-slate-200 mt-3 shadow-2xs animate-in fade-in">
+                    <div className="w-13 h-13 rounded-xl bg-white border border-slate-200 shadow-2xs flex items-center justify-center shrink-0 overflow-hidden">
                       {variantImage ? (
                         <img
                           src={variantImage}
@@ -216,25 +305,30 @@ export const ModalSupplierProduct: React.FC<ModalSupplierProductProps> = ({
                           className="w-full h-full object-cover"
                         />
                       ) : (
-                        <Package size={24} className="text-slate-300" />
+                        <Package size={22} className="text-slate-300" />
                       )}
                     </div>
-                    <div className="flex flex-col min-w-0">
+                    <div className="flex flex-col min-w-0 flex-1">
                       <span className="font-extrabold text-slate-800 text-[13px] truncate">
                         {selectedVariant?.name ||
                           initialData?.variantName ||
                           `Biến thể #${formData.variantId}`}
                       </span>
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className="text-[10px] font-bold bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-200/50 uppercase tracking-widest">
+                      <div className="flex flex-wrap items-center gap-2 mt-1">
+                        <span className="text-[10px] font-bold bg-amber-100 text-amber-900 px-2 py-0.5 rounded-md border border-amber-300 uppercase tracking-wider">
                           {selectedVariant?.code ||
                             initialData?.variantCode ||
                             `#${formData.variantId}`}
                         </span>
+                        {detectedUoMName && (
+                          <span className="text-[11px] font-bold text-slate-600 bg-slate-200/60 px-2 py-0.5 rounded-md">
+                            ĐVT: <b className="text-slate-900">{detectedUoMName}</b>
+                          </span>
+                        )}
                         {selectedVariant?.prices && selectedVariant.prices.length > 0 && (
-                          <span className="text-[11px] text-slate-500 font-medium">
-                            Giá bán niêm yết:{' '}
-                            <strong className="text-slate-700">
+                          <span className="text-[11px] text-slate-500 font-medium ml-auto">
+                            Giá niêm yết:{' '}
+                            <strong className="text-slate-800 font-bold">
                               {selectedVariant.prices[0].price.toLocaleString('vi-VN')} ₫
                             </strong>
                           </span>
@@ -246,8 +340,8 @@ export const ModalSupplierProduct: React.FC<ModalSupplierProductProps> = ({
               </div>
             </div>
 
-            {/* Row 2: Đơn giá nhập & ĐVT Mua hàng */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* ROW 2: ĐƠN GIÁ NHẬP & ĐVT MUA HÀNG (TỰ ĐỘNG ĐIỀN & KHÓA CỨNG) */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <FormInput
                 label="Đơn Giá Nhập (VNĐ)"
                 required
@@ -261,20 +355,41 @@ export const ModalSupplierProduct: React.FC<ModalSupplierProductProps> = ({
                 }
               />
 
-              <FormSelect
-                label="Đơn Vị Tính Mua Hàng"
-                required
-                placeholder="Chọn ĐVT..."
-                value={formData.purchaseUoMId || ''}
-                options={uomOptions}
-                error={errors.purchaseUoMId}
-                disabled={isSubmitting}
-                onSelect={(val) => handleFieldChange('purchaseUoMId', val)}
-              />
+              <div>
+                <FormSelect
+                  label="Đơn Vị Tính Mua Hàng"
+                  required
+                  placeholder={
+                    formData.variantId ? 'Đang nhận diện ĐVT...' : 'Vui lòng chọn sản phẩm trước...'
+                  }
+                  value={formData.purchaseUoMId || ''}
+                  options={
+                    formData.variantId && (formData.purchaseUoMId || detectedUoMId > 0)
+                      ? [
+                          {
+                            value: formData.purchaseUoMId || detectedUoMId,
+                            label: `${detectedUoMName || 'Đơn vị tính'} (ĐVT của sản phẩm)`,
+                          },
+                        ]
+                      : uomOptions
+                  }
+                  error={errors.purchaseUoMId}
+                  disabled={Boolean(formData.variantId) || isSubmitting}
+                  onSelect={(val) => handleFieldChange('purchaseUoMId', Number(val))}
+                />
+                {Boolean(formData.variantId && (detectedUoMName || formData.purchaseUoMId > 0)) && (
+                  <p className="text-[11px] text-amber-800 font-semibold mt-1.5 flex items-center gap-1.5 bg-amber-50/80 px-3 py-1.5 rounded-xl border border-amber-200">
+                    <span>🔒</span>
+                    <span>
+                      Cố định theo đơn vị tính của sản phẩm (<b>{detectedUoMName || 'Chuẩn'}</b>). Đơn mua hàng từ NCC sẽ áp dụng đơn vị này.
+                    </span>
+                  </p>
+                )}
+              </div>
             </div>
 
-            {/* Row 3: MOQ, Lead time & Mã SKU NCC */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* ROW 3: MOQ, LEAD TIME & MÃ SKU NCC */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
               <FormInput
                 label="Số Lượng Tối Thiểu (MOQ)"
                 required
@@ -307,8 +422,8 @@ export const ModalSupplierProduct: React.FC<ModalSupplierProductProps> = ({
               />
             </div>
 
-            {/* Switch Hoạt động */}
-            <div className="flex items-center gap-3 mt-1 bg-slate-50 p-4 rounded-xl border border-slate-100">
+            {/* SWITCH HOẠT ĐỘNG */}
+            <div className="flex items-center gap-3.5 bg-slate-50/80 p-4 rounded-2xl border border-slate-200/80">
               <label className="relative inline-flex items-center cursor-pointer">
                 <input
                   type="checkbox"
@@ -317,13 +432,13 @@ export const ModalSupplierProduct: React.FC<ModalSupplierProductProps> = ({
                   disabled={isSubmitting}
                   onChange={(e) => handleFieldChange('isActive', e.target.checked)}
                 />
-                <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-yellow-400"></div>
+                <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-400"></div>
               </label>
               <div className="flex flex-col">
-                <span className="text-[13px] font-bold text-slate-700">
+                <span className="text-[13px] font-bold text-slate-800">
                   Đang Cung Ứng (Kích hoạt)
                 </span>
-                <span className="text-[11px] text-slate-500">
+                <span className="text-[11px] text-slate-500 font-medium">
                   Cho phép chọn sản phẩm này khi tạo đơn mua hàng từ NCC.
                 </span>
               </div>
@@ -331,13 +446,13 @@ export const ModalSupplierProduct: React.FC<ModalSupplierProductProps> = ({
           </form>
         </div>
 
-        {/* Footer */}
-        <div className="flex items-center justify-end gap-3 px-6 py-4 bg-slate-50 border-t border-slate-100">
+        {/* MODAL FOOTER THEME SOLARIS */}
+        <div className="flex items-center justify-end gap-3 px-6 py-4 bg-slate-50 border-t border-slate-100 rounded-b-3xl">
           <button
             type="button"
             onClick={onClose}
             disabled={isSubmitting}
-            className="px-4 py-2.5 text-sm font-bold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors cursor-pointer"
+            className="px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-bold text-sm hover:bg-slate-100 transition-colors cursor-pointer"
           >
             Hủy Bỏ
           </button>
@@ -345,12 +460,12 @@ export const ModalSupplierProduct: React.FC<ModalSupplierProductProps> = ({
             type="submit"
             form="supplierProductForm"
             disabled={isSubmitting}
-            className="flex items-center gap-2 px-5 py-2.5 text-sm font-bold text-slate-900 bg-yellow-400 rounded-xl hover:bg-yellow-500 shadow-sm shadow-yellow-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+            className="flex items-center gap-2 px-6 py-2.5 rounded-xl font-bold text-sm text-slate-900 bg-amber-400 hover:bg-amber-500 transition-all shadow-sm shadow-amber-200 active:scale-98 disabled:opacity-50 cursor-pointer"
           >
             {isSubmitting ? (
-              <div className="w-5 h-5 border-2 border-slate-900/30 border-t-slate-900 rounded-full animate-spin"></div>
+              <div className="w-4 h-4 border-2 border-slate-900/30 border-t-slate-900 rounded-full animate-spin"></div>
             ) : (
-              <Save size={18} strokeWidth={2.5} />
+              <Save size={16} strokeWidth={2.5} />
             )}
             <span>{initialData ? 'Lưu Cập Nhật' : 'Thêm Vào Bảng Giá'}</span>
           </button>
@@ -358,4 +473,9 @@ export const ModalSupplierProduct: React.FC<ModalSupplierProductProps> = ({
       </div>
     </div>
   );
+
+  if (typeof document !== 'undefined') {
+    return createPortal(modalContent, document.body);
+  }
+  return modalContent;
 };
