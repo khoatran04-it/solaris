@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+using AutoMapper;
 using backend.DTOs.InventoryTransferDTOs;
 using backend.Models;
 using backend.Models.Enums;
@@ -479,6 +479,48 @@ namespace backend.Tests.Modules.Module10_Inventory
             var inTransitCancelAct = async () => await service.CancelTransferAsync(5, "Muốn hủy");
             await inTransitCancelAct.Should().ThrowAsync<InvalidOperationException>()
                 .WithMessage("*Chỉ được phép hủy khi phiếu chuyển kho đang ở trạng thái Nháp*");
+        }
+        #endregion
+
+        #region TC09: SCM SHIELD - CHẶN ĐIỀU CHUYỂN XUẤT PHÁT TỪ KHO HÀNG LỖI
+        /// <summary>
+        /// TC09: SCM Rule - Cấm xuất phát từ Kho Hàng Lỗi (Damaged). Hàng đã vào kho lỗi/hủy là trạm cuối.
+        /// </summary>
+        [Fact]
+        public async Task CreateAsync_FromDamagedWarehouse_ThrowsInvalidOperationException()
+        {
+            // Arrange
+            using var context = TestFactories.CreateInMemoryDbContext();
+            await SeedDependenciesAsync(context);
+
+            var damagedWh = new Warehouse
+            {
+                Id = 10,
+                Code = "WH-DAMAGED",
+                Name = "Kho Hàng Hỏng & Hủy",
+                WarehouseType = WarehouseTypeConstants.Damaged,
+                IsActive = true
+            };
+            context.Warehouses.Add(damagedWh);
+            await context.SaveChangesAsync();
+
+            var service = new InventoryTransferService(context, _mapper);
+
+            var dto = new InventoryTransferCreateDto
+            {
+                FromWarehouseId = 10,
+                ToWarehouseId = 2,
+                CreatedById = 1,
+                Details = new List<InventoryTransferDetailCreateDto>
+                {
+                    new InventoryTransferDetailCreateDto { VariantId = 1, BatchId = 1, UoMId = 1, Quantity = 10 }
+                }
+            };
+
+            // Act & Assert
+            var act = () => service.CreateAsync(dto);
+            await act.Should().ThrowAsync<InvalidOperationException>()
+                .WithMessage("*Kho Hàng Lỗi không được phép điều chuyển*");
         }
         #endregion
     }

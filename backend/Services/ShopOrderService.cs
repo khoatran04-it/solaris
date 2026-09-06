@@ -144,14 +144,18 @@ namespace backend.Services
 
                     int reserveWarehouseId = selectedWarehouseId;
 
-                    // Nếu kho đích không đủ hàng, tìm kho khác có lô còn hạn đủ số lượng để giữ chỗ (Reserve)
+                    // Nếu kho đích không đủ hàng, tìm kho bán lẻ khác có lô còn hạn đủ số lượng để giữ chỗ (Reserve)
                     if (inventory == null)
                     {
-                        var anyStockInv = await _context.WarehouseInventories
+                        var fallbackQuery = _context.WarehouseInventories
                             .Include(wi => wi.Batch)
                             .Where(wi => wi.VariantId == item.VariantId && 
                                          wi.QuantityAvailable >= item.Quantity &&
-                                         (wi.Batch == null || wi.Batch.ExpiryDate > now))
+                                         (wi.Batch == null || wi.Batch.ExpiryDate > now));
+
+                        var filteredFallback = await fallbackQuery.FilterRetailOnlyAsync(_context);
+
+                        var anyStockInv = await filteredFallback
                             .OrderBy(wi => wi.Batch != null ? wi.Batch.ExpiryDate : DateTime.MaxValue)
                             .FirstOrDefaultAsync();
 
@@ -162,13 +166,19 @@ namespace backend.Services
                         }
                     }
 
-                    // Fallback: nếu không có lô còn hạn đủ số lượng, lấy bất kỳ bản ghi tồn kho nào có sẵn
+                    // Fallback: nếu không có lô còn hạn đủ số lượng, lấy bản ghi tồn kho có sẵn tại Kho Bán Lẻ
                     if (inventory == null)
                     {
                         inventory = await _context.WarehouseInventories
-                            .FirstOrDefaultAsync(wi => wi.WarehouseId == selectedWarehouseId && wi.VariantId == item.VariantId && wi.QuantityAvailable >= item.Quantity)
-                            ?? await _context.WarehouseInventories
-                            .FirstOrDefaultAsync(wi => wi.VariantId == item.VariantId && wi.QuantityAvailable >= item.Quantity);
+                            .FirstOrDefaultAsync(wi => wi.WarehouseId == selectedWarehouseId && wi.VariantId == item.VariantId && wi.QuantityAvailable >= item.Quantity);
+
+                        if (inventory == null)
+                        {
+                            var anyStockQuery = _context.WarehouseInventories
+                                .Where(wi => wi.VariantId == item.VariantId && wi.QuantityAvailable >= item.Quantity);
+                            var filteredAnyStock = await anyStockQuery.FilterRetailOnlyAsync(_context);
+                            inventory = await filteredAnyStock.FirstOrDefaultAsync();
+                        }
 
                         if (inventory != null)
                         {

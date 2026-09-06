@@ -4,6 +4,7 @@ using backend.DTOs;
 using backend.DTOs.InventoryDTOs;
 using backend.Helpers;
 using backend.Models;
+using backend.Models.Enums;
 using backend.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
@@ -41,8 +42,9 @@ namespace backend.Services
         /// điều chuyển hàng hóa, hoặc gán quyền truy cập kho cho nhân viên.
         /// </summary>
         /// <param name="isActiveOnly">Nếu true, chỉ lấy các kho đang hoạt động. Nếu false, lấy tất cả.</param>
+        /// <param name="warehouseType">Tùy chọn lọc theo loại kho cụ thể.</param>
         /// <returns>Danh sách kho hàng kèm thông tin địa chỉ và trưởng kho.</returns>
-        public async Task<IEnumerable<WarehouseReadDto>> GetAllListAsync(bool isActiveOnly = false)
+        public async Task<IEnumerable<WarehouseReadDto>> GetAllListAsync(bool isActiveOnly = false, string? warehouseType = null)
         {
             var query = _context.Warehouses
                 .Include(x => x.Address)
@@ -53,6 +55,11 @@ namespace backend.Services
             if (isActiveOnly)
             {
                 query = query.Where(x => x.IsActive);
+            }
+
+            if (!string.IsNullOrWhiteSpace(warehouseType))
+            {
+                query = query.Where(x => x.WarehouseType == warehouseType.Trim());
             }
 
             var items = await query

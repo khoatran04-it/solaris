@@ -124,9 +124,15 @@ namespace backend.Services
             if (dto.Details == null || !dto.Details.Any())
                 throw new InvalidOperationException("Phiếu xuất kho phải có ít nhất 1 dòng chi tiết.");
 
-            var whExists = await _context.Warehouses.AnyAsync(w => w.Id == dto.WarehouseId && !w.IsDeleted);
-            if (!whExists)
+            var warehouse = await _context.Warehouses.FirstOrDefaultAsync(w => w.Id == dto.WarehouseId && !w.IsDeleted);
+            if (warehouse == null)
                 throw new InvalidOperationException($"Kho hàng với ID {dto.WarehouseId} không tồn tại hoặc đã bị vô hiệu hóa.");
+
+            if (dto.OrderId.HasValue && dto.OrderId.Value > 0)
+            {
+                if (!string.IsNullOrWhiteSpace(warehouse.WarehouseType) && warehouse.WarehouseType != WarehouseTypeConstants.Retail)
+                    throw new InvalidOperationException("Chỉ Kho Bán Lẻ mới được phép xuất kho cho đơn bán hàng của khách.");
+            }
 
             int safeUserId = currentUserId ?? dto.IssuedById ?? 1;
             var userExists = await _context.IAUsers.AnyAsync(u => u.Id == safeUserId && !u.IsDeleted);

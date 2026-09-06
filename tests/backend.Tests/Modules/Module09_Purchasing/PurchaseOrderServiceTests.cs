@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+using AutoMapper;
 using backend.DTOs.PurchaseOrderDTOs;
 using backend.Models;
 using backend.Models.Enums;
@@ -640,6 +640,49 @@ namespace backend.Tests.Modules.Module09_Purchasing
             await actReceived.Should().ThrowAsync<InvalidOperationException>();
         }
 
+        #endregion
+
+        #region SCM SHIELD: CHẶN LẬP ĐƠN MUA HÀNG VỚI KHO KHÔNG PHẢI KHO TỔNG
+        /// <summary>
+        /// SCM Rule: Đơn mua hàng (PO) từ Nhà cung cấp chỉ được phép tiếp nhận tại Kho Tổng (MasterHub).
+        /// Chặn các kho bán lẻ hoặc trạm trung chuyển tiếp nhận PO từ NCC.
+        /// </summary>
+        [Fact]
+        public async Task CreateAsync_WithNonMasterHubWarehouse_ThrowsInvalidOperationException()
+        {
+            // Arrange
+            using var context = TestFactories.CreateInMemoryDbContext();
+            await SeedDependenciesAsync(context);
+
+            var retailWh = new Warehouse
+            {
+                Id = 2,
+                Code = "WH-RETAIL",
+                Name = "Kho Bán Lẻ Quận 1",
+                WarehouseType = WarehouseTypeConstants.Retail,
+                IsActive = true
+            };
+            context.Warehouses.Add(retailWh);
+            await context.SaveChangesAsync();
+
+            var service = new PurchaseOrderService(context, _mapper);
+
+            var createDto = new PurchaseOrderCreateDto
+            {
+                SupplierId = 1,
+                WarehouseId = 2,
+                OrderDate = DateTime.UtcNow,
+                Details = new List<PurchaseOrderDetailCreateDto>
+                {
+                    new PurchaseOrderDetailCreateDto { VariantId = 1, UoMId = 1, OrderQuantity = 50, UnitPrice = 80000 }
+                }
+            };
+
+            // Act & Assert
+            var act = () => service.CreateAsync(createDto, 1);
+            await act.Should().ThrowAsync<InvalidOperationException>()
+                .WithMessage("*Chỉ Kho Tổng*mới được phép tiếp nhận đơn đặt mua hàng*");
+        }
         #endregion
     }
 }

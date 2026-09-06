@@ -1,5 +1,6 @@
 using backend.Data;
 using backend.DTOs.OrderDTOs;
+using backend.Models.Enums;
 using backend.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
@@ -18,9 +19,10 @@ namespace backend.Services
 
         public async Task<RoutingResultDto> DetermineOptimalWarehouseAsync(int? customerAddressId, List<OrderDetailCreateDto> items)
         {
+            // Chỉ định tuyến đơn hàng đến Kho Bán Lẻ đang hoạt động
             var warehouses = await _context.Warehouses
                 .Include(w => w.Address)
-                .Where(w => w.IsActive && !w.IsDeleted)
+                .Where(w => w.IsActive && !w.IsDeleted && (w.WarehouseType == WarehouseTypeConstants.Retail || string.IsNullOrEmpty(w.WarehouseType)))
                 .ToListAsync();
 
             if (!warehouses.Any())
@@ -127,7 +129,8 @@ namespace backend.Services
                     .Include(i => i.Warehouse)
                     .Where(i => i.WarehouseId != nearest.Warehouse.Id && 
                                 i.VariantId == firstMissing.VariantId && 
-                                i.QuantityAvailable >= firstMissing.MissingQuantity)
+                                i.QuantityAvailable >= firstMissing.MissingQuantity &&
+                                (i.Warehouse == null || i.Warehouse.WarehouseType != WarehouseTypeConstants.Damaged))
                     .Select(i => i.Warehouse)
                     .FirstOrDefaultAsync();
 

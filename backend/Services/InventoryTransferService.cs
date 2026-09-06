@@ -136,13 +136,17 @@ namespace backend.Services
             if (dto.Details == null || !dto.Details.Any())
                 throw new InvalidOperationException("Phiếu chuyển kho phải có ít nhất 1 dòng chi tiết hàng hóa.");
 
-            var fromWhExists = await _context.Warehouses.AnyAsync(w => w.Id == dto.FromWarehouseId && !w.IsDeleted);
-            if (!fromWhExists)
+            var fromWarehouse = await _context.Warehouses.FirstOrDefaultAsync(w => w.Id == dto.FromWarehouseId && !w.IsDeleted);
+            if (fromWarehouse == null)
                 throw new InvalidOperationException($"Kho nguồn với ID {dto.FromWarehouseId} không tồn tại hoặc đã bị vô hiệu hóa.");
 
-            var toWhExists = await _context.Warehouses.AnyAsync(w => w.Id == dto.ToWarehouseId && !w.IsDeleted);
-            if (!toWhExists)
+            var toWarehouse = await _context.Warehouses.FirstOrDefaultAsync(w => w.Id == dto.ToWarehouseId && !w.IsDeleted);
+            if (toWarehouse == null)
                 throw new InvalidOperationException($"Kho đích với ID {dto.ToWarehouseId} không tồn tại hoặc đã bị vô hiệu hóa.");
+
+            // SAFETY SHIELD: Không được phép điều chuyển từ Kho Hàng Lỗi sang các kho khác
+            if (!string.IsNullOrWhiteSpace(fromWarehouse.WarehouseType) && fromWarehouse.WarehouseType == WarehouseTypeConstants.Damaged)
+                throw new InvalidOperationException("Hàng hóa trong Kho Hàng Lỗi không được phép điều chuyển sang các kho vận hành khác.");
 
             int safeCreatedById = dto.CreatedById ?? 1;
             var userExists = await _context.IAUsers.AnyAsync(u => u.Id == safeCreatedById && !u.IsDeleted);

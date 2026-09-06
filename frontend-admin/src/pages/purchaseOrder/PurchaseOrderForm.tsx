@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ShoppingCart, Plus, Trash2, Save, Filter, AlertCircle } from 'lucide-react';
 
@@ -86,8 +86,12 @@ const PurchaseOrderForm: React.FC = () => {
       setRawVariants(variantRes);
       setAllVariants(variantRes.map((v: any) => ({ value: v.id, label: v.name })));
       setUoms(uomRes.map((u: any) => ({ value: u.id, label: u.name })));
+      // Nghiệp vụ SCM: Chỉ Kho Tổng mới được phép tiếp nhận đơn đặt mua hàng từ NCC
+      const masterHubs = whRes.filter(
+        (w: any) => !w.warehouseType || w.warehouseType === 'Kho Tổng'
+      );
       setWarehouses(
-        whRes.map((w: any) => ({ value: w.id, label: `${w.code || 'KHO'} - ${w.name}` }))
+        masterHubs.map((w: any) => ({ value: w.id, label: `${w.code || 'KHO'} - ${w.name}` }))
       );
     } catch (error) {
       showToast('error', 'Không thể tải dữ liệu danh mục bổ trợ');
@@ -129,6 +133,9 @@ const PurchaseOrderForm: React.FC = () => {
       }
 
       setSupplierId(data.supplierId);
+      if (data.warehouseId) {
+        setWarehouseId(data.warehouseId);
+      }
       setOrderDate(data.orderDate ? new Date(data.orderDate) : null);
       setExpectedDeliveryDate(
         data.expectedDeliveryDate ? new Date(data.expectedDeliveryDate) : null
@@ -280,6 +287,7 @@ const PurchaseOrderForm: React.FC = () => {
 
       const payload: PurchaseOrderCreatePayload = {
         supplierId: Number(supplierId),
+        warehouseId: warehouseId ? Number(warehouseId) : undefined,
         orderDate: safeOrderDate,
         expectedDeliveryDate: safeDeliveryDate,
         note: finalNote,
@@ -341,7 +349,7 @@ const PurchaseOrderForm: React.FC = () => {
               />
 
               <FormSelect
-                label="Kho Nhận Hàng Dự Kiến"
+                label="Kho Nhận Hàng (Chỉ áp dụng Kho Tổng)"
                 value={warehouseId}
                 onSelect={(val) => {
                   setWarehouseId(val);
@@ -352,7 +360,7 @@ const PurchaseOrderForm: React.FC = () => {
                 required
                 showSearch
                 searchPlaceholder="Tìm Kho nhận hàng..."
-                placeholder="-- Chọn Kho nhận hàng lưu trữ --"
+                placeholder="-- Chọn Kho Tổng tiếp nhận hàng --"
               />
 
               <DatePicker

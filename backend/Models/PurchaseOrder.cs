@@ -66,6 +66,12 @@ namespace backend.Models
         /// <summary>Thực thể Nhân viên lập chứng từ.</summary>
         public virtual IAUser? CreatedBy { get; set; }
 
+        /// <summary>Mã định danh của Kho nhận hàng (Destination Warehouse). Theo quy định chuỗi cung ứng SCM, đơn mua từ NCC chỉ được giao về Kho Tổng.</summary>
+        public int? WarehouseId { get; set; }
+
+        /// <summary>Thực thể Kho nhận hàng.</summary>
+        public virtual Warehouse? Warehouse { get; set; }
+
         /// <summary>Danh sách chi tiết các mặt hàng (SKU), số lượng và đơn giá thỏa thuận trong hợp đồng đặt mua này.</summary>
         public virtual ICollection<PurchaseOrderDetail> Details { get; set; } = new List<PurchaseOrderDetail>();
         #endregion

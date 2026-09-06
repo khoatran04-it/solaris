@@ -36,6 +36,7 @@ namespace backend.Services
         {
             var items = await _context.PurchaseOrders
                 .Include(x => x.Supplier)
+                .Include(x => x.Warehouse)
                 .Include(x => x.CreatedBy)
                 .Include(x => x.Details)
                     .ThenInclude(d => d.Variant)
@@ -60,6 +61,7 @@ namespace backend.Services
         {
             var query = _context.PurchaseOrders
                 .Include(x => x.Supplier)
+                .Include(x => x.Warehouse)
                 .Include(x => x.CreatedBy)
                 .Include(x => x.Details)
                 .AsQueryable();
@@ -117,6 +119,7 @@ namespace backend.Services
         {
             var entity = await _context.PurchaseOrders
                 .Include(x => x.Supplier)
+                .Include(x => x.Warehouse)
                 .Include(x => x.CreatedBy)
                 .Include(x => x.Details)
                     .ThenInclude(d => d.Variant)
@@ -172,6 +175,27 @@ namespace backend.Services
                     validCreatorId = fallbackUser?.Id ?? 1;
                 }
 
+                // 3.1. Kiểm tra và gán Kho nhận hàng (Chỉ Kho Tổng mới được phép tiếp nhận đơn đặt mua từ NCC)
+                int? targetWarehouseId = dto.WarehouseId;
+                if (targetWarehouseId.HasValue && targetWarehouseId.Value > 0)
+                {
+                    var wh = await _context.Warehouses.FirstOrDefaultAsync(w => w.Id == targetWarehouseId.Value && !w.IsDeleted);
+                    if (wh == null)
+                        throw new InvalidOperationException($"Kho nhận hàng với ID {targetWarehouseId.Value} không tồn tại hoặc đã bị xóa.");
+
+                    if (!string.IsNullOrWhiteSpace(wh.WarehouseType) && wh.WarehouseType != WarehouseTypeConstants.MasterHub)
+                        throw new InvalidOperationException("Chỉ Kho Tổng (Master Hub) mới được phép tiếp nhận đơn đặt mua hàng từ Nhà cung cấp. Kho được chọn không phải là Kho Tổng.");
+                }
+                else
+                {
+                    // Tự động gán Kho Tổng đang hoạt động nếu có
+                    var defaultMasterHub = await _context.Warehouses.FirstOrDefaultAsync(w => w.IsActive && !w.IsDeleted && w.WarehouseType == WarehouseTypeConstants.MasterHub);
+                    if (defaultMasterHub != null)
+                    {
+                        targetWarehouseId = defaultMasterHub.Id;
+                    }
+                }
+
                 // 4. Ánh xạ sang Entity
                 var entity = _mapper.Map<PurchaseOrder>(dto);
 
@@ -188,6 +212,7 @@ namespace backend.Services
                     entity.OrderCode = trimmedCode;
                 }
 
+                entity.WarehouseId = targetWarehouseId;
                 entity.Status = PurchaseOrderStatus.Draft;
                 entity.CreatedById = validCreatorId;
                 entity.CreatedAt = DateTime.UtcNow;
@@ -262,6 +287,19 @@ namespace backend.Services
                 entity.OrderDate = dto.OrderDate;
                 entity.ExpectedDeliveryDate = dto.ExpectedDeliveryDate;
                 entity.Note = dto.Note?.Trim();
+
+                if (dto.WarehouseId.HasValue && dto.WarehouseId.Value > 0)
+                {
+                    var wh = await _context.Warehouses.FirstOrDefaultAsync(w => w.Id == dto.WarehouseId.Value && !w.IsDeleted);
+                    if (wh == null)
+                        throw new InvalidOperationException($"Kho nhận hàng với ID {dto.WarehouseId.Value} không tồn tại hoặc đã bị xóa.");
+
+                    if (!string.IsNullOrWhiteSpace(wh.WarehouseType) && wh.WarehouseType != WarehouseTypeConstants.MasterHub)
+                        throw new InvalidOperationException("Chỉ Kho Tổng (Master Hub) mới được phép tiếp nhận đơn đặt mua hàng từ Nhà cung cấp. Kho được chọn không phải là Kho Tổng.");
+
+                    entity.WarehouseId = dto.WarehouseId.Value;
+                }
+
                 entity.UpdatedAt = DateTime.UtcNow;
 
                 // 4. Đồng bộ lại danh sách chi tiết (Details)

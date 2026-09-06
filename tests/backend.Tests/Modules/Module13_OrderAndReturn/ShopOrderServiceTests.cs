@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+using AutoMapper;
 using backend.Data;
 using backend.DTOs.ShopDTOs;
 using backend.Models;
@@ -106,9 +106,9 @@ namespace backend.Tests.Modules.Module13_OrderAndReturn
             var warehouse = new Warehouse
             {
                 Id = 1,
-                Code = "WH-TONG",
-                Name = "Kho Tổng TP.HCM",
-                WarehouseType = "Kho Tổng",
+                Code = "WH-RETAIL",
+                Name = "Kho Bán Lẻ TP.HCM",
+                WarehouseType = "Kho Bán Lẻ",
                 AddressId = 1,
                 Address = whAddress,
                 IsActive = true

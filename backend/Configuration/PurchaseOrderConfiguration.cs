@@ -43,6 +43,11 @@ namespace backend.Configurations
                    .WithMany()
                    .HasForeignKey(x => x.CreatedById)
                    .OnDelete(DeleteBehavior.Restrict); // Cấm xóa User nếu người đó từng lập PO
+
+            builder.HasOne(x => x.Warehouse)
+                   .WithMany()
+                   .HasForeignKey(x => x.WarehouseId)
+                   .OnDelete(DeleteBehavior.Restrict); // Cấm xóa Kho nếu đang có PO trỏ tới
         }
     }
 }

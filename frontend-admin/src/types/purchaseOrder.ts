@@ -65,6 +65,10 @@ export interface PurchaseOrder {
   createdById: number;
   createdByName: string;
 
+  warehouseId?: number;
+  warehouseCode?: string;
+  warehouseName?: string;
+
   createdAt: string;
   updatedAt: string;
 
@@ -86,6 +90,7 @@ export interface PurchaseOrderCreatePayload {
   expectedDeliveryDate?: string;
   note?: string;
   supplierId: number;
+  warehouseId?: number;
   createdById: number;
   details: PurchaseOrderDetailCreatePayload[];
 }
@@ -94,6 +99,7 @@ export interface PurchaseOrderCreatePayload {
 export interface PurchaseOrderUpdatePayload {
   expectedDeliveryDate?: string;
   note?: string;
+  warehouseId?: number;
   status: PurchaseOrderStatus;
   cancellationReason?: string;
 }

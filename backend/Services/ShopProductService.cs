@@ -4,6 +4,7 @@ using backend.DTOs;
 using backend.DTOs.ShopDTOs;
 using backend.Helpers;
 using backend.Models;
+using backend.Models.Enums;
 using backend.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
@@ -99,12 +100,16 @@ namespace backend.Services
 
             var variantIds = productList.SelectMany(p => p.Variants.Select(v => v.Id)).Distinct().ToList();
 
-            // Truy vấn tồn kho khả dụng theo lô còn hạn sử dụng
-            var inventories = await _context.WarehouseInventories
+            // Truy vấn tồn kho khả dụng từ các Kho Bán Lẻ theo lô còn hạn sử dụng
+            var baseInventoriesQuery = _context.WarehouseInventories
                 .Include(wi => wi.Batch)
                 .Where(wi => variantIds.Contains(wi.VariantId) &&
                              wi.QuantityAvailable > 0 &&
-                             (wi.Batch == null || wi.Batch.ExpiryDate > now))
+                             (wi.Batch == null || wi.Batch.ExpiryDate > now));
+
+            var filteredInventoriesQuery = await baseInventoriesQuery.FilterRetailOnlyAsync(_context);
+
+            var inventories = await filteredInventoriesQuery
                 .GroupBy(wi => wi.VariantId)
                 .Select(g => new { VariantId = g.Key, TotalAvailable = g.Sum(x => x.QuantityAvailable) })
                 .ToDictionaryAsync(x => x.VariantId, x => x.TotalAvailable);
@@ -300,12 +305,16 @@ namespace backend.Services
                 .Where(c => (c.ProductId == product.Id || c.ProductId == null) && c.IsActive && !c.IsDeleted)
                 .ToListAsync();
 
-            // Lấy tồn kho khả dụng cho các biến thể
-            var inventories = await _context.WarehouseInventories
+            // Lấy tồn kho khả dụng cho các biến thể từ Kho Bán Lẻ
+            var baseSlugInventoriesQuery = _context.WarehouseInventories
                 .Include(wi => wi.Batch)
                 .Where(wi => variantIds.Contains(wi.VariantId) &&
                              wi.QuantityAvailable > 0 &&
-                             (wi.Batch == null || wi.Batch.ExpiryDate > now))
+                             (wi.Batch == null || wi.Batch.ExpiryDate > now));
+
+            var filteredSlugInventoriesQuery = await baseSlugInventoriesQuery.FilterRetailOnlyAsync(_context);
+
+            var inventories = await filteredSlugInventoriesQuery
                 .GroupBy(wi => wi.VariantId)
                 .Select(g => new { VariantId = g.Key, TotalAvailable = g.Sum(x => x.QuantityAvailable) })
                 .ToDictionaryAsync(x => x.VariantId, x => x.TotalAvailable);

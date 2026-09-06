@@ -184,8 +184,14 @@ namespace backend.Services
                 int? assignedWarehouseId = null;
                 if (dto.WarehouseId.HasValue && dto.WarehouseId.Value > 0)
                 {
-                    var whExists = await _context.Warehouses.AnyAsync(w => w.Id == dto.WarehouseId.Value && w.IsActive && !w.IsDeleted);
-                    if (whExists) assignedWarehouseId = dto.WarehouseId.Value;
+                    var wh = await _context.Warehouses.FirstOrDefaultAsync(w => w.Id == dto.WarehouseId.Value && w.IsActive && !w.IsDeleted);
+                    if (wh == null)
+                        throw new InvalidOperationException($"Kho hàng với ID {dto.WarehouseId.Value} không tồn tại hoặc đã bị vô hiệu hóa.");
+
+                    if (!string.IsNullOrWhiteSpace(wh.WarehouseType) && wh.WarehouseType != WarehouseTypeConstants.Retail)
+                        throw new InvalidOperationException("Chỉ Kho Bán Lẻ mới được phép xuất bán trực tiếp cho khách hàng. Kho được chọn không phải là Kho Bán Lẻ.");
+
+                    assignedWarehouseId = wh.Id;
                 }
 
                 if (!assignedWarehouseId.HasValue)
@@ -201,8 +207,8 @@ namespace backend.Services
                     }
                     catch
                     {
-                        // Fallback lấy kho đầu tiên đang hoạt động
-                        var firstWh = await _context.Warehouses.FirstOrDefaultAsync(w => w.IsActive && !w.IsDeleted);
+                        // Fallback lấy Kho Bán Lẻ đầu tiên đang hoạt động
+                        var firstWh = await _context.Warehouses.FirstOrDefaultAsync(w => w.IsActive && !w.IsDeleted && (w.WarehouseType == WarehouseTypeConstants.Retail || string.IsNullOrEmpty(w.WarehouseType)));
                         if (firstWh != null) assignedWarehouseId = firstWh.Id;
                     }
                 }

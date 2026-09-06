@@ -17,7 +17,8 @@ namespace backend.Services.Interfaces
         /// điều chuyển hàng hóa, hoặc gán quyền truy cập kho cho nhân viên.
         /// </summary>
         /// <param name="isActiveOnly">Nếu true, chỉ lấy các kho đang hoạt động (Dùng khi tạo phiếu). Nếu false, lấy tất cả (Dùng cho bộ lọc tra cứu).</param>
-        Task<IEnumerable<WarehouseReadDto>> GetAllListAsync(bool isActiveOnly = false);
+        /// <param name="warehouseType">Tùy chọn lọc theo loại kho cụ thể (Ví dụ: Kho Tổng, Kho Bán Lẻ).</param>
+        Task<IEnumerable<WarehouseReadDto>> GetAllListAsync(bool isActiveOnly = false, string? warehouseType = null);
 
         /// <summary>
         /// Lấy danh sách Kho hàng có hỗ trợ phân trang và bộ lọc nâng cao.
