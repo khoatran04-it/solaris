@@ -168,7 +168,7 @@ namespace backend.Services
             {
                 var trimmedCode = dto.Code.Trim();
 
-                if (await _context.ProductVariants.AnyAsync(x => x.Code.ToLower() == trimmedCode.ToLower()))
+                if (await _context.ProductVariants.IgnoreQueryFilters().AnyAsync(x => x.Code.ToLower() == trimmedCode.ToLower()))
                     throw new InvalidOperationException($"Mã SKU '{trimmedCode}' của biến thể này đã tồn tại trong hệ thống.");
 
                 // Kiểm tra ProductId hợp lệ
@@ -211,7 +211,7 @@ namespace backend.Services
                 if (entity == null) throw new KeyNotFoundException("Không tìm thấy biến thể sản phẩm cần sửa.");
 
                 var trimmedCode = dto.Code.Trim();
-                if (await _context.ProductVariants.AnyAsync(x => x.Id != id && x.Code.ToLower() == trimmedCode.ToLower()))
+                if (await _context.ProductVariants.IgnoreQueryFilters().AnyAsync(x => x.Id != id && x.Code.ToLower() == trimmedCode.ToLower()))
                     throw new InvalidOperationException($"Cập nhật thất bại: Mã SKU '{trimmedCode}' này đã bị trùng với một biến thể khác.");
 
                 // Kiểm tra ProductId hợp lệ

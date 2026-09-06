@@ -175,8 +175,8 @@ namespace backend.Services
             {
                 var trimmedCode = dto.Code.Trim();
 
-                // 1. Kiểm tra trùng mã Code (không phân biệt hoa thường)
-                if (await _context.Products.AnyAsync(x => x.Code.ToLower() == trimmedCode.ToLower()))
+                // 1. Kiểm tra trùng mã Code (không phân biệt hoa thường, kể cả đã xóa)
+                if (await _context.Products.IgnoreQueryFilters().AnyAsync(x => x.Code.ToLower() == trimmedCode.ToLower()))
                     throw new InvalidOperationException($"Mã sản phẩm '{trimmedCode}' đã tồn tại trong hệ thống.");
 
                 // 2. Kiểm tra tính hợp lệ của BaseUoMId
@@ -215,8 +215,8 @@ namespace backend.Services
 
                 var trimmedCode = dto.Code.Trim();
 
-                // 1. Kiểm tra mã trùng (ngoại trừ chính nó)
-                if (await _context.Products.AnyAsync(x => x.Id != id && x.Code.ToLower() == trimmedCode.ToLower()))
+                // 1. Kiểm tra mã trùng (ngoại trừ chính nó, kể cả đã xóa)
+                if (await _context.Products.IgnoreQueryFilters().AnyAsync(x => x.Id != id && x.Code.ToLower() == trimmedCode.ToLower()))
                     throw new InvalidOperationException($"Cập nhật thất bại: Mã sản phẩm '{trimmedCode}' đã bị trùng lặp.");
 
                 // 2. Kiểm tra tính hợp lệ của BaseUoMId

@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   Package,
@@ -10,6 +10,8 @@ import {
   Banknote,
   Trash2,
   Star,
+  AlertCircle,
+  Repeat,
 } from 'lucide-react';
 
 // API & Types
@@ -20,6 +22,9 @@ import { uomConversionApi } from '../../api/uomConversionApi';
 import { ProductVariantPayload, VariantPriceInput } from '../../types/productVariant';
 import { Product } from '../../types/product';
 import { UoMConversion } from '../../types/uomConversion';
+
+// Modals
+import { QuickUoMConversionModal } from '../../components/modals/QuickUoMConversionModal';
 
 // Shared UI Components
 import { Toast } from '../../components/commons/Toast';
@@ -82,6 +87,21 @@ const ProductVariantForm: React.FC = () => {
   const [uomOptions, setUomOptions] = useState<{ label: string; value: number }[]>([]); // Data Đơn vị tính
   const [uomConversions, setUomConversions] = useState<UoMConversion[]>([]);
   const [dynamicAttributes, setDynamicAttributes] = useState<AttributeDef[]>([]);
+
+  // Modal tạo nhanh tỷ lệ quy đổi đặc thù sản phẩm
+  const [quickConvModal, setQuickConvModal] = useState<{
+    isOpen: boolean;
+    fromUoMId?: number;
+  }>({
+    isOpen: false,
+    fromUoMId: undefined,
+  });
+
+  // Sản phẩm gốc đang được chọn
+  const currentProd = rawProducts.find((p) => p.id === formData.productId);
+
+  // Đánh dấu đã tự động điền ĐVT cơ sở cho sản phẩm này hay chưa (tránh ghi đè khi user đổi tab)
+  const autoInitializedBaseUoMRef = useRef<number | null>(null);
 
   const [toast, setToast] = useState<{
     show: boolean;
@@ -156,6 +176,37 @@ const ProductVariantForm: React.FC = () => {
       setDynamicAttributes([]);
     }
   }, [formData.productId]);
+
+  // --- EFFECT 3: Tự động nhận diện Đơn vị tính cơ sở của sản phẩm và điền vào dòng đầu tiên khi chuyển sang Tab Quy cách bán ---
+  useEffect(() => {
+    if (activeTab === 'pricing' && formData.productId > 0 && !isEditMode) {
+      if (autoInitializedBaseUoMRef.current !== formData.productId) {
+        const prod = rawProducts.find((p) => p.id === formData.productId);
+        if (prod?.baseUoMId) {
+          setFormData((prev) => {
+            // 1. Nếu bảng giá đang trống hoàn toàn:
+            if (prev.prices.length === 0) {
+              return {
+                ...prev,
+                prices: [{ uoMId: prod.baseUoMId, price: 0, isDefault: true }],
+              };
+            }
+            // 2. Nếu chỉ có 1 dòng mà chưa chọn ĐVT hoặc chưa nhập giá:
+            if (
+              prev.prices.length === 1 &&
+              (prev.prices[0].uoMId === 0 || prev.prices[0].price === 0)
+            ) {
+              const updated = [...prev.prices];
+              updated[0] = { ...updated[0], uoMId: prod.baseUoMId, isDefault: true };
+              return { ...prev, prices: updated };
+            }
+            return prev;
+          });
+          autoInitializedBaseUoMRef.current = formData.productId;
+        }
+      }
+    }
+  }, [activeTab, formData.productId, rawProducts, isEditMode]);
 
   // --- HELPERS ---
   const showToast = (type: 'success' | 'warning' | 'error', message: string) => {
@@ -237,8 +288,39 @@ const ProductVariantForm: React.FC = () => {
     }));
   };
 
+  // Mở modal cấu hình quy đổi đặc thù nhanh
+  const handleOpenQuickConversionModal = (uoMId?: number) => {
+    if (!formData.productId) {
+      showToast('warning', 'Vui lòng chọn Sản phẩm gốc ở Tab 1 trước khi cấu hình quy đổi!');
+      setActiveTab('info');
+      return;
+    }
+    setQuickConvModal({
+      isOpen: true,
+      fromUoMId: uoMId,
+    });
+  };
+
+  // Callback khi tạo quy đổi đặc thù thành công từ Modal
+  const handleQuickConversionSuccess = (newConv: UoMConversion) => {
+    setUomConversions((prev) => {
+      const filtered = prev.filter((c) => c.id !== newConv.id);
+      return [...filtered, newConv];
+    });
+    showToast(
+      'success',
+      `Đã lưu quy đổi: 1 ${newConv.fromUoMName || 'ĐVT'} = ${newConv.conversionFactor} ${newConv.toUoMName || 'ĐVT'} thành công!`
+    );
+    // Tự động giải phóng lỗi bảng giá nếu người dùng vừa cấu hình xong
+    setErrors((prev) => {
+      const next = { ...prev };
+      delete next.prices;
+      return next;
+    });
+  };
+
   // --- VALIDATION ---
-  const validateForm = () => {
+  const validateForm = (): { isValid: boolean; errorMessage?: string } => {
     const newErrors: Record<string, string> = {};
 
     // Tab 1 Validate
@@ -264,10 +346,45 @@ const ProductVariantForm: React.FC = () => {
       const hasDefault = formData.prices.some((p) => p.isDefault);
       if (!hasDefault) newErrors.prices = 'Vui lòng chọn 1 đơn vị tính làm mặc định hiển thị.';
 
-      // Optional: Kiểm tra trùng Đơn vị tính (Chống vụ 1 SP có 2 dòng giá Kg khác nhau)
+      // Kiểm tra trùng Đơn vị tính
       const uomSet = new Set(formData.prices.map((p) => p.uoMId));
       if (uomSet.size !== formData.prices.length) {
         newErrors.prices = 'Có đơn vị tính đang bị trùng lặp. Vui lòng kiểm tra lại.';
+      }
+
+      // CHẶN LUỒNG NGHIỆP VỤ: Không cho lưu nếu có quy cách bán chưa cấu hình quy đổi về ĐVT cơ sở
+      if (currentProd) {
+        const effectiveBaseUoMId =
+          currentProd.baseUoMId ||
+          uomConversions.find(
+            (c) =>
+              c.productId === formData.productId ||
+              (!c.productId && formData.prices.some((p) => p.uoMId === c.fromUoMId))
+          )?.toUoMId ||
+          (formData.prices.length === 1 ? formData.prices[0].uoMId : undefined);
+
+        if (effectiveBaseUoMId) {
+          const unconfiguredRow = formData.prices.find((p) => {
+            if (!p.uoMId || p.uoMId === 0) return false;
+            // Nếu chính là đơn vị cơ sở thì luôn hợp lệ
+            if (p.uoMId === effectiveBaseUoMId) return false;
+            // Kiểm tra xem có quy đổi đặc thù cho sản phẩm này HOẶC quy đổi tiêu chuẩn toàn cục hay không
+            const hasConv = uomConversions.some(
+              (c) =>
+                c.isActive &&
+                (c.productId === formData.productId || !c.productId) &&
+                c.fromUoMId === p.uoMId
+            );
+            return !hasConv;
+          });
+
+          if (unconfiguredRow) {
+            const uomLabel =
+              uomOptions.find((u) => u.value === unconfiguredRow.uoMId)?.label?.split(' ')[0] ||
+              'được chọn';
+            newErrors.prices = `Quy cách bán '${uomLabel}' chưa được cấu hình tỷ lệ quy đổi về đơn vị cơ sở (${currentProd.baseUoMName || 'cơ sở'}). Vui lòng bấm 'Cấu hình ngay' trên dòng đó trước khi lưu!`;
+          }
+        }
       }
     }
 
@@ -279,16 +396,26 @@ const ProductVariantForm: React.FC = () => {
       else if (Object.keys(newErrors).some((k) => k.startsWith('attr_')))
         setActiveTab('attributes');
       else setActiveTab('info');
+
+      const firstErrorMsg =
+        newErrors.prices ||
+        newErrors.productId ||
+        newErrors.code ||
+        newErrors.name ||
+        'Vui lòng kiểm tra lại các trường báo đỏ!';
+      return { isValid: false, errorMessage: firstErrorMsg };
     }
 
-    return Object.keys(newErrors).length === 0;
+    return { isValid: true };
   };
 
   // --- SUBMIT ---
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validateForm())
-      return showToast('warning', errors.prices || 'Vui lòng kiểm tra lại các trường báo đỏ!');
+    const validation = validateForm();
+    if (!validation.isValid) {
+      return showToast('warning', validation.errorMessage || 'Vui lòng kiểm tra lại các trường báo đỏ!');
+    }
 
     setLoading(true);
     try {
@@ -585,8 +712,9 @@ const ProductVariantForm: React.FC = () => {
               </p>
 
               {errors.prices && (
-                <div className="mb-4 p-3 bg-rose-50 text-rose-600 text-sm font-bold rounded-lg border border-rose-200/50">
-                  {errors.prices}
+                <div className="mb-4 p-3.5 bg-rose-50 text-rose-600 text-sm font-bold rounded-xl border border-rose-200 flex items-start gap-2.5 shadow-2xs">
+                  <AlertCircle size={18} className="shrink-0 mt-0.5 text-rose-500" />
+                  <span className="leading-snug">{errors.prices}</span>
                 </div>
               )}
 
@@ -638,9 +766,6 @@ const ProductVariantForm: React.FC = () => {
                             {/* Chú thích quy cách / Quy đổi ĐVT */}
                             {(() => {
                               if (!row.uoMId) return null;
-                              const currentProd = rawProducts.find(
-                                (p) => p.id === formData.productId
-                              );
                               if (currentProd && row.uoMId === currentProd.baseUoMId) {
                                 return (
                                   <div className="mt-1.5 inline-flex items-center gap-1.5 text-[11px] font-bold text-amber-800 bg-amber-50/90 px-2.5 py-1 rounded-lg border border-amber-200 shadow-2xs">
@@ -652,29 +777,45 @@ const ProductVariantForm: React.FC = () => {
                               const conv =
                                 uomConversions.find(
                                   (c) =>
-                                    c.productId === formData.productId && c.fromUoMId === row.uoMId
+                                    c.isActive &&
+                                    c.productId === formData.productId &&
+                                    c.fromUoMId === row.uoMId
                                 ) ||
                                 uomConversions.find(
-                                  (c) => !c.productId && c.fromUoMId === row.uoMId
+                                  (c) => c.isActive && !c.productId && c.fromUoMId === row.uoMId
                                 );
                               if (conv) {
                                 const fromName =
                                   conv.fromUoMName ||
-                                  uomOptions.find((u) => u.value === row.uoMId)?.label ||
+                                  uomOptions.find((u) => u.value === row.uoMId)?.label?.split(' ')[0] ||
                                   'ĐVT';
-                                const toName = conv.toUoMName || currentProd?.baseUoMName || 'Kg';
+                                const toName =
+                                  conv.toUoMName ||
+                                  currentProd?.baseUoMName ||
+                                  'ĐV cơ sở';
                                 return (
                                   <div className="mt-1.5 inline-flex items-center gap-1.5 text-[11px] font-bold text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200/90 shadow-2xs">
                                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
                                     <span>
-                                      💡 1 {fromName} = {conv.conversionFactor} {toName}
+                                      💡 1 {fromName} = {conv.conversionFactor.toLocaleString('vi-VN')} {toName}
                                     </span>
                                   </div>
                                 );
                               }
                               return (
-                                <div className="mt-1.5 inline-flex items-center gap-1.5 text-[11px] font-medium text-slate-400 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-200">
-                                  <span>⚠️ Chưa cấu hình quy đổi</span>
+                                <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-md border border-rose-200">
+                                    ⚠️ Chưa cấu hình quy đổi
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenQuickConversionModal(row.uoMId)}
+                                    className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[11px] font-bold text-amber-800 bg-amber-100 hover:bg-amber-200 border border-amber-300 rounded-md transition-all cursor-pointer shadow-2xs hover:shadow-xs active:scale-98"
+                                    title="Mở popup cấu hình tỷ lệ quy đổi đặc thù ngay"
+                                  >
+                                    <Plus size={11} strokeWidth={3} />
+                                    Cấu hình ngay
+                                  </button>
                                 </div>
                               );
                             })()}
@@ -727,14 +868,24 @@ const ProductVariantForm: React.FC = () => {
                   </tbody>
                 </table>
 
-                {/* NÚT THÊM DÒNG NẰM DƯỚI ĐÁY BẢNG */}
-                <div className="p-3.5 bg-slate-50/50 border-t border-slate-100 flex justify-center">
+                {/* NÚT THÊM DÒNG & CẤU HÌNH QUY ĐỔI DƯỚI ĐÁY BẢNG */}
+                <div className="p-3.5 bg-slate-50/50 border-t border-slate-100 flex flex-wrap items-center justify-center gap-3">
                   <button
                     type="button"
                     onClick={handleAddPriceRow}
                     className="flex items-center gap-2 px-5 py-2.5 text-sm font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-xl transition-all cursor-pointer shadow-2xs hover:shadow-xs active:scale-98"
                   >
                     <Plus size={16} strokeWidth={3} /> THÊM QUY CÁCH BÁN
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleOpenQuickConversionModal()}
+                    className="flex items-center gap-2 px-4 py-2.5 text-sm font-bold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl transition-all cursor-pointer shadow-2xs hover:shadow-xs active:scale-98"
+                    title="Mở popup thêm quy đổi đặc thù cho sản phẩm này"
+                  >
+                    <Repeat size={15} className="text-amber-500" />
+                    Cấu hình quy đổi đặc thù
                   </button>
                 </div>
               </div>
@@ -773,6 +924,20 @@ const ProductVariantForm: React.FC = () => {
           </div>
         </form>
       </FormCard>
+
+      {/* MODAL POPUP CẤU HÌNH QUY ĐỔI ĐẶC THÙ NHANH CHO SẢN PHẨM */}
+      <QuickUoMConversionModal
+        isOpen={quickConvModal.isOpen}
+        onClose={() => setQuickConvModal({ isOpen: false })}
+        productId={formData.productId}
+        productName={currentProd?.name}
+        productCode={currentProd?.code}
+        baseUoMId={currentProd?.baseUoMId}
+        baseUoMName={currentProd?.baseUoMName}
+        initialFromUoMId={quickConvModal.fromUoMId}
+        uomOptions={uomOptions}
+        onSuccess={handleQuickConversionSuccess}
+      />
     </PageContainer>
   );
 };

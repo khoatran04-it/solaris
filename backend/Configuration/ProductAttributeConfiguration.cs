@@ -12,7 +12,7 @@ namespace backend.Configurations
             builder.HasKey(x => x.Id);
 
             // Giá trị thuộc tính (Ví dụ: "VietGAP", "Đỏ", "15 Brix")
-            builder.Property(x => x.AttributeValue).IsRequired().HasMaxLength(200).HasColumnType("nvarchar(200)");
+            builder.Property(x => x.AttributeValue).IsRequired().HasMaxLength(500).HasColumnType("nvarchar(500)");
 
             builder.Property(x => x.DisplayOrder).HasDefaultValue(0);
 
