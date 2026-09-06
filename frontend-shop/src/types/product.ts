@@ -9,8 +9,12 @@ export interface ShopPromotionBadge {
 
 export interface ShopProductCard {
   id: number;
+  variantId?: number;
+  productId?: number;
   code: string;
   name: string;
+  productName?: string;
+  variantName?: string;
   slug: string;
   imagePath?: string;
   categoryId?: number;
@@ -76,12 +80,20 @@ export interface ShopProductDetail {
   activePromotions: ShopPromotionBadge[];
 }
 
+export interface ShopProductCategoryItem {
+  productId: number;
+  productName: string;
+  productSlug: string;
+  variantCount: number;
+}
+
 export interface ShopCategoryItem {
   categoryId: number;
   categoryName: string;
   categorySlug: string;
   categoryImage?: string;
   productCount: number;
+  products?: ShopProductCategoryItem[];
 }
 
 export interface ShopCategoryTree {
@@ -96,6 +108,7 @@ export interface ShopProductFilterParams {
   search?: string;
   categoryGroupSlug?: string;
   categorySlug?: string;
+  productSlug?: string;
   minPrice?: number;
   maxPrice?: number;
   origin?: string;

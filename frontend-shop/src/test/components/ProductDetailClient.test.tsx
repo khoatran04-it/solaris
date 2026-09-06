@@ -1,4 +1,4 @@
-﻿import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import ProductDetailClient from "@/components/product/ProductDetailClient";
@@ -7,6 +7,9 @@ import { useCartStore } from "@/stores/cartStore";
 vi.mock("next/navigation", () => ({
   useRouter: () => ({
     push: vi.fn(),
+  }),
+  useSearchParams: () => ({
+    get: vi.fn().mockReturnValue(null),
   }),
 }));
 

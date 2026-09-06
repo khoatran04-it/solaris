@@ -7,15 +7,23 @@ namespace backend.DTOs.ShopDTOs
     public class ShopProductCardDto
     {
         public int Id { get; set; }
+        public int? VariantId { get; set; }
+        public int? ProductId { get; set; }
 
         #region Định danh & SEO
-        /// <summary>Mã sản phẩm chung (Ví dụ: PROD-APPLE-ENVY).</summary>
+        /// <summary>Mã SKU biến thể hoặc mã sản phẩm chung.</summary>
         public required string Code { get; set; }
 
-        /// <summary>Tên sản phẩm hiển thị trên thẻ.</summary>
+        /// <summary>Tên hiển thị trên thẻ (Tên biến thể hoặc Dòng sản phẩm).</summary>
         public required string Name { get; set; }
 
-        /// <summary>Đường dẫn thân thiện hỗ trợ SEO (Ví dụ: tao-envy-new-zealand).</summary>
+        /// <summary>Tên dòng sản phẩm cha (Ví dụ: Thịt Heo Sạch C.P).</summary>
+        public string? ProductName { get; set; }
+
+        /// <summary>Tên biến thể cụ thể (Ví dụ: Đùi Heo 1Kg, Má Heo).</summary>
+        public string? VariantName { get; set; }
+
+        /// <summary>Đường dẫn thân thiện hỗ trợ SEO của dòng sản phẩm cha (Ví dụ: thit-heo-sach-cp).</summary>
         public required string Slug { get; set; }
         #endregion
 
@@ -188,7 +196,18 @@ namespace backend.DTOs.ShopDTOs
     }
 
     /// <summary>
-    /// DTO hiển thị Danh mục con trên Menu Navigation.
+    /// DTO hiển thị Dòng sản phẩm (Cấp 3) trong cây danh mục đa tầng.
+    /// </summary>
+    public class ShopProductCategoryItemDto
+    {
+        public int ProductId { get; set; }
+        public required string ProductName { get; set; }
+        public required string ProductSlug { get; set; }
+        public int VariantCount { get; set; }
+    }
+
+    /// <summary>
+    /// DTO hiển thị Danh mục con trên Menu Navigation (Cấp 2).
     /// </summary>
     public class ShopCategoryItemDto
     {
@@ -199,10 +218,13 @@ namespace backend.DTOs.ShopDTOs
 
         /// <summary>Số lượng sản phẩm thuộc danh mục này.</summary>
         public int ProductCount { get; set; }
+
+        /// <summary>Danh sách các dòng sản phẩm (Cấp 3) trực thuộc loại sản phẩm này.</summary>
+        public List<ShopProductCategoryItemDto> Products { get; set; } = new List<ShopProductCategoryItemDto>();
     }
 
     /// <summary>
-    /// DTO hiển thị Cấu trúc Cây Menu (Nhóm ngành hàng -> Danh mục con).
+    /// DTO hiển thị Cấu trúc Cây Menu (Nhóm ngành hàng -> Danh mục con -> Dòng sản phẩm).
     /// </summary>
     public class ShopCategoryTreeDto
     {
@@ -223,10 +245,11 @@ namespace backend.DTOs.ShopDTOs
     /// </summary>
     public class ShopProductFilterParams
     {
-        #region Từ khóa & Danh mục
+        #region Từ khóa & Danh mục Đa Tầng
         public string? Search { get; set; }
         public string? CategoryGroupSlug { get; set; }
         public string? CategorySlug { get; set; }
+        public string? ProductSlug { get; set; }
         #endregion
 
         #region Bộ lọc Động (Giá & Thuộc tính EAV)

@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
-import { useRouter } from "next/navigation";
+import React, { useState, useEffect, useMemo } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   ShoppingBag,
   Check,
@@ -27,11 +27,24 @@ export default function ProductDetailClient({
   product,
 }: ProductDetailClientProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const variantParam = searchParams.get("variant");
   const { addItem } = useCartStore();
+
+  // Xác định biến thể ban đầu dựa trên param ?variant= hoặc lấy biến thể đầu tiên
+  const initialVariant = useMemo(() => {
+    if (variantParam && product.variants?.length) {
+      const match = product.variants.find(
+        (v) => v.id.toString() === variantParam || v.code.toLowerCase() === variantParam.toLowerCase(),
+      );
+      if (match) return match;
+    }
+    return product.variants?.[0] || null;
+  }, [variantParam, product.variants]);
 
   // Biến thể đang chọn
   const [selectedVariant, setSelectedVariant] = useState<ShopProductVariant>(
-    product.variants[0] || null,
+    initialVariant,
   );
 
   // Đơn vị tính đang chọn
@@ -40,6 +53,22 @@ export default function ProductDetailClient({
       selectedVariant?.prices[0] ||
       null,
   );
+
+  // Đồng bộ khi URL param variant thay đổi
+  useEffect(() => {
+    if (variantParam && product.variants?.length) {
+      const match = product.variants.find(
+        (v) => v.id.toString() === variantParam || v.code.toLowerCase() === variantParam.toLowerCase(),
+      );
+      if (match && match.id !== selectedVariant?.id) {
+        setSelectedVariant(match);
+        const defaultPr =
+          match.prices.find((p) => p.isDefault) || match.prices[0];
+        setSelectedPrice(defaultPr);
+        setQuantity(1);
+      }
+    }
+  }, [variantParam, product.variants]);
 
   const [quantity, setQuantity] = useState(1);
   const [isAdding, setIsAdding] = useState(false);
@@ -51,6 +80,9 @@ export default function ProductDetailClient({
       variant.prices.find((p) => p.isDefault) || variant.prices[0];
     setSelectedPrice(defaultPr);
     setQuantity(1);
+    if (typeof window !== "undefined") {
+      window.history.replaceState(null, "", `/san-pham/${product.slug}?variant=${variant.id}`);
+    }
   };
 
   const handleAddToCart = async (redirectCheckout = false) => {
