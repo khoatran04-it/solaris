@@ -27,6 +27,7 @@ interface SanPhamPageProps {
     search?: string;
     category?: string;
     group?: string;
+    product?: string;
     origin?: string;
     cert?: string;
     sort?: string;
@@ -40,6 +41,7 @@ export default async function SanPhamPage({ searchParams }: SanPhamPageProps) {
   const search = params.search || "";
   const categorySlug = params.category || "";
   const groupSlug = params.group || "";
+  const productSlug = params.product || "";
   const origin = params.origin || "";
   const cert = params.cert || "";
   const sort = params.sort || "newest";
@@ -50,6 +52,7 @@ export default async function SanPhamPage({ searchParams }: SanPhamPageProps) {
     search: search || undefined,
     categorySlug: categorySlug || undefined,
     categoryGroupSlug: groupSlug || undefined,
+    productSlug: productSlug || undefined,
     origin: origin || undefined,
     certification: cert || undefined,
     sortBy: sort,
@@ -82,6 +85,21 @@ export default async function SanPhamPage({ searchParams }: SanPhamPageProps) {
     // Fallback
   }
 
+  // Tìm tên hiển thị nếu lọc theo dòng sản phẩm
+  let activeProductName = "";
+  if (productSlug) {
+    for (const g of categories) {
+      for (const c of g.categories) {
+        const p = c.products?.find((x) => x.productSlug === productSlug);
+        if (p) {
+          activeProductName = p.productName;
+          break;
+        }
+      }
+      if (activeProductName) break;
+    }
+  }
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
       {/* 1. Header Banner & Breadcrumbs */}
@@ -93,7 +111,17 @@ export default async function SanPhamPage({ searchParams }: SanPhamPageProps) {
               Trang chủ
             </Link>
             <span>/</span>
-            <span className="text-white font-bold">Tất cả sản phẩm</span>
+            <Link href="/san-pham" className="hover:text-white transition-colors">
+              Tất cả sản phẩm
+            </Link>
+            {activeProductName && (
+              <>
+                <span>/</span>
+                <span className="text-emerald-300 font-bold">
+                  {activeProductName}
+                </span>
+              </>
+            )}
             {search && (
               <>
                 <span>/</span>
@@ -108,6 +136,8 @@ export default async function SanPhamPage({ searchParams }: SanPhamPageProps) {
             <h1 className="text-2xl sm:text-3xl font-black tracking-tight">
               {search
                 ? `Kết quả tìm kiếm cho "${search}"`
+                : activeProductName
+                ? activeProductName
                 : "Tất Cả Nông Sản Sạch"}
             </h1>
             <p className="text-xs text-emerald-100/90 leading-relaxed font-normal">

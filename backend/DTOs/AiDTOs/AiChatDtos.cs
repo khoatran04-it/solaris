@@ -191,6 +191,10 @@ namespace backend.DTOs.AiDTOs
         public int VariantId { get; set; }
         public int UoMId { get; set; }
         public required string Name { get; set; }
+        public string? ProductName { get; set; }
+        public string? VariantName { get; set; }
+        public string? CategoryName { get; set; }
+        public string? CategoryGroupName { get; set; }
         public required string Slug { get; set; }
         public string? ImagePath { get; set; }
         public decimal Price { get; set; }

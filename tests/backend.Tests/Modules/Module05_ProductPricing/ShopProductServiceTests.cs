@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+using AutoMapper;
 using backend.DTOs.ShopDTOs;
 using backend.Models;
 using backend.Services;
@@ -139,9 +139,15 @@ namespace backend.Tests.Modules.Module05_ProductPricing
             resGroup.TotalRecords.Should().Be(2);
             resOrigin.TotalRecords.Should().Be(1);
             resCert.TotalRecords.Should().Be(1);
-            resCert.Items.First().Code.Should().Be("PROD-CAM");
+            resCert.Items.First().Code.Should().Be("SKU-CAM-1KG");
 
-            resSortPrice.Items.First().Code.Should().Be("PROD-CAM"); // 40,000 < 90,000
+            resSortPrice.Items.First().Code.Should().Be("SKU-CAM-1KG"); // 40,000 < 90,000
+
+            // Act 6: Lọc theo Dòng Sản phẩm (ProductSlug)
+            var resProdSlug = await service.GetProductsAsync(new ShopProductFilterParams { ProductSlug = "tao-envy-new-zealand" });
+            resProdSlug.TotalRecords.Should().Be(1);
+            resProdSlug.Items.First().ProductId.Should().Be(1);
+            resProdSlug.Items.First().VariantId.Should().Be(10);
         }
         #endregion
 
@@ -260,9 +266,11 @@ namespace backend.Tests.Modules.Module05_ProductPricing
 
             var vegCat = groupItem.Categories.First(c => c.CategorySlug == "rau-xanh");
             vegCat.ProductCount.Should().Be(2);
+            vegCat.Products.Should().HaveCount(2);
 
             var fruitCat = groupItem.Categories.First(c => c.CategorySlug == "trai-cay");
             fruitCat.ProductCount.Should().Be(1);
+            fruitCat.Products.Should().HaveCount(1);
         }
         #endregion
 
@@ -365,7 +373,7 @@ namespace backend.Tests.Modules.Module05_ProductPricing
             promoDetail.Should().NotBeNull();
             promoDetail!.Name.Should().Be("Đại Tiệc Trái Cây");
             promoDetail.Products.Should().HaveCount(1);
-            promoDetail.Products.First().Code.Should().Be("P1");
+            promoDetail.Products.First().Code.Should().Be("V1");
 
             notFoundPromo.Should().BeNull();
         }

@@ -59,6 +59,10 @@ export interface AiProductCard {
   variantId: number;
   uoMId?: number;
   name: string;
+  productName?: string;
+  variantName?: string;
+  categoryName?: string;
+  categoryGroupName?: string;
   slug: string;
   imagePath?: string;
   price: number;

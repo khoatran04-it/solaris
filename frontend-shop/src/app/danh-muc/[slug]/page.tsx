@@ -18,6 +18,7 @@ interface CategoryPageProps {
   params: Promise<{ slug: string }>;
   searchParams: Promise<{
     page?: string;
+    product?: string;
     origin?: string;
     cert?: string;
     sort?: string;
@@ -76,11 +77,13 @@ export default async function CategoryPage({
     certifications = certRes;
   } catch {}
 
-  // Phân giải slug: GroupSlug hoặc CategorySlug hoặc ID
+  // Phân giải slug: GroupSlug hoặc CategorySlug hoặc ProductSlug hoặc ID
   let title = "Danh Mục Nông Sản";
   let groupSlug: string | undefined = undefined;
   let categorySlug: string | undefined = undefined;
+  let productSlug: string | undefined = sParams.product || undefined;
   let matchedGroupName = "";
+  let matchedCategoryName = "";
 
   const matchedGroup = categories.find(
     (g) => g.groupSlug === slug || g.groupId?.toString() === slug,
@@ -100,9 +103,47 @@ export default async function CategoryPage({
         break;
       }
     }
+
+    // Nếu không khớp category, kiểm tra xem có khớp product slug trực tiếp không
+    if (!categorySlug) {
+      for (const g of categories) {
+        for (const c of g.categories) {
+          const matchedProd = c.products?.find(
+            (p) => p.productSlug === slug || p.productId?.toString() === slug,
+          );
+          if (matchedProd) {
+            title = matchedProd.productName;
+            matchedGroupName = g.groupName;
+            matchedCategoryName = c.categoryName;
+            categorySlug = c.categorySlug;
+            productSlug = matchedProd.productSlug || slug;
+            break;
+          }
+        }
+        if (productSlug) break;
+      }
+    }
+
     // Robust Fallback: Nếu không match trong tree, gửi slug trực tiếp làm categorySlug
-    if (!categorySlug && !groupSlug) {
+    if (!categorySlug && !groupSlug && !productSlug) {
       categorySlug = slug;
+    }
+  }
+
+  // Nếu có sParams.product qua query string, tìm tên sản phẩm để cập nhật title/breadcrumb
+  if (sParams.product) {
+    productSlug = sParams.product;
+    for (const g of categories) {
+      for (const c of g.categories) {
+        const matchedProd = c.products?.find((p) => p.productSlug === productSlug);
+        if (matchedProd) {
+          title = matchedProd.productName;
+          if (!matchedGroupName) matchedGroupName = g.groupName;
+          if (!matchedCategoryName) matchedCategoryName = c.categoryName;
+          break;
+        }
+      }
+      if (matchedCategoryName) break;
     }
   }
 
@@ -111,6 +152,7 @@ export default async function CategoryPage({
     pageSize: 12,
     categoryGroupSlug: groupSlug,
     categorySlug: categorySlug,
+    productSlug: productSlug,
     origin: origin || undefined,
     certification: cert || undefined,
     sortBy: sort,
@@ -140,15 +182,21 @@ export default async function CategoryPage({
             </Link>
             <span>/</span>
             <Link
-              href="/danh-muc"
+              href="/san-pham"
               className="hover:text-white transition-colors"
             >
-              Danh mục
+              Sản phẩm
             </Link>
             {matchedGroupName && (
               <>
                 <span>/</span>
                 <span className="text-emerald-100">{matchedGroupName}</span>
+              </>
+            )}
+            {matchedCategoryName && (
+              <>
+                <span>/</span>
+                <span className="text-emerald-100">{matchedCategoryName}</span>
               </>
             )}
             <span>/</span>

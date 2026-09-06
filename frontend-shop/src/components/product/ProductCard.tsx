@@ -9,6 +9,8 @@ interface ProductCardProps {
 }
 
 export default function ProductCard({ product }: ProductCardProps) {
+  const productUrl = `/san-pham/${product.slug}${product.variantId ? `?variant=${product.variantId}` : ""}`;
+
   return (
     <div className="group relative bg-white rounded-3xl border border-slate-200/60 shadow-[0_2px_12px_-3px_rgba(0,0,0,0.03)] hover:shadow-[0_10px_25px_-5px_rgba(0,0,0,0.06)] hover:border-emerald-300 transition-all duration-300 flex flex-col overflow-hidden">
       {/* 1. Badges: Khuyến mãi & Tạm hết hàng */}
@@ -34,7 +36,7 @@ export default function ProductCard({ product }: ProductCardProps) {
 
       {/* 2. Product Image Area */}
       <Link
-        href={`/san-pham/${product.slug}`}
+        href={productUrl}
         className="block relative aspect-square bg-slate-50 overflow-hidden border-b border-slate-100/80 group-hover:bg-emerald-50/20 transition-colors"
       >
         {product.imagePath ? (
@@ -82,7 +84,7 @@ export default function ProductCard({ product }: ProductCardProps) {
 
           {/* Product Name */}
           <h3 className="font-bold text-sm text-slate-900 group-hover:text-emerald-700 transition-colors line-clamp-2 leading-snug">
-            <Link href={`/san-pham/${product.slug}`}>{product.name}</Link>
+            <Link href={productUrl}>{product.name}</Link>
           </h3>
         </div>
 
@@ -107,7 +109,7 @@ export default function ProductCard({ product }: ProductCardProps) {
 
           {/* View Details Button */}
           <Link
-            href={`/san-pham/${product.slug}`}
+            href={productUrl}
             title={
               product.isInStock ? "Xem chi tiết & Mua ngay" : "Tạm hết hàng"
             }

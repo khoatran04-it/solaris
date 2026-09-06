@@ -32,7 +32,16 @@ namespace backend.Profiles
                 .ForMember(dest => dest.CategoryName, opt => opt.MapFrom(src => src.Name))
                 .ForMember(dest => dest.CategorySlug, opt => opt.MapFrom(src => !string.IsNullOrEmpty(src.Slug) ? src.Slug : SlugHelper.GenerateSlug(src.Name)))
                 .ForMember(dest => dest.CategoryImage, opt => opt.MapFrom(src => src.ImagePath))
-                .ForMember(dest => dest.ProductCount, opt => opt.MapFrom(src => src.Products.Count(p => p.IsActive && !p.IsDeleted)));
+                .ForMember(dest => dest.ProductCount, opt => opt.MapFrom(src => src.Products.Count(p => p.IsActive && !p.IsDeleted)))
+                .ForMember(dest => dest.Products, opt => opt.MapFrom(src => src.Products.Where(p => p.IsActive && !p.IsDeleted)));
+            #endregion
+
+            #region Product -> Shop Product Category Item DTO (Level 3)
+            CreateMap<Product, ShopProductCategoryItemDto>()
+                .ForMember(dest => dest.ProductId, opt => opt.MapFrom(src => src.Id))
+                .ForMember(dest => dest.ProductName, opt => opt.MapFrom(src => src.Name))
+                .ForMember(dest => dest.ProductSlug, opt => opt.MapFrom(src => !string.IsNullOrEmpty(src.Slug) ? src.Slug : SlugHelper.GenerateSlug(src.Name)))
+                .ForMember(dest => dest.VariantCount, opt => opt.MapFrom(src => src.Variants.Count(v => v.IsActive && !v.IsDeleted)));
             #endregion
 
             #region Promotion Campaign -> Shop Promotion Detail DTO

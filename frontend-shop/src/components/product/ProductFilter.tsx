@@ -70,6 +70,9 @@ function ProductFilterContent({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // Trạng thái mở rộng cho từng danh mục con (Cấp 2 chứa Cấp 3)
+  const [expandedCategories, setExpandedCategories] = useState<Record<number, boolean>>({});
+
   const toggleGroup = (groupId: number) => {
     setExpandedGroups((prev) => ({
       ...prev,
@@ -77,7 +80,16 @@ function ProductFilterContent({
     }));
   };
 
+  const toggleCategory = (catId: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setExpandedCategories((prev) => ({
+      ...prev,
+      [catId]: !prev[catId],
+    }));
+  };
+
   const currentCatSlug = searchParams.get("category") || "";
+  const currentProductSlug = searchParams.get("product") || "";
   const currentOrigin = searchParams.get("origin") || "";
   const currentCert = searchParams.get("cert") || "";
   const currentSort = searchParams.get("sort") || "newest";
@@ -88,15 +100,37 @@ function ProductFilterContent({
     ? pathname.replace("/danh-muc/", "")
     : "";
 
+  // Tự động mở rộng nhóm và danh mục nếu có category hoặc product đang chọn
+  useEffect(() => {
+    if (currentCatSlug || currentProductSlug || currentRouteSlug) {
+      categories.forEach((g) => {
+        g.categories.forEach((c) => {
+          const isCatMatched = c.categorySlug === currentCatSlug || c.categorySlug === currentRouteSlug;
+          const isProdMatched = c.products?.some(
+            (p) => p.productSlug === currentProductSlug || p.productSlug === currentRouteSlug,
+          );
+          if (isCatMatched || isProdMatched) {
+            setExpandedCategories((prev) => ({ ...prev, [c.categoryId]: true }));
+            setExpandedGroups((prev) => ({ ...prev, [g.groupId]: true }));
+          }
+        });
+      });
+    }
+  }, [currentCatSlug, currentProductSlug, currentRouteSlug, categories]);
+
   const isCategoryActive = (categorySlug: string) => {
-    return currentCatSlug === categorySlug || currentRouteSlug === categorySlug;
+    return (currentCatSlug === categorySlug || currentRouteSlug === categorySlug) && !currentProductSlug;
+  };
+
+  const isProductActive = (productSlug: string) => {
+    return currentProductSlug === productSlug;
   };
 
   const isGroupActive = (groupSlug: string) => {
-    return currentRouteSlug === groupSlug;
+    return currentRouteSlug === groupSlug && !currentCatSlug && !currentProductSlug;
   };
 
-  const isAllActive = !currentCatSlug && !currentRouteSlug;
+  const isAllActive = !currentCatSlug && !currentProductSlug && !currentRouteSlug;
 
   const handleSelectCategory = (catSlug?: string) => {
     if (!catSlug) {
@@ -108,9 +142,21 @@ function ProductFilterContent({
       router.push(`/danh-muc/${catSlug}`);
     } else {
       const params = new URLSearchParams(searchParams.toString());
+      params.delete("product"); // Xóa lọc cấp 3 khi chọn cấp 2
       params.set("category", catSlug);
       params.set("page", "1");
       router.push(`/san-pham?${params.toString()}`);
+    }
+  };
+
+  const handleSelectProduct = (productSlug: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("product", productSlug);
+    params.set("page", "1");
+    if (isCategoryPage) {
+      router.push(`/san-pham?${params.toString()}`);
+    } else {
+      router.push(`${pathname}?${params.toString()}`);
     }
   };
 
@@ -135,15 +181,12 @@ function ProductFilterContent({
   };
 
   const resetFilters = () => {
-    if (isCategoryPage) {
-      router.push("/san-pham");
-    } else {
-      router.push(pathname);
-    }
+    router.push("/san-pham");
   };
 
   const hasActiveFilters = Boolean(
     currentCatSlug ||
+    currentProductSlug ||
     currentOrigin ||
     currentCert ||
     searchParams.get("search") ||
@@ -296,31 +339,80 @@ function ProductFilterContent({
                   </button>
                 </div>
 
-                {/* Sub-categories */}
+                {/* Sub-categories (Cấp 2) & Dòng Sản Phẩm (Cấp 3) */}
                 {isExpanded && group.categories.length > 0 && (
-                  <div className="px-2 pb-2 space-y-1">
+                  <div className="px-2 pb-2 space-y-1.5">
                     {group.categories.map((cat) => {
                       const active = isCategoryActive(cat.categorySlug);
+                      const isCatExpanded = expandedCategories[cat.categoryId];
+                      const hasProducts = cat.products && cat.products.length > 0;
 
                       return (
-                        <button
-                          key={cat.categoryId}
-                          onClick={() => handleSelectCategory(cat.categorySlug)}
-                          className={`w-full text-left text-xs px-3 py-2 rounded-xl flex items-center justify-between transition-all cursor-pointer ${
-                            active
-                              ? "bg-emerald-600 text-white font-extrabold shadow-2xs"
-                              : "text-slate-600 hover:bg-white hover:text-emerald-700 font-medium"
-                          }`}
-                        >
-                          <span className="truncate pr-2">
-                            {cat.categoryName}
-                          </span>
-                          <span
-                            className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ${active ? "bg-emerald-700/50 text-white" : "bg-slate-200/60 text-slate-500"}`}
-                          >
-                            {cat.productCount}
-                          </span>
-                        </button>
+                        <div key={cat.categoryId} className="space-y-1">
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => handleSelectCategory(cat.categorySlug)}
+                              className={`flex-1 text-left text-xs px-3 py-2 rounded-xl flex items-center justify-between transition-all cursor-pointer ${
+                                active
+                                  ? "bg-emerald-600 text-white font-extrabold shadow-2xs"
+                                  : "text-slate-700 hover:bg-white hover:text-emerald-700 font-medium"
+                              }`}
+                            >
+                              <span className="truncate pr-2">
+                                {cat.categoryName}
+                              </span>
+                              <span
+                                className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ${active ? "bg-emerald-700/50 text-white" : "bg-slate-200/60 text-slate-500"}`}
+                              >
+                                {cat.productCount}
+                              </span>
+                            </button>
+
+                            {hasProducts && (
+                              <button
+                                onClick={(e) => toggleCategory(cat.categoryId, e)}
+                                className="p-1.5 text-slate-400 hover:text-emerald-700 hover:bg-white rounded-lg cursor-pointer transition-colors"
+                                title={isCatExpanded ? "Thu gọn dòng sản phẩm" : "Mở rộng dòng sản phẩm"}
+                              >
+                                {isCatExpanded ? (
+                                  <ChevronUp className="w-3.5 h-3.5" />
+                                ) : (
+                                  <ChevronDown className="w-3.5 h-3.5" />
+                                )}
+                              </button>
+                            )}
+                          </div>
+
+                          {/* Cấp 3: Dòng Sản Phẩm (Product Master) */}
+                          {isCatExpanded && hasProducts && (
+                            <div className="pl-3.5 pr-1 py-1 space-y-1 border-l-2 border-emerald-200/60 ml-3">
+                              {cat.products!.map((prod) => {
+                                const prodActive = isProductActive(prod.productSlug);
+
+                                return (
+                                  <button
+                                    key={prod.productId}
+                                    onClick={() => handleSelectProduct(prod.productSlug)}
+                                    className={`w-full text-left text-[11px] px-2.5 py-1.5 rounded-lg flex items-center justify-between transition-all cursor-pointer ${
+                                      prodActive
+                                        ? "bg-emerald-100 text-emerald-900 font-bold border border-emerald-300 shadow-2xs"
+                                        : "text-slate-600 hover:text-emerald-700 hover:bg-white font-medium"
+                                    }`}
+                                  >
+                                    <span className="truncate pr-1">
+                                      • {prod.productName}
+                                    </span>
+                                    {prod.variantCount > 0 && (
+                                      <span className="text-[9px] text-slate-400 shrink-0 font-normal">
+                                        {prod.variantCount} loại
+                                      </span>
+                                    )}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
                       );
                     })}
                   </div>
