@@ -92,9 +92,11 @@ const ProductVariantForm: React.FC = () => {
   const [quickConvModal, setQuickConvModal] = useState<{
     isOpen: boolean;
     fromUoMId?: number;
+    targetRowIndex?: number;
   }>({
     isOpen: false,
     fromUoMId: undefined,
+    targetRowIndex: undefined,
   });
 
   // Sản phẩm gốc đang được chọn
@@ -289,7 +291,7 @@ const ProductVariantForm: React.FC = () => {
   };
 
   // Mở modal cấu hình quy đổi đặc thù nhanh
-  const handleOpenQuickConversionModal = (uoMId?: number) => {
+  const handleOpenQuickConversionModal = (uoMId?: number, rowIndex?: number) => {
     if (!formData.productId) {
       showToast('warning', 'Vui lòng chọn Sản phẩm gốc ở Tab 1 trước khi cấu hình quy đổi!');
       setActiveTab('info');
@@ -298,6 +300,7 @@ const ProductVariantForm: React.FC = () => {
     setQuickConvModal({
       isOpen: true,
       fromUoMId: uoMId,
+      targetRowIndex: rowIndex,
     });
   };
 
@@ -307,9 +310,44 @@ const ProductVariantForm: React.FC = () => {
       const filtered = prev.filter((c) => c.id !== newConv.id);
       return [...filtered, newConv];
     });
+
+    setFormData((prev) => {
+      const newPrices = [...prev.prices];
+      const targetIdx = quickConvModal.targetRowIndex;
+
+      if (targetIdx !== undefined && targetIdx >= 0 && targetIdx < newPrices.length) {
+        // Trường hợp 1: Mở từ một dòng cụ thể -> Cập nhật dòng đó
+        newPrices[targetIdx] = {
+          ...newPrices[targetIdx],
+          uoMId: newConv.fromUoMId,
+        };
+      } else {
+        // Trường hợp 2: Mở từ nút tổng quát bên dưới bảng
+        const emptyRowIdx = newPrices.findIndex((p) => !p.uoMId || p.uoMId === 0);
+        if (emptyRowIdx !== -1) {
+          newPrices[emptyRowIdx] = {
+            ...newPrices[emptyRowIdx],
+            uoMId: newConv.fromUoMId,
+          };
+        } else {
+          const exists = newPrices.some((p) => p.uoMId === newConv.fromUoMId);
+          if (!exists) {
+            newPrices.push({
+              uoMId: newConv.fromUoMId,
+              price: 0,
+              discountedPrice: 0,
+              discountPercent: 0,
+              isDefault: newPrices.length === 0,
+            });
+          }
+        }
+      }
+      return { ...prev, prices: newPrices };
+    });
+
     showToast(
       'success',
-      `Đã lưu quy đổi: 1 ${newConv.fromUoMName || 'ĐVT'} = ${newConv.conversionFactor} ${newConv.toUoMName || 'ĐVT'} thành công!`
+      `Đã lưu quy đổi: 1 ${newConv.fromUoMName || 'ĐVT'} = ${newConv.conversionFactor} ${newConv.toUoMName || 'ĐVT'} và tự động điền vào quy cách bán!`
     );
     // Tự động giải phóng lỗi bảng giá nếu người dùng vừa cấu hình xong
     setErrors((prev) => {
@@ -809,7 +847,7 @@ const ProductVariantForm: React.FC = () => {
                                   </span>
                                   <button
                                     type="button"
-                                    onClick={() => handleOpenQuickConversionModal(row.uoMId)}
+                                    onClick={() => handleOpenQuickConversionModal(row.uoMId, idx)}
                                     className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[11px] font-bold text-amber-800 bg-amber-100 hover:bg-amber-200 border border-amber-300 rounded-md transition-all cursor-pointer shadow-2xs hover:shadow-xs active:scale-98"
                                     title="Mở popup cấu hình tỷ lệ quy đổi đặc thù ngay"
                                   >

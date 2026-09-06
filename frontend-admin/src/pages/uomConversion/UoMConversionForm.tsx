@@ -117,12 +117,15 @@ const UoMConversionForm: React.FC = () => {
     }
   };
 
-  // Tự động gợi ý đơn vị cơ sở khi chọn sản phẩm
+  // Tự động gán và khóa đơn vị cơ sở khi chọn sản phẩm
   const handleProductSelect = (productId: number) => {
     handleFieldChange('productId', productId);
     const prod = rawProducts.find((p) => p.id === productId);
-    if (prod?.baseUoMId && (!formData.toUoMId || formData.toUoMId === 0)) {
+    if (prod?.baseUoMId) {
       handleFieldChange('toUoMId', prod.baseUoMId);
+      if (formData.fromUoMId === prod.baseUoMId) {
+        handleFieldChange('fromUoMId', 0);
+      }
     }
   };
 
@@ -141,8 +144,12 @@ const UoMConversionForm: React.FC = () => {
       newErrors.conversionFactor = 'Hệ số quy đổi phải là số dương lớn hơn 0.';
     }
 
-    if (!isStandardMode && !formData.productId) {
-      newErrors.productId = 'Vui lòng chọn sản phẩm áp dụng.';
+    if (!isStandardMode) {
+      if (!formData.productId) {
+        newErrors.productId = 'Vui lòng chọn sản phẩm áp dụng.';
+      } else if (selectedProduct?.baseUoMId && formData.toUoMId !== selectedProduct.baseUoMId) {
+        newErrors.toUoMId = `Đơn vị đích bắt buộc phải là đơn vị cơ sở của sản phẩm (${selectedProduct.baseUoMName}).`;
+      }
     }
 
     setErrors(newErrors);
@@ -313,7 +320,11 @@ const UoMConversionForm: React.FC = () => {
                     required
                     showSearch
                     placeholder="VD: Thùng"
-                    options={uomOptions}
+                    options={
+                      !isStandardMode && selectedProduct?.baseUoMId
+                        ? uomOptions.filter((u) => u.value !== selectedProduct.baseUoMId)
+                        : uomOptions
+                    }
                     value={formData.fromUoMId}
                     error={errors.fromUoMId}
                     onSelect={(val) => handleFieldChange('fromUoMId', Number(val))}
@@ -355,15 +366,31 @@ const UoMConversionForm: React.FC = () => {
                   <FormSelect
                     label="Đến đơn vị tính (Đơn vị con / Cơ sở)"
                     required
-                    showSearch
+                    showSearch={isStandardMode || !selectedProduct?.baseUoMId}
+                    disabled={!isStandardMode && !!selectedProduct?.baseUoMId}
                     placeholder="VD: Lon"
-                    options={uomOptions}
-                    value={formData.toUoMId}
+                    options={
+                      !isStandardMode && selectedProduct?.baseUoMId
+                        ? [
+                            {
+                              label: `${selectedProduct.baseUoMName || 'ĐV cơ sở'} (Đơn vị cơ sở của sản phẩm)`,
+                              value: selectedProduct.baseUoMId,
+                            },
+                          ]
+                        : uomOptions
+                    }
+                    value={
+                      !isStandardMode && selectedProduct?.baseUoMId
+                        ? selectedProduct.baseUoMId
+                        : formData.toUoMId
+                    }
                     error={errors.toUoMId}
                     onSelect={(val) => handleFieldChange('toUoMId', Number(val))}
                   />
                   <p className="text-[11px] text-slate-400 mt-1 font-medium italic">
-                    * Đơn vị đích (thường là đơn vị cơ sở)
+                    {!isStandardMode && selectedProduct?.baseUoMId
+                      ? `* 🔒 Cố định theo ĐVT cơ sở (${selectedProduct.baseUoMName}) của sản phẩm`
+                      : '* Đơn vị đích (thường là đơn vị cơ sở)'}
                   </p>
                 </div>
               </div>

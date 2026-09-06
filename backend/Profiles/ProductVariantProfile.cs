@@ -25,6 +25,8 @@ namespace backend.Profiles
             // 3. Ánh xạ Biến thể tổng (gộp Giá và Thuộc tính)
             CreateMap<ProductVariant, ProductVariantReadDto>()
                 .ForMember(dest => dest.ProductName, opt => opt.MapFrom(src => src.Product != null ? src.Product.Name : null))
+                .ForMember(dest => dest.BaseUoMId, opt => opt.MapFrom(src => src.Product != null ? src.Product.BaseUoMId : (int?)null))
+                .ForMember(dest => dest.BaseUoMName, opt => opt.MapFrom(src => src.Product != null && src.Product.BaseUoM != null ? src.Product.BaseUoM.Name : null))
                 .ForMember(dest => dest.QuantityAvailable, opt => opt.Ignore());
             #endregion
 
