@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+using AutoMapper;
 using backend.Data;
 using backend.DTOs.AiDTOs;
 using backend.DTOs.PaymentDTOs;
@@ -744,7 +744,7 @@ namespace backend.Tests.Modules.Module15_AiChatbot
             // CHỈ CÓ ĐÚNG 1 SẢN PHẨM LÀ SẦU RIÊNG, TUYỆT ĐỐI KHÔNG CÓ BƠ SÁP
             order.Items.Should().HaveCount(1);
             order.Items[0].VariantId.Should().Be(4);
-            order.Items[0].VariantName.Should().Be("Sầu Riêng");
+            order.Items[0].VariantName.Should().Be("Sầu Riêng Loại 1 Trái");
             order.Items[0].Quantity.Should().Be(8); // Capped at available stock (8)
             order.Items[0].UnitPrice.Should().Be(100000);
             order.Items[0].TotalPrice.Should().Be(800000);

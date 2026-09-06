@@ -34,11 +34,13 @@ export default function ProductCardMini({ product }: ProductCardMiniProps) {
     }
   };
 
+  const productUrl = `/san-pham/${product.slug}${product.variantId ? `?variant=${product.variantId}` : ""}`;
+
   return (
     <div className="bg-white rounded-2xl border border-slate-200/80 p-3 shadow-2xs hover:shadow-md hover:border-emerald-300 transition-all flex gap-3 items-center">
       {/* Image */}
       <Link
-        href={`/san-pham/${product.slug}`}
+        href={productUrl}
         className="w-16 h-16 rounded-xl bg-slate-50 overflow-hidden shrink-0 flex items-center justify-center border border-slate-100"
       >
         {product.imagePath ? (
@@ -55,6 +57,11 @@ export default function ProductCardMini({ product }: ProductCardMiniProps) {
       {/* Info */}
       <div className="flex-1 min-w-0 space-y-1">
         <div className="flex items-center gap-1.5 text-[9px]">
+          {product.categoryName && (
+            <span className="inline-flex items-center px-1.5 py-0.5 bg-slate-100 text-slate-600 rounded font-medium truncate max-w-[100px]">
+              {product.categoryName}
+            </span>
+          )}
           {product.origin && (
             <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-slate-100 text-slate-700 rounded font-medium">
               <MapPin className="w-2.5 h-2.5 text-emerald-600" />
@@ -71,7 +78,7 @@ export default function ProductCardMini({ product }: ProductCardMiniProps) {
 
         <h4 className="font-bold text-xs text-slate-900 truncate">
           <Link
-            href={`/san-pham/${product.slug}`}
+            href={productUrl}
             className="hover:text-emerald-700"
           >
             {product.name}
@@ -111,7 +118,7 @@ export default function ProductCardMini({ product }: ProductCardMiniProps) {
         </button>
 
         <Link
-          href={`/san-pham/${product.slug}`}
+          href={productUrl}
           className="w-7 h-7 rounded-full bg-slate-50 text-slate-600 hover:bg-emerald-600 hover:text-white transition-all flex items-center justify-center shadow-2xs"
           title="Xem chi tiết"
         >

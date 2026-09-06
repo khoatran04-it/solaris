@@ -687,8 +687,12 @@ namespace backend.Services
             var explicitMatches = products.Where(p => 
             {
                 string pName = p.Name.ToLower();
+                string pProdName = (p.ProductName ?? string.Empty).ToLower();
+                string pVarName = (p.VariantName ?? string.Empty).ToLower();
                 string pSlug = (p.Slug ?? string.Empty).Replace("-", " ").ToLower();
                 return lowerUserText.Contains(pName) ||
+                       (!string.IsNullOrEmpty(pProdName) && lowerUserText.Contains(pProdName)) ||
+                       (!string.IsNullOrEmpty(pVarName) && lowerUserText.Contains(pVarName)) ||
                        (!string.IsNullOrEmpty(pSlug) && lowerUserText.Contains(pSlug)) ||
                        (pName.Contains("sầu riêng") && lowerUserText.Contains("sầu riêng")) ||
                        (pName.Contains("bơ") && (lowerUserText.Contains("bơ") || lowerUserText.Contains("034")));
@@ -696,7 +700,29 @@ namespace backend.Services
 
             if (explicitMatches.Count > 0)
             {
-                products = explicitMatches;
+                // Nhóm theo dòng sản phẩm (dựa vào Slug hoặc ProductName) để xử lý chuẩn xác trường hợp khách đặt nhiều dòng SP (VD: 2kg bơ và 1 quả sầu riêng)
+                // hoặc đặt nhiều biến thể trong cùng 1 dòng SP (VD: 1kg đùi heo và 1kg má heo)
+                var groupedByProduct = explicitMatches.GroupBy(p => !string.IsNullOrEmpty(p.Slug) ? p.Slug : (p.ProductName ?? p.Name));
+                var selectedVariants = new List<AiProductCardDto>();
+
+                foreach (var grp in groupedByProduct)
+                {
+                    var matchedVariants = grp.Where(p => 
+                        !string.IsNullOrEmpty(p.VariantName) && 
+                        p.VariantName.Trim().ToLower() != (p.ProductName ?? string.Empty).Trim().ToLower() && 
+                        lowerUserText.Contains(p.VariantName.ToLower())).ToList();
+
+                    if (matchedVariants.Count > 0)
+                    {
+                        selectedVariants.AddRange(matchedVariants);
+                    }
+                    else
+                    {
+                        selectedVariants.Add(grp.First());
+                    }
+                }
+
+                products = selectedVariants;
             }
 
             // Nếu câu chat của user không chứa tên sản phẩm trực tiếp (VD: "OK lên đơn cho tôi", "Lên đơn giúp mình", "Xác nhận đặt hàng")
@@ -724,15 +750,23 @@ namespace backend.Services
 
                             var matchedFromContext = cachedCards.Where(c => 
                                 (!string.IsNullOrEmpty(c.Name) && contextSearch.Contains(c.Name.ToLower())) || 
+                                (!string.IsNullOrEmpty(c.ProductName) && contextSearch.Contains(c.ProductName.ToLower())) || 
+                                (!string.IsNullOrEmpty(c.VariantName) && contextSearch.Contains(c.VariantName.ToLower())) || 
                                 (!string.IsNullOrEmpty(c.Slug) && contextSearch.Contains(c.Slug.Replace("-", " "))) ||
                                 (c.Name.ToLower().Contains("sầu riêng") && contextSearch.Contains("sầu riêng")) ||
                                 (c.Name.ToLower().Contains("bơ") && (contextSearch.Contains("bơ") || contextSearch.Contains("034")))
                             ).ToList();
 
+                            // Ưu tiên khớp biến thể cụ thể nếu câu chat nhắc đến VariantName
+                            var variantMatch = matchedFromContext.FirstOrDefault(c => 
+                                !string.IsNullOrEmpty(c.VariantName) && contextSearch.Contains(c.VariantName.ToLower()));
+
                             // Chỉ chọn đúng 1 sản phẩm liên quan từ ngữ cảnh gần nhất, không gom hàng loạt
-                            products = matchedFromContext.Count > 0 
-                                ? new List<AiProductCardDto> { matchedFromContext.First() } 
-                                : new List<AiProductCardDto> { cachedCards.First() };
+                            products = variantMatch != null 
+                                ? new List<AiProductCardDto> { variantMatch }
+                                : (matchedFromContext.Count > 0 
+                                    ? new List<AiProductCardDto> { matchedFromContext.First() } 
+                                    : new List<AiProductCardDto> { cachedCards.First() });
 
                             // Nếu chưa tìm thấy quantity ở userText hiện tại, tìm trong câu user trước đó
                             if (!matchQty.Success && prevUserMsg != null)
@@ -751,29 +785,54 @@ namespace backend.Services
                     }
                 }
 
-                // 2. Nếu vẫn chưa có sản phẩm, quét toàn bộ tin nhắn gần đây để tìm tên sản phẩm từ DB
+                // 2. Nếu vẫn chưa có sản phẩm, quét toàn bộ tin nhắn gần đây để tìm tên sản phẩm hoặc biến thể từ DB
                 if (products.Count == 0)
                 {
                     var allActiveProducts = await _context.Products
                         .Include(p => p.Variants.Where(v => v.IsActive && !v.IsDeleted))
                             .ThenInclude(v => v.Prices.Where(pr => pr.IsActive && !pr.IsDeleted))
                                 .ThenInclude(pr => pr.UoM)
+                        .Include(p => p.Category)
+                            .ThenInclude(c => c!.CategoryGroup)
                         .Where(p => p.IsActive && !p.IsDeleted)
                         .ToListAsync();
 
                     foreach (var msg in recentMessages)
                     {
                         string text = msg.Content.ToLower();
-                        var matched = allActiveProducts.FirstOrDefault(p => 
-                            text.Contains(p.Name.ToLower()) || 
-                            (!string.IsNullOrEmpty(p.Slug) && text.Contains(p.Slug.Replace("-", " "))) ||
-                            (p.Name.ToLower().Contains("sầu riêng") && text.Contains("sầu riêng")) ||
-                            (p.Name.ToLower().Contains("bơ") && (text.Contains("bơ") || text.Contains("034")))
-                        );
+                        (Product product, ProductVariant variant)? matchedPair = null;
 
-                        if (matched != null)
+                        foreach (var prod in allActiveProducts)
                         {
-                            var enriched = await EnrichProductDtosAsync(new List<Product> { matched });
+                            // 1. Kiểm tra khớp biến thể cụ thể (Tầng 4) trước
+                            var matchedVar = prod.Variants.FirstOrDefault(v =>
+                                text.Contains(v.Name.ToLower()) ||
+                                (!string.IsNullOrEmpty(v.Code) && text.Contains(v.Code.ToLower()))
+                            );
+                            if (matchedVar != null)
+                            {
+                                matchedPair = (prod, matchedVar);
+                                break;
+                            }
+
+                            // 2. Kiểm tra tên sản phẩm (Tầng 3)
+                            if (text.Contains(prod.Name.ToLower()) ||
+                                (!string.IsNullOrEmpty(prod.Slug) && text.Contains(prod.Slug.Replace("-", " "))) ||
+                                (prod.Name.ToLower().Contains("sầu riêng") && text.Contains("sầu riêng")) ||
+                                (prod.Name.ToLower().Contains("bơ") && (text.Contains("bơ") || text.Contains("034"))))
+                            {
+                                var firstVar = prod.Variants.FirstOrDefault();
+                                if (firstVar != null)
+                                {
+                                    matchedPair = (prod, firstVar);
+                                    break;
+                                }
+                            }
+                        }
+
+                        if (matchedPair != null)
+                        {
+                            var enriched = await EnrichVariantCardDtosAsync(new List<(Product, ProductVariant)> { matchedPair.Value });
                             if (enriched.Count > 0)
                             {
                                 products = enriched.Take(1).ToList();
@@ -952,10 +1011,15 @@ namespace backend.Services
         {
             var now = DateTime.UtcNow;
             var promoProducts = await _context.Products
+                .Include(p => p.Category)
+                    .ThenInclude(c => c!.CategoryGroup)
                 .Include(p => p.BaseUoM)
                 .Include(p => p.Variants)
                     .ThenInclude(v => v.Prices.Where(pr => pr.IsActive && !pr.IsDeleted))
                         .ThenInclude(pr => pr.UoM)
+                .Include(p => p.Variants)
+                    .ThenInclude(v => v.Attributes)
+                        .ThenInclude(a => a.AttributeDefinition)
                 .Include(p => p.Variants)
                     .ThenInclude(v => v.PromotionVariants)
                         .ThenInclude(pv => pv.PromotionCampaign)
@@ -970,7 +1034,13 @@ namespace backend.Services
 
             if (promoProducts.Count > 0)
             {
-                return await EnrichProductDtosAsync(promoProducts);
+                var pairs = promoProducts
+                    .SelectMany(p => p.Variants
+                        .Where(v => v.IsActive && !v.IsDeleted && v.PromotionVariants.Any(pv => pv.PromotionCampaign != null && pv.PromotionCampaign.IsActive && pv.PromotionCampaign.StartDate <= now && pv.PromotionCampaign.EndDate >= now))
+                        .Select(v => (Product: p, Variant: v)))
+                    .Take(4)
+                    .ToList();
+                return await EnrichVariantCardDtosAsync(pairs);
             }
 
             return await SearchProductsAsync("trái cây");
@@ -980,6 +1050,8 @@ namespace backend.Services
         {
             var now = DateTime.UtcNow;
             var products = await _context.Products
+                .Include(p => p.Category)
+                    .ThenInclude(c => c!.CategoryGroup)
                 .Include(p => p.BaseUoM)
                 .Include(p => p.Variants)
                     .ThenInclude(v => v.Prices.Where(pr => pr.IsActive && !pr.IsDeleted))
@@ -988,7 +1060,7 @@ namespace backend.Services
                     .ThenInclude(v => v.Attributes)
                         .ThenInclude(a => a.AttributeDefinition)
                 .Where(p => !p.IsDeleted && p.IsActive)
-                .Take(50)
+                .Take(60)
                 .ToListAsync();
 
             var variantIds = products.SelectMany(p => p.Variants.Select(v => v.Id)).Distinct().ToList();
@@ -1004,21 +1076,44 @@ namespace backend.Services
                 .ToDictionaryAsync(x => x.VariantId, x => x.TotalAvailable);
 
             var sb = new StringBuilder();
-            sb.AppendLine("BẢNG DANH MỤC SẢN PHẨM HIỆN CÓ TRONG KHO SOLARIS (DỮ LIỆU THỰC TẾ 100% TỪ DATABASE):");
-            foreach (var p in products)
+            sb.AppendLine("BẢNG DANH MỤC SẢN PHẨM PHÂN CẤP 4 TẦNG TRONG KHO SOLARIS (DỮ LIỆU THỰC TẾ 100% TỪ DATABASE):");
+            sb.AppendLine("[Cấu trúc: Nhóm Ngành Hàng (Tầng 1) > Loại Sản Phẩm (Tầng 2) > Dòng Sản Phẩm (Tầng 3) > Biến Thể SKU Bán Lẻ (Tầng 4)]");
+
+            var grouped = products
+                .GroupBy(p => p.Category?.CategoryGroup?.Name ?? "Nông Sản Khác")
+                .ToList();
+
+            foreach (var group in grouped)
             {
-                var v = p.Variants.FirstOrDefault(v => v.IsActive && !v.IsDeleted) ?? p.Variants.FirstOrDefault();
-                var price = v?.Prices.FirstOrDefault(pr => pr.IsActive && !pr.IsDeleted)?.Price ?? 0;
-                var uom = v?.Prices.FirstOrDefault()?.UoM?.Name ?? p.BaseUoM?.Name ?? "Kg";
-                decimal availableQty = v != null && inventories.TryGetValue(v.Id, out decimal s) ? s : 0;
-                bool inStock = availableQty > 0;
+                sb.AppendLine($"\n=== NHÓM NGÀNH HÀNG: {group.Key.ToUpper()} ===");
+                var subCats = group.GroupBy(p => p.Category?.Name ?? "Chung").ToList();
+                foreach (var cat in subCats)
+                {
+                    sb.AppendLine($"  * Loại Sản Phẩm: {cat.Key}");
+                    foreach (var p in cat)
+                    {
+                        var activeVariants = p.Variants.Where(v => v.IsActive && !v.IsDeleted).ToList();
+                        if (!activeVariants.Any()) continue;
 
-                string? origin = v?.Attributes.FirstOrDefault(a => a.AttributeDefinition != null && a.AttributeDefinition.Name.ToLower().Contains("xuất xứ"))?.AttributeValue;
-                string? cert = v?.Attributes.FirstOrDefault(a => a.AttributeDefinition != null && a.AttributeDefinition.Name.ToLower().Contains("chứng nhận"))?.AttributeValue;
-                string? brix = v?.Attributes.FirstOrDefault(a => a.AttributeDefinition != null && (a.AttributeDefinition.Name.ToLower().Contains("độ ngọt") || a.AttributeDefinition.Name.ToLower().Contains("brix")))?.AttributeValue;
+                        sb.AppendLine($"    - Dòng Sản Phẩm: {p.Name} (Mã: {p.Code})");
+                        foreach (var v in activeVariants)
+                        {
+                            var priceObj = v.Prices.FirstOrDefault(pr => pr.IsActive && !pr.IsDeleted) ?? v.Prices.FirstOrDefault();
+                            decimal price = priceObj?.Price ?? 0;
+                            string uom = priceObj?.UoM?.Name ?? p.BaseUoM?.Name ?? "Kg";
+                            decimal availableQty = inventories.TryGetValue(v.Id, out decimal s) ? s : 0;
+                            bool inStock = availableQty > 0;
 
-                sb.AppendLine($"- {p.Name} (Mã: {p.Code}): Giá {price:N0} ₫/{uom} | Tồn kho khả dụng: {(inStock ? $"{availableQty:G29} {uom} (Còn hàng)" : "0 (Tạm hết hàng)")} | Vùng trồng: {origin ?? "Lâm Đồng"} | Tiêu chuẩn: {cert ?? "VietGAP"} | Độ ngọt: {(string.IsNullOrEmpty(brix) ? "Chuẩn vị" : $"{brix}°Bx")}");
+                            string? origin = v.Attributes.FirstOrDefault(a => a.AttributeDefinition != null && a.AttributeDefinition.Name.ToLower().Contains("xuất xứ"))?.AttributeValue;
+                            string? cert = v.Attributes.FirstOrDefault(a => a.AttributeDefinition != null && (a.AttributeDefinition.Name.ToLower().Contains("chứng nhận") || a.AttributeDefinition.Name.ToLower().Contains("tiêu chuẩn")))?.AttributeValue;
+                            string? brix = v.Attributes.FirstOrDefault(a => a.AttributeDefinition != null && (a.AttributeDefinition.Name.ToLower().Contains("độ ngọt") || a.AttributeDefinition.Name.ToLower().Contains("brix")))?.AttributeValue;
+
+                            sb.AppendLine($"       + SKU [ID:{v.Id}]: {v.Name} (Mã: {v.Code}) | Giá: {price:N0} ₫/{uom} | Tồn kho khả dụng: {(inStock ? $"{availableQty:G29} {uom} (Còn hàng)" : "0 (Tạm hết)")} | Xuất xứ: {origin ?? "Lâm Đồng"} | Tiêu chuẩn: {cert ?? "VietGAP"} | Độ ngọt: {(string.IsNullOrEmpty(brix) ? "Chuẩn vị" : $"{brix}°Bx")}");
+                        }
+                    }
+                }
             }
+
             return sb.ToString();
         }
 
@@ -1033,9 +1128,10 @@ namespace backend.Services
                                     rawKw.Contains("menu") || rawKw.Contains("danh mục") || rawKw.Contains("hoa quả") ||
                                     string.IsNullOrWhiteSpace(rawKw);
 
-            // Lấy toàn bộ sản phẩm đang kích hoạt
+            // Lấy toàn bộ sản phẩm đang kích hoạt kèm liên kết 4 tầng
             var allActiveProducts = await _context.Products
                 .Include(p => p.Category)
+                    .ThenInclude(c => c!.CategoryGroup)
                 .Include(p => p.BaseUoM)
                 .Include(p => p.Variants)
                     .ThenInclude(v => v.Prices.Where(pr => pr.IsActive && !pr.IsDeleted))
@@ -1052,7 +1148,11 @@ namespace backend.Services
 
             if (isGeneralInquiry)
             {
-                return await EnrichProductDtosAsync(allActiveProducts.Take(4).ToList());
+                var generalVariantPairs = allActiveProducts
+                    .SelectMany(p => p.Variants.Where(v => v.IsActive && !v.IsDeleted).Select(v => (Product: p, Variant: v)))
+                    .Take(4)
+                    .ToList();
+                return await EnrichVariantCardDtosAsync(generalVariantPairs);
             }
 
             // Tìm kiếm theo từ khóa thực tế: tách từ và lọc từ dừng
@@ -1067,9 +1167,10 @@ namespace backend.Services
                                    .Where(w => !stopWords.Contains(w) && w.Length > 1)
                                    .ToList();
 
-            var tier1Matches = new List<Product>();
-            var tier2Matches = new List<Product>();
-            var tier3Matches = new List<Product>();
+            var tier1Matches = new List<(Product Product, ProductVariant Variant)>(); // Khớp đích danh Variant hoặc Product
+            var tier2Matches = new List<(Product Product, ProductVariant Variant)>(); // Khớp từ khóa với Variant, Product, SKU
+            var tier3Matches = new List<(Product Product, ProductVariant Variant)>(); // Khớp Loại sản phẩm (Category - Tầng 2)
+            var tier0Matches = new List<(Product Product, ProductVariant Variant)>(); // Khớp Nhóm ngành hàng (CategoryGroup - Tầng 1)
 
             foreach (var p in allActiveProducts)
             {
@@ -1077,41 +1178,68 @@ namespace backend.Services
                 string pCode = p.Code.ToLower();
                 string pSlug = (p.Slug ?? string.Empty).ToLower();
                 string cName = (p.Category?.Name ?? string.Empty).ToLower();
-                var vNames = p.Variants.Select(v => v.Name.ToLower()).ToList();
+                string gName = (p.Category?.CategoryGroup?.Name ?? string.Empty).ToLower();
 
-                // 1. Tier 1: Khớp chính xác tên sản phẩm / biến thể / slug trong câu hỏi
-                bool isTier1 = rawKw.Contains(pName) ||
-                               (!string.IsNullOrEmpty(pSlug) && rawKw.Contains(pSlug.Replace("-", " "))) ||
-                               (pName.Contains("sầu riêng") && rawKw.Contains("sầu riêng")) ||
-                               (pName.Contains("bơ") && (rawKw.Contains("bơ") || rawKw.Contains("034")));
+                var activeVariants = p.Variants.Where(v => v.IsActive && !v.IsDeleted).ToList();
+                if (!activeVariants.Any()) continue;
 
-                if (isTier1)
+                // Kiểm tra khớp Nhóm Ngành Hàng (Tầng 1)
+                bool isGroupMatch = !string.IsNullOrEmpty(gName) && (rawKw.Contains(gName) || searchTerms.Any(term => gName.Contains(term)));
+                if (isGroupMatch)
                 {
-                    tier1Matches.Add(p);
-                    continue;
+                    foreach (var v in activeVariants)
+                        tier0Matches.Add((p, v));
                 }
 
-                // 2. Tier 2: Khớp search terms với Tên sản phẩm, Mã, Slug, Biến thể (TUYỆT ĐỐI KHÔNG KHỚP DANH MỤC Ở ĐÂY)
-                if (searchTerms.Any(term => pName.Contains(term) || pCode.Contains(term) || pSlug.Contains(term) || vNames.Any(vn => vn.Contains(term))))
+                // Kiểm tra khớp Loại Sản Phẩm (Tầng 2)
+                bool isCatMatch = !string.IsNullOrEmpty(cName) && (rawKw.Contains(cName) || searchTerms.Any(term => cName.Contains(term)));
+                if (isCatMatch)
                 {
-                    tier2Matches.Add(p);
-                    continue;
+                    foreach (var v in activeVariants)
+                        tier3Matches.Add((p, v));
                 }
 
-                // 3. Tier 3: Khớp tên danh mục (Chỉ dùng dự phòng khi không có sản phẩm nào khớp ở Tier 1 hoặc Tier 2)
-                if (searchTerms.Any(term => cName.Contains(term)))
+                // Kiểm tra từng Biến Thể & Dòng Sản Phẩm (Tầng 3 & Tầng 4)
+                foreach (var v in activeVariants)
                 {
-                    tier3Matches.Add(p);
+                    string vName = v.Name.ToLower();
+                    string vCode = v.Code.ToLower();
+
+                    // 1. Tier 1: Khớp chính xác tên biến thể, tên sản phẩm cha, hoặc slug
+                    bool isTier1 = rawKw.Contains(vName) ||
+                                   rawKw.Contains(pName) ||
+                                   (!string.IsNullOrEmpty(pSlug) && rawKw.Contains(pSlug.Replace("-", " "))) ||
+                                   (pName.Contains("sầu riêng") && rawKw.Contains("sầu riêng")) ||
+                                   (pName.Contains("bơ") && (rawKw.Contains("bơ") || rawKw.Contains("034")));
+
+                    if (isTier1)
+                    {
+                        tier1Matches.Add((p, v));
+                        continue;
+                    }
+
+                    // 2. Tier 2: Khớp search terms với Tên biến thể, Mã SKU, Tên sản phẩm, Mã sản phẩm
+                    if (searchTerms.Any(term => vName.Contains(term) || vCode.Contains(term) || pName.Contains(term) || pCode.Contains(term) || pSlug.Contains(term)))
+                    {
+                        tier2Matches.Add((p, v));
+                    }
                 }
             }
 
-            var matchedProducts = tier1Matches.Count > 0 ? tier1Matches
-                                : tier2Matches.Count > 0 ? tier2Matches
-                                : tier3Matches;
+            var matched = tier1Matches.Count > 0 ? tier1Matches
+                        : tier2Matches.Count > 0 ? tier2Matches
+                        : tier3Matches.Count > 0 ? tier3Matches
+                        : tier0Matches;
 
-            if (matchedProducts.Count > 0)
+            if (matched.Count > 0)
             {
-                return await EnrichProductDtosAsync(matchedProducts.Distinct().Take(4).ToList());
+                var distinctMatches = matched
+                    .GroupBy(x => x.Variant.Id)
+                    .Select(g => g.First())
+                    .Take(4)
+                    .ToList();
+
+                return await EnrichVariantCardDtosAsync(distinctMatches);
             }
 
             return new List<AiProductCardDto>();
@@ -1119,10 +1247,18 @@ namespace backend.Services
 
         private async Task<List<AiProductCardDto>> EnrichProductDtosAsync(List<Product> products)
         {
-            var now = DateTime.UtcNow;
-            if (products.Count == 0) return new List<AiProductCardDto>();
+            var pairs = products
+                .SelectMany(p => p.Variants.Where(v => v.IsActive && !v.IsDeleted).Select(v => (Product: p, Variant: v)))
+                .ToList();
+            return await EnrichVariantCardDtosAsync(pairs);
+        }
 
-            var variantIds = products.SelectMany(p => p.Variants.Select(v => v.Id)).Distinct().ToList();
+        private async Task<List<AiProductCardDto>> EnrichVariantCardDtosAsync(List<(Product Product, ProductVariant Variant)> pairs)
+        {
+            var now = DateTime.UtcNow;
+            if (pairs.Count == 0) return new List<AiProductCardDto>();
+
+            var variantIds = pairs.Select(x => x.Variant.Id).Distinct().ToList();
 
             var cardStockQuery = _context.WarehouseInventories
                 .Include(wi => wi.Batch)
@@ -1139,14 +1275,8 @@ namespace backend.Services
 
             var dtoList = new List<AiProductCardDto>();
 
-            foreach (var p in products)
+            foreach (var (p, v) in pairs)
             {
-                var activeVariants = p.Variants.Where(v => v.IsActive && !v.IsDeleted).ToList();
-                if (!activeVariants.Any()) continue;
-
-                var v = activeVariants.FirstOrDefault();
-                if (v == null) continue;
-
                 var priceObj = v.Prices.FirstOrDefault(pr => pr.IsActive && !pr.IsDeleted) ?? v.Prices.FirstOrDefault();
                 decimal originalPrice = priceObj?.Price ?? 0;
                 decimal discountedPrice = originalPrice;
@@ -1164,26 +1294,54 @@ namespace backend.Services
                         : Math.Max(0, originalPrice - promo.DiscountValue);
                 }
 
-                string? origin = activeVariants.SelectMany(x => x.Attributes)
-                    .Where(a => a.AttributeDefinition != null && a.AttributeDefinition.Name.ToLower().Contains("xuất xứ"))
+                // Trích xuất EAV của biến thể (có fallback sang sản phẩm cha)
+                string? origin = v.Attributes
+                    .Where(a => a.AttributeDefinition != null && (a.AttributeDefinition.Name.ToLower().Contains("xuất xứ") || a.AttributeDefinition.Name.ToLower().Contains("vùng trồng")))
                     .Select(a => a.AttributeValue).FirstOrDefault();
+                if (string.IsNullOrEmpty(origin))
+                {
+                    origin = p.Variants.SelectMany(x => x.Attributes)
+                        .Where(a => a.AttributeDefinition != null && (a.AttributeDefinition.Name.ToLower().Contains("xuất xứ") || a.AttributeDefinition.Name.ToLower().Contains("vùng trồng")))
+                        .Select(a => a.AttributeValue).FirstOrDefault();
+                }
 
-                string? cert = activeVariants.SelectMany(x => x.Attributes)
+                string? cert = v.Attributes
                     .Where(a => a.AttributeDefinition != null && (a.AttributeDefinition.Name.ToLower().Contains("chứng nhận") || a.AttributeDefinition.Name.ToLower().Contains("tiêu chuẩn")))
                     .Select(a => a.AttributeValue).FirstOrDefault();
+                if (string.IsNullOrEmpty(cert))
+                {
+                    cert = p.Variants.SelectMany(x => x.Attributes)
+                        .Where(a => a.AttributeDefinition != null && (a.AttributeDefinition.Name.ToLower().Contains("chứng nhận") || a.AttributeDefinition.Name.ToLower().Contains("tiêu chuẩn")))
+                        .Select(a => a.AttributeValue).FirstOrDefault();
+                }
 
-                string? brix = activeVariants.SelectMany(x => x.Attributes)
+                string? brix = v.Attributes
                     .Where(a => a.AttributeDefinition != null && (a.AttributeDefinition.Name.ToLower().Contains("độ ngọt") || a.AttributeDefinition.Name.ToLower().Contains("brix")))
                     .Select(a => a.AttributeValue).FirstOrDefault();
+                if (string.IsNullOrEmpty(brix))
+                {
+                    brix = p.Variants.SelectMany(x => x.Attributes)
+                        .Where(a => a.AttributeDefinition != null && (a.AttributeDefinition.Name.ToLower().Contains("độ ngọt") || a.AttributeDefinition.Name.ToLower().Contains("brix")))
+                        .Select(a => a.AttributeValue).FirstOrDefault();
+                }
 
                 decimal stock = inventories.TryGetValue(v.Id, out decimal s) ? s : 0;
 
+                // Tên hiển thị Thẻ: Nếu tên biến thể đã bao gồm tên sản phẩm thì giữ nguyên, ngược lại kết hợp "$p.Name - $v.Name"
+                string displayName = v.Name.ToLower().Contains(p.Name.ToLower())
+                    ? v.Name
+                    : $"{p.Name} - {v.Name}";
+
                 dtoList.Add(new AiProductCardDto
                 {
-                    Id = p.Id,
+                    Id = v.Id,
                     VariantId = v.Id,
                     UoMId = priceObj?.UoMId ?? p.BaseUoMId,
-                    Name = p.Name,
+                    Name = displayName,
+                    ProductName = p.Name,
+                    VariantName = v.Name,
+                    CategoryName = p.Category?.Name,
+                    CategoryGroupName = p.Category?.CategoryGroup?.Name,
                     Slug = p.Slug ?? "san-pham",
                     ImagePath = v.ImagePath ?? p.ImagePath,
                     Price = originalPrice,
@@ -1231,12 +1389,21 @@ QUY TẮC PHỤC VỤ VÀ TÍNH CÁCH BẮT BUỘC:
    - Trả lời ngắn gọn số lượng, đơn giá, tổng tiền và thông báo rằng Thẻ Đơn Hàng Tương Tác đã xuất hiện ngay bên dưới.
    - Hướng dẫn khách: Chọn địa chỉ nhận hàng từ Sổ địa chỉ (hoặc bấm cập nhật địa chỉ nếu chưa có), tùy chỉnh số lượng [-] [+], chọn hình thức thanh toán và bấm nút 'Xác nhận đặt hàng' trên thẻ.
    - Tuyệt đối không tự nói rằng 'đơn hàng đã được đặt thành công' qua tin nhắn chữ khi khách chưa bấm nút trên thẻ.
+7. Cấu trúc danh mục 4 tầng của Solaris:
+   - Tầng 1: Nhóm Loại sản phẩm (Category Group) - ví dụ: Sản phẩm tươi sống, Thực phẩm chế biến,...
+   - Tầng 2: Loại Sản phẩm (Category) - ví dụ: Sản phẩm từ động vật, Rau củ quả hữu cơ,...
+   - Tầng 3: Sản phẩm / Dòng sản phẩm (Product) - ví dụ: Thịt heo sạch, Bơ 034, Sầu riêng Ri6,...
+   - Tầng 4: Biến thể Sản phẩm / SKU bán lẻ (Product Variant) - ví dụ: Đùi heo, Má heo, Sườn non, Trái 1-2kg... (Đây là đơn vị SKU thực tế khách hàng chọn mua và lên đơn).
+   - Khi khách hàng hỏi chung chung theo nhóm ngành hoặc loại (VD: 'Shop có bán thịt gì không?', 'Có sản phẩm tươi sống nào?'), hãy tư vấn các dòng sản phẩm và các biến thể cụ thể thuộc nhóm đó.
+   - Khi khách hàng hỏi hoặc mua một biến thể SKU cụ thể (VD: 'Má heo', 'Đùi heo'), hãy tập trung tư vấn đúng biến thể SKU đó, giá bán và tồn kho khả dụng của biến thể.
 
 KỊCH BẢN MẪU (FEW-SHOT EXAMPLES):
 - Khách: '1 trái sầu riêng giá bao nhiêu?'
   -> AI: 'Dạ sầu riêng có giá 100.000 ₫/trái, hàng chuẩn VietGAP, tồn kho hiện còn X trái. Bạn có muốn lên đơn mua không ạ?'
 - Khách: 'Lên đơn cho tôi 100 trái sầu riêng'
   -> AI: 'Dạ kho Solaris hiện chỉ còn X trái sầu riêng. Em đã tạo Thẻ Đơn Hàng Tương Tác bên dưới với số lượng tối đa là X trái (Tổng: ... ₫). Quý khách vui lòng chọn địa chỉ nhận hàng và bấm xác nhận trên thẻ giúp em nhé!'
+- Khách: 'Shop có bán thịt gì không?'
+  -> AI: 'Dạ Solaris thuộc nhóm Sản phẩm tươi sống có dòng Thịt heo sạch với các biến thể: Đùi heo (120.000 ₫/kg), Má heo (150.000 ₫/kg),... Bạn muốn tham khảo biến thể nào ạ?'
 - Khách: 'Solaris có bán nho Mỹ không?'
   -> AI: 'Dạ hiện tại Solaris chưa có dữ liệu hoặc không kinh doanh sản phẩm nho Mỹ. Hệ thống hiện chỉ có: [liệt kê sản phẩm thực tế]. Bạn cần tư vấn sản phẩm nào ạ?'
 
