@@ -125,7 +125,11 @@ const OrderForm: React.FC = () => {
             label: `${c.code} - ${c.name} (${c.phoneNumber})`,
           }))
         );
-        setWarehouses(whList.map((w: any) => ({ value: w.id, label: w.name })));
+        // Nghiệp vụ SCM: Chỉ Kho Bán Lẻ mới được phép xuất bán trực tiếp cho khách hàng
+        const retailWarehouses = whList.filter(
+          (w: any) => !w.warehouseType || w.warehouseType === 'Kho Bán Lẻ'
+        );
+        setWarehouses(retailWarehouses.map((w: any) => ({ value: w.id, label: w.name })));
         setVariants(
           varList.map((v: any) => ({
             value: v.id,
@@ -646,8 +650,8 @@ const OrderForm: React.FC = () => {
 
                 <div className="mt-4">
                   <FormSelect
-                    label="Kho xử lý đơn hàng"
-                    placeholder="-- Chọn Kho thực hiện xuất --"
+                    label="Kho Xuất Bán (Chỉ áp dụng Kho Bán Lẻ)"
+                    placeholder="-- Chọn Kho Bán Lẻ xuất hàng --"
                     options={warehouses}
                     value={formData.warehouseId}
                     error={errors.warehouseId}

@@ -383,10 +383,14 @@ namespace backend.Services
 
                     if (variant == null) continue;
 
-                    // Kiểm tra tồn kho khả dụng thời gian thực
-                    var availableStock = await _context.WarehouseInventories
+                    // Kiểm tra tồn kho khả dụng thời gian thực từ Kho Bán Lẻ
+                    var stockQuery = _context.WarehouseInventories
                         .Include(wi => wi.Batch)
-                        .Where(wi => wi.VariantId == variant.Id && wi.QuantityAvailable > 0 && (wi.Batch == null || wi.Batch.ExpiryDate > now))
+                        .Where(wi => wi.VariantId == variant.Id && wi.QuantityAvailable > 0 && (wi.Batch == null || wi.Batch.ExpiryDate > now));
+
+                    var filteredStockQuery = await stockQuery.FilterRetailOnlyAsync(_context);
+
+                    var availableStock = await filteredStockQuery
                         .SumAsync(wi => (decimal?)wi.QuantityAvailable) ?? 0;
 
                     if (availableStock < item.Quantity)
@@ -824,10 +828,14 @@ namespace backend.Services
                     }
                 }
 
-                // Kiểm tra tồn kho khả dụng thời gian thực từ các lô hàng còn hạn dùng
-                var availableStock = await _context.WarehouseInventories
+                // Kiểm tra tồn kho khả dụng thời gian thực từ các lô hàng còn hạn dùng tại Kho Bán Lẻ
+                var checkStockQuery = _context.WarehouseInventories
                     .Include(wi => wi.Batch)
-                    .Where(wi => wi.VariantId == p.VariantId && wi.QuantityAvailable > 0 && (wi.Batch == null || wi.Batch.ExpiryDate > now))
+                    .Where(wi => wi.VariantId == p.VariantId && wi.QuantityAvailable > 0 && (wi.Batch == null || wi.Batch.ExpiryDate > now));
+
+                var filteredCheckStock = await checkStockQuery.FilterRetailOnlyAsync(_context);
+
+                var availableStock = await filteredCheckStock
                     .SumAsync(wi => (decimal?)wi.QuantityAvailable) ?? 0;
 
                 // Nếu sản phẩm hết hàng hoàn toàn trong kho
@@ -984,9 +992,13 @@ namespace backend.Services
                 .ToListAsync();
 
             var variantIds = products.SelectMany(p => p.Variants.Select(v => v.Id)).Distinct().ToList();
-            var inventories = await _context.WarehouseInventories
+            var catalogStockQuery = _context.WarehouseInventories
                 .Include(wi => wi.Batch)
-                .Where(wi => variantIds.Contains(wi.VariantId) && wi.QuantityAvailable > 0 && (wi.Batch == null || wi.Batch.ExpiryDate > now))
+                .Where(wi => variantIds.Contains(wi.VariantId) && wi.QuantityAvailable > 0 && (wi.Batch == null || wi.Batch.ExpiryDate > now));
+
+            var filteredCatalogStock = await catalogStockQuery.FilterRetailOnlyAsync(_context);
+
+            var inventories = await filteredCatalogStock
                 .GroupBy(wi => wi.VariantId)
                 .Select(g => new { VariantId = g.Key, TotalAvailable = g.Sum(x => x.QuantityAvailable) })
                 .ToDictionaryAsync(x => x.VariantId, x => x.TotalAvailable);
@@ -1112,11 +1124,15 @@ namespace backend.Services
 
             var variantIds = products.SelectMany(p => p.Variants.Select(v => v.Id)).Distinct().ToList();
 
-            var inventories = await _context.WarehouseInventories
+            var cardStockQuery = _context.WarehouseInventories
                 .Include(wi => wi.Batch)
                 .Where(wi => variantIds.Contains(wi.VariantId) &&
                              wi.QuantityAvailable > 0 &&
-                             (wi.Batch == null || wi.Batch.ExpiryDate > now))
+                             (wi.Batch == null || wi.Batch.ExpiryDate > now));
+
+            var filteredCardStock = await cardStockQuery.FilterRetailOnlyAsync(_context);
+
+            var inventories = await filteredCardStock
                 .GroupBy(wi => wi.VariantId)
                 .Select(g => new { VariantId = g.Key, TotalAvailable = g.Sum(x => x.QuantityAvailable) })
                 .ToDictionaryAsync(x => x.VariantId, x => x.TotalAvailable);

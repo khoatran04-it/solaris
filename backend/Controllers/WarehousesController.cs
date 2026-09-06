@@ -33,11 +33,12 @@ namespace backend.Controllers
         /// Thường dùng cho các Dropdown/Lookup khi tạo phiếu xuất/nhập/chuyển kho hoặc gán quyền nhân viên.
         /// </summary>
         /// <param name="isActive">Lọc chỉ lấy các kho đang hoạt động nếu true.</param>
+        /// <param name="warehouseType">Lọc theo loại kho cụ thể (Ví dụ: Kho Tổng, Kho Bán Lẻ).</param>
         [HttpGet("all")]
         [ProducesResponseType(typeof(IEnumerable<WarehouseReadDto>), StatusCodes.Status200OK)]
-        public async Task<IActionResult> GetAllList([FromQuery] bool? isActive = null)
+        public async Task<IActionResult> GetAllList([FromQuery] bool? isActive = null, [FromQuery] string? warehouseType = null)
         {
-            var result = await _warehouseService.GetAllListAsync(isActive ?? false);
+            var result = await _warehouseService.GetAllListAsync(isActive ?? false, warehouseType);
             return Ok(result);
         }
 

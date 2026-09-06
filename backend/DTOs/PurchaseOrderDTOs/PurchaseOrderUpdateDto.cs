@@ -17,6 +17,9 @@ namespace backend.DTOs.PurchaseOrderDTOs
 
         /// <summary>Ghi chú hoặc yêu cầu vận hành (Cho phép bổ sung thêm thông tin trong quá trình chờ hàng).</summary>
         public string? Note { get; set; }
+
+        /// <summary>Mã định danh của Kho nhận hàng (Bắt buộc là Kho Tổng).</summary>
+        public int? WarehouseId { get; set; }
         #endregion
 
         #region Trạng thái Chứng từ (Workflow)

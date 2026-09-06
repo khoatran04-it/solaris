@@ -50,6 +50,15 @@ namespace backend.DTOs.PurchaseOrderDTOs
 
         /// <summary>Tên nhân viên thu mua (Được ánh xạ từ IAUser.FullName).</summary>
         public string CreatedByName { get; set; } = string.Empty;
+
+        /// <summary>Mã định danh của Kho nhận hàng.</summary>
+        public int? WarehouseId { get; set; }
+
+        /// <summary>Mã kho nhận hàng (Được ánh xạ từ Warehouse.Code).</summary>
+        public string? WarehouseCode { get; set; }
+
+        /// <summary>Tên kho nhận hàng (Được ánh xạ từ Warehouse.Name).</summary>
+        public string? WarehouseName { get; set; }
         #endregion
 
         #region Hệ thống

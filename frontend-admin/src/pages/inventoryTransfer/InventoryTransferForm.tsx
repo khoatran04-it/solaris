@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeftRight, Plus, Trash2, Save, Sparkles, Loader2 } from 'lucide-react';
 
@@ -92,7 +92,8 @@ const InventoryTransferForm: React.FC = () => {
   const [variantBatchesMap, setVariantBatchesMap] = useState<Record<string, SuggestedBatch[]>>({});
 
   // --- DROPDOWN OPTIONS ---
-  const [warehouses, setWarehouses] = useState<{ value: number; label: string }[]>([]);
+  const [sourceWarehouses, setSourceWarehouses] = useState<{ value: number; label: string }[]>([]);
+  const [destWarehouses, setDestWarehouses] = useState<{ value: number; label: string }[]>([]);
   const [variants, setVariants] = useState<
     { value: number; label: string; prices?: any[]; baseUoMId?: number }[]
   >([]);
@@ -113,7 +114,10 @@ const InventoryTransferForm: React.FC = () => {
           uomApi.getAllList().catch(() => []),
         ]);
 
-        setWarehouses(whList.map((w: any) => ({ value: w.id, label: w.name })));
+        // Nghiệp vụ SCM: Cấm điều chuyển xuất phát từ Kho Hàng Lỗi
+        const validSourceWhs = whList.filter((w: any) => w.warehouseType !== 'Kho Hàng Lỗi');
+        setSourceWarehouses(validSourceWhs.map((w: any) => ({ value: w.id, label: w.name })));
+        setDestWarehouses(whList.map((w: any) => ({ value: w.id, label: w.name })));
         setVariants(
           varList.map((v: any) => ({
             value: v.id,
@@ -448,7 +452,7 @@ const InventoryTransferForm: React.FC = () => {
                 label="Kho nguồn (Xuất phát)"
                 value={formData.fromWarehouseId}
                 onSelect={(val) => handleFieldChange('fromWarehouseId', val ? Number(val) : '')}
-                options={warehouses}
+                options={sourceWarehouses}
                 error={errors.fromWarehouseId}
                 placeholder="-- Chọn Kho xuất phát --"
                 required
@@ -460,7 +464,7 @@ const InventoryTransferForm: React.FC = () => {
                 label="Kho đích (Tiếp nhận)"
                 value={formData.toWarehouseId}
                 onSelect={(val) => handleFieldChange('toWarehouseId', val ? Number(val) : '')}
-                options={warehouses}
+                options={destWarehouses}
                 error={errors.toWarehouseId}
                 placeholder="-- Chọn Kho tiếp nhận --"
                 required

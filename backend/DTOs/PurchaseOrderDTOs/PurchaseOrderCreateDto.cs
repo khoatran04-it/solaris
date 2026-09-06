@@ -29,6 +29,9 @@ namespace backend.DTOs.PurchaseOrderDTOs
         /// <summary>Mã định danh của Nhà cung cấp (Supplier) tiếp nhận PO này.</summary>
         public int SupplierId { get; set; }
 
+        /// <summary>Mã định danh của Kho nhận hàng (Bắt buộc là Kho Tổng).</summary>
+        public int? WarehouseId { get; set; }
+
         /// <summary>Mã định danh của Nhân viên Thu mua (Purchasing Staff) chịu trách nhiệm lập và theo dõi đơn.</summary>
         public int CreatedById { get; set; }
         #endregion

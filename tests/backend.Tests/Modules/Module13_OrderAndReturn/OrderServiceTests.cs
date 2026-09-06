@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+using AutoMapper;
 using backend.Data;
 using backend.DTOs.OrderDTOs;
 using backend.Models;
@@ -633,6 +633,49 @@ namespace backend.Tests.Modules.Module13_OrderAndReturn
 
             // Act & Assert
             await Assert.ThrowsAsync<InvalidOperationException>(() => service.DeleteAsync(1));
+        }
+        #endregion
+
+        #region TC13: SCM SHIELD - CHẶN TẠO ĐƠN BÁN HÀNG TỪ KHO KHÔNG PHẢI KHO BÁN LẺ
+        /// <summary>
+        /// TC13: SCM Rule - Chỉ có Kho Bán Lẻ mới được phép xuất bán trực tiếp cho khách hàng.
+        /// Khi chỉ định Kho Tổng, Trạm Trung Chuyển hoặc Kho Hàng Lỗi, hệ thống phải ném InvalidOperationException.
+        /// </summary>
+        [Fact]
+        public async Task CreateAsync_WithNonRetailWarehouse_ThrowsInvalidOperationException()
+        {
+            // Arrange
+            using var context = TestFactories.CreateInMemoryDbContext();
+            var customer = new Customer { Id = 1, Code = "CUST-001", Name = "Khách Hàng", PhoneNumber = "0911223344", IsActive = true };
+            var masterHub = new Warehouse { Id = 1, Code = "WH-MASTER", Name = "Kho Tổng Trung Tâm", WarehouseType = WarehouseTypeConstants.MasterHub, IsActive = true };
+            var uom = new UoM { Id = 1, Code = "KG", Name = "Kg", IsActive = true };
+            var variant = new ProductVariant { Id = 10, Code = "SKU-01", Name = "Sản phẩm A", IsActive = true };
+
+            context.Customers.Add(customer);
+            context.Warehouses.Add(masterHub);
+            context.UoMs.Add(uom);
+            context.ProductVariants.Add(variant);
+            await context.SaveChangesAsync();
+
+            var service = new OrderService(context, _mapper, CreateRoutingService(context));
+
+            var dto = new OrderCreateDto
+            {
+                CustomerId = 1,
+                WarehouseId = 1,
+                ReceiverName = "Khách Hàng",
+                ReceiverPhone = "0911223344",
+                PaymentMethod = PaymentMethod.COD,
+                Details = new List<OrderDetailCreateDto>
+                {
+                    new OrderDetailCreateDto { VariantId = 10, UoMId = 1, Quantity = 1, UnitPrice = 50000m }
+                }
+            };
+
+            // Act & Assert
+            var act = () => service.CreateAsync(dto, 1);
+            await act.Should().ThrowAsync<InvalidOperationException>()
+                .WithMessage("*Chỉ Kho Bán Lẻ mới được phép xuất bán trực tiếp cho khách hàng*");
         }
         #endregion
     }

@@ -125,15 +125,18 @@ namespace backend.Services
             if (dto.Details == null || !dto.Details.Any())
                 throw new InvalidOperationException("Phiếu nhập kho phải có ít nhất 1 dòng kiểm đếm hàng hóa.");
 
-            var warehouseExists = await _context.Warehouses.AnyAsync(w => w.Id == dto.WarehouseId && !w.IsDeleted);
-            if (!warehouseExists)
+            var warehouse = await _context.Warehouses.FirstOrDefaultAsync(w => w.Id == dto.WarehouseId && !w.IsDeleted);
+            if (warehouse == null)
                 throw new InvalidOperationException($"Kho nhận hàng với ID {dto.WarehouseId} không tồn tại hoặc đã bị vô hiệu hóa.");
 
-            if (dto.SupplierId.HasValue)
+            if (dto.SupplierId.HasValue && dto.SupplierId.Value > 0)
             {
                 var supplierExists = await _context.Suppliers.AnyAsync(s => s.Id == dto.SupplierId.Value && !s.IsDeleted);
                 if (!supplierExists)
                     throw new InvalidOperationException($"Nhà cung cấp với ID {dto.SupplierId.Value} không tồn tại.");
+
+                if (!string.IsNullOrWhiteSpace(warehouse.WarehouseType) && warehouse.WarehouseType != WarehouseTypeConstants.MasterHub)
+                    throw new InvalidOperationException("Hàng hóa nhập từ Nhà cung cấp chỉ được phép nhập vào Kho Tổng.");
             }
 
             return await _context.ExecuteInTransactionAsync(async () =>

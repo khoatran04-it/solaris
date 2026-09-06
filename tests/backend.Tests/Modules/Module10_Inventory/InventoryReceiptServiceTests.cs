@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+using AutoMapper;
 using backend.DTOs.InventoryReceiptDTOs;
 using backend.Models;
 using backend.Models.Enums;
@@ -823,6 +823,56 @@ namespace backend.Tests.Modules.Module10_Inventory
             var detail = created.Details.First();
             detail.ActualWeightKg.Should().Be(600m);
             detail.CalculatedCbm.Should().Be(2.0m);
+        }
+        #endregion
+
+        #region TC13: SCM SHIELD - CHẶN NHẬP TỪ NCC VÀO KHO KHÔNG PHẢI KHO TỔNG
+        /// <summary>
+        /// TC13: SCM Rule - Nhập kho từ Nhà cung cấp (SupplierId != null) bắt buộc phải nhập vào Kho Tổng.
+        /// Chặn các kho bán lẻ hoặc trạm trung chuyển tiếp nhận trực tiếp từ NCC.
+        /// </summary>
+        [Fact]
+        public async Task CreateAsync_SupplierReceiptToNonMasterHub_ThrowsInvalidOperationException()
+        {
+            // Arrange
+            using var context = TestFactories.CreateInMemoryDbContext();
+            await SeedDependenciesAsync(context);
+
+            var retailWh = new Warehouse
+            {
+                Id = 3,
+                Code = "WH-RETAIL",
+                Name = "Kho Bán Lẻ Tân Bình",
+                WarehouseType = WarehouseTypeConstants.Retail,
+                IsActive = true
+            };
+            context.Warehouses.Add(retailWh);
+            await context.SaveChangesAsync();
+
+            var service = new InventoryReceiptService(context, _mapper);
+
+            var createDto = new InventoryReceiptCreateDto
+            {
+                WarehouseId = 3,
+                SupplierId = 1,
+                Note = "Nhập trực tiếp từ NCC",
+                Details = new List<InventoryReceiptDetailCreateDto>
+                {
+                    new InventoryReceiptDetailCreateDto
+                    {
+                        VariantId = 1,
+                        BatchId = 1,
+                        UoMId = 1,
+                        ExpectedQuantity = 100,
+                        AcceptedQuantity = 100
+                    }
+                }
+            };
+
+            // Act & Assert
+            var act = () => service.CreateAsync(createDto);
+            await act.Should().ThrowAsync<InvalidOperationException>()
+                .WithMessage("*Hàng hóa nhập từ Nhà cung cấp chỉ được phép nhập vào Kho Tổng*");
         }
         #endregion
     }

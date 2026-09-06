@@ -17,7 +17,9 @@ namespace backend.Profiles
             CreateMap<PurchaseOrder, PurchaseOrderReadDto>()
                 // Làm phẳng dữ liệu từ các Navigation Properties để Frontend dễ hiển thị
                 .ForMember(dest => dest.SupplierName, opt => opt.MapFrom(src => src.Supplier != null ? src.Supplier.Name : string.Empty))
-                .ForMember(dest => dest.CreatedByName, opt => opt.MapFrom(src => src.CreatedBy != null ? src.CreatedBy.FullName : string.Empty));
+                .ForMember(dest => dest.CreatedByName, opt => opt.MapFrom(src => src.CreatedBy != null ? src.CreatedBy.FullName : string.Empty))
+                .ForMember(dest => dest.WarehouseName, opt => opt.MapFrom(src => src.Warehouse != null ? src.Warehouse.Name : string.Empty))
+                .ForMember(dest => dest.WarehouseCode, opt => opt.MapFrom(src => src.Warehouse != null ? src.Warehouse.Code : string.Empty));
             #endregion
 
             #region Đơn mua hàng: Create DTO -> Entity (Thêm mới)
@@ -37,7 +39,8 @@ namespace backend.Profiles
 
                 // Bỏ qua Navigation Properties chống lỗi EF Core Tracking
                 .ForMember(dest => dest.Supplier, opt => opt.Ignore())
-                .ForMember(dest => dest.CreatedBy, opt => opt.Ignore());
+                .ForMember(dest => dest.CreatedBy, opt => opt.Ignore())
+                .ForMember(dest => dest.Warehouse, opt => opt.Ignore());
             #endregion
 
             #region Đơn mua hàng: Update / Status Update DTO -> Entity (Cập nhật)
@@ -57,7 +60,8 @@ namespace backend.Profiles
                 .ForMember(dest => dest.IsDeleted, opt => opt.Ignore())
                 .ForMember(dest => dest.DeletedAt, opt => opt.Ignore())
                 .ForMember(dest => dest.Supplier, opt => opt.Ignore())
-                .ForMember(dest => dest.CreatedBy, opt => opt.Ignore());
+                .ForMember(dest => dest.CreatedBy, opt => opt.Ignore())
+                .ForMember(dest => dest.Warehouse, opt => opt.Ignore());
 
             CreateMap<PurchaseOrderStatusUpdateDto, PurchaseOrder>()
                 .ForMember(dest => dest.Id, opt => opt.Ignore())
