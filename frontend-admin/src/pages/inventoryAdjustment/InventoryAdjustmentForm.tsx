@@ -119,8 +119,8 @@ const InventoryAdjustmentForm: React.FC = () => {
           })),
         }));
       }
-    } catch (e) {
-      console.error('Lỗi tải ĐVT hợp lệ:', e);
+    } catch {
+      // Bỏ qua lỗi hoặc không làm gián đoạn worker rpc
     }
   }, [variantUoMsMap]);
 
