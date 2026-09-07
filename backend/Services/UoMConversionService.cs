@@ -431,7 +431,7 @@ namespace backend.Services
                         UoMCode = c.FromUoM.Code,
                         ConversionFactorToBase = factor,
                         IsBaseUoM = false,
-                        Description = $"⚡ 1 {c.FromUoM.Name} = {factor:G29} {baseUoM.Name}"
+                        Description = $"1 {c.FromUoM.Name} = {factor:G29} {baseUoM.Name}"
                     });
                     addedUoMIds.Add(c.FromUoM.Id);
                 }
@@ -446,7 +446,7 @@ namespace backend.Services
                         UoMCode = c.ToUoM.Code,
                         ConversionFactorToBase = factor,
                         IsBaseUoM = false,
-                        Description = $"⚡ 1 {c.ToUoM.Name} = {factor:G29} {baseUoM.Name}"
+                        Description = $"1 {c.ToUoM.Name} = {factor:G29} {baseUoM.Name}"
                     });
                     addedUoMIds.Add(c.ToUoM.Id);
                 }
@@ -465,7 +465,7 @@ namespace backend.Services
                         UoMCode = price.UoM.Code,
                         ConversionFactorToBase = factor,
                         IsBaseUoM = false,
-                        Description = factor != 1m ? $"⚡ 1 {price.UoM.Name} = {factor:G29} {baseUoM.Name}" : price.UoM.Name
+                        Description = factor != 1m ? $"1 {price.UoM.Name} = {factor:G29} {baseUoM.Name}" : price.UoM.Name
                     });
                     addedUoMIds.Add(price.UoMId);
                 }
@@ -484,7 +484,7 @@ namespace backend.Services
                         UoMCode = sp.PurchaseUoM.Code,
                         ConversionFactorToBase = factor,
                         IsBaseUoM = false,
-                        Description = factor != 1m ? $"⚡ 1 {sp.PurchaseUoM.Name} = {factor:G29} {baseUoM.Name}" : sp.PurchaseUoM.Name
+                        Description = factor != 1m ? $"1 {sp.PurchaseUoM.Name} = {factor:G29} {baseUoM.Name}" : sp.PurchaseUoM.Name
                     });
                     addedUoMIds.Add(sp.PurchaseUoMId);
                 }
@@ -514,7 +514,7 @@ namespace backend.Services
                             UoMCode = c.FromUoM.Code,
                             ConversionFactorToBase = factor,
                             IsBaseUoM = false,
-                            Description = $"⚡ 1 {c.FromUoM.Name} = {factor:G29} {baseUoM.Name}"
+                            Description = $"1 {c.FromUoM.Name} = {factor:G29} {baseUoM.Name}"
                         });
                         addedUoMIds.Add(c.FromUoM.Id);
                     }
@@ -528,7 +528,7 @@ namespace backend.Services
                             UoMCode = c.ToUoM.Code,
                             ConversionFactorToBase = factor,
                             IsBaseUoM = false,
-                            Description = $"⚡ 1 {c.ToUoM.Name} = {factor:G29} {baseUoM.Name}"
+                            Description = $"1 {c.ToUoM.Name} = {factor:G29} {baseUoM.Name}"
                         });
                         addedUoMIds.Add(c.ToUoM.Id);
                     }

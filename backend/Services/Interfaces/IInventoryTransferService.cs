@@ -77,6 +77,12 @@ namespace backend.Services.Interfaces
         /// <param name="id">ID Phiếu điều chuyển.</param>
         /// <param name="receivedById">ID Thủ kho Đích thực hiện nhận hàng.</param>
         Task<bool> ReceiveTransferAsync(int id, int receivedById);
+
+        /// <summary>
+        /// BƯỚC 2 (NÂNG CAO): Kiểm đếm và Nhập nhận đích (Inspect & Receive).
+        /// Cho phép phân luồng số lượng nguyên vẹn vào QuantityAvailable và số lượng hư hỏng vào QuantityDamaged.
+        /// </summary>
+        Task<bool> InspectAndReceiveTransferAsync(int id, int inspectedById, InventoryTransferInspectReceiveDto dto);
         #endregion
     }
 }

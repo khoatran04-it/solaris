@@ -24,6 +24,10 @@ namespace backend.Profiles
                 .ForMember(dest => dest.WarehouseName, opt => opt.MapFrom(src => src.Warehouse != null ? src.Warehouse.Name : null))
                 .ForMember(dest => dest.DiscountAmount, opt => opt.MapFrom(src =>
                     src.DiscountAmount > 0 ? src.DiscountAmount : (src.Details != null ? src.Details.Sum(d => d.DiscountAmount) : 0)))
+                .ForMember(dest => dest.RequiresColdChain, opt => opt.MapFrom(src =>
+                    src.Details != null && src.Details.Any(d => d.Variant != null && d.Variant.Product != null && d.Variant.Product.Category != null && d.Variant.Product.Category.RequiresColdChain)))
+                .ForMember(dest => dest.CanShipViaGhn, opt => opt.MapFrom(src =>
+                    src.Details == null || !src.Details.Any(d => d.Variant != null && d.Variant.Product != null && d.Variant.Product.Category != null && d.Variant.Product.Category.RequiresColdChain)))
                 .ForMember(dest => dest.IssuedItems, opt => opt.Ignore());
             #endregion
 

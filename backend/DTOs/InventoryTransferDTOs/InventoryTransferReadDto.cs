@@ -47,6 +47,17 @@ namespace backend.DTOs.InventoryTransferDTOs
         public string? ReceivedByName { get; set; }
         /// <summary>Thời điểm hàng chính thức được nhập vào Kho đích.</summary>
         public DateTime? ReceivedDate { get; set; }
+
+        public int? InspectedById { get; set; }
+        public string? InspectedByName { get; set; }
+        public DateTime? InspectedDate { get; set; }
+        #endregion
+
+        #region Vận Tải & Chuyến Xe Liên Kho
+        public int? DeliveryTripId { get; set; }
+        public string? DriverName { get; set; }
+        public string? DriverPhone { get; set; }
+        public string? LicensePlate { get; set; }
         #endregion
 
         #region Đối soát Chứng từ & Ghi chú (Flattened)
@@ -95,9 +106,31 @@ namespace backend.DTOs.InventoryTransferDTOs
         public string UoMName { get; set; } = string.Empty;
         #endregion
 
-        #region Khối lượng
-        /// <summary>Số lượng hàng hóa được luân chuyển giữa 2 kho.</summary>
+        #region Khối lượng & Kiểm đếm
+        /// <summary>Số lượng hàng hóa được xuất đi từ Kho Nguồn.</summary>
         public decimal Quantity { get; set; }
+
+        /// <summary>Số lượng hàng hóa thực nhận nguyên vẹn tại Kho Đích (cộng vào Available).</summary>
+        public decimal ActualReceivedQuantity { get; set; }
+
+        /// <summary>Số lượng hàng hóa bị dập nát, hư hỏng trong quá trình vận chuyển (cộng vào Damaged).</summary>
+        public decimal DamagedQuantity { get; set; }
         #endregion
+    }
+
+    /// <summary>
+    /// DTO tiếp nhận kiểm đếm hàng chuyển kho tại Kho đích.
+    /// </summary>
+    public class InventoryTransferInspectReceiveDto
+    {
+        public List<InventoryTransferItemInspectDto> Items { get; set; } = new();
+        public string? Note { get; set; }
+    }
+
+    public class InventoryTransferItemInspectDto
+    {
+        public int DetailId { get; set; }
+        public decimal ActualReceivedQuantity { get; set; }
+        public decimal DamagedQuantity { get; set; }
     }
 }

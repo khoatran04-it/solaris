@@ -54,6 +54,28 @@ namespace backend.Models
 
         /// <summary>Thời điểm hàng chính thức được nhập vào Kho đích.</summary>
         public DateTime? ReceivedDate { get; set; }
+
+        /// <summary>Nhân viên kiểm đếm chất lượng và tình trạng hàng hóa khi xe tải cập bến.</summary>
+        public int? InspectedById { get; set; }
+        public virtual IAUser? InspectedBy { get; set; }
+
+        /// <summary>Thời điểm hoàn tất kiểm đếm hàng chuyển kho.</summary>
+        public DateTime? InspectedDate { get; set; }
+        #endregion
+
+        #region Vận Tải & Chuyến Xe Liên Kho
+        /// <summary>Mã chuyến xe nếu điều chuyển bằng Xe tải lạnh nội bộ của sàn.</summary>
+        public int? DeliveryTripId { get; set; }
+        public virtual DeliveryTrip? DeliveryTrip { get; set; }
+
+        /// <summary>Họ tên tài xế xe tải lạnh phụ trách chuyên chở.</summary>
+        public string? DriverName { get; set; }
+
+        /// <summary>Số điện thoại tài xế xe tải.</summary>
+        public string? DriverPhone { get; set; }
+
+        /// <summary>Biển kiểm soát xe tải lạnh.</summary>
+        public string? LicensePlate { get; set; }
         #endregion
 
         #region Đối soát Chứng từ & Ghi chú
@@ -65,7 +87,7 @@ namespace backend.Models
         public int? OrderId { get; set; }
         public virtual Order? Order { get; set; }
 
-        /// <summary>Ghi chú vận hành (Ví dụ: Gửi xe khách biển số 29H-123.45, yêu cầu chạy máy lạnh 5 độ C...).</summary>
+        /// <summary>Ghi chú vận hành (Ví dụ: Xe tải lạnh 2.5T biển 50H-987.65, nhiệt độ thùng 2 độ C...).</summary>
         public string? Note { get; set; }
 
         /// <summary>Lý do hủy chứng từ điều chuyển.</summary>

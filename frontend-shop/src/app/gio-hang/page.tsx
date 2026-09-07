@@ -10,6 +10,7 @@ import {
   Truck,
   RotateCcw,
   Sparkles,
+  ThermometerSnowflake,
 } from "lucide-react";
 import { useCartStore } from "@/stores/cartStore";
 import { useAuthStore } from "@/stores/authStore";
@@ -79,6 +80,16 @@ export default function GioHangPage() {
         )}
       </div>
 
+      {/* Cold Chain Banner */}
+      {(cart?.hasColdChain || cart?.items?.some((i) => i.requiresColdChain)) && (
+        <div className="p-4 rounded-2xl bg-cyan-50/90 border border-cyan-200 flex items-center gap-3 text-cyan-950 text-xs font-medium shadow-2xs">
+          <ThermometerSnowflake className="w-5 h-5 text-cyan-600 shrink-0" />
+          <span>
+            <strong>Chuỗi cung ứng lạnh Solaris Cold-Chain:</strong> Giỏ hàng của bạn có thực phẩm tươi sống (thịt, cá, hải sản, rau củ). Đơn hàng sẽ được vận chuyển hỏa tốc bằng xe máy thùng lạnh chuyên dụng trong bán kính tối đa 15km để giữ trọn độ tươi ngon.
+          </span>
+        </div>
+      )}
+
       {isLoading && (!cart || !cart.items || cart.items.length === 0) ? (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-10 items-start animate-pulse">
           <div className="lg:col-span-2 bg-white rounded-3xl border border-slate-200/80 p-6 space-y-6">
@@ -117,9 +128,17 @@ export default function GioHangPage() {
                     </div>
 
                     <div className="space-y-1">
-                      <h3 className="font-bold text-sm text-slate-900 group-hover:text-emerald-700 transition-colors line-clamp-1">
-                        {item.variantName}
-                      </h3>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="font-bold text-sm text-slate-900 group-hover:text-emerald-700 transition-colors line-clamp-1">
+                          {item.variantName}
+                        </h3>
+                        {item.requiresColdChain && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-100 text-cyan-800 border border-cyan-200">
+                            <ThermometerSnowflake className="w-2.5 h-2.5 text-cyan-600" />
+                            Bảo quản lạnh 0-4°C
+                          </span>
+                        )}
+                      </div>
                       <p className="text-xs text-slate-500">
                         ĐVT:{" "}
                         <strong className="text-slate-700">

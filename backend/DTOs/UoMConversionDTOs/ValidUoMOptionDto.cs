@@ -25,7 +25,7 @@ namespace backend.DTOs.UoMConversionDTOs
         /// <summary>Cờ đánh dấu đây có phải là ĐVT cơ sở hạt nhân của sản phẩm hay không.</summary>
         public bool IsBaseUoM { get; set; }
 
-        /// <summary>Mô tả trực quan (Ví dụ: "⚡ 1 Thùng = 30 Gói" hoặc "Đơn vị cơ sở").</summary>
+        /// <summary>Mô tả trực quan (Ví dụ: "1 Thùng = 30 Gói" hoặc "Đơn vị cơ sở").</summary>
         public string Description { get; set; } = string.Empty;
     }
 }

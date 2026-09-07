@@ -238,10 +238,15 @@ const ProductCategoryList: React.FC = () => {
                           <span className="font-extrabold text-slate-800 text-[14px] truncate max-w-48 leading-tight">
                             {item.name}
                           </span>
-                          <div className="flex items-center gap-2 mt-1.5">
+                          <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                             <span className="text-[10px] font-bold bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded border border-indigo-200/50 uppercase tracking-widest">
                               {item.code}
                             </span>
+                            {item.requiresColdChain && (
+                              <span className="text-[10px] font-bold bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-200/60 uppercase tracking-widest flex items-center gap-0.5">
+                                ❄️ Chuỗi lạnh
+                              </span>
+                            )}
                             {item.description && (
                               <span
                                 className="text-[11px] font-medium text-slate-500 truncate max-w-32"

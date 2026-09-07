@@ -151,6 +151,8 @@ builder.Services.AddScoped<ICustomerReturnService, CustomerReturnService>();
 
 // --- Đăng ký DI cho nhóm Logistics & Transfer (Phase 5) ---
 builder.Services.AddScoped<IInventoryTransferService, InventoryTransferService>();
+builder.Services.AddScoped<IVehicleService, VehicleService>();
+builder.Services.AddScoped<IDeliveryTripService, DeliveryTripService>();
 
 // --- Đăng ký DI cho nhóm Audit, Adjustment & Reconciliation (Phase 6) ---
 builder.Services.AddScoped<IInventoryAuditService, InventoryAuditService>();
