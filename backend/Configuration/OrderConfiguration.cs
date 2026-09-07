@@ -27,6 +27,13 @@ namespace backend.Configurations
             builder.Property(x => x.CancellationReason).HasMaxLength(500);
 
             builder.Property(x => x.OrderDate).HasColumnType("datetime2");
+            builder.Property(x => x.DispatchedAt).HasColumnType("datetime2");
+            builder.Property(x => x.DeliveredAt).HasColumnType("datetime2");
+            builder.Property(x => x.DriverName).HasMaxLength(100);
+            builder.Property(x => x.DriverPhone).HasMaxLength(20).HasColumnType("varchar(20)");
+            builder.Property(x => x.LicensePlate).HasMaxLength(20).HasColumnType("varchar(20)");
+            builder.Property(x => x.ShippingProvider).HasMaxLength(50);
+
             builder.Property(x => x.CreatedAt).HasColumnType("datetime2");
             builder.Property(x => x.UpdatedAt).HasColumnType("datetime2");
             builder.Property(x => x.IsDeleted).HasDefaultValue(false);
@@ -47,6 +54,11 @@ namespace backend.Configurations
                    .WithMany()
                    .HasForeignKey(x => x.WarehouseId)
                    .OnDelete(DeleteBehavior.Restrict);
+
+            builder.HasOne(x => x.DeliveryTrip)
+                   .WithMany()
+                   .HasForeignKey(x => x.DeliveryTripId)
+                   .OnDelete(DeleteBehavior.SetNull);
         }
     }
 }

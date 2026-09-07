@@ -54,6 +54,21 @@ namespace backend.Configurations
                    .WithMany()
                    .HasForeignKey(x => x.ReceivedById)
                    .OnDelete(DeleteBehavior.Restrict);
+
+            builder.HasOne(x => x.InspectedBy)
+                   .WithMany()
+                   .HasForeignKey(x => x.InspectedById)
+                   .OnDelete(DeleteBehavior.Restrict);
+
+            builder.HasOne(x => x.DeliveryTrip)
+                   .WithMany()
+                   .HasForeignKey(x => x.DeliveryTripId)
+                   .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Property(x => x.InspectedDate).HasColumnType("datetime2");
+            builder.Property(x => x.DriverName).HasMaxLength(100);
+            builder.Property(x => x.DriverPhone).HasMaxLength(20).HasColumnType("varchar(20)");
+            builder.Property(x => x.LicensePlate).HasMaxLength(20).HasColumnType("varchar(20)");
         }
     }
 }

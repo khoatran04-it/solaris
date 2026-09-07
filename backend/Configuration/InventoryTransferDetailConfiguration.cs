@@ -12,6 +12,8 @@ namespace backend.Configurations
             builder.HasKey(x => x.Id);
 
             builder.Property(x => x.Quantity).HasColumnType("decimal(18,3)");
+            builder.Property(x => x.ActualReceivedQuantity).HasColumnType("decimal(18,3)");
+            builder.Property(x => x.DamagedQuantity).HasColumnType("decimal(18,3)");
 
             // Relationships
             builder.HasOne(x => x.InventoryTransfer)
