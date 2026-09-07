@@ -190,7 +190,7 @@ describe('ModalSupplierProduct Component', () => {
     fireEvent.click(screen.getByText('SKU-MI-GOM - Mì Gói Hảo Hảo'));
 
     // Điền Đơn giá nhập và MOQ
-    const priceInput = screen.getByPlaceholderText('VD: 50000');
+    const priceInput = screen.getByPlaceholderText('VD: 50.000');
     fireEvent.change(priceInput, { target: { value: '3800' } });
 
     const moqInput = screen.getByPlaceholderText('VD: 10');

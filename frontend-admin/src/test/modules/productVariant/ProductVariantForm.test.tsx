@@ -83,8 +83,8 @@ describe('Module 05 - ProductVariantForm Component', () => {
       expect(screen.getByText(/1. THÔNG TIN CƠ BẢN/i)).toBeInTheDocument();
       expect(screen.getByText(/2. THUỘC TÍNH CHI TIẾT/i)).toBeInTheDocument();
       expect(screen.getByText(/3. QUY CÁCH BÁN HÀNG/i)).toBeInTheDocument();
-      expect(screen.getByPlaceholderText('VD: TH-500G')).toBeInTheDocument();
-      expect(screen.getByPlaceholderText('Thịt Heo Ba Chỉ - Khay 500g')).toBeInTheDocument();
+      expect(screen.getByPlaceholderText('VD: SKU-DAUTAY-500G')).toBeInTheDocument();
+      expect(screen.getByPlaceholderText('VD: Dâu Tây Đà Lạt - Hộp 500g')).toBeInTheDocument();
     });
   });
   // #endregion
@@ -260,7 +260,7 @@ describe('Module 05 - ProductVariantForm Component', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByPlaceholderText('VD: TH-500G')).toBeInTheDocument();
+      expect(screen.getByPlaceholderText('VD: SKU-DAUTAY-500G')).toBeInTheDocument();
     });
 
     // 1. Điền kích thước đóng gói ban đầu: 50 x 40 x 25 cm

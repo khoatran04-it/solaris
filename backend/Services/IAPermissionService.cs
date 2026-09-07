@@ -27,10 +27,13 @@ namespace backend.Services
             // Đồng bộ và làm sạch danh mục quyền từ Enum SystemPermission
             await DbInitializer.SeedAsync(_context);
 
-            // Trả về danh sách quyền hạn đã sắp xếp theo phân hệ Module
-            return await _context.IAPermissions
+            // Trả về danh sách quyền hạn đã sắp xếp theo số thứ tự phân hệ Module
+            var permissions = await _context.IAPermissions
                 .AsNoTracking()
-                .OrderBy(x => x.Module)
+                .ToListAsync();
+
+            return permissions
+                .OrderBy(x => ExtractModuleOrder(x.Module))
                 .ThenBy(x => x.Id)
                 .Select(x => new IAPermissionReadDto
                 {
@@ -38,8 +41,18 @@ namespace backend.Services
                     Module = x.Module,
                     Code = x.Code,
                     Name = x.Name
-                })
-                .ToListAsync();
+                });
+        }
+
+        private static int ExtractModuleOrder(string moduleName)
+        {
+            if (string.IsNullOrEmpty(moduleName)) return 999;
+            var dotIdx = moduleName.IndexOf('.');
+            if (dotIdx > 0 && int.TryParse(moduleName.Substring(0, dotIdx).Trim(), out var order))
+            {
+                return order;
+            }
+            return 999;
         }
     }
 }

@@ -331,18 +331,18 @@ const InventoryTransferForm: React.FC = () => {
         if (row.id !== id) return row;
         const updated = { ...row, [field]: value };
 
-        // Auto-fill UoM khi chọn SP
+        // Auto-fill UoM khi chọn SP: Ưu tiên ĐVT cơ sở chuẩn kho (baseUoMId)
         if (field === 'variantId' && value) {
           fetchValidUoMs(Number(value));
           const v = variants.find((item) => item.value === Number(value));
           if (v) {
-            if (v.prices && v.prices.length > 0) {
-              const defPrice = v.prices.find((p: any) => p.isDefault) || v.prices[0];
-              if (defPrice && defPrice.uoMId) {
-                updated.uoMId = defPrice.uoMId;
-              }
-            } else if (v.baseUoMId) {
-              updated.uoMId = v.baseUoMId;
+            const defaultUoM =
+              v.baseUoMId ||
+              (v.prices && v.prices.length > 0
+                ? (v.prices.find((p: any) => p.isDefault) || v.prices[0])?.uoMId
+                : uoms[0]?.value || '');
+            if (defaultUoM) {
+              updated.uoMId = defaultUoM;
             }
           }
           updated.batchId = ''; // Reset batch khi đổi SP
@@ -363,6 +363,33 @@ const InventoryTransferForm: React.FC = () => {
         setDetails((prev) =>
           prev.map((row) => (row.id === id ? { ...row, batchId: suggestions[0].batchId } : row))
         );
+      }
+    }
+
+    // Kiểm tra tồn kho khả dụng ngay khi nhập số lượng hoặc chọn lô
+    const currentRow = details.find((r) => r.id === id);
+    const targetBatchId = field === 'batchId' ? Number(value) : Number(currentRow?.batchId);
+    const targetQty = field === 'quantity' ? Number(value) : Number(currentRow?.quantity);
+    const targetVarId = field === 'variantId' ? Number(value) : Number(currentRow?.variantId);
+
+    if (targetBatchId && formData.fromWarehouseId && targetVarId) {
+      const batches = variantBatchesMap[`${formData.fromWarehouseId}_${targetVarId}`] || [];
+      const batchObj = batches.find((b) => b.batchId === targetBatchId);
+      const maxAvailable = batchObj ? batchObj.quantityAvailable : 0;
+
+      if (maxAvailable <= 0) {
+        setErrors((prev) => ({ ...prev, [`quantity_${id}`]: 'Lô này đã hết tồn kho' }));
+      } else if (targetQty > maxAvailable) {
+        setErrors((prev) => ({
+          ...prev,
+          [`quantity_${id}`]: `Tối đa ${maxAvailable} (tồn khả dụng)`,
+        }));
+      } else {
+        setErrors((prev) => {
+          const newErr = { ...prev };
+          delete newErr[`quantity_${id}`];
+          return newErr;
+        });
       }
     }
 
@@ -419,12 +446,36 @@ const InventoryTransferForm: React.FC = () => {
     if (details.length === 0) {
       errs.details = 'Cần ít nhất 1 mặt hàng chuyển kho';
     } else {
+      let hasOverStock = false;
       details.forEach((d) => {
         if (!d.variantId) errs[`variantId_${d.id}`] = 'Bắt buộc';
         if (!d.batchId) errs[`batchId_${d.id}`] = 'Bắt buộc';
         if (!d.uoMId) errs[`uoMId_${d.id}`] = 'Bắt buộc';
-        if (Number(d.quantity) <= 0) errs[`quantity_${d.id}`] = '> 0';
+        if (Number(d.quantity) <= 0) {
+          errs[`quantity_${d.id}`] = '> 0';
+        } else if (d.variantId && d.batchId && formData.fromWarehouseId) {
+          const batches = variantBatchesMap[`${formData.fromWarehouseId}_${d.variantId}`] || [];
+          const batchObj = batches.find((b) => b.batchId === Number(d.batchId));
+          const maxAvailable = batchObj ? batchObj.quantityAvailable : 0;
+
+          // Tổng số lượng cho cùng 1 lô (nếu nhiều dòng chọn cùng 1 lô)
+          const totalForBatch = details
+            .filter((x) => x.variantId === d.variantId && x.batchId === d.batchId)
+            .reduce((sum, x) => sum + Number(x.quantity || 0), 0);
+
+          if (maxAvailable <= 0) {
+            errs[`quantity_${d.id}`] = 'Lô đã hết tồn';
+            hasOverStock = true;
+          } else if (totalForBatch > maxAvailable) {
+            errs[`quantity_${d.id}`] = `Vượt tồn (tối đa ${maxAvailable})`;
+            hasOverStock = true;
+          }
+        }
       });
+
+      if (hasOverStock) {
+        showToast('error', 'Có mặt hàng vượt quá số lượng tồn kho khả dụng tại kho nguồn!');
+      }
     }
 
     setErrors(errs);
@@ -590,11 +641,12 @@ const InventoryTransferForm: React.FC = () => {
                           />
                         </td>
 
-                        {/* Cột 2: Đơn vị tính */}
+                        {/* Cột 2: Đơn vị tính (Khóa khi đã chọn SKU để chống sai lệch ĐVT giữa các kho) */}
                         <td className="p-2 w-28">
                           <FormSelect
                             label=""
                             placeholder="ĐVT"
+                            disabled={Boolean(row.variantId)}
                             options={row.variantId && variantUoMsMap[Number(row.variantId)] ? variantUoMsMap[Number(row.variantId)] : uoms}
                             value={row.uoMId}
                             error={errors[`uoMId_${row.id}`]}
@@ -634,6 +686,14 @@ const InventoryTransferForm: React.FC = () => {
                               handleDetailChange(row.id, 'batchId', val ? Number(val) : '')
                             }
                           />
+                          {row.batchId && (
+                            <div className="mt-1 text-[11px] font-semibold text-emerald-700 flex items-center justify-between">
+                              <span>Tồn khả dụng lô:</span>
+                              <span className="font-extrabold px-1.5 py-0.5 bg-emerald-50 rounded text-emerald-800 border border-emerald-200/60">
+                                {rowBatches.find((b) => b.batchId === Number(row.batchId))?.quantityAvailable ?? 0}
+                              </span>
+                            </div>
+                          )}
                         </td>
 
                         {/* Cột 4: Số lượng */}

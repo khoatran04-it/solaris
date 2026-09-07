@@ -1,4 +1,4 @@
-﻿import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter } from 'react-router-dom';
@@ -37,6 +37,12 @@ vi.mock('../../../api/productBatchApi', () => ({
 vi.mock('../../../api/uomApi', () => ({
   uomApi: {
     getAllList: vi.fn(),
+  },
+}));
+
+vi.mock('../../../api/inventoryIssueApi', () => ({
+  inventoryIssueApi: {
+    getSuggestedBatches: vi.fn().mockResolvedValue([]),
   },
 }));
 
@@ -120,5 +126,34 @@ describe('Module 11 - InventoryAdjustmentForm Component', () => {
 
     // Should now have multiple options for "-- Chọn sản phẩm --"
     expect(screen.getAllByText('-- Chọn sản phẩm --')).toHaveLength(2);
+  });
+
+  // TC03: KHÓA CỨNG ĐVT KHI CHỌN SẢN PHẨM
+  it('TC03 - Khi chọn Sản phẩm thì ĐVT tự động gán và bị khóa cứng (disabled)', async () => {
+    render(
+      <MemoryRouter>
+        <InventoryAdjustmentForm />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(productVariantApi.getAllList).toHaveBeenCalled();
+    });
+
+    // Chọn sản phẩm
+    const productSelectTrigger = screen.getByText('-- Chọn sản phẩm --');
+    fireEvent.click(productSelectTrigger);
+
+    const productOption = await screen.findByText('SKU-DAUTAY-500G - Dâu Tây Hộp 500g');
+    fireEvent.click(productOption);
+
+    // ĐVT tự động chọn Hộp 500g và bị khóa cứng (disabled)
+    await waitFor(() => {
+      const uomElement = screen.getByText('Hộp 500g');
+      expect(uomElement).toBeInTheDocument();
+      // Kiểm tra container cha có class disabled
+      const uomContainer = uomElement.closest('div');
+      expect(uomContainer?.className).toContain('cursor-not-allowed');
+    });
   });
 });

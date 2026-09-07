@@ -47,9 +47,19 @@ export const MatrixUI: React.FC<MatrixUIProps> = ({ allPermissions, selectedIds,
     }
   };
 
+  // Helper bóc tách số thứ tự phân hệ Module (VD: "1. Hệ thống" -> 1, "10. Vận hành Kho" -> 10)
+  const extractModuleOrder = (moduleName: string): number => {
+    const match = moduleName.match(/^(\d+)\./);
+    return match ? parseInt(match[1], 10) : 999;
+  };
+
+  const sortedModules = Object.entries(groupedPermissions).sort(
+    ([modA], [modB]) => extractModuleOrder(modA) - extractModuleOrder(modB)
+  );
+
   return (
     <div className="flex flex-col gap-6">
-      {Object.entries(groupedPermissions).map(([module, permissions]) => {
+      {sortedModules.map(([module, permissions]) => {
         const moduleIds = permissions.map((p) => p.id);
         const isAllSelected = moduleIds.every((id) => selectedIds.includes(id));
         const isIndeterminate = !isAllSelected && moduleIds.some((id) => selectedIds.includes(id));

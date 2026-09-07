@@ -181,6 +181,38 @@ namespace backend.Services
                 if (item.UnitPrice < 0)
                     throw new InvalidOperationException("Đơn giá không được là số âm.");
 
+                decimal baseQty = await _uomConversionService.ConvertToBaseQuantityAsync(item.VariantId, item.UoMId, item.Quantity);
+
+                // Kiểm tra tồn kho khả dụng khi tạo phiếu điều chỉnh giảm hoặc chuyển sang hàng hỏng
+                if (item.AdjustmentType == InventoryAdjustmentType.DecreaseAvailable || item.AdjustmentType == InventoryAdjustmentType.MoveToDamaged)
+                {
+                    var currentStock = await _context.WarehouseInventories
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync(x => x.WarehouseId == dto.WarehouseId &&
+                                                  x.VariantId == item.VariantId &&
+                                                  x.BatchId == item.BatchId);
+
+                    var available = currentStock?.QuantityAvailable ?? 0;
+                    if (available < baseQty)
+                    {
+                        throw new InvalidOperationException($"Số lượng điều chỉnh ({item.Quantity}) quy đổi ({baseQty}) vượt quá tồn kho khả dụng hiện tại ({available}) của sản phẩm ID {item.VariantId}, Lô ID {item.BatchId}.");
+                    }
+                }
+                else if (item.AdjustmentType == InventoryAdjustmentType.DisposeDamaged)
+                {
+                    var currentStock = await _context.WarehouseInventories
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync(x => x.WarehouseId == dto.WarehouseId &&
+                                                  x.VariantId == item.VariantId &&
+                                                  x.BatchId == item.BatchId);
+
+                    var damaged = currentStock?.QuantityDamaged ?? 0;
+                    if (damaged < baseQty)
+                    {
+                        throw new InvalidOperationException($"Số lượng tiêu hủy ({item.Quantity}) quy đổi ({baseQty}) vượt quá lượng hàng hư hỏng hiện có ({damaged}) của sản phẩm ID {item.VariantId}, Lô ID {item.BatchId}.");
+                    }
+                }
+
                 var lineAmount = item.Quantity * item.UnitPrice;
                 totalAmount += lineAmount;
 
@@ -271,20 +303,32 @@ namespace backend.Services
                             break;
 
                         case InventoryAdjustmentType.DecreaseAvailable:
-                            inv.QuantityAvailable = Math.Max(0, inv.QuantityAvailable - baseQty);
+                            if (inv.QuantityAvailable < baseQty)
+                            {
+                                throw new InvalidOperationException($"Không thể duyệt phiếu: Tồn kho khả dụng hiện tại ({inv.QuantityAvailable}) không đủ để giảm ({baseQty}) cho sản phẩm ID {detail.VariantId}, Lô ID {detail.BatchId}.");
+                            }
+                            inv.QuantityAvailable -= baseQty;
                             qtySign = -baseQty;
                             txnType = TransactionType.Adjustment;
                             break;
 
                         case InventoryAdjustmentType.MoveToDamaged:
-                            inv.QuantityAvailable = Math.Max(0, inv.QuantityAvailable - baseQty);
+                            if (inv.QuantityAvailable < baseQty)
+                            {
+                                throw new InvalidOperationException($"Không thể duyệt phiếu: Tồn kho khả dụng hiện tại ({inv.QuantityAvailable}) không đủ để chuyển sang hàng hỏng ({baseQty}) cho sản phẩm ID {detail.VariantId}, Lô ID {detail.BatchId}.");
+                            }
+                            inv.QuantityAvailable -= baseQty;
                             inv.QuantityDamaged += baseQty;
-                            qtySign = baseQty;
+                            qtySign = -baseQty;
                             txnType = TransactionType.Adjustment;
                             break;
 
                         case InventoryAdjustmentType.DisposeDamaged:
-                            inv.QuantityDamaged = Math.Max(0, inv.QuantityDamaged - baseQty);
+                            if (inv.QuantityDamaged < baseQty)
+                            {
+                                throw new InvalidOperationException($"Không thể duyệt phiếu: Lượng hàng hư hỏng hiện tại ({inv.QuantityDamaged}) không đủ để tiêu hủy ({baseQty}) cho sản phẩm ID {detail.VariantId}, Lô ID {detail.BatchId}.");
+                            }
+                            inv.QuantityDamaged -= baseQty;
                             qtySign = -baseQty;
                             txnType = TransactionType.Adjustment;
                             break;

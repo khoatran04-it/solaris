@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { Loader2, LucideIcon, ChevronLeft, Search, ChevronDown } from 'lucide-react';
 
 // 1. Container cho toàn bộ trang
@@ -231,7 +231,7 @@ export const FormSelect: React.FC<FormSelectProps> = ({
               <Search size={14} className="text-slate-400" />
               <input
                 type="text"
-                placeholder={searchPlaceholder}
+                placeholder={searchPlaceholder || 'Tìm kiếm...'}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="border-none outline-none w-full text-xs bg-transparent pl-2 py-1 font-medium"
@@ -271,3 +271,100 @@ export const FormSelect: React.FC<FormSelectProps> = ({
     </div>
   );
 };
+
+// 10. Input Tiền tệ & Số tự động format dấu chấm (.) chuẩn Việt Nam, chống giật/nhảy con trỏ khi gõ VIE IME
+interface CurrencyInputProps {
+  label: string;
+  value?: number;
+  onChange: (value: number) => void;
+  required?: boolean;
+  error?: string;
+  placeholder?: string;
+  disabled?: boolean;
+  suffix?: string;
+}
+
+export const FormCurrencyInput: React.FC<CurrencyInputProps> = ({
+  label,
+  value,
+  onChange,
+  required,
+  error,
+  placeholder = '0',
+  disabled,
+  suffix = '₫',
+}) => {
+  const inputRef = React.useRef<HTMLInputElement>(null);
+
+  const numVal = value ?? 0;
+  const displayValue = numVal > 0 ? numVal.toLocaleString('vi-VN') : '';
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const input = e.target;
+    const rawVal = input.value;
+    const selectionStart = input.selectionStart || 0;
+
+    // Đếm số lượng chữ số nằm trước con trỏ hiện tại
+    const digitsBefore = rawVal.slice(0, selectionStart).replace(/\D/g, '').length;
+
+    // Lọc chỉ lấy chữ số thuần túy
+    const cleanDigits = rawVal.replace(/\D/g, '');
+    const num = cleanDigits ? parseInt(cleanDigits, 10) : 0;
+
+    onChange(num);
+
+    // Khôi phục vị trí con trỏ sau khi React re-render với định dạng có dấu chấm
+    requestAnimationFrame(() => {
+      if (!inputRef.current) return;
+      const formatted = num > 0 ? num.toLocaleString('vi-VN') : '';
+      let targetCursor = 0;
+      let count = 0;
+      for (let i = 0; i < formatted.length; i++) {
+        if (/\d/.test(formatted[i])) {
+          count++;
+        }
+        if (count === digitsBefore) {
+          targetCursor = i + 1;
+          break;
+        }
+      }
+      if (digitsBefore === 0) targetCursor = 0;
+      inputRef.current.setSelectionRange(targetCursor, targetCursor);
+    });
+  };
+
+  return (
+    <div className="flex flex-col relative">
+      <FormLabel label={label} required={required} />
+      <div className="relative w-full">
+        <input
+          ref={inputRef}
+          type="text"
+          inputMode="numeric"
+          disabled={disabled}
+          placeholder={placeholder}
+          value={displayValue}
+          onChange={handleChange}
+          className={`w-full px-4 pr-10 h-[46px] rounded-xl border text-sm transition-all duration-300 outline-none bg-slate-50/50 hover:bg-white focus:bg-white font-bold
+            ${
+              error
+                ? 'border-red-400 focus:border-red-500 focus:ring-4 focus:ring-red-500/20'
+                : 'border-slate-200 focus:border-yellow-400 focus:ring-4 focus:ring-yellow-400/20'
+            }
+            text-slate-800 placeholder-slate-400 disabled:opacity-60`}
+        />
+        {suffix && (
+          <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold pointer-events-none">
+            {suffix}
+          </span>
+        )}
+      </div>
+      {error && (
+        <div className="text-red-500 text-xs font-medium mt-1 animate-in fade-in slide-in-from-top-1">
+          {error}
+        </div>
+      )}
+    </div>
+  );
+};
+

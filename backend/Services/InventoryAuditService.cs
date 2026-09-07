@@ -162,6 +162,11 @@ namespace backend.Services
                 IsDeleted = false
             };
 
+            if (dto.AuditType != InventoryAuditType.Full && (dto.SpecificItems == null || !dto.SpecificItems.Any()))
+            {
+                throw new InvalidOperationException("Hình thức kiểm kê cuốn chiếu hoặc đột xuất bắt buộc phải chọn ít nhất 1 mặt hàng cần kiểm kê.");
+            }
+
             // 1. Chụp ảnh số liệu tồn hệ thống (Snapshot System Quantity)
             var invQuery = _context.WarehouseInventories
                 .Include(i => i.Variant!).ThenInclude(v => v.Product!).ThenInclude(p => p.BaseUoM)
@@ -181,7 +186,10 @@ namespace backend.Services
             foreach (var inv in inventories)
             {
                 var uomId = inv.Variant?.Product?.BaseUoMId ?? inv.Variant?.Prices?.FirstOrDefault()?.UoMId ?? 1;
-                var unitPrice = inv.Variant?.Prices?.FirstOrDefault(p => p.UoMId == uomId)?.Price ?? 0;
+                var unitPrice = inv.Variant?.Prices?.FirstOrDefault(p => p.UoMId == uomId)?.Price
+                                ?? inv.Variant?.Prices?.FirstOrDefault(p => p.IsDefault)?.Price
+                                ?? inv.Variant?.Prices?.FirstOrDefault()?.Price
+                                ?? 0;
 
                 totalSysQty += inv.QuantityAvailable;
 

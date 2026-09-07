@@ -1,4 +1,4 @@
-﻿import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter } from 'react-router-dom';
@@ -97,5 +97,29 @@ describe('Module 11 - InventoryAuditForm Component', () => {
         })
       );
     });
+  });
+
+  // TC03: HIỂN THỊ BẢNG CHỌN MẶT HÀNG KHI CHỌN KIỂM KÊ ĐỘT XUẤT
+  it('TC03 - Chọn Kiểm kê đột xuất (Spot) hiển thị bảng Danh Sách Mặt Hàng Kiểm Kê', async () => {
+    render(
+      <MemoryRouter>
+        <InventoryAuditForm />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(warehouseApi.getAllList).toHaveBeenCalled();
+    });
+
+    // Ban đầu là Kiểm kê toàn bộ, không có bảng mặt hàng
+    expect(screen.queryByText(/Danh Sách Mặt Hàng Kiểm Kê/i)).not.toBeInTheDocument();
+
+    // Click chọn Kiểm kê đột xuất
+    const spotBtn = screen.getByRole('button', { name: 'Kiểm kê đột xuất' });
+    fireEvent.click(spotBtn);
+
+    // Bảng chọn mặt hàng xuất hiện
+    expect(await screen.findByText(/Danh Sách Mặt Hàng Kiểm Kê/i)).toBeInTheDocument();
+    expect(screen.getByText('Thêm Mặt Hàng Kiểm Kê')).toBeInTheDocument();
   });
 });

@@ -69,7 +69,7 @@ const ProductVariantList: React.FC = () => {
   useEffect(() => {
     productApi
       .getAllList()
-      .then((res) => setProductOptions(res.map((p: any) => ({ label: p.name, value: p.id }))))
+      .then((res) => setProductOptions(res.map((p: any) => ({ label: p.code ? `${p.name} - ${p.code}` : p.name, value: p.id }))))
       .catch(() => showToast('warning', 'Không tải được bộ lọc Sản phẩm'));
   }, []);
 

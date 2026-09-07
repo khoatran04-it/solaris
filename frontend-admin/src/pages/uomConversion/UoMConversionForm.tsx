@@ -389,7 +389,7 @@ const UoMConversionForm: React.FC = () => {
                   />
                   <p className="text-[11px] text-slate-400 mt-1 font-medium italic">
                     {!isStandardMode && selectedProduct?.baseUoMId
-                      ? `* 🔒 Cố định theo ĐVT cơ sở (${selectedProduct.baseUoMName}) của sản phẩm`
+                      ? `* Cố định theo ĐVT cơ sở (${selectedProduct.baseUoMName}) của sản phẩm`
                       : '* Đơn vị đích (thường là đơn vị cơ sở)'}
                   </p>
                 </div>

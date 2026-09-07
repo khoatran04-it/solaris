@@ -267,7 +267,6 @@ export const QuickUoMConversionModal: React.FC<QuickUoMConversionModalProps> = (
                 onSelect={() => {}}
               />
               <p className="text-[11px] text-amber-800 font-semibold mt-1.5 flex items-center gap-1.5 bg-amber-50/80 px-3 py-1.5 rounded-xl border border-amber-200">
-                <span>🔒</span>
                 <span>
                   Cố định theo đơn vị cơ sở (<b>{baseUoMName || 'Gốc'}</b>). Quy cách đóng gói đặc thù của sản phẩm chỉ được quy đổi về đơn vị cơ sở này.
                 </span>

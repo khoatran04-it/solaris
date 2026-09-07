@@ -18,6 +18,7 @@ import { inventoryAdjustmentApi } from '../../api/inventoryAdjustmentApi';
 import { warehouseApi } from '../../api/warehouseApi';
 import { productVariantApi } from '../../api/productVariantApi';
 import { productBatchApi } from '../../api/productBatchApi';
+import { inventoryIssueApi } from '../../api/inventoryIssueApi';
 import { uomApi } from '../../api/uomApi';
 import { uomConversionApi } from '../../api/uomConversionApi';
 import { useAuthStore } from '../../stores/useAuthStore';
@@ -30,6 +31,7 @@ import {
   InventoryAdjustmentTypeLabels,
 } from '../../types/inventoryAdjustment';
 import { ProductBatch } from '../../types/productBatch';
+import { SuggestedBatch } from '../../types/inventoryIssue';
 
 interface DetailRow {
   variantId: number | '';
@@ -102,6 +104,7 @@ const InventoryAdjustmentForm: React.FC = () => {
   const [batches, setBatches] = useState<ProductBatch[]>([]);
   const [uoms, setUoms] = useState<{ value: number; label: string }[]>([]);
   const [variantUoMsMap, setVariantUoMsMap] = useState<Record<number, { value: number; label: string }[]>>({});
+  const [variantBatchesMap, setVariantBatchesMap] = useState<Record<string, SuggestedBatch[]>>({});
 
   const fetchValidUoMs = useCallback(async (vId: number) => {
     if (!vId || variantUoMsMap[vId]) return;
@@ -120,6 +123,23 @@ const InventoryAdjustmentForm: React.FC = () => {
       console.error('Lỗi tải ĐVT hợp lệ:', e);
     }
   }, [variantUoMsMap]);
+
+  // Fetch batches cho 1 variant tại kho được chọn
+  const fetchBatchesForVariant = useCallback(
+    async (whId: number, varId: number, neededQty = 999999) => {
+      if (!whId || !varId) return [];
+      const key = `${whId}_${varId}`;
+      try {
+        const res = await inventoryIssueApi.getSuggestedBatches(whId, varId, neededQty);
+        setVariantBatchesMap((prev) => ({ ...prev, [key]: res || [] }));
+        return res || [];
+      } catch {
+        setVariantBatchesMap((prev) => ({ ...prev, [key]: [] }));
+        return [];
+      }
+    },
+    []
+  );
 
   // Form States
   const [warehouseId, setWarehouseId] = useState<number | ''>('');
@@ -184,6 +204,23 @@ const InventoryAdjustmentForm: React.FC = () => {
     loadInitData();
   }, [loadInitData]);
 
+  // Khi Kho hàng thay đổi: tự động fetch lại lô hàng cho các mặt hàng đã chọn
+  useEffect(() => {
+    if (warehouseId) {
+      const whId = Number(warehouseId);
+      details.forEach(async (row) => {
+        if (row.variantId) {
+          const suggestions = await fetchBatchesForVariant(whId, Number(row.variantId));
+          if (suggestions && suggestions.length > 0 && !row.batchId) {
+            setDetails((prev) =>
+              prev.map((r) => (r === row ? { ...r, batchId: suggestions[0].batchId } : r))
+            );
+          }
+        }
+      });
+    }
+  }, [warehouseId, fetchBatchesForVariant]);
+
   const handleAddRow = () => {
     setDetails([
       ...details,
@@ -209,23 +246,31 @@ const InventoryAdjustmentForm: React.FC = () => {
     setDetails(updated);
   };
 
-  const handleDetailChange = (index: number, field: keyof DetailRow, value: any) => {
+  const handleDetailChange = async (index: number, field: keyof DetailRow, value: any) => {
     const updated = [...details];
     updated[index] = { ...updated[index], [field]: value };
 
-    // Tự động gán ĐVT và Đơn giá khi chọn Biến thể
+    // Tự động gán ĐVT và Đơn giá khi chọn Biến thể: Ưu tiên BaseUoMId của sản phẩm
     if (field === 'variantId' && value) {
       fetchValidUoMs(Number(value));
       const v = variants.find((item) => item.value === Number(value));
       if (v) {
+        const defaultUoM =
+          v.baseUoMId ||
+          (v.prices && v.prices.length > 0
+            ? (v.prices.find((p: any) => p.isDefault) || v.prices[0])?.uoMId
+            : uoms[0]?.value || '');
+
+        if (defaultUoM) {
+          updated[index].uoMId = defaultUoM;
+        }
+
         if (v.prices && v.prices.length > 0) {
-          const defPrice = v.prices.find((p) => p.isDefault) || v.prices[0];
-          if (defPrice) {
-            updated[index].uoMId = defPrice.uoMId || '';
-            updated[index].unitPrice = defPrice.price || 0;
-          }
-        } else if (v.baseUoMId) {
-          updated[index].uoMId = v.baseUoMId;
+          const priceObj =
+            v.prices.find((p: any) => p.uoMId === defaultUoM) ||
+            v.prices.find((p: any) => p.isDefault) ||
+            v.prices[0];
+          updated[index].unitPrice = priceObj?.price || 0;
         }
       }
       // Reset Lô khi đổi SP
@@ -233,6 +278,59 @@ const InventoryAdjustmentForm: React.FC = () => {
     }
 
     setDetails(updated);
+
+    // Tự động load Lô FEFO của đúng SP đó tại kho
+    if (field === 'variantId' && value && warehouseId) {
+      const suggestions = await fetchBatchesForVariant(Number(warehouseId), Number(value));
+      if (suggestions && suggestions.length > 0) {
+        setDetails((prev) => {
+          const next = [...prev];
+          if (next[index]) {
+            next[index] = { ...next[index], batchId: suggestions[0].batchId };
+          }
+          return next;
+        });
+      }
+    }
+
+    // Kiểm tra tồn kho khả dụng ngay khi nhập số lượng hoặc chọn lô hoặc chọn loại điều chỉnh
+    const currentRow = details[index];
+    const targetBatchId = field === 'batchId' ? Number(value) : Number(currentRow?.batchId);
+    const targetQty = field === 'quantity' ? Number(value) : Number(currentRow?.quantity);
+    const targetVarId = field === 'variantId' ? Number(value) : Number(currentRow?.variantId);
+    const targetAdjType = field === 'adjustmentType' ? Number(value) : Number(currentRow?.adjustmentType);
+
+    if (targetBatchId && warehouseId && targetVarId) {
+      const batchesList = variantBatchesMap[`${warehouseId}_${targetVarId}`] || [];
+      const batchObj = batchesList.find((b) => b.batchId === targetBatchId);
+      const maxAvailable = batchObj ? batchObj.quantityAvailable : 0;
+
+      if (
+        targetAdjType === InventoryAdjustmentType.DecreaseAvailable ||
+        targetAdjType === InventoryAdjustmentType.MoveToDamaged
+      ) {
+        if (maxAvailable <= 0) {
+          setErrors((prev) => ({ ...prev, [`quantity_${index}`]: 'Lô này đã hết tồn kho khả dụng' }));
+        } else if (targetQty > maxAvailable) {
+          setErrors((prev) => ({
+            ...prev,
+            [`quantity_${index}`]: `Tối đa ${maxAvailable} (tồn khả dụng)`,
+          }));
+        } else {
+          setErrors((prev) => {
+            const e = { ...prev };
+            delete e[`quantity_${index}`];
+            return e;
+          });
+        }
+      } else {
+        setErrors((prev) => {
+          const e = { ...prev };
+          delete e[`quantity_${index}`];
+          return e;
+        });
+      }
+    }
 
     // Xóa lỗi trường tương ứng
     if (errors[`${field}_${index}`]) {
@@ -264,6 +362,24 @@ const InventoryAdjustmentForm: React.FC = () => {
         if (!d.uoMId) errs[`uoMId_${idx}`] = 'Chọn ĐVT';
         if (Number(d.quantity) <= 0) errs[`quantity_${idx}`] = 'SL > 0';
         if (Number(d.unitPrice) < 0) errs[`unitPrice_${idx}`] = 'Giá >= 0';
+
+        // Kiểm tra tồn kho khả dụng
+        if (warehouseId && d.variantId && d.batchId) {
+          const batchesList = variantBatchesMap[`${warehouseId}_${d.variantId}`] || [];
+          const batchObj = batchesList.find((b) => b.batchId === Number(d.batchId));
+          const maxAvailable = batchObj ? batchObj.quantityAvailable : 0;
+
+          if (
+            d.adjustmentType === InventoryAdjustmentType.DecreaseAvailable ||
+            d.adjustmentType === InventoryAdjustmentType.MoveToDamaged
+          ) {
+            if (maxAvailable <= 0) {
+              errs[`quantity_${idx}`] = 'Lô này đã hết tồn kho khả dụng';
+            } else if (Number(d.quantity) > maxAvailable) {
+              errs[`quantity_${idx}`] = `Tối đa ${maxAvailable} (tồn khả dụng)`;
+            }
+          }
+        }
       });
     }
 
@@ -371,7 +487,7 @@ const InventoryAdjustmentForm: React.FC = () => {
 
                 {/* Gợi ý giải trình mẫu */}
                 <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                  <span className="text-[11px] font-bold text-slate-500 mr-1">💡 Gợi ý nhanh:</span>
+                  <span className="text-[11px] font-bold text-slate-500 mr-1">Gợi ý nhanh:</span>
                   {QUICK_NOTE_SUGGESTIONS.map((suggestion, sIdx) => (
                     <button
                       key={sIdx}
@@ -431,6 +547,23 @@ const InventoryAdjustmentForm: React.FC = () => {
                 <tbody className="divide-y divide-slate-100">
                   {details.map((row, idx) => {
                     const rowBatches = batches.filter((b) => b.variantId === Number(row.variantId));
+                    const suggestedBatches =
+                      warehouseId && row.variantId
+                        ? variantBatchesMap[`${warehouseId}_${row.variantId}`] || []
+                        : [];
+                    const currentBatchObj = suggestedBatches.find(
+                      (b) => b.batchId === Number(row.batchId)
+                    );
+                    const batchOptions =
+                      suggestedBatches.length > 0
+                        ? suggestedBatches.map((b) => ({
+                            value: b.batchId,
+                            label: `${formatBatchLabel(b.batchCode, b.expiryDate)} (Tồn: ${b.quantityAvailable})`,
+                          }))
+                        : rowBatches.map((b) => ({
+                            value: b.id,
+                            label: formatBatchLabel(b.batchCode, b.expiryDate),
+                          }));
 
                     return (
                       <tr
@@ -465,10 +598,7 @@ const InventoryAdjustmentForm: React.FC = () => {
                             placeholder="-- Chọn Lô Hàng --"
                             showSearch
                             searchPlaceholder="Tìm mã lô..."
-                            options={rowBatches.map((b) => ({
-                              value: b.id,
-                              label: formatBatchLabel(b.batchCode, b.expiryDate),
-                            }))}
+                            options={batchOptions}
                             value={row.batchId}
                             error={errors[`batchId_${idx}`]}
                             disabled={!row.variantId}
@@ -476,6 +606,11 @@ const InventoryAdjustmentForm: React.FC = () => {
                               handleDetailChange(idx, 'batchId', val ? Number(val) : '')
                             }
                           />
+                          {currentBatchObj !== undefined && (
+                            <div className="mt-1 flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md w-fit border border-emerald-200/60">
+                              <span>Tồn khả dụng: {currentBatchObj.quantityAvailable}</span>
+                            </div>
+                          )}
                         </td>
 
                         {/* LOẠI ĐIỀU CHỈNH */}
@@ -503,6 +638,7 @@ const InventoryAdjustmentForm: React.FC = () => {
                             placeholder="ĐVT"
                             options={row.variantId && variantUoMsMap[Number(row.variantId)] ? variantUoMsMap[Number(row.variantId)] : uoms}
                             value={row.uoMId}
+                            disabled={Boolean(row.variantId)}
                             error={errors[`uoMId_${idx}`]}
                             onSelect={(val) =>
                               handleDetailChange(idx, 'uoMId', val ? Number(val) : '')

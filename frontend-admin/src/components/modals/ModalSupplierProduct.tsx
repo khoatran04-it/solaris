@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Package, Save } from 'lucide-react';
-import { FormInput, FormSelect } from '../commons/FormUI';
+import { FormInput, FormSelect, FormCurrencyInput } from '../commons/FormUI';
 import { SupplierProductPayload, SupplierProduct } from '../../types/supplierProduct';
 import { ProductVariant } from '../../types/productVariant';
 import { Product } from '../../types/product';
@@ -294,94 +294,94 @@ export const ModalSupplierProduct: React.FC<ModalSupplierProductProps> = ({
         {/* MODAL BODY */}
         <div className="p-6">
           <form id="supplierProductForm" onSubmit={handleSubmit} className="flex flex-col gap-6">
-            {/* ROW 1: NHÀ CUNG CẤP & BIẾN THỂ */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              {!fixedSupplierId ? (
+            {/* DÒNG 1: NHÀ CUNG CẤP */}
+            {!fixedSupplierId && (
+              <div className="w-full">
                 <FormSelect
                   label="Nhà Cung Cấp"
                   required
                   showSearch
                   placeholder="Chọn nhà cung cấp..."
+                  searchPlaceholder="Tìm kiếm nhà cung cấp theo tên, mã..."
                   value={formData.supplierId || ''}
                   options={supplierOptions}
                   error={errors.supplierId}
                   disabled={Boolean(initialData) || isSubmitting}
                   onSelect={(val) => handleFieldChange('supplierId', Number(val))}
                 />
-              ) : null}
+              </div>
+            )}
 
-              <div className={fixedSupplierId ? 'md:col-span-2' : ''}>
-                <FormSelect
-                  label="Sản Phẩm (Biến Thể SKU)"
-                  required
-                  showSearch
-                  placeholder="Chọn sản phẩm biến thể..."
-                  value={formData.variantId || ''}
-                  options={variantOptions}
-                  error={errors.variantId}
-                  disabled={Boolean(initialData) || isSubmitting}
-                  onSelect={handleVariantSelect}
-                />
+            {/* DÒNG 2: SẢN PHẨM BIẾN THỂ & THẺ PREVIEW RỘNG RÃI */}
+            <div className="w-full flex flex-col gap-3">
+              <FormSelect
+                label="Sản Phẩm (Biến Thể SKU)"
+                required
+                showSearch
+                placeholder="Chọn sản phẩm biến thể..."
+                searchPlaceholder="Tìm kiếm theo mã SKU, tên biến thể..."
+                value={formData.variantId || ''}
+                options={variantOptions}
+                error={errors.variantId}
+                disabled={Boolean(initialData) || isSubmitting}
+                onSelect={handleVariantSelect}
+              />
 
-                {/* THẺ PREVIEW BIẾN THỂ ĐƯỢC CHỌN */}
-                {Boolean(formData.variantId) && (selectedVariant || initialData) && (
-                  <div className="flex items-center gap-3.5 p-3.5 rounded-2xl bg-slate-50/80 border border-slate-200 mt-3 shadow-2xs animate-in fade-in">
-                    <div className="w-13 h-13 rounded-xl bg-white border border-slate-200 shadow-2xs flex items-center justify-center shrink-0 overflow-hidden">
-                      {variantImage ? (
-                        <img
-                          src={variantImage}
-                          alt="Ảnh sản phẩm"
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <Package size={22} className="text-slate-300" />
+              {/* THẺ PREVIEW BIẾN THỂ ĐƯỢC CHỌN - RỘNG RÃI, ĐẦY ĐỦ THÔNG TIN */}
+              {Boolean(formData.variantId) && (selectedVariant || initialData) && (
+                <div className="flex items-center gap-4 p-4 rounded-2xl bg-slate-50/80 border border-slate-200 shadow-2xs animate-in fade-in">
+                  <div className="w-14 h-14 rounded-xl bg-white border border-slate-200 shadow-2xs flex items-center justify-center shrink-0 overflow-hidden">
+                    {variantImage ? (
+                      <img
+                        src={variantImage}
+                        alt="Ảnh sản phẩm"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <Package size={24} className="text-slate-300" />
+                    )}
+                  </div>
+                  <div className="flex flex-col min-w-0 flex-1">
+                    <span className="font-extrabold text-slate-800 text-sm truncate">
+                      {selectedVariant?.name ||
+                        initialData?.variantName ||
+                        `Biến thể #${formData.variantId}`}
+                    </span>
+                    <div className="flex flex-wrap items-center gap-2.5 mt-1.5">
+                      <span className="text-[11px] font-bold bg-amber-100 text-amber-900 px-2.5 py-0.5 rounded-md border border-amber-300 uppercase tracking-wider">
+                        {selectedVariant?.code ||
+                          initialData?.variantCode ||
+                          `#${formData.variantId}`}
+                      </span>
+                      {detectedUoMName && (
+                        <span className="text-[11px] font-bold text-slate-600 bg-slate-200/60 px-2.5 py-0.5 rounded-md">
+                          ĐVT: <b className="text-slate-900">{detectedUoMName}</b>
+                        </span>
+                      )}
+                      {selectedVariant?.prices && selectedVariant.prices.length > 0 && (
+                        <span className="text-xs text-slate-500 font-medium ml-auto">
+                          Giá niêm yết:{' '}
+                          <strong className="text-emerald-700 font-bold">
+                            {selectedVariant.prices[0].price.toLocaleString('vi-VN')} ₫
+                          </strong>
+                        </span>
                       )}
                     </div>
-                    <div className="flex flex-col min-w-0 flex-1">
-                      <span className="font-extrabold text-slate-800 text-[13px] truncate">
-                        {selectedVariant?.name ||
-                          initialData?.variantName ||
-                          `Biến thể #${formData.variantId}`}
-                      </span>
-                      <div className="flex flex-wrap items-center gap-2 mt-1">
-                        <span className="text-[10px] font-bold bg-amber-100 text-amber-900 px-2 py-0.5 rounded-md border border-amber-300 uppercase tracking-wider">
-                          {selectedVariant?.code ||
-                            initialData?.variantCode ||
-                            `#${formData.variantId}`}
-                        </span>
-                        {detectedUoMName && (
-                          <span className="text-[11px] font-bold text-slate-600 bg-slate-200/60 px-2 py-0.5 rounded-md">
-                            ĐVT: <b className="text-slate-900">{detectedUoMName}</b>
-                          </span>
-                        )}
-                        {selectedVariant?.prices && selectedVariant.prices.length > 0 && (
-                          <span className="text-[11px] text-slate-500 font-medium ml-auto">
-                            Giá niêm yết:{' '}
-                            <strong className="text-slate-800 font-bold">
-                              {selectedVariant.prices[0].price.toLocaleString('vi-VN')} ₫
-                            </strong>
-                          </span>
-                        )}
-                      </div>
-                    </div>
                   </div>
-                )}
-              </div>
+                </div>
+              )}
             </div>
 
-            {/* ROW 2: ĐƠN GIÁ NHẬP & ĐVT MUA HÀNG (TỰ ĐỘNG ĐIỀN & KHÓA CỨNG) */}
+            {/* DÒNG 3: ĐƠN GIÁ NHẬP & ĐVT MUA HÀNG (TỰ ĐỘNG ĐIỀN & KHÓA CỨNG) */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <FormInput
+              <FormCurrencyInput
                 label="Đơn Giá Nhập (VNĐ)"
                 required
-                type="number"
-                placeholder="VD: 50000"
+                placeholder="VD: 50.000"
                 value={formData.lastImportPrice}
                 error={errors.lastImportPrice}
                 disabled={isSubmitting}
-                onChange={(e) =>
-                  handleFieldChange('lastImportPrice', parseFloat(e.target.value) || 0)
-                }
+                onChange={(val) => handleFieldChange('lastImportPrice', val)}
               />
 
               <div>
@@ -413,7 +413,6 @@ export const ModalSupplierProduct: React.FC<ModalSupplierProductProps> = ({
                 />
                 {Boolean(formData.variantId && (detectedUoMName || formData.purchaseUoMId > 0)) && (
                   <p className="text-[11px] text-amber-800 font-semibold mt-1.5 flex items-center gap-1.5 bg-amber-50/80 px-3 py-1.5 rounded-xl border border-amber-200">
-                    <span>{validUoMOptions.length > 1 ? '💡' : '🔒'}</span>
                     <span>
                       {validUoMOptions.length > 1
                         ? `Đã nạp ${validUoMOptions.length} ĐVT hợp lệ. Hệ thống tự động quy đổi về ĐVT cơ sở (${detectedUoMName || 'Chuẩn'}) khi nhập kho.`

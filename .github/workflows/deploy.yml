@@ -120,3 +120,12 @@ jobs:
           acrName: ${{ secrets.ACR_NAME }}
           acrUsername: ${{ secrets.ACR_USERNAME }}
           acrPassword: ${{ secrets.ACR_PASSWORD }}
+
+      - name: Configure Container Apps to run continuously (min-replicas = 1)
+        uses: azure/CLI@v2
+        with:
+          inlineScript: |
+            az containerapp update --name ${{ secrets.AZURE_BACKEND_APP_NAME || 'solaris-backend' }} --resource-group ${{ secrets.AZURE_RESOURCE_GROUP || 'rg-solaris-prod' }} --min-replicas 1
+            az containerapp update --name ${{ secrets.AZURE_ADMIN_APP_NAME || 'solaris-admin' }} --resource-group ${{ secrets.AZURE_RESOURCE_GROUP || 'rg-solaris-prod' }} --min-replicas 1
+            az containerapp update --name ${{ secrets.AZURE_SHOP_APP_NAME || 'solaris-shop' }} --resource-group ${{ secrets.AZURE_RESOURCE_GROUP || 'rg-solaris-prod' }} --min-replicas 1
+
