@@ -258,14 +258,14 @@ const InventoryTransferDetail: React.FC = () => {
                   onClick={handleReceive}
                   disabled={actionLoading}
                   className="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-bold text-sm transition-all disabled:opacity-50"
-                  title="Nhận nhanh 100% nguyên vẹn không cần nhập kiểm đếm"
+                  title="Nhận nhanh 100% nguyên vẹn vào kho đích"
                 >
                   {actionLoading ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
                   ) : (
                     <CheckCircle size={16} />
                   )}
-                  Nhận Nhanh 100%
+                  Nhận Hàng Vào Kho Đích
                 </button>
               </>
             )}
