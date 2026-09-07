@@ -31,9 +31,6 @@ namespace backend.Models
         /// <summary>Trạng thái hoạt động (true: Đang hiển thị/sử dụng, false: Tạm ẩn).</summary>
         public bool IsActive { get; set; } = true;
 
-        /// <summary>Cờ đánh dấu danh mục yêu cầu bảo quản chuỗi lạnh (thịt, cá tươi, rau củ quả nhạy cảm).</summary>
-        public bool RequiresColdChain { get; set; } = false;
-
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         public DateTime? UpdatedAt { get; set; }

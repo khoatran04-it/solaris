@@ -9,7 +9,6 @@ import {
   XCircle,
   AlertCircle,
   Loader2,
-  ClipboardCheck,
 } from 'lucide-react';
 
 import {
@@ -44,20 +43,6 @@ const InventoryTransferDetail: React.FC = () => {
   const [actionLoading, setActionLoading] = useState(false);
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
-
-  // Inspection Modal (Kiểm đếm nhận hàng chuỗi lạnh)
-  const [inspectModalOpen, setInspectModalOpen] = useState(false);
-  const [inspectItems, setInspectItems] = useState<{
-    detailId: number;
-    variantName: string;
-    variantCode: string;
-    uoMName: string;
-    dispatchedQty: number;
-    actualReceivedQuantity: number;
-    damagedQuantity: number;
-  }[]>([]);
-  const [inspectNote, setInspectNote] = useState('');
-  const [inspectLoading, setInspectLoading] = useState(false);
 
   // Toast
   const [toast, setToast] = useState<{
@@ -118,48 +103,6 @@ const InventoryTransferDetail: React.FC = () => {
       showToast('error', err.response?.data?.message || 'Không thể nhận hàng!');
     } finally {
       setActionLoading(false);
-    }
-  };
-
-  const handleOpenInspect = () => {
-    if (!transfer) return;
-    const items = transfer.details.map((d) => ({
-      detailId: d.id,
-      variantName: d.variantName,
-      variantCode: d.variantCode,
-      uoMName: d.uoMName,
-      dispatchedQty: d.quantity,
-      actualReceivedQuantity: d.quantity,
-      damagedQuantity: 0,
-    }));
-    setInspectItems(items);
-    setInspectNote('');
-    setInspectModalOpen(true);
-  };
-
-  const handleConfirmInspect = async () => {
-    if (!transfer) return;
-    try {
-      setInspectLoading(true);
-      const payload = {
-        items: inspectItems.map((item) => ({
-          detailId: item.detailId,
-          actualReceivedQuantity: Number(item.actualReceivedQuantity) || 0,
-          damagedQuantity: Number(item.damagedQuantity) || 0,
-        })),
-        note: inspectNote.trim() || undefined,
-      };
-      await inventoryTransferApi.inspectAndReceive(transfer.id, payload);
-      showToast(
-        'success',
-        'KIỂM ĐẾM & NHẬN HÀNG THÀNH CÔNG! Đã tự động phân tách số lượng nguyên vẹn và hàng dập hỏng vào sổ cái tồn kho.'
-      );
-      setInspectModalOpen(false);
-      fetchTransfer();
-    } catch (err: any) {
-      showToast('error', err.response?.data?.message || 'Lỗi kiểm đếm nhận hàng!');
-    } finally {
-      setInspectLoading(false);
     }
   };
 
@@ -243,31 +186,20 @@ const InventoryTransferDetail: React.FC = () => {
               </button>
             )}
 
-            {/* Nếu Đang đi đường: Nút Kiểm đếm & Tiếp nhận vào kho đích */}
+            {/* Nếu Đang đi đường: Nút Tiếp nhận vào kho đích */}
             {transfer.status === InventoryTransferStatus.InTransit && (
-              <>
-                <button
-                  onClick={handleOpenInspect}
-                  disabled={actionLoading}
-                  className="flex items-center gap-2 px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold text-sm transition-all shadow-sm shadow-emerald-200 disabled:opacity-50"
-                >
-                  <ClipboardCheck size={16} />
-                  Kiểm Đếm & Tiếp Nhận
-                </button>
-                <button
-                  onClick={handleReceive}
-                  disabled={actionLoading}
-                  className="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-bold text-sm transition-all disabled:opacity-50"
-                  title="Nhận nhanh 100% nguyên vẹn vào kho đích"
-                >
-                  {actionLoading ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <CheckCircle size={16} />
-                  )}
-                  Nhận Hàng Vào Kho Đích
-                </button>
-              </>
+              <button
+                onClick={handleReceive}
+                disabled={actionLoading}
+                className="flex items-center gap-2 px-5 py-2 bg-emerald-600 text-white rounded-lg font-bold text-sm hover:bg-emerald-700 transition-all shadow-sm shadow-emerald-200 disabled:opacity-50"
+              >
+                {actionLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <CheckCircle size={16} />
+                )}
+                Nhận Hàng Vào Kho Đích
+              </button>
             )}
           </div>
         </div>
@@ -381,32 +313,6 @@ const InventoryTransferDetail: React.FC = () => {
                     <span className="font-medium text-slate-800">---</span>
                   )}
                 </div>
-
-                {transfer.driverName && (
-                  <div className="col-span-full p-4 bg-blue-50/70 rounded-xl border border-blue-200 flex flex-col md:flex-row md:items-center justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      <span className="p-2 bg-blue-100 text-blue-700 rounded-xl">
-                        <Truck className="w-5 h-5" />
-                      </span>
-                      <div>
-                        <span className="font-extrabold text-blue-900 text-xs block">
-                          Phương Tiện Vận Chuyển Liên Kho (Xe Tải Lạnh B2B)
-                        </span>
-                        <div className="text-xs text-slate-700 flex flex-wrap gap-4 mt-0.5">
-                          <span>
-                            Tài xế: <strong>{transfer.driverName}</strong>
-                          </span>
-                          <span>
-                            SĐT: <strong>{transfer.driverPhone || '---'}</strong>
-                          </span>
-                          <span>
-                            Biển số xe: <strong className="font-mono">{transfer.licensePlate}</strong>
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
               </div>
 
               {transfer.note && (
@@ -438,16 +344,6 @@ const InventoryTransferDetail: React.FC = () => {
                     <th className="px-4 py-4 min-w-37.5">Mã Lô (BatchCode)</th>
                     <th className="px-4 py-4 text-center min-w-20">ĐVT</th>
                     <th className="px-4 py-4 text-center bg-indigo-50/50 min-w-30">SL Chuyển</th>
-                    {transfer.status === InventoryTransferStatus.Completed && (
-                      <>
-                        <th className="px-4 py-4 text-center bg-emerald-50/50 min-w-30 text-emerald-700">
-                          SL Nguyên Vẹn
-                        </th>
-                        <th className="px-4 py-4 text-center bg-rose-50/50 min-w-30 text-rose-700">
-                          SL Hỏng/Dập
-                        </th>
-                      </>
-                    )}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-sm">
@@ -467,26 +363,6 @@ const InventoryTransferDetail: React.FC = () => {
                           {item.quantity}
                         </span>
                       </td>
-
-                      {/* Cột Kiểm đếm thực tế */}
-                      {transfer.status === InventoryTransferStatus.Completed && (
-                        <>
-                          <td className="px-4 py-3 text-center border-l border-emerald-100 bg-emerald-50/20">
-                            <span className="font-black text-[15px] text-emerald-700">
-                              {item.actualReceivedQuantity ?? item.quantity}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 text-center border-l border-rose-100 bg-rose-50/20">
-                            <span
-                              className={`font-black text-[15px] ${
-                                (item.damagedQuantity || 0) > 0 ? 'text-rose-600' : 'text-slate-400'
-                              }`}
-                            >
-                              {item.damagedQuantity || 0}
-                            </span>
-                          </td>
-                        </>
-                      )}
                     </tr>
                   ))}
                 </tbody>
@@ -546,132 +422,6 @@ const InventoryTransferDetail: React.FC = () => {
               >
                 {actionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
                 Xác Nhận Hủy
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ================= INSPECTION & RECEIVE MODAL (KIỂM ĐẾM TIẾP NHẬN) ================= */}
-      {inspectModalOpen && (
-        <div className="fixed inset-0 z-60 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 animate-in fade-in">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl overflow-hidden animate-in zoom-in-95 duration-200 border border-slate-100 flex flex-col max-h-[90vh]">
-            <div className="px-6 py-4 border-b border-emerald-100 bg-emerald-50/70 flex items-center justify-between">
-              <h3 className="text-base font-black text-emerald-800 flex items-center gap-2">
-                <ClipboardCheck size={20} />
-                Kiểm Đếm Tiếp Nhận Chuyển Kho — {transfer.transferCode}
-              </h3>
-              <button
-                onClick={() => setInspectModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 font-bold"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="p-6 overflow-y-auto space-y-4">
-              <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-900 leading-relaxed">
-                <strong>Quy trình phân luồng két sắt tồn kho 4 ngăn:</strong> Số lượng thực nhận
-                nguyên vẹn sẽ được tự động cộng vào ngăn <strong>Khả dụng (Available)</strong> tại kho{' '}
-                <strong>{transfer.toWarehouseName}</strong>. Hàng dập nát, hư hỏng trong quá trình vận
-                chuyển sẽ được ghi nhận vào ngăn <strong>Hư hỏng (Damaged)</strong> kèm bút toán sổ cái.
-              </div>
-
-              <div className="border border-slate-200 rounded-xl overflow-hidden shadow-xs">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-50 text-slate-600 font-bold uppercase border-b border-slate-200">
-                    <tr>
-                      <th className="py-3 px-3">Sản Phẩm / SKU</th>
-                      <th className="py-3 px-3 text-center">ĐVT</th>
-                      <th className="py-3 px-3 text-center bg-indigo-50/50">SL Xuất</th>
-                      <th className="py-3 px-3 text-center bg-emerald-50/50 w-36 text-emerald-800">
-                        SL Nguyên Vẹn *
-                      </th>
-                      <th className="py-3 px-3 text-center bg-rose-50/50 w-36 text-rose-800">
-                        SL Hỏng / Dập
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {inspectItems.map((item, index) => (
-                      <tr key={item.detailId} className="hover:bg-slate-50/60">
-                        <td className="py-2.5 px-3">
-                          <span className="font-bold text-slate-800 block">{item.variantName}</span>
-                          <span className="text-[10px] text-slate-400 font-mono">{item.variantCode}</span>
-                        </td>
-                        <td className="py-2.5 px-3 text-center text-slate-600 font-medium">
-                          {item.uoMName}
-                        </td>
-                        <td className="py-2.5 px-3 text-center font-bold text-indigo-700 bg-indigo-50/20">
-                          {item.dispatchedQty}
-                        </td>
-                        <td className="py-2 px-2 bg-emerald-50/20">
-                          <input
-                            type="number"
-                            min={0}
-                            max={item.dispatchedQty}
-                            value={item.actualReceivedQuantity}
-                            onChange={(e) => {
-                              const val = Math.max(0, Number(e.target.value) || 0);
-                              const newItems = [...inspectItems];
-                              newItems[index].actualReceivedQuantity = val;
-                              newItems[index].damagedQuantity = Math.max(0, item.dispatchedQty - val);
-                              setInspectItems(newItems);
-                            }}
-                            className="w-full px-2.5 py-1.5 border border-emerald-300 rounded-lg text-xs font-bold text-emerald-800 text-center outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
-                          />
-                        </td>
-                        <td className="py-2 px-2 bg-rose-50/20">
-                          <input
-                            type="number"
-                            min={0}
-                            max={item.dispatchedQty}
-                            value={item.damagedQuantity}
-                            onChange={(e) => {
-                              const val = Math.max(0, Number(e.target.value) || 0);
-                              const newItems = [...inspectItems];
-                              newItems[index].damagedQuantity = val;
-                              newItems[index].actualReceivedQuantity = Math.max(0, item.dispatchedQty - val);
-                              setInspectItems(newItems);
-                            }}
-                            className="w-full px-2.5 py-1.5 border border-rose-300 rounded-lg text-xs font-bold text-rose-700 text-center outline-none focus:ring-2 focus:ring-rose-500 bg-white"
-                          />
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
-                  Ghi chú biên bản kiểm đếm:
-                </label>
-                <input
-                  type="text"
-                  placeholder="Ví dụ: Nhiệt độ thùng xe 4°C, 2 vỉ dập màng trong lúc bốc dỡ..."
-                  value={inspectNote}
-                  onChange={(e) => setInspectNote(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs outline-none focus:ring-2 focus:ring-emerald-500"
-                />
-              </div>
-            </div>
-
-            <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-3 shrink-0">
-              <button
-                onClick={() => setInspectModalOpen(false)}
-                disabled={inspectLoading}
-                className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition-all"
-              >
-                Đóng
-              </button>
-              <button
-                onClick={handleConfirmInspect}
-                disabled={inspectLoading}
-                className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md transition-all disabled:opacity-50 flex items-center gap-2"
-              >
-                {inspectLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle size={16} />}
-                Xác Nhận Nhập Kho & Chốt Sổ
               </button>
             </div>
           </div>

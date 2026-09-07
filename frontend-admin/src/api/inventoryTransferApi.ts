@@ -27,10 +27,6 @@ export const inventoryTransferApi = {
     return axiosClient.post(`/InventoryTransfers/${id}/receive`);
   },
 
-  inspectAndReceive: (id: number, data: any): Promise<void> => {
-    return axiosClient.post(`/InventoryTransfers/${id}/inspect-and-receive`, data);
-  },
-
   cancel: (id: number, reason: string): Promise<void> => {
     return axiosClient.post(`/InventoryTransfers/${id}/cancel`, { reason });
   },

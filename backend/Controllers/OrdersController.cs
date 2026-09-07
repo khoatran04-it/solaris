@@ -1,6 +1,5 @@
 using backend.DTOs;
 using backend.DTOs.OrderDTOs;
-using backend.DTOs.VehicleDTOs;
 using backend.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -25,13 +24,11 @@ namespace backend.Controllers
     {
         private readonly IOrderService _service;
         private readonly IOrderRoutingService _routingService;
-        private readonly IDeliveryTripService _deliveryTripService;
 
-        public OrdersController(IOrderService service, IOrderRoutingService routingService, IDeliveryTripService deliveryTripService)
+        public OrdersController(IOrderService service, IOrderRoutingService routingService)
         {
             _service = service;
             _routingService = routingService;
-            _deliveryTripService = deliveryTripService;
         }
 
         /// <summary>
@@ -258,33 +255,6 @@ namespace backend.Controllers
             {
                 await _service.DeleteAsync(id);
                 return Ok(new { message = "Xóa đơn hàng thành công" });
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(new { message = ex.Message });
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { message = ex.Message });
-            }
-        }
-
-        /// <summary>
-        /// Điều phối giao hàng nội bộ: Gán xe và tài xế cho đơn hàng và chuyển trạng thái sang Shipping.
-        /// Thường dùng khi đơn hàng có hàng chuỗi lạnh hoặc admin chọn giao bằng đội xe nội bộ.
-        /// </summary>
-        /// <param name="id">ID đơn hàng cần điều phối.</param>
-        /// <param name="dto">Thông tin xe được chọn để giao hàng.</param>
-        [HttpPost("{id:int}/dispatch-internal")]
-        [ProducesResponseType(typeof(DeliveryTripReadDto), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> DispatchInternal(int id, [FromBody] DispatchInternalOrderDto dto)
-        {
-            try
-            {
-                var result = await _deliveryTripService.DispatchSingleOrderInternalAsync(id, dto);
-                return Ok(result);
             }
             catch (KeyNotFoundException ex)
             {

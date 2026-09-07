@@ -16,7 +16,6 @@ import {
   Search,
   Users,
   BarChart3,
-  Truck,
 } from 'lucide-react';
 
 // Quản lý quyền truy cập menu
@@ -163,17 +162,7 @@ const MENU_CONFIG: MenuItem[] = [
       },
     ],
   },
-  // 6. VẬN TẢI & ĐỘI XE NỘI BỘ
-  {
-    id: 'transportation',
-    label: 'Vận tải & Đội xe',
-    icon: Truck,
-    children: [
-      { label: 'Bảng điều khiển Vận tải', path: '/transportation/dashboard' },
-      { label: 'Danh sách Đội xe', path: '/transportation/vehicles' },
-    ],
-  },
-  // 7. ĐỐI TÁC & KHÁCH HÀNG
+  // 6. ĐỐI TÁC & KHÁCH HÀNG
   {
     id: 'partners',
     label: 'Đối tác & Khách hàng',

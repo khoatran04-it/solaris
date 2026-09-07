@@ -41,18 +41,6 @@ namespace backend.DTOs.OrderDTOs
         public OrderStatus Status { get; set; }
         public PaymentStatus PaymentStatus { get; set; }
         public PaymentMethod PaymentMethod { get; set; }
-
-        // --- Vận chuyển & Điều phối Đội xe nội bộ ---
-        public string? ShippingProvider { get; set; }
-        public string? TrackingCode { get; set; }
-        public bool RequiresColdChain { get; set; }
-        public bool CanShipViaGhn { get; set; } = true;
-        public int? DeliveryTripId { get; set; }
-        public string? DriverName { get; set; }
-        public string? DriverPhone { get; set; }
-        public string? LicensePlate { get; set; }
-        public DateTime? DispatchedAt { get; set; }
-        public DateTime? DeliveredAt { get; set; }
         #endregion
 
         #region Tài chính & Đối soát (Financials)

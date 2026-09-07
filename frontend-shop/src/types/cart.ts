@@ -15,7 +15,6 @@ export interface ShopCartItem {
   availableStock: number;
   isOutOfStock: boolean;
   origin?: string;
-  requiresColdChain?: boolean;
 }
 
 export interface ShopCart {
@@ -25,7 +24,6 @@ export interface ShopCart {
   subTotal: number;
   totalDiscount: number;
   estimatedTotal: number;
-  hasColdChain?: boolean;
 }
 
 export interface ShopCartAddPayload {

@@ -54,10 +54,6 @@ namespace backend.Services
                         .ThenInclude(v => v!.Prices.Where(pr => pr.IsActive && !pr.IsDeleted))
                 .Include(c => c.Items)
                     .ThenInclude(i => i.Variant)
-                        .ThenInclude(v => v!.Product)
-                            .ThenInclude(p => p!.Category)
-                .Include(c => c.Items)
-                    .ThenInclude(i => i.Variant)
                         .ThenInclude(v => v!.PromotionVariants)
                             .ThenInclude(pv => pv.PromotionCampaign)
                 .Include(c => c.Items)
@@ -128,29 +124,7 @@ namespace backend.Services
                 var routing = await _routingService.DetermineOptimalWarehouseAsync(customerAddressId, cartItemsDto);
                 int selectedWarehouseId = routing.OptimalWarehouseId;
 
-                // 2. Rào chắn Khoảng cách Chuỗi lạnh (Cold-Chain Geo-fencing Guard)
-                bool hasColdChain = cart.Items.Any(i => i.Variant?.Product?.Category?.RequiresColdChain == true);
-                var targetWarehouse = await _context.Warehouses
-                    .Include(w => w.Address)
-                    .FirstOrDefaultAsync(w => w.Id == selectedWarehouseId);
-
-                double distanceKm = routing.DistanceKm;
-                if (distanceKm <= 0 && destLat != 0 && destLng != 0 && targetWarehouse?.Address != null)
-                {
-                    var distanceService = new DistanceService();
-                    distanceKm = distanceService.CalculateDistanceKm(destLat, destLng, targetWarehouse.Address.Latitude, targetWarehouse.Address.Longitude);
-                }
-
-                double maxRadius = (targetWarehouse != null && targetWarehouse.MaxColdChainRadiusKm > 0)
-                    ? targetWarehouse.MaxColdChainRadiusKm
-                    : 15.0;
-
-                if (hasColdChain && distanceKm > maxRadius)
-                {
-                    throw new InvalidOperationException($"Đơn hàng có sản phẩm chuỗi lạnh (thịt, cá, rau củ tươi sống) nhưng khoảng cách giao hàng ({distanceKm:F1} km) vượt quá bán kính bảo quản tối đa ({maxRadius} km) của kho {targetWarehouse?.Name ?? "xuất hàng"}. Quý khách vui lòng chọn địa chỉ gần hơn hoặc loại bỏ các sản phẩm tươi sống để giao hàng thường.");
-                }
-
-                // 3. Chuẩn bị chi tiết đơn hàng & Tính giá
+                // 2. Chuẩn bị chi tiết đơn hàng & Tính giá
                 var orderDetails = new List<OrderDetail>();
                 decimal subTotal = 0;
                 decimal totalDiscount = 0;
@@ -316,7 +290,7 @@ namespace backend.Services
                     TotalAmount = Math.Max(0, subTotal - totalDiscount + request.ShippingFee),
                     GhnDistrictId = request.GhnDistrictId,
                     GhnWardCode = request.GhnWardCode,
-                    ShippingProvider = hasColdChain ? "Internal" : "GHN",
+                    ShippingProvider = "GHN",
                     Note = request.Note?.Trim(),
                     CreatedAt = now,
                     UpdatedAt = now,

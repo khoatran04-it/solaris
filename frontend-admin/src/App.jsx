@@ -114,12 +114,6 @@ import InventoryAdjustmentForm from './pages/inventoryAdjustment/InventoryAdjust
 import InventoryAdjustmentDetail from './pages/inventoryAdjustment/InventoryAdjustmentDetail';
 import InventoryReconciliation from './pages/inventory/InventoryReconciliation';
 
-// =============================================================================
-// 📦 MODULE 8: TRANSPORTATION & DISPATCH (COLD-CHAIN FLEET)
-// =============================================================================
-import TransportationDashboardPage from './pages/transportation/TransportationDashboardPage';
-import VehicleManagementPage from './pages/transportation/VehicleManagementPage';
-
 function App() {
   return (
     <BrowserRouter>
@@ -284,10 +278,6 @@ function App() {
               <Route path="inventory-adjustments/create" element={<InventoryAdjustmentForm />} />
               <Route path="inventory-adjustments/:id" element={<InventoryAdjustmentDetail />} />
             </Route>
-
-            {/* 📦 MODULE 8: TRANSPORTATION & DISPATCH */}
-            <Route path="transportation/dashboard" element={<TransportationDashboardPage />} />
-            <Route path="transportation/vehicles" element={<VehicleManagementPage />} />
 
             {/* 404 Not Found */}
             <Route path="*" element={<h2>404 - Không tìm thấy trang</h2>} />

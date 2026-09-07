@@ -27,24 +27,15 @@ namespace backend.Models
         public virtual UoM? UoM { get; set; }
         #endregion
 
-        #region Khối lượng & Kiểm đếm tiếp nhận
+        #region Khối lượng
         /// <summary>
-        /// Số lượng hàng hóa được xuất đi từ Kho Nguồn.
-        /// Nghiệp vụ: Khi Dispatched (Xuất đi), trừ đi [Quantity] tại Kho Nguồn.
+        /// Số lượng hàng hóa được điều chuyển.
+        /// Nghiệp vụ 2 bước: 
+        /// - Khi Dispatched (Xuất đi): Trừ đi [Quantity] tại Kho Nguồn.
+        /// - Khi Received (Nhập nhận): Cộng thêm [Quantity] tại Kho Đích.
+        /// (Lưu ý: Nếu hệ thống sau này cần quản lý hao hụt đi đường, bạn có thể bổ sung thêm trường ReceivedQuantity thực tế tại đây).
         /// </summary>
         public decimal Quantity { get; set; }
-
-        /// <summary>
-        /// Số lượng hàng hóa thực tế còn nguyên vẹn đạt chuẩn khi kiểm đếm tại Kho Đích.
-        /// Nghiệp vụ: Khi Received (Nhập nhận), cộng thêm [ActualReceivedQuantity] vào ngăn Available tại Kho Đích.
-        /// </summary>
-        public decimal ActualReceivedQuantity { get; set; }
-
-        /// <summary>
-        /// Số lượng hàng hóa bị hư hỏng, dập nát, rách màng bọc trong quá trình vận chuyển.
-        /// Nghiệp vụ: Khi Received (Nhập nhận), cộng thêm [DamagedQuantity] vào ngăn Damaged tại Kho Đích để xử lý hủy/thanh lý.
-        /// </summary>
-        public decimal DamagedQuantity { get; set; } = 0;
         #endregion
 
         #region Đối soát Chứng từ (Transfer Note)

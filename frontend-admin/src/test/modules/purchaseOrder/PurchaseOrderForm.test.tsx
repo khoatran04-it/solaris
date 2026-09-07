@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+﻿import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
@@ -42,14 +42,6 @@ vi.mock('../../../api/uomApi', () => ({
     getAllList: vi.fn(),
   },
 }));
-
-vi.mock('../../../api/uomConversionApi', () => ({
-  uomConversionApi: {
-    getValidUoMs: vi.fn(),
-  },
-}));
-
-import { uomConversionApi } from '../../../api/uomConversionApi';
 
 const mockNavigate = vi.fn();
 vi.mock('react-router-dom', async () => {
@@ -99,24 +91,6 @@ describe('Module 09 - PurchaseOrderForm Component', () => {
     (productVariantApi.getAllList as any).mockResolvedValue(mockVariants);
     (uomApi.getAllList as any).mockResolvedValue(mockUoms);
     (supplierProductApi.getBySupplierId as any).mockResolvedValue(mockSupplierProducts);
-    (uomConversionApi.getValidUoMs as any).mockResolvedValue([
-      {
-        uoMId: 100,
-        uoMName: 'Hộp',
-        uoMCode: 'BOX',
-        conversionFactorToBase: 1,
-        isBaseUoM: true,
-        description: 'Đơn vị cơ sở',
-      },
-      {
-        uoMId: 102,
-        uoMName: 'Thùng',
-        uoMCode: 'CTN',
-        conversionFactorToBase: 12,
-        isBaseUoM: false,
-        description: '1 Thùng = 12 Hộp',
-      },
-    ]);
   });
 
   // #region TC01: RENDER FORM TẠO MỚI
@@ -258,61 +232,6 @@ describe('Module 09 - PurchaseOrderForm Component', () => {
       expect(
         screen.getByText(/Chỉ được phép chỉnh sửa đơn hàng đang ở trạng thái Nháp!/i)
       ).toBeInTheDocument();
-    });
-  });
-  // #endregion
-
-  // #region TC06: TỰ ĐỘNG QUY ĐỔI ĐƠN GIÁ THEO ĐƠN VỊ TÍNH QUY ĐỔI (THÙNG / HỘP)
-  it('TC06 - Tự động quy đổi đơn giá và tính lại thành tiền khi đổi ĐVT sang ĐVT quy đổi lớn hơn', async () => {
-    render(
-      <MemoryRouter initialEntries={['/purchase-orders/create']}>
-        <Routes>
-          <Route path="/purchase-orders/create" element={<PurchaseOrderForm />} />
-        </Routes>
-      </MemoryRouter>
-    );
-
-    // 1. Chọn NCC = 1
-    const nccSelect = screen.getByText('-- Chọn Nhà cung cấp --');
-    fireEvent.click(nccSelect);
-    const nccOption = await screen.findByText(/Nông Trại Đà Lạt GAP/i);
-    fireEvent.click(nccOption);
-
-    // Chờ tải xong bảng giá NCC
-    await screen.findByText(/1 mặt hàng đã liên kết/i);
-
-    // 2. Bấm thêm mặt hàng
-    const addRowBtn = await screen.findByRole('button', { name: /THÊM MẶT HÀNG/i });
-    fireEvent.click(addRowBtn);
-
-    // 3. Chọn sản phẩm = 10 (Dâu Tây Hộp 500g)
-    const productSelect = await screen.findByText('Chọn sản phẩm...');
-    fireEvent.click(productSelect);
-    const prodOption = await screen.findByText(/Dâu Tây Hộp 500g/i);
-    fireEvent.click(prodOption);
-
-    // Đơn giá mặc định của Hộp từ NCC: 45000, MOQ = 10
-    await waitFor(() => {
-      expect(screen.getByDisplayValue('45000')).toBeInTheDocument();
-    });
-
-    // 4. Đổi ĐVT sang "Thùng" (hệ số = 12)
-    const uomSelect = screen.getByText('Hộp (Đơn vị cơ sở)');
-    fireEvent.click(uomSelect);
-    const thungOption = await screen.findByText(/Thùng \(1 Thùng = 12 Hộp\)/i);
-    fireEvent.click(thungOption);
-
-    // Đơn giá phải tự động nhân 12: 45.000 * 12 = 540.000
-    await waitFor(() => {
-      expect(screen.getByDisplayValue('540000')).toBeInTheDocument();
-    });
-
-    const qtyInput = screen.getAllByRole('spinbutton')[0] as HTMLInputElement;
-    expect(qtyInput.value).toBe('10');
-
-    const expectedTotalStr = (5400000).toLocaleString('vi-VN');
-    await waitFor(() => {
-      expect(screen.getAllByText(new RegExp(expectedTotalStr)).length).toBeGreaterThanOrEqual(1);
     });
   });
   // #endregion

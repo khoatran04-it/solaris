@@ -83,11 +83,6 @@ namespace backend.Data
         public DbSet<InventoryTransfer> InventoryTransfers { get; set; }
         public DbSet<InventoryTransferDetail> InventoryTransferDetails { get; set; }
 
-        // --- Danh mục Quản lý Vận tải & Đội xe nội bộ (Cold-Chain Fleet) ---
-        public DbSet<DeliveryVehicle> DeliveryVehicles { get; set; }
-        public DbSet<DeliveryTrip> DeliveryTrips { get; set; }
-        public DbSet<DeliveryTripOrder> DeliveryTripOrders { get; set; }
-
         // --- Danh mục Audit, Adjustment & Reconciliation (Phase 6) ---
         public DbSet<InventoryAudit> InventoryAudits { get; set; }
         public DbSet<InventoryAuditDetail> InventoryAuditDetails { get; set; }

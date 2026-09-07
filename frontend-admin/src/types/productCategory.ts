@@ -17,7 +17,6 @@ export interface ProductCategory {
   categoryGroupId?: number;
   categoryGroupName?: string;
   isActive: boolean;
-  requiresColdChain?: boolean;
 }
 
 export interface ProductCategoryPayload {
@@ -27,5 +26,4 @@ export interface ProductCategoryPayload {
   imagePath?: string;
   categoryGroupId?: number;
   isActive: boolean;
-  requiresColdChain?: boolean;
 }

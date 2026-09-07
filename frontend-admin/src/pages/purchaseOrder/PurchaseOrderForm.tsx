@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ShoppingCart, Plus, Trash2, Save, Filter, AlertCircle } from 'lucide-react';
 
@@ -27,7 +27,6 @@ import { warehouseApi } from '../../api/warehouseApi';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { PurchaseOrderCreatePayload, PurchaseOrderStatus } from '../../types/purchaseOrder';
 import { SupplierProduct } from '../../types/supplierProduct';
-import { ValidUoMOption } from '../../types/uomConversion';
 
 interface DetailRow {
   variantId: number | '';
@@ -74,34 +73,24 @@ const PurchaseOrderForm: React.FC = () => {
   const [rawVariants, setRawVariants] = useState<any[]>([]);
   const [uoms, setUoms] = useState<{ value: number; label: string }[]>([]);
   const [variantUoMsMap, setVariantUoMsMap] = useState<Record<number, { value: number; label: string }[]>>({});
-  const validUoMsCacheRef = useRef<Record<number, ValidUoMOption[]>>({});
 
-  const fetchValidUoMs = useCallback(async (vId: number): Promise<ValidUoMOption[]> => {
-    if (!vId) return [];
-    if (validUoMsCacheRef.current[vId]?.length) {
-      return validUoMsCacheRef.current[vId];
-    }
+  const fetchValidUoMs = useCallback(async (vId: number) => {
+    if (!vId || variantUoMsMap[vId]) return;
     try {
       const opts = await uomConversionApi.getValidUoMs(vId);
       if (opts && opts.length > 0) {
-        validUoMsCacheRef.current[vId] = opts;
         setVariantUoMsMap((prev) => ({
           ...prev,
-          [vId]: opts.map((u) => {
-            const cleanDesc = (u.description || '').replace(/^⚡\s*/, '').trim();
-            return {
-              value: u.uoMId,
-              label: cleanDesc ? `${u.uoMName} (${cleanDesc})` : u.uoMName,
-            };
-          }),
+          [vId]: opts.map((u) => ({
+            value: u.uoMId,
+            label: `${u.uoMName} (${u.description})`,
+          })),
         }));
-        return opts;
       }
     } catch (e) {
       console.error('Lỗi tải ĐVT hợp lệ:', e);
     }
-    return [];
-  }, []);
+  }, [variantUoMsMap]);
 
   useEffect(() => {
     details.forEach((d) => {
@@ -123,12 +112,7 @@ const PurchaseOrderForm: React.FC = () => {
 
       setSuppliers(supplierRes.map((s: any) => ({ value: s.id, label: `${s.code} - ${s.name}` })));
       setRawVariants(variantRes);
-      setAllVariants(
-        variantRes.map((v: any) => ({
-          value: v.id,
-          label: v.code ? `${v.name} - ${v.code}` : v.name,
-        }))
-      );
+      setAllVariants(variantRes.map((v: any) => ({ value: v.id, label: v.name })));
       setUoms(uomRes.map((u: any) => ({ value: u.id, label: u.name })));
       // Nghiệp vụ SCM: Chỉ Kho Tổng mới được phép tiếp nhận đơn đặt mua hàng từ NCC
       const masterHubs = whRes.filter(
@@ -226,7 +210,26 @@ const PurchaseOrderForm: React.FC = () => {
     setDetails(newDetails);
   };
 
-  const handleDetailChange = async (index: number, field: keyof DetailRow, value: any) => {
+  const handleDetailChange = (index: number, field: keyof DetailRow, value: any) => {
+    const newDetails = [...details];
+    newDetails[index] = { ...newDetails[index], [field]: value };
+
+    if (field === 'variantId' && value) {
+      fetchValidUoMs(Number(value));
+      if (supplierProducts.length > 0) {
+        const sp = supplierProducts.find((p) => p.variantId === Number(value));
+        if (sp) {
+          newDetails[index].unitPrice = sp.lastImportPrice || 0;
+          newDetails[index].uoMId = sp.purchaseUoMId || newDetails[index].uoMId;
+          if (sp.minimumOrderQuantity && newDetails[index].orderQuantity < sp.minimumOrderQuantity) {
+            newDetails[index].orderQuantity = sp.minimumOrderQuantity;
+          }
+        }
+      }
+    }
+
+    setDetails(newDetails);
+
     if (errors[`${field}_${index}`]) {
       setErrors((prev) => {
         const e = { ...prev };
@@ -234,117 +237,6 @@ const PurchaseOrderForm: React.FC = () => {
         return e;
       });
     }
-
-    if (field === 'variantId') {
-      const vId = Number(value);
-      if (!vId) {
-        setDetails((prev) => {
-          const next = [...prev];
-          next[index] = { ...next[index], variantId: '', uoMId: '', unitPrice: 0 };
-          return next;
-        });
-        return;
-      }
-
-      // Tải danh sách ĐVT hợp lệ và đối chiếu bảng giá NCC
-      const opts = validUoMsCacheRef.current[vId] || (await fetchValidUoMs(vId)) || [];
-      const sp = supplierProducts.find((p) => p.variantId === vId);
-
-      setDetails((prev) => {
-        const next = [...prev];
-        const currentRow = next[index] || { variantId: '', uoMId: '', orderQuantity: 1, unitPrice: 0 };
-        const updatedRow: DetailRow = { ...currentRow, variantId: vId };
-
-        if (sp) {
-          updatedRow.uoMId = sp.purchaseUoMId || (opts[0]?.uoMId ?? updatedRow.uoMId);
-          updatedRow.unitPrice = sp.lastImportPrice || 0;
-
-          // Nếu ĐVT được chọn khác với purchaseUoMId trong bảng giá NCC -> Tự động quy đổi giá
-          if (updatedRow.uoMId && sp.purchaseUoMId && updatedRow.uoMId !== sp.purchaseUoMId) {
-            const spOpt = opts.find((o) => o.uoMId === sp.purchaseUoMId);
-            const curOpt = opts.find((o) => o.uoMId === Number(updatedRow.uoMId));
-            const spFactor = spOpt?.conversionFactorToBase || 1;
-            const curFactor = curOpt?.conversionFactorToBase || 1;
-            const basePrice = (sp.lastImportPrice || 0) / (spFactor || 1);
-            updatedRow.unitPrice = Math.round(basePrice * curFactor);
-          }
-
-          if (sp.minimumOrderQuantity && Number(updatedRow.orderQuantity || 0) < sp.minimumOrderQuantity) {
-            updatedRow.orderQuantity = sp.minimumOrderQuantity;
-          }
-        } else {
-          const baseOpt = opts.find((o) => o.isBaseUoM) || opts[0];
-          if (baseOpt && !updatedRow.uoMId) {
-            updatedRow.uoMId = baseOpt.uoMId;
-          }
-        }
-
-        next[index] = updatedRow;
-        return next;
-      });
-      return;
-    }
-
-    if (field === 'uoMId') {
-      const newUoMId = Number(value);
-      const currentRow = details[index];
-      const vId = Number(currentRow?.variantId);
-
-      if (vId && newUoMId) {
-        const opts = validUoMsCacheRef.current[vId] || (await fetchValidUoMs(vId)) || [];
-        const sp = supplierProducts.find((p) => p.variantId === vId);
-
-        setDetails((prev) => {
-          const next = [...prev];
-          const row = next[index];
-          if (!row) return prev;
-
-          const oldUoMId = Number(row.uoMId);
-          const oldOpt = opts.find((o) => o.uoMId === oldUoMId);
-          const newOpt = opts.find((o) => o.uoMId === newUoMId);
-          const oldFactor = oldOpt?.conversionFactorToBase || 1;
-          const newFactor = newOpt?.conversionFactorToBase || 1;
-
-          let newUnitPrice = Number(row.unitPrice || 0);
-
-          if (sp && sp.lastImportPrice > 0) {
-            const spOpt = opts.find((o) => o.uoMId === sp.purchaseUoMId);
-            const spFactor = spOpt?.conversionFactorToBase || 1;
-            const basePrice = (sp.lastImportPrice || 0) / (spFactor || 1);
-            const expectedOldPrice = Math.round(basePrice * oldFactor);
-
-            if (newUnitPrice === 0 || newUnitPrice === expectedOldPrice || oldFactor === 0) {
-              newUnitPrice = Math.round(basePrice * newFactor);
-            } else {
-              newUnitPrice = Math.round(newUnitPrice * (newFactor / oldFactor));
-            }
-          } else if (newUnitPrice > 0 && oldFactor > 0) {
-            newUnitPrice = Math.round(newUnitPrice * (newFactor / oldFactor));
-          }
-
-          next[index] = {
-            ...row,
-            uoMId: newUoMId,
-            unitPrice: newUnitPrice,
-          };
-          return next;
-        });
-        return;
-      }
-
-      setDetails((prev) => {
-        const next = [...prev];
-        next[index] = { ...next[index], uoMId: newUoMId };
-        return next;
-      });
-      return;
-    }
-
-    setDetails((prev) => {
-      const next = [...prev];
-      next[index] = { ...next[index], [field]: value };
-      return next;
-    });
   };
 
   const calculateTotal = () => {
@@ -354,16 +246,13 @@ const PurchaseOrderForm: React.FC = () => {
     );
   };
 
-  // Tính toán danh sách Options Sản Phẩm hiển thị cho Dropdown
+  // Tính toán danh sách Options Sản Phẩm hiển thị cho Dropdown (Chỉ hiển thị Tên sản phẩm)
   const getVariantOptions = () => {
     if (onlySupplierProducts && supplierId && supplierProducts.length > 0) {
-      return supplierProducts.map((sp) => {
-        const sku = sp.variantCode || sp.variantSKU;
-        return {
-          value: sp.variantId,
-          label: sku ? `${sp.variantName} - ${sku}` : (sp.variantName || `Sản phẩm #${sp.variantId}`),
-        };
-      });
+      return supplierProducts.map((sp) => ({
+        value: sp.variantId,
+        label: sp.variantName || `Sản phẩm #${sp.variantId}`,
+      }));
     }
     return allVariants;
   };
@@ -372,20 +261,6 @@ const PurchaseOrderForm: React.FC = () => {
   const getSupplierProductInfo = (variantId: number | '') => {
     if (!variantId || !supplierProducts.length) return null;
     return supplierProducts.find((sp) => sp.variantId === Number(variantId));
-  };
-
-  const getMoqInCurrentUoM = (variantId: number | '', uoMId: number | '') => {
-    if (!variantId || !uoMId) return 0;
-    const sp = getSupplierProductInfo(variantId);
-    if (!sp || !sp.minimumOrderQuantity) return 0;
-
-    const opts = validUoMsCacheRef.current[Number(variantId)] || [];
-    const spOpt = opts.find((o) => o.uoMId === sp.purchaseUoMId);
-    const curOpt = opts.find((o) => o.uoMId === Number(uoMId));
-    const spFactor = spOpt?.conversionFactorToBase || 1;
-    const curFactor = curOpt?.conversionFactorToBase || 1;
-
-    return (sp.minimumOrderQuantity * spFactor) / (curFactor || 1);
   };
 
   const formatDateToIso = (d: Date | null) => {
@@ -626,11 +501,10 @@ const PurchaseOrderForm: React.FC = () => {
                   ) : (
                     details.map((row, idx) => {
                       const spInfo = getSupplierProductInfo(row.variantId);
-                      const moqCurrent = getMoqInCurrentUoM(row.variantId, row.uoMId);
                       const isBelowMoq =
-                        moqCurrent > 0 &&
+                        spInfo &&
                         row.orderQuantity > 0 &&
-                        row.orderQuantity < moqCurrent;
+                        row.orderQuantity < spInfo.minimumOrderQuantity;
 
                       return (
                         <tr
@@ -645,7 +519,7 @@ const PurchaseOrderForm: React.FC = () => {
                               options={getVariantOptions()}
                               value={row.variantId}
                               showSearch
-                              searchPlaceholder="Tìm tên hoặc mã SKU sản phẩm..."
+                              searchPlaceholder="Tìm tên sản phẩm..."
                               placeholder="Chọn sản phẩm..."
                               onSelect={(val) => handleDetailChange(idx, 'variantId', val)}
                               error={errors[`variantId_${idx}`]}
@@ -706,13 +580,7 @@ const PurchaseOrderForm: React.FC = () => {
                             />
                             {isBelowMoq ? (
                               <span className="text-[10px] text-rose-600 font-bold block mt-1 px-1 leading-tight">
-                                ⚠️ Dưới MOQ ({moqCurrent}{' '}
-                                {variantUoMsMap[Number(row.variantId)]
-                                  ?.find((u) => u.value === Number(row.uoMId))
-                                  ?.label.split(' ')[0] ||
-                                  spInfo?.purchaseUoMName ||
-                                  ''}
-                                )
+                                ⚠️ Dưới MOQ ({spInfo.minimumOrderQuantity})
                               </span>
                             ) : null}
                           </td>

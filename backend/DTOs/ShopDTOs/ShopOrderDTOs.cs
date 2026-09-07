@@ -153,14 +153,6 @@ namespace backend.DTOs.ShopDTOs
         /// <summary>Tên đơn vị vận chuyển (Ví dụ: Giao Hàng Nhanh, ViettelPost).</summary>
         public string? ShippingProvider { get; set; }
 
-        /// <summary>Cờ đánh dấu đơn hàng có chứa sản phẩm chuỗi lạnh hay không.</summary>
-        public bool RequiresColdChain { get; set; }
-
-        /// <summary>Thông tin tài xế nội bộ phụ trách giao hàng.</summary>
-        public string? DriverName { get; set; }
-        public string? DriverPhone { get; set; }
-        public string? LicensePlate { get; set; }
-
         /// <summary>Ngày giờ dự kiến hàng tới tay khách (Hiển thị dạng Text thân thiện UI).</summary>
         public string? ExpectedDeliveryDate { get; set; }
         #endregion

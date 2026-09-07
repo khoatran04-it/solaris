@@ -279,7 +279,6 @@ namespace backend.Services
                 .Include(c => c.Items)
                     .ThenInclude(i => i.Variant)
                         .ThenInclude(v => v!.Product)
-                            .ThenInclude(p => p!.Category)
                 .Include(c => c.Items)
                     .ThenInclude(i => i.Variant)
                         .ThenInclude(v => v!.Prices.Where(pr => pr.IsActive && !pr.IsDeleted))
@@ -382,7 +381,6 @@ namespace backend.Services
                 itemDto.UnitPrice = unitPrice;
                 itemDto.DiscountAmount = discountAmount;
                 itemDto.TotalPrice = unitPrice * item.Quantity;
-                itemDto.RequiresColdChain = item.Variant.Product?.Category?.RequiresColdChain ?? false;
 
                 itemDtos.Add(itemDto);
 
@@ -396,7 +394,6 @@ namespace backend.Services
             cartDto.SubTotal = subTotal;
             cartDto.TotalDiscount = totalDiscount;
             cartDto.EstimatedTotal = Math.Max(0, subTotal - totalDiscount);
-            cartDto.HasColdChain = itemDtos.Any(i => i.RequiresColdChain);
 
             return cartDto;
         }

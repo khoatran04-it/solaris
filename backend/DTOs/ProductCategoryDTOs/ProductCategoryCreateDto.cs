@@ -29,9 +29,6 @@ namespace backend.DTOs.ProductCategoryDTOs
         #region Trạng thái & Hệ thống
         /// <summary>Trạng thái hoạt động (true: Đang hiển thị/sử dụng, false: Tạm ẩn).</summary>
         public bool IsActive { get; set; } = true;
-
-        /// <summary>Cờ đánh dấu danh mục yêu cầu bảo quản chuỗi lạnh (thịt, cá tươi, rau nhạy cảm).</summary>
-        public bool RequiresColdChain { get; set; } = false;
         #endregion
     }
 }

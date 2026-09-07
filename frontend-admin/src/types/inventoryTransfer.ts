@@ -37,8 +37,6 @@ export interface InventoryTransferDetail {
   uoMId: number;
   uoMName: string;
   quantity: number;
-  actualReceivedQuantity?: number;
-  damagedQuantity?: number;
 }
 
 export interface InventoryTransfer {
@@ -67,13 +65,6 @@ export interface InventoryTransfer {
   receivedByName?: string;
   receivedDate?: string;
 
-  driverName?: string;
-  driverPhone?: string;
-  licensePlate?: string;
-  inspectedById?: number;
-  inspectedByName?: string;
-  inspectedDate?: string;
-
   note?: string;
   cancellationReason?: string;
 
@@ -81,15 +72,6 @@ export interface InventoryTransfer {
   updatedAt: string;
 
   details: InventoryTransferDetail[];
-}
-
-export interface InventoryTransferInspectReceivePayload {
-  items: {
-    detailId: number;
-    actualReceivedQuantity: number;
-    damagedQuantity: number;
-  }[];
-  note?: string;
 }
 
 // =========================================================
