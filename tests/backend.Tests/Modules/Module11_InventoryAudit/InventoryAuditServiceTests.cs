@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+using AutoMapper;
 using backend.DTOs.InventoryAuditDTOs;
 using backend.Models;
 using backend.Models.Enums;
@@ -387,6 +387,31 @@ namespace backend.Tests.Modules.Module11_InventoryAudit
             savedAudit!.TotalSystemQty.Should().Be(100);
             savedAudit.Details.Should().HaveCount(1);
             savedAudit.Details.First().VariantId.Should().Be(1);
+        }
+        #endregion
+
+        #region TC05B: CreateAsync Cycle/Spot Without Specific Items Throws
+        [Fact]
+        public async Task TC05B_CreateAsync_CycleOrSpotAudit_WithoutSpecificItems_ShouldThrowInvalidOperationException()
+        {
+            // Arrange
+            using var context = TestFactories.CreateInMemoryDbContext();
+            await SeedDependenciesAsync(context);
+
+            var service = new InventoryAuditService(context, _mapper);
+
+            var dto = new InventoryAuditCreateDto
+            {
+                WarehouseId = 1,
+                AuditType = InventoryAuditType.Spot,
+                AuditorId = 1,
+                Note = "Kiểm tra đột xuất nhưng không chọn hàng",
+                SpecificItems = null
+            };
+
+            // Act & Assert
+            var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => service.CreateAsync(dto));
+            ex.Message.Should().Contain("bắt buộc phải chọn ít nhất 1 mặt hàng");
         }
         #endregion
 

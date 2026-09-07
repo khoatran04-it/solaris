@@ -476,7 +476,7 @@ const CustomerReturnDetail: React.FC = () => {
             </div>
             <div className="p-6 max-h-[70vh] overflow-y-auto">
               <p className="text-xs text-slate-600 mb-5 leading-relaxed bg-indigo-50/30 p-3 rounded-xl border border-indigo-100">
-                💡 <strong>Hướng dẫn:</strong> Phân loại số lượng hàng đạt tiêu chuẩn (sẽ cộng lại
+                <strong>Hướng dẫn:</strong> Phân loại số lượng hàng đạt tiêu chuẩn (sẽ cộng lại
                 vào <strong>Tồn kho Khả Dụng</strong>) và số lượng hàng hư hỏng (sẽ cộng vào{' '}
                 <strong>Tồn kho Hàng Lỗi/Hỏng</strong>).
               </p>

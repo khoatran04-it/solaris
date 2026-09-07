@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+using AutoMapper;
 using backend.DTOs.InventoryAdjustmentDTOs;
 using backend.Models;
 using backend.Models.Enums;
@@ -735,6 +735,89 @@ namespace backend.Tests.Modules.Module11_InventoryAudit
 
             // Act & Assert
             await Assert.ThrowsAsync<InvalidOperationException>(() => service.DeleteAsync(1));
+        }
+        #endregion
+
+        #region TC15: CreateAsync When Decrease Exceeds Stock
+        [Fact]
+        public async Task TC15_CreateAsync_WhenDecreaseQuantityExceedsAvailableStock_ShouldThrowInvalidOperationException()
+        {
+            // Arrange
+            using var context = TestFactories.CreateInMemoryDbContext();
+            await SeedDependenciesAsync(context);
+
+            var service = new InventoryAdjustmentService(context, _mapper);
+
+            var dto = new InventoryAdjustmentCreateDto
+            {
+                WarehouseId = 1,
+                Reason = InventoryAdjustmentReason.LossTheft,
+                CreatedById = 1,
+                Details = new List<InventoryAdjustmentDetailCreateDto>
+                {
+                    new InventoryAdjustmentDetailCreateDto
+                    {
+                        VariantId = 1,
+                        BatchId = 1,
+                        UoMId = 1,
+                        AdjustmentType = InventoryAdjustmentType.DecreaseAvailable,
+                        Quantity = 100, // Tồn khả dụng chỉ có 50
+                        UnitPrice = 50000
+                    }
+                }
+            };
+
+            // Act & Assert
+            var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => service.CreateAsync(dto));
+            ex.Message.Should().Contain("vượt quá tồn kho khả dụng");
+        }
+        #endregion
+
+        #region TC16: MoveToDamaged Ledger Sign
+        [Fact]
+        public async Task TC16_ApproveAdjustmentAsync_MoveToDamaged_ShouldRecordNegativeQuantityInLedger()
+        {
+            // Arrange
+            using var context = TestFactories.CreateInMemoryDbContext();
+            await SeedDependenciesAsync(context);
+
+            var adj = new InventoryAdjustment
+            {
+                Id = 10,
+                AdjustmentCode = "ADJ-20260907-DAMAGED",
+                WarehouseId = 1,
+                Status = InventoryAdjustmentStatus.Draft,
+                Reason = InventoryAdjustmentReason.Damage,
+                CreatedById = 1,
+                Details = new List<InventoryAdjustmentDetail>
+                {
+                    new InventoryAdjustmentDetail
+                    {
+                        VariantId = 1,
+                        BatchId = 1,
+                        UoMId = 1,
+                        AdjustmentType = InventoryAdjustmentType.MoveToDamaged,
+                        Quantity = 5,
+                        UnitPrice = 50000,
+                        TotalAmount = 250000,
+                        ReasonDetail = "Dập nát bao bì"
+                    }
+                }
+            };
+
+            context.InventoryAdjustments.Add(adj);
+            await context.SaveChangesAsync();
+
+            var service = new InventoryAdjustmentService(context, _mapper);
+
+            // Act
+            var success = await service.ApproveAdjustmentAsync(10, approvedById: 2);
+
+            // Assert
+            success.Should().BeTrue();
+            var txn = await context.InventoryTransactions.FirstOrDefaultAsync(t => t.ReferenceCode == "ADJ-20260907-DAMAGED");
+            txn.Should().NotBeNull();
+            txn!.Quantity.Should().Be(-5); // Giảm tồn khả dụng nên Sổ cái phải mang dấu Âm
         }
         #endregion
     }

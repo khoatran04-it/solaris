@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -14,13 +14,15 @@ import {
   ShoppingCart,
   ShoppingBag,
   Search,
+  Users,
+  BarChart3,
 } from 'lucide-react';
 
 // Quản lý quyền truy cập menu
 import { useAuthStore } from '../../stores/useAuthStore';
 import { PERMISSIONS } from '../../constants/permissions';
 
-// 1. CẤU HÌNH MENU (Đã bỏ basePath, gom nhóm chuẩn ERP)
+// 1. CẤU HÌNH MENU (Sắp xếp theo luồng chuẩn SCM ERP)
 interface MenuItem {
   id: string;
   label: string;
@@ -31,53 +33,64 @@ interface MenuItem {
 }
 
 const MENU_CONFIG: MenuItem[] = [
+  // 1. BÀN LÀM VIỆC & TỔNG QUAN
   {
     id: 'dashboard',
-    label: 'Bảng điều khiển & Báo cáo',
+    label: 'Tổng quan Bàn làm việc',
     icon: LayoutDashboard,
     children: [
       { label: 'Tổng quan kinh doanh', path: '/' },
-      { label: 'Doanh số & Địa lý', path: '/dashboards/sales' },
-      { label: 'Tồn kho & Sức chứa', path: '/dashboards/inventory' },
-      { label: 'Chất lượng & Hạn dùng', path: '/dashboards/quality' },
     ],
   },
+  // 2. SẢN PHẨM & MASTER DATA
   {
-    id: 'sales',
-    label: 'Bán hàng & Khách hàng',
-    icon: ShoppingBag,
+    id: 'catalog',
+    label: 'Sản phẩm & Quy cách',
+    icon: Apple,
     children: [
-      { label: 'Đơn hàng bán', path: '/orders', permission: PERMISSIONS.ORDER.VIEW },
-      { label: 'Đơn hàng trả', path: '/customer-returns', permission: PERMISSIONS.RETURN.VIEW },
-      { label: 'Danh sách Khách hàng', path: '/customers', permission: PERMISSIONS.CUSTOMER.VIEW },
+      { label: 'Danh sách Sản phẩm', path: '/products', permission: PERMISSIONS.PRODUCT.VIEW },
       {
-        label: 'Phân loại Khách hàng',
-        path: '/customer-types',
-        permission: PERMISSIONS.CUSTOMER.CONFIG,
+        label: 'Biến thể Sản phẩm (SKU)',
+        path: '/product-variants',
+        permission: PERMISSIONS.PRODUCT.VIEW,
       },
       {
-        label: 'Phân nhóm Khách hàng',
-        path: '/customer-groups',
-        permission: PERMISSIONS.CUSTOMER.CONFIG,
+        label: 'Danh mục Sản phẩm',
+        path: '/product-categories',
+        permission: PERMISSIONS.CATEGORY.VIEW,
       },
       {
-        label: 'Phân bậc Khách hàng',
-        path: '/customer-tiers',
-        permission: PERMISSIONS.CUSTOMER.CONFIG,
+        label: 'Nhóm danh mục',
+        path: '/product-category-groups',
+        permission: PERMISSIONS.CATEGORY.VIEW,
       },
       {
-        label: 'Danh sách khuyến mãi',
-        path: '/promotions',
-        permission: PERMISSIONS.PROMOTION.VIEW,
+        label: 'Từ điển thuộc tính',
+        path: '/attributes',
+        permission: PERMISSIONS.ATTRIBUTE.MANAGE,
       },
+      {
+        label: 'Thuộc tính loại Sản phẩm',
+        path: '/category-attributes',
+        permission: PERMISSIONS.ATTRIBUTE.MANAGE,
+      },
+      { label: 'Đơn vị tính', path: '/uoms', permission: PERMISSIONS.UOM.VIEW },
+      { label: 'Danh mục Đơn vị tính', path: '/uom-categories', permission: PERMISSIONS.UOM.VIEW },
+      { label: 'Quy đổi Đơn vị tính', path: '/uom-conversions', permission: PERMISSIONS.UOM.VIEW },
     ],
   },
+  // 3. MUA HÀNG & CUNG ỨNG
   {
     id: 'procurement',
-    label: 'Mua hàng & Nhà cung cấp',
+    label: 'Mua hàng & Cung ứng',
     icon: ShoppingCart,
     children: [
-      { label: 'Đơn mua hàng', path: '/purchase-orders', permission: PERMISSIONS.PURCHASE.VIEW },
+      { label: 'Đơn mua hàng (PO)', path: '/purchase-orders', permission: PERMISSIONS.PURCHASE.VIEW },
+      {
+        label: 'Sản phẩm Nhà cung cấp',
+        path: '/supplier-products',
+        permission: PERMISSIONS.SUPPLIER.VIEW,
+      },
       {
         label: 'Danh sách Nhà cung cấp',
         path: '/suppliers',
@@ -88,13 +101,9 @@ const MENU_CONFIG: MenuItem[] = [
         path: '/supplier-types',
         permission: PERMISSIONS.SUPPLIER.CONFIG,
       },
-      {
-        label: 'Sản phẩm Nhà cung cấp',
-        path: '/supplier-products',
-        permission: PERMISSIONS.SUPPLIER.VIEW,
-      },
     ],
   },
+  // 4. QUẢN LÝ KHO BÃI
   {
     id: 'inventory',
     label: 'Quản lý Kho bãi',
@@ -138,49 +147,64 @@ const MENU_CONFIG: MenuItem[] = [
       { label: 'Danh sách Kho bãi', path: '/warehouses', permission: PERMISSIONS.WAREHOUSE.VIEW },
     ],
   },
+  // 5. BÁN HÀNG & PHÂN PHỐI
   {
-    id: 'catalog',
-    label: 'Cấu hình Sản phẩm',
-    icon: Apple,
+    id: 'sales',
+    label: 'Bán hàng & Phân phối',
+    icon: ShoppingBag,
     children: [
-      { label: 'Danh sách Sản phẩm', path: '/products', permission: PERMISSIONS.PRODUCT.VIEW },
+      { label: 'Đơn hàng bán', path: '/orders', permission: PERMISSIONS.ORDER.VIEW },
+      { label: 'Đơn hàng trả', path: '/customer-returns', permission: PERMISSIONS.RETURN.VIEW },
       {
-        label: 'Biến thể Sản phẩm',
-        path: '/product-variants',
-        permission: PERMISSIONS.PRODUCT.VIEW,
+        label: 'Danh sách khuyến mãi',
+        path: '/promotions',
+        permission: PERMISSIONS.PROMOTION.VIEW,
       },
-      {
-        label: 'Danh mục Sản phẩm',
-        path: '/product-categories',
-        permission: PERMISSIONS.CATEGORY.VIEW,
-      },
-      {
-        label: 'Nhóm danh mục',
-        path: '/product-category-groups',
-        permission: PERMISSIONS.CATEGORY.VIEW,
-      },
-      {
-        label: 'Từ điển thuộc tính',
-        path: '/attributes',
-        permission: PERMISSIONS.ATTRIBUTE.MANAGE,
-      },
-      {
-        label: 'Thuộc tính loại Sản phẩm',
-        path: '/category-attributes',
-        permission: PERMISSIONS.ATTRIBUTE.MANAGE,
-      },
-      { label: 'Đơn vị tính', path: '/uoms', permission: PERMISSIONS.UOM.VIEW },
-      { label: 'Danh mục Đơn vị tính', path: '/uom-categories', permission: PERMISSIONS.UOM.VIEW },
-      { label: 'Quy đổi Đơn vị tính', path: '/uom-conversions', permission: PERMISSIONS.UOM.VIEW },
     ],
   },
+  // 6. ĐỐI TÁC & KHÁCH HÀNG
+  {
+    id: 'partners',
+    label: 'Đối tác & Khách hàng',
+    icon: Users,
+    children: [
+      { label: 'Danh sách Khách hàng', path: '/customers', permission: PERMISSIONS.CUSTOMER.VIEW },
+      {
+        label: 'Phân bậc Khách hàng',
+        path: '/customer-tiers',
+        permission: PERMISSIONS.CUSTOMER.CONFIG,
+      },
+      {
+        label: 'Phân loại Khách hàng',
+        path: '/customer-types',
+        permission: PERMISSIONS.CUSTOMER.CONFIG,
+      },
+      {
+        label: 'Phân nhóm Khách hàng',
+        path: '/customer-groups',
+        permission: PERMISSIONS.CUSTOMER.CONFIG,
+      },
+    ],
+  },
+  // 7. BÁO CÁO & THỐNG KÊ
+  {
+    id: 'reports',
+    label: 'Báo cáo & Thống kê',
+    icon: BarChart3,
+    children: [
+      { label: 'Doanh số & Địa lý', path: '/dashboards/sales' },
+      { label: 'Tồn kho & Sức chứa', path: '/dashboards/inventory' },
+      { label: 'Chất lượng & Hạn dùng', path: '/dashboards/quality' },
+    ],
+  },
+  // 8. QUẢN TRỊ HỆ THỐNG
   {
     id: 'system',
     label: 'Hệ thống',
     icon: ShieldCheck,
     children: [
-      { label: 'Quản lý Vai trò', path: '/roles', permission: PERMISSIONS.SYSTEM.ROLE_VIEW },
       { label: 'Quản lý Nhân sự', path: '/users', permission: PERMISSIONS.SYSTEM.USER_VIEW },
+      { label: 'Quản lý Vai trò', path: '/roles', permission: PERMISSIONS.SYSTEM.ROLE_VIEW },
     ],
   },
 ];

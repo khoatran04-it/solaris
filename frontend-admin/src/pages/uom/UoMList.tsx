@@ -232,8 +232,8 @@ const UoMList: React.FC = () => {
                   >
                     <td className="py-4 px-6">
                       <div className="flex flex-col">
-                        <span className="font-bold text-slate-800">{item.name}</span>
-                        <span className="text-[11px] font-bold text-indigo-600 mt-0.5">
+                        <span className="font-bold text-slate-800 text-sm">{item.name}</span>
+                        <span className="font-mono text-[11px] font-bold text-slate-700 bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded w-fit mt-1">
                           {item.code}
                         </span>
                       </div>
@@ -282,7 +282,7 @@ const UoMList: React.FC = () => {
                     </td>
 
                     <td className="py-4 px-6">
-                      <div className="flex justify-center gap-1.5 opacity-40 group-hover:opacity-100 transition-all duration-300">
+                      <div className="flex justify-center gap-1.5 opacity-70 group-hover:opacity-100 transition-all duration-200">
                         <button
                           onClick={() => navigate(`/uoms/edit/${item.id}`)}
                           className="p-1.5 text-slate-400 hover:text-yellow-600 hover:bg-yellow-50 rounded-lg transition-colors"

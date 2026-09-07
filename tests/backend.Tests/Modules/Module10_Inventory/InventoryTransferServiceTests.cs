@@ -195,6 +195,18 @@ namespace backend.Tests.Modules.Module10_Inventory
             using var context = TestFactories.CreateInMemoryDbContext();
             await SeedDependenciesAsync(context);
 
+            // Setup tồn kho khả dụng tại Kho nguồn (100 > 40)
+            context.WarehouseInventories.Add(new WarehouseInventory
+            {
+                WarehouseId = 1,
+                VariantId = 1,
+                BatchId = 1,
+                QuantityAvailable = 100,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            });
+            await context.SaveChangesAsync();
+
             var service = new InventoryTransferService(context, _mapper);
 
             var createDto = new InventoryTransferCreateDto
@@ -521,6 +533,52 @@ namespace backend.Tests.Modules.Module10_Inventory
             var act = () => service.CreateAsync(dto);
             await act.Should().ThrowAsync<InvalidOperationException>()
                 .WithMessage("*Kho Hàng Lỗi không được phép điều chuyển*");
+        }
+        #endregion
+
+        #region TC10: CREATE ASYNC - CHẶN CHUYỂN QUÁ SỐ LƯỢNG TỒN KHO KHẢ DỤNG
+        [Fact]
+        public async Task TC10_CreateAsync_WhenQuantityExceedsAvailableStock_ThrowsInvalidOperationException()
+        {
+            // Arrange
+            using var context = TestFactories.CreateInMemoryDbContext();
+            await SeedDependenciesAsync(context);
+
+            // Kho 1 chỉ có 20kg tồn khả dụng
+            context.WarehouseInventories.Add(new WarehouseInventory
+            {
+                WarehouseId = 1,
+                VariantId = 1,
+                BatchId = 1,
+                QuantityAvailable = 20,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            });
+            await context.SaveChangesAsync();
+
+            var service = new InventoryTransferService(context, _mapper);
+
+            var createDto = new InventoryTransferCreateDto
+            {
+                FromWarehouseId = 1,
+                ToWarehouseId = 2,
+                Note = "Điều chuyển vượt tồn",
+                Details = new List<InventoryTransferDetailCreateDto>
+                {
+                    new()
+                    {
+                        VariantId = 1,
+                        BatchId = 1,
+                        UoMId = 1,
+                        Quantity = 50 // 50 > 20
+                    }
+                }
+            };
+
+            // Act & Assert
+            var act = () => service.CreateAsync(createDto);
+            await act.Should().ThrowAsync<InvalidOperationException>()
+                .WithMessage("*Kho nguồn không đủ số lượng tồn kho khả dụng*");
         }
         #endregion
     }

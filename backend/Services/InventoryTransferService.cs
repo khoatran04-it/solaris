@@ -158,6 +158,38 @@ namespace backend.Services
                 safeCreatedById = firstUser?.Id ?? 1;
             }
 
+            // SAFETY SHIELD: Kiểm tra tồn kho khả dụng tại Kho Nguồn cho tất cả mặt hàng/lô hàng trước khi tạo lệnh
+            var groupedDemands = new Dictionary<(int VariantId, int BatchId), decimal>();
+            foreach (var detail in dto.Details)
+            {
+                if (detail.Quantity <= 0)
+                    throw new InvalidOperationException("Số lượng chuyển kho phải lớn hơn 0.");
+
+                decimal baseQty = await _uomConversionService.ConvertToBaseQuantityAsync(detail.VariantId, detail.UoMId, detail.Quantity);
+                var key = (detail.VariantId, detail.BatchId);
+                if (!groupedDemands.ContainsKey(key))
+                    groupedDemands[key] = 0;
+                groupedDemands[key] += baseQty;
+            }
+
+            foreach (var (key, neededBaseQty) in groupedDemands)
+            {
+                var sourceInv = await _context.WarehouseInventories
+                    .Include(i => i.Variant)
+                    .Include(i => i.Batch)
+                    .FirstOrDefaultAsync(i => i.WarehouseId == dto.FromWarehouseId &&
+                                              i.VariantId == key.VariantId &&
+                                              i.BatchId == key.BatchId);
+
+                if (sourceInv == null || sourceInv.QuantityAvailable < neededBaseQty)
+                {
+                    var variantName = sourceInv?.Variant?.Name ?? $"mã SKU {key.VariantId}";
+                    var batchCode = sourceInv?.Batch?.BatchCode ?? $"Lô #{key.BatchId}";
+                    var available = sourceInv?.QuantityAvailable ?? 0;
+                    throw new InvalidOperationException($"Kho nguồn không đủ số lượng tồn kho khả dụng cho mặt hàng {variantName} (Lô {batchCode}). Tồn khả dụng hiện có: {available}, yêu cầu chuyển: {neededBaseQty} (theo ĐVT cơ sở).");
+                }
+            }
+
             return await _context.ExecuteInTransactionAsync(async () =>
             {
                 var transfer = _mapper.Map<InventoryTransfer>(dto);

@@ -4,7 +4,8 @@ export interface ShiftClosingItem {
   variantId: number;
   variantName: string;
   variantCode: string;
-  uomName: string;
+  uoMName: string;
+  uomName?: string;
   openingStock: number;
   totalReceipt: number;
   totalTransferIn: number;

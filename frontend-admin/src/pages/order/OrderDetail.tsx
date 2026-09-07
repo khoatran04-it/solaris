@@ -372,7 +372,7 @@ const OrderDetail: React.FC = () => {
                 {/* Gợi ý kho nguồn */}
                 {routingAnalysis.suggestedSourceWarehouseName && (
                   <p className="text-xs text-slate-700 pt-0.5 font-medium flex items-center gap-2 flex-wrap">
-                    <span className="text-indigo-700 font-bold">💡 Gợi ý điều phối:</span>
+                    <span className="text-indigo-700 font-bold">Gợi ý điều phối:</span>
                     <span>Kho nguồn có sẵn hàng khả dụng là</span>
                     <strong className="text-indigo-950 font-black bg-indigo-50 px-2.5 py-1 rounded-lg border border-indigo-200">
                       {routingAnalysis.suggestedSourceWarehouseName}

@@ -7,6 +7,7 @@ import {
   PageContainer,
   FormCard,
   FormInput,
+  FormCurrencyInput,
   FormSelect,
   FormTextarea,
   SubmitButton,
@@ -639,7 +640,7 @@ const OrderForm: React.FC = () => {
                       disabled={isRoutingLoading}
                       className="px-4 py-2 bg-yellow-400 hover:bg-yellow-500 text-slate-950 rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-sm shadow-yellow-400/25 border border-yellow-400 disabled:opacity-50 flex items-center gap-1.5 cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
                     >
-                      <span>🧠 {isRoutingLoading ? 'Đang tính...' : 'Chạy Định Tuyến'}</span>
+                      <span>{isRoutingLoading ? 'Đang tính...' : 'Chạy Định Tuyến'}</span>
                     </button>
                   </div>
                   <p className="text-xs text-slate-600 mb-4 leading-relaxed">
@@ -670,7 +671,7 @@ const OrderForm: React.FC = () => {
                       </div>
                       {routingPreview.suggestedSourceWarehouseName && (
                         <div className="pt-2 border-t border-amber-100 text-amber-950 font-medium bg-amber-50/50 p-2 rounded-xl">
-                          💡 Gợi ý điều phối: Có thể lập lệnh chuyển kho từ{' '}
+                          Gợi ý điều phối: Có thể lập lệnh chuyển kho từ{' '}
                           <strong className="text-amber-950 font-extrabold">
                             {routingPreview.suggestedSourceWarehouseName}
                           </strong>{' '}
@@ -722,13 +723,11 @@ const OrderForm: React.FC = () => {
                     </div>
                   </div>
 
-                  <FormInput
-                    label="Phí vận chuyển (VND)"
-                    type="number"
+                  <FormCurrencyInput
+                    label="Phí vận chuyển"
                     value={formData.shippingFee}
-                    onChange={(e) =>
-                      handleFieldChange('shippingFee', parseFloat(e.target.value) || 0)
-                    }
+                    placeholder="0"
+                    onChange={(val) => handleFieldChange('shippingFee', val)}
                   />
 
                   <FormTextarea

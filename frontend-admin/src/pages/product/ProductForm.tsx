@@ -204,9 +204,9 @@ const ProductForm: React.FC = () => {
           <FormSection title="Định Danh & Phân Loại">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               <FormInput
-                label="Mã Sản Phẩm (SKU)"
+                label="Mã Sản Phẩm"
                 required
-                placeholder="VD: IPHONE-15"
+                placeholder="VD: PROD-DAUTAY-001"
                 value={formData.code}
                 error={errors.code}
                 disabled={loading}
@@ -215,7 +215,7 @@ const ProductForm: React.FC = () => {
               <FormInput
                 label="Tên Sản Phẩm"
                 required
-                placeholder="VD: Apple iPhone 15 Pro Max"
+                placeholder="VD: Dâu Tây Giống Nhật Đà Lạt"
                 value={formData.name}
                 error={errors.name}
                 disabled={loading}

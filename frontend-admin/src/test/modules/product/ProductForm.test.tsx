@@ -1,4 +1,4 @@
-﻿import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
@@ -57,8 +57,8 @@ describe('Module 05 - ProductForm Component', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Thêm Mới Sản Phẩm')).toBeInTheDocument();
-      expect(screen.getByPlaceholderText('VD: IPHONE-15')).toBeInTheDocument();
-      expect(screen.getByPlaceholderText('VD: Apple iPhone 15 Pro Max')).toBeInTheDocument();
+      expect(screen.getByPlaceholderText('VD: PROD-DAUTAY-001')).toBeInTheDocument();
+      expect(screen.getByPlaceholderText('VD: Dâu Tây Giống Nhật Đà Lạt')).toBeInTheDocument();
       expect(screen.getByText('Danh mục sản phẩm')).toBeInTheDocument();
       expect(screen.getByText('Đơn vị tính cơ bản')).toBeInTheDocument();
     });
@@ -106,8 +106,8 @@ describe('Module 05 - ProductForm Component', () => {
       expect(screen.getByText('Thêm Mới Sản Phẩm')).toBeInTheDocument();
     });
 
-    const codeInput = screen.getByPlaceholderText('VD: IPHONE-15');
-    const nameInput = screen.getByPlaceholderText('VD: Apple iPhone 15 Pro Max');
+    const codeInput = screen.getByPlaceholderText('VD: PROD-DAUTAY-001');
+    const nameInput = screen.getByPlaceholderText('VD: Dâu Tây Giống Nhật Đà Lạt');
 
     fireEvent.change(codeInput, { target: { value: 'prod-existing' } });
     fireEvent.change(nameInput, { target: { value: 'Sản phẩm mới' } });
@@ -140,8 +140,8 @@ describe('Module 05 - ProductForm Component', () => {
       expect(screen.getByText('VD: Cái, Hộp, Chiếc...')).toBeInTheDocument();
     });
 
-    const codeInput = screen.getByPlaceholderText('VD: IPHONE-15');
-    const nameInput = screen.getByPlaceholderText('VD: Apple iPhone 15 Pro Max');
+    const codeInput = screen.getByPlaceholderText('VD: PROD-DAUTAY-001');
+    const nameInput = screen.getByPlaceholderText('VD: Dâu Tây Giống Nhật Đà Lạt');
 
     fireEvent.change(codeInput, { target: { value: 'prod-dualeo' } });
     fireEvent.change(nameInput, { target: { value: 'Dưa leo baby Đà Lạt' } });

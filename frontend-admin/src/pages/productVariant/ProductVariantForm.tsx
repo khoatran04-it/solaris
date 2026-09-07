@@ -125,7 +125,7 @@ const ProductVariantForm: React.FC = () => {
     ])
       .then(([products, uoms, conversions]) => {
         setRawProducts(products || []);
-        setProductOptions((products || []).map((p: any) => ({ label: p.name, value: p.id })));
+        setProductOptions((products || []).map((p: any) => ({ label: p.code ? `${p.name} - ${p.code}` : p.name, value: p.id })));
         setUomOptions((uoms || []).map((u: any) => ({ label: u.name, value: u.id })));
         setUomConversions(conversions || []);
       })
@@ -536,6 +536,7 @@ const ProductVariantForm: React.FC = () => {
                       required
                       placeholder="Chọn sản phẩm..."
                       showSearch
+                      searchPlaceholder="Tìm kiếm sản phẩm (theo tên, mã)..."
                       options={productOptions}
                       value={formData.productId}
                       error={errors.productId}
@@ -551,7 +552,7 @@ const ProductVariantForm: React.FC = () => {
                   <FormInput
                     label="Mã SKU (Barcode)"
                     required
-                    placeholder="VD: TH-500G"
+                    placeholder="VD: SKU-DAUTAY-500G"
                     value={formData.code}
                     error={errors.code}
                     disabled={loading}
@@ -560,7 +561,7 @@ const ProductVariantForm: React.FC = () => {
                   <FormInput
                     label="Tên hiển thị biến thể"
                     required
-                    placeholder="Thịt Heo Ba Chỉ - Khay 500g"
+                    placeholder="VD: Dâu Tây Đà Lạt - Hộp 500g"
                     value={formData.name}
                     error={errors.name}
                     disabled={loading}
@@ -835,7 +836,7 @@ const ProductVariantForm: React.FC = () => {
                                   <div className="mt-1.5 inline-flex items-center gap-1.5 text-[11px] font-bold text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200/90 shadow-2xs">
                                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
                                     <span>
-                                      💡 1 {fromName} = {conv.conversionFactor.toLocaleString('vi-VN')} {toName}
+                                      1 {fromName} = {conv.conversionFactor.toLocaleString('vi-VN')} {toName}
                                     </span>
                                   </div>
                                 );
@@ -862,7 +863,8 @@ const ProductVariantForm: React.FC = () => {
                             <div className="relative">
                               <input
                                 type="text"
-                                placeholder="VD: 45000"
+                                inputMode="numeric"
+                                placeholder="VD: 45.000"
                                 value={row.price > 0 ? row.price.toLocaleString('vi-VN') : ''}
                                 onChange={(e) => {
                                   const numericVal =

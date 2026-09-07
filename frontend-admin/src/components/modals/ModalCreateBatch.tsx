@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Save, Sparkles, AlertCircle } from 'lucide-react';
+import { X, Save, Package, AlertCircle, RefreshCw } from 'lucide-react';
 import { FormInput } from '../commons/FormUI';
 import DatePicker from '../commons/CustomDatePicker';
 import { productBatchApi } from '../../api/productBatchApi';
@@ -151,7 +151,7 @@ export const ModalCreateBatch: React.FC<ModalCreateBatchProps> = ({
         <div className="flex justify-between items-center px-6 py-4.5 bg-amber-50/80 border-b border-amber-200/60 rounded-t-3xl">
           <div>
             <h3 className="text-base font-extrabold text-amber-900 flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-amber-600" /> Khai Báo Lô Nông Sản Mới (FEFO)
+              <Package className="w-5 h-5 text-amber-600" /> Khai Báo Lô Nông Sản Mới (FEFO)
             </h3>
             {variantName && (
               <p className="text-xs text-amber-800 font-semibold mt-0.5">
@@ -187,9 +187,9 @@ export const ModalCreateBatch: React.FC<ModalCreateBatchProps> = ({
                 <button
                   type="button"
                   onClick={generateBatchCode}
-                  className="text-xs text-amber-700 font-bold hover:underline flex items-center gap-1 cursor-pointer"
+                  className="text-xs text-amber-700 font-bold hover:underline flex items-center gap-1.5 cursor-pointer"
                 >
-                  ⚡ Tự sinh mã
+                  <RefreshCw size={12} /> Tự sinh mã
                 </button>
               </div>
               <FormInput

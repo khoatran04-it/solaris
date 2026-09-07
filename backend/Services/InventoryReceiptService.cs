@@ -158,6 +158,23 @@ namespace backend.Services
                 var variantIds = entity.Details.Select(d => d.VariantId).Distinct().ToList();
                 var variants = await _context.ProductVariants.Where(v => variantIds.Contains(v.Id)).ToDictionaryAsync(v => v.Id);
 
+                // Ràng buộc bảo mật: Lô hàng bắt buộc phải thuộc đúng Biến thể sản phẩm (Chống Cam gán nhầm Lô Táo)
+                var batchIds = entity.Details.Where(d => d.BatchId > 0).Select(d => d.BatchId).Distinct().ToList();
+                if (batchIds.Any())
+                {
+                    var batches = await _context.ProductBatches
+                        .Where(b => batchIds.Contains(b.Id))
+                        .ToDictionaryAsync(b => b.Id);
+
+                    foreach (var d in entity.Details.Where(d => d.BatchId > 0))
+                    {
+                        if (batches.TryGetValue(d.BatchId, out var b) && b.VariantId != d.VariantId)
+                        {
+                            throw new InvalidOperationException($"Lô hàng '{b.BatchCode}' không thuộc về sản phẩm có mã ID {d.VariantId}. Không được phép gán lô hàng khác loại sản phẩm.");
+                        }
+                    }
+                }
+
                 foreach (var d in entity.Details)
                 {
                     if (variants.TryGetValue(d.VariantId, out var variant))
