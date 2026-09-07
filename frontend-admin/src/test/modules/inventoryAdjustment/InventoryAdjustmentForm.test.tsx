@@ -46,6 +46,12 @@ vi.mock('../../../api/inventoryIssueApi', () => ({
   },
 }));
 
+vi.mock('../../../api/uomConversionApi', () => ({
+  uomConversionApi: {
+    getValidUoMs: vi.fn().mockResolvedValue([]),
+  },
+}));
+
 const mockNavigate = vi.fn();
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual('react-router-dom');
