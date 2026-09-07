@@ -21,11 +21,13 @@ namespace backend.Services
     {
         private readonly SolarisDbContext _context;
         private readonly IMapper _mapper;
+        private readonly IUoMConversionService _uomConversionService;
 
-        public InventoryIssueService(SolarisDbContext context, IMapper mapper)
+        public InventoryIssueService(SolarisDbContext context, IMapper mapper, IUoMConversionService? uomConversionService = null)
         {
             _context = context;
             _mapper = mapper;
+            _uomConversionService = uomConversionService ?? new UoMConversionService(context, mapper);
         }
 
         #region Truy vấn & Phân quyền (Query & RBAC)
@@ -217,9 +219,11 @@ namespace backend.Services
                 issue.UpdatedAt = DateTime.UtcNow;
                 if (!string.IsNullOrWhiteSpace(note)) issue.Note = note.Trim();
 
-                // 1. Cập nhật trừ kho (Trừ QuantityReserved) & Ghi sổ cái Issue
+                // 1. Cập nhật trừ kho (Trừ QuantityReserved theo Base UoM) & Ghi sổ cái Issue
                 foreach (var detail in issue.Details)
                 {
+                    decimal baseQty = await _uomConversionService.ConvertToBaseQuantityAsync(detail.VariantId, detail.UoMId, detail.Quantity);
+
                     var inventory = await _context.WarehouseInventories
                         .FirstOrDefaultAsync(x => x.WarehouseId == issue.WarehouseId &&
                                                   x.VariantId == detail.VariantId &&
@@ -227,13 +231,13 @@ namespace backend.Services
 
                     if (inventory != null)
                     {
-                        if (inventory.QuantityReserved >= detail.Quantity)
+                        if (inventory.QuantityReserved >= baseQty)
                         {
-                            inventory.QuantityReserved -= detail.Quantity;
+                            inventory.QuantityReserved -= baseQty;
                         }
                         else
                         {
-                            var diff = detail.Quantity - inventory.QuantityReserved;
+                            var diff = baseQty - inventory.QuantityReserved;
                             inventory.QuantityReserved = 0;
                             inventory.QuantityAvailable = Math.Max(0, inventory.QuantityAvailable - diff);
                         }
@@ -247,9 +251,9 @@ namespace backend.Services
                         VariantId = detail.VariantId,
                         BatchId = detail.BatchId,
                         Type = TransactionType.Issue,
-                        Quantity = detail.Quantity,
+                        Quantity = baseQty,
                         ReferenceCode = issue.IssueCode,
-                        Note = $"Xuất kho theo phiếu {issue.IssueCode}",
+                        Note = $"Xuất kho theo phiếu {issue.IssueCode} ({detail.Quantity} ĐVT -> {baseQty} Base UoM)",
                         CreatedById = safeUserId,
                         CreatedAt = DateTime.UtcNow
                     });
@@ -260,7 +264,15 @@ namespace backend.Services
                         var od = await _context.OrderDetails.FindAsync(detail.OrderDetailId.Value);
                         if (od != null)
                         {
-                            od.IssuedQuantity += detail.Quantity;
+                            if (od.UoMId == detail.UoMId)
+                            {
+                                od.IssuedQuantity += detail.Quantity;
+                            }
+                            else
+                            {
+                                decimal orderUoMQuantity = await _uomConversionService.ConvertFromBaseQuantityAsync(od.VariantId, od.UoMId, baseQty);
+                                od.IssuedQuantity += orderUoMQuantity;
+                            }
                         }
                     }
                 }

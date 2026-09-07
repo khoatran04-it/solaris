@@ -174,23 +174,28 @@ namespace backend.Services
                     .ThenInclude(c => c!.CustomerTier)
                 .ToListAsync();
 
+            var uomMap = await _db.UoMs.AsNoTracking().ToDictionaryAsync(u => u.Id, u => u.Name);
             var allDetails = completedOrders.SelectMany(o => o.Details).ToList();
             var totalRev = completedOrders.Sum(o => o.TotalAmount);
 
-            // Top products
+            // Top products (quy đổi về Base UoM)
             var topProducts = allDetails
                 .Where(d => d.Variant != null)
                 .GroupBy(d => new { d.VariantId, d.Variant!.Name, d.Variant.Code })
                 .Select(g =>
                 {
                     var rev = g.Sum(d => d.UnitPrice * d.Quantity);
+                    var baseUomId = g.FirstOrDefault()?.Variant?.Product?.BaseUoMId;
+                    var baseUomName = (baseUomId.HasValue && uomMap.TryGetValue(baseUomId.Value, out var bn))
+                        ? bn
+                        : (g.FirstOrDefault()?.UoM?.Name ?? "");
                     return new TopProductItem
                     {
                         VariantId = g.Key.VariantId,
                         Name = g.Key.Name,
                         Code = g.Key.Code,
-                        UoM = g.FirstOrDefault()?.UoM?.Name ?? "",
-                        QuantitySold = (int)g.Sum(d => d.Quantity),
+                        UoM = baseUomName,
+                        QuantitySold = (int)g.Sum(d => d.BaseQuantity > 0 ? d.BaseQuantity : d.Quantity),
                         TotalRevenue = rev,
                         RevenuePercent = totalRev == 0 ? 0 : Math.Round(rev / totalRev * 100, 1)
                     };
@@ -284,6 +289,13 @@ namespace backend.Services
                 .AsNoTracking()
                 .ToListAsync();
 
+            var productBaseUoms = await _db.Products
+                .AsNoTracking()
+                .ToDictionaryAsync(p => p.Id, p => p.BaseUoMId);
+            var variantProducts = await _db.ProductVariants
+                .AsNoTracking()
+                .ToDictionaryAsync(v => v.Id, v => v.ProductId);
+
             // Warehouse capacities
             var warehouseCapacities = warehouses.Select(w =>
             {
@@ -329,11 +341,20 @@ namespace backend.Services
                 DamagedQty = (int)inventories.Sum(i => i.QuantityDamaged)
             };
 
-            // Total stock value (Available * SellPrice)
+            // Total stock value (Available * SellPrice theo Base UoM)
             decimal totalValue = 0;
             foreach (var inv in inventories)
             {
+                int? baseUomId = null;
+                if (variantProducts.TryGetValue(inv.VariantId, out var prodId) && productBaseUoms.TryGetValue(prodId, out var bUomId))
+                {
+                    baseUomId = bUomId;
+                }
                 var price = prices
+                    .Where(p => p.VariantId == inv.VariantId && (!baseUomId.HasValue || p.UoMId == baseUomId.Value))
+                    .OrderByDescending(p => p.CreatedAt)
+                    .FirstOrDefault()
+                    ?? prices
                     .Where(p => p.VariantId == inv.VariantId)
                     .OrderByDescending(p => p.CreatedAt)
                     .FirstOrDefault();
@@ -397,13 +418,19 @@ namespace backend.Services
                 .AsNoTracking()
                 .Include(wi => wi.Batch)
                 .Include(wi => wi.Variant)
-                    .ThenInclude(v => v!.Product)
                 .Include(wi => wi.Warehouse)
                 .ToListAsync();
 
             var prices = await _db.ProductVariantPrices
                 .AsNoTracking()
                 .ToListAsync();
+
+            var products = await _db.Products
+                .AsNoTracking()
+                .ToDictionaryAsync(p => p.Id, p => new { p.Name, p.BaseUoMId });
+            var variantProducts = await _db.ProductVariants
+                .AsNoTracking()
+                .ToDictionaryAsync(v => v.Id, v => v.ProductId);
 
             // Filter active batches with stock
             var activeBatches = inventories
@@ -423,7 +450,18 @@ namespace backend.Services
                 .Select(i =>
                 {
                     var daysRemaining = (int)(i.Batch!.ExpiryDate.Date - today).TotalDays;
+                    int? baseUomId = null;
+                    string productName = "";
+                    if (variantProducts.TryGetValue(i.VariantId, out var prodId) && products.TryGetValue(prodId, out var pInfo))
+                    {
+                        baseUomId = pInfo.BaseUoMId;
+                        productName = pInfo.Name;
+                    }
                     var price = prices
+                        .Where(p => p.VariantId == i.VariantId && (!baseUomId.HasValue || p.UoMId == baseUomId.Value))
+                        .OrderByDescending(p => p.CreatedAt)
+                        .FirstOrDefault()
+                        ?? prices
                         .Where(p => p.VariantId == i.VariantId)
                         .OrderByDescending(p => p.CreatedAt)
                         .FirstOrDefault();
@@ -431,7 +469,7 @@ namespace backend.Services
                     return new ExpiringBatchItem
                     {
                         BatchCode = i.Batch.BatchCode,
-                        ProductName = i.Variant?.Product?.Name ?? "",
+                        ProductName = productName,
                         VariantName = i.Variant?.Name ?? "",
                         WarehouseName = i.Warehouse?.Name ?? "",
                         ExpiryDate = i.Batch.ExpiryDate,

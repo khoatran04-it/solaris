@@ -21,11 +21,13 @@ namespace backend.Services
     {
         private readonly SolarisDbContext _context;
         private readonly IMapper _mapper;
+        private readonly IUoMConversionService _uomConversionService;
 
-        public InventoryTransferService(SolarisDbContext context, IMapper mapper)
+        public InventoryTransferService(SolarisDbContext context, IMapper mapper, IUoMConversionService? uomConversionService = null)
         {
             _context = context;
             _mapper = mapper;
+            _uomConversionService = uomConversionService ?? new UoMConversionService(context, mapper);
         }
 
         #region Truy vấn & Phân quyền (Query & RBAC)
@@ -225,18 +227,20 @@ namespace backend.Services
                     dispatchedById = firstUser?.Id ?? 1;
                 }
 
-                // 1. Trừ tồn kho tại Kho Nguồn & Ghi sổ cái TransferOut
+                // 1. Trừ tồn kho tại Kho Nguồn & Ghi sổ cái TransferOut (quy đổi về Base UoM)
                 foreach (var detail in transfer.Details)
                 {
+                    decimal baseQty = await _uomConversionService.ConvertToBaseQuantityAsync(detail.VariantId, detail.UoMId, detail.Quantity);
+
                     var sourceInv = await _context.WarehouseInventories
                         .FirstOrDefaultAsync(i => i.WarehouseId == transfer.FromWarehouseId &&
                                                   i.VariantId == detail.VariantId &&
                                                   i.BatchId == detail.BatchId);
 
-                    if (sourceInv == null || sourceInv.QuantityAvailable < detail.Quantity)
-                        throw new InvalidOperationException($"Kho nguồn không đủ số lượng khả dụng cho mặt hàng mã {detail.VariantId}, lô {detail.BatchId} (Hiện có: {sourceInv?.QuantityAvailable ?? 0}, Cần xuất: {detail.Quantity}).");
+                    if (sourceInv == null || sourceInv.QuantityAvailable < baseQty)
+                        throw new InvalidOperationException($"Kho nguồn không đủ số lượng khả dụng cho mặt hàng mã {detail.VariantId}, lô {detail.BatchId} (Hiện có: {sourceInv?.QuantityAvailable ?? 0}, Cần xuất: {baseQty} theo ĐVT cơ sở).");
 
-                    sourceInv.QuantityAvailable -= detail.Quantity;
+                    sourceInv.QuantityAvailable -= baseQty;
                     sourceInv.UpdatedAt = DateTime.UtcNow;
 
                     _context.InventoryTransactions.Add(new InventoryTransaction
@@ -246,9 +250,9 @@ namespace backend.Services
                         VariantId = detail.VariantId,
                         BatchId = detail.BatchId,
                         Type = TransactionType.TransferOut,
-                        Quantity = detail.Quantity,
+                        Quantity = baseQty,
                         ReferenceCode = transfer.TransferCode,
-                        Note = $"Xuất chuyển kho sang kho #{transfer.ToWarehouseId} (Phiếu {transfer.TransferCode})",
+                        Note = $"Xuất chuyển kho sang kho #{transfer.ToWarehouseId} (Phiếu {transfer.TransferCode}, {detail.Quantity} ĐVT -> {baseQty} Base UoM)",
                         CreatedById = dispatchedById,
                         CreatedAt = DateTime.UtcNow
                     });
@@ -286,9 +290,11 @@ namespace backend.Services
                     receivedById = firstUser?.Id ?? 1;
                 }
 
-                // 2. Cộng tồn kho tại Kho Đích & Ghi sổ cái TransferIn
+                // 2. Cộng tồn kho tại Kho Đích & Ghi sổ cái TransferIn (quy đổi về Base UoM)
                 foreach (var detail in transfer.Details)
                 {
+                    decimal baseQty = await _uomConversionService.ConvertToBaseQuantityAsync(detail.VariantId, detail.UoMId, detail.Quantity);
+
                     var targetInv = await _context.WarehouseInventories
                         .FirstOrDefaultAsync(i => i.WarehouseId == transfer.ToWarehouseId &&
                                                   i.VariantId == detail.VariantId &&
@@ -301,7 +307,7 @@ namespace backend.Services
                             WarehouseId = transfer.ToWarehouseId,
                             VariantId = detail.VariantId,
                             BatchId = detail.BatchId,
-                            QuantityAvailable = detail.Quantity,
+                            QuantityAvailable = baseQty,
                             QuantityReserved = 0,
                             QuantityQC = 0,
                             QuantityDamaged = 0,
@@ -312,7 +318,7 @@ namespace backend.Services
                     }
                     else
                     {
-                        targetInv.QuantityAvailable += detail.Quantity;
+                        targetInv.QuantityAvailable += baseQty;
                         targetInv.UpdatedAt = DateTime.UtcNow;
                     }
 
@@ -323,9 +329,9 @@ namespace backend.Services
                         VariantId = detail.VariantId,
                         BatchId = detail.BatchId,
                         Type = TransactionType.TransferIn,
-                        Quantity = detail.Quantity,
+                        Quantity = baseQty,
                         ReferenceCode = transfer.TransferCode,
-                        Note = $"Nhận hàng chuyển từ kho #{transfer.FromWarehouseId} (Phiếu {transfer.TransferCode})",
+                        Note = $"Nhận hàng chuyển từ kho #{transfer.FromWarehouseId} (Phiếu {transfer.TransferCode}, {detail.Quantity} ĐVT -> {baseQty} Base UoM)",
                         CreatedById = receivedById,
                         CreatedAt = DateTime.UtcNow
                     });

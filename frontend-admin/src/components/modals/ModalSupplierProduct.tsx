@@ -9,6 +9,8 @@ import { supplierApi } from '../../api/supplierApi';
 import { productVariantApi } from '../../api/productVariantApi';
 import { productApi } from '../../api/productApi';
 import { uomApi } from '../../api/uomApi';
+import { uomConversionApi } from '../../api/uomConversionApi';
+import { ValidUoMOption } from '../../types/uomConversion';
 
 interface ModalSupplierProductProps {
   isOpen: boolean;
@@ -46,6 +48,7 @@ export const ModalSupplierProduct: React.FC<ModalSupplierProductProps> = ({
   const [uomOptions, setUomOptions] = useState<{ value: number; label: string }[]>([]);
   const [variantsList, setVariantsList] = useState<ProductVariant[]>([]);
   const [productsList, setProductsList] = useState<Product[]>([]);
+  const [validUoMOptions, setValidUoMOptions] = useState<ValidUoMOption[]>([]);
 
   // UX: Đóng modal khi bấm phím Escape
   useEffect(() => {
@@ -112,6 +115,32 @@ export const ModalSupplierProduct: React.FC<ModalSupplierProductProps> = ({
       setErrors({});
     }
   }, [isOpen, initialData, fixedSupplierId]);
+
+  // Tải danh sách ĐVT hợp lệ theo biến thể đã chọn
+  useEffect(() => {
+    if (formData.variantId) {
+      uomConversionApi
+        .getValidUoMs(Number(formData.variantId))
+        .then((opts) => {
+          setValidUoMOptions(opts || []);
+          if (opts && opts.length > 0) {
+            setFormData((prev) => {
+              const hasSelected = opts.some((u) => u.uoMId === prev.purchaseUoMId);
+              if (!hasSelected) {
+                const base = opts.find((u) => u.isBaseUoM) || opts[0];
+                return { ...prev, purchaseUoMId: base.uoMId };
+              }
+              return prev;
+            });
+          }
+        })
+        .catch(() => {
+          setValidUoMOptions([]);
+        });
+    } else {
+      setValidUoMOptions([]);
+    }
+  }, [formData.variantId]);
 
   if (!isOpen) return null;
 
@@ -360,11 +389,16 @@ export const ModalSupplierProduct: React.FC<ModalSupplierProductProps> = ({
                   label="Đơn Vị Tính Mua Hàng"
                   required
                   placeholder={
-                    formData.variantId ? 'Đang nhận diện ĐVT...' : 'Vui lòng chọn sản phẩm trước...'
+                    formData.variantId ? 'Chọn ĐVT mua hàng...' : 'Vui lòng chọn sản phẩm trước...'
                   }
                   value={formData.purchaseUoMId || ''}
                   options={
-                    formData.variantId && (formData.purchaseUoMId || detectedUoMId > 0)
+                    validUoMOptions.length > 0
+                      ? validUoMOptions.map((u) => ({
+                          value: u.uoMId,
+                          label: `${u.uoMName} (${u.description})`,
+                        }))
+                      : formData.variantId && (formData.purchaseUoMId || detectedUoMId > 0)
                       ? [
                           {
                             value: formData.purchaseUoMId || detectedUoMId,
@@ -374,14 +408,16 @@ export const ModalSupplierProduct: React.FC<ModalSupplierProductProps> = ({
                       : uomOptions
                   }
                   error={errors.purchaseUoMId}
-                  disabled={Boolean(formData.variantId) || isSubmitting}
+                  disabled={isSubmitting || !formData.variantId}
                   onSelect={(val) => handleFieldChange('purchaseUoMId', Number(val))}
                 />
                 {Boolean(formData.variantId && (detectedUoMName || formData.purchaseUoMId > 0)) && (
                   <p className="text-[11px] text-amber-800 font-semibold mt-1.5 flex items-center gap-1.5 bg-amber-50/80 px-3 py-1.5 rounded-xl border border-amber-200">
-                    <span>🔒</span>
+                    <span>{validUoMOptions.length > 1 ? '💡' : '🔒'}</span>
                     <span>
-                      Cố định theo đơn vị tính của sản phẩm (<b>{detectedUoMName || 'Chuẩn'}</b>). Đơn mua hàng từ NCC sẽ áp dụng đơn vị này.
+                      {validUoMOptions.length > 1
+                        ? `Đã nạp ${validUoMOptions.length} ĐVT hợp lệ. Hệ thống tự động quy đổi về ĐVT cơ sở (${detectedUoMName || 'Chuẩn'}) khi nhập kho.`
+                        : `Cố định theo đơn vị tính của sản phẩm (${detectedUoMName || 'Chuẩn'}). Đơn mua hàng từ NCC sẽ áp dụng đơn vị này.`}
                     </span>
                   </p>
                 )}

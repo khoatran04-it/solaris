@@ -23,11 +23,13 @@ namespace backend.Services
     {
         private readonly SolarisDbContext _context;
         private readonly IMapper _mapper;
+        private readonly IUoMConversionService _uomConversionService;
 
-        public CustomerReturnService(SolarisDbContext context, IMapper mapper)
+        public CustomerReturnService(SolarisDbContext context, IMapper mapper, IUoMConversionService? uomConversionService = null)
         {
             _context = context;
             _mapper = mapper;
+            _uomConversionService = uomConversionService ?? new UoMConversionService(context, mapper);
         }
 
         #region Truy vấn & Phân quyền Dữ liệu (Read & Data Isolation)
@@ -276,6 +278,10 @@ namespace backend.Services
 
                 foreach (var detail in ret.Details)
                 {
+                    decimal baseAcceptedQty = await _uomConversionService.ConvertToBaseQuantityAsync(detail.VariantId, detail.UoMId, detail.AcceptedQuantity);
+                    decimal baseDamagedQty = await _uomConversionService.ConvertToBaseQuantityAsync(detail.VariantId, detail.UoMId, detail.DamagedQuantity);
+                    decimal baseTotalReclaimed = baseAcceptedQty + baseDamagedQty;
+
                     var inv = await _context.WarehouseInventories
                         .FirstOrDefaultAsync(x => x.WarehouseId == ret.WarehouseId &&
                                                   x.VariantId == detail.VariantId &&
@@ -288,8 +294,8 @@ namespace backend.Services
                             WarehouseId = ret.WarehouseId,
                             VariantId = detail.VariantId,
                             BatchId = detail.BatchId,
-                            QuantityAvailable = detail.AcceptedQuantity,
-                            QuantityDamaged = detail.DamagedQuantity,
+                            QuantityAvailable = baseAcceptedQty,
+                            QuantityDamaged = baseDamagedQty,
                             QuantityReserved = 0,
                             QuantityQC = 0,
                             CreatedAt = DateTime.UtcNow,
@@ -299,15 +305,14 @@ namespace backend.Services
                     }
                     else
                     {
-                        inv.QuantityAvailable += detail.AcceptedQuantity;
-                        inv.QuantityDamaged += detail.DamagedQuantity;
+                        inv.QuantityAvailable += baseAcceptedQty;
+                        inv.QuantityDamaged += baseDamagedQty;
 
                         if (ret.Order != null && (ret.Order.Status == OrderStatus.Confirmed || ret.Order.Status == OrderStatus.Processing))
                         {
-                            var totalItemReclaimed = detail.AcceptedQuantity + detail.DamagedQuantity;
-                            if (inv.QuantityReserved > 0 && totalItemReclaimed > 0)
+                            if (inv.QuantityReserved > 0 && baseTotalReclaimed > 0)
                             {
-                                var releaseReserve = Math.Min(inv.QuantityReserved, totalItemReclaimed);
+                                var releaseReserve = Math.Min(inv.QuantityReserved, baseTotalReclaimed);
                                 inv.QuantityReserved -= releaseReserve;
                             }
                         }
@@ -315,8 +320,7 @@ namespace backend.Services
                         inv.UpdatedAt = DateTime.UtcNow;
                     }
 
-                    var totalReclaimed = detail.AcceptedQuantity + detail.DamagedQuantity;
-                    if (totalReclaimed > 0)
+                    if (baseTotalReclaimed > 0)
                     {
                         _context.InventoryTransactions.Add(new InventoryTransaction
                         {
@@ -325,9 +329,9 @@ namespace backend.Services
                             VariantId = detail.VariantId,
                             BatchId = detail.BatchId,
                             Type = TransactionType.CustomerReturn,
-                            Quantity = totalReclaimed,
+                            Quantity = baseTotalReclaimed,
                             ReferenceCode = ret.ReturnCode,
-                            Note = $"Nghiệm thu hoàn tất trả hàng theo phiếu {ret.ReturnCode} (Đạt: {detail.AcceptedQuantity}, Hỏng: {detail.DamagedQuantity})",
+                            Note = $"Nghiệm thu hoàn tất trả hàng theo phiếu {ret.ReturnCode} (Đạt: {detail.AcceptedQuantity}, Hỏng: {detail.DamagedQuantity} -> {baseTotalReclaimed} Base UoM)",
                             CreatedById = ret.ReceivedById ?? 1,
                             CreatedAt = DateTime.UtcNow
                         });

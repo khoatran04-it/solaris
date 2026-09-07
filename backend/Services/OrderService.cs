@@ -24,12 +24,18 @@ namespace backend.Services
         private readonly SolarisDbContext _context;
         private readonly IMapper _mapper;
         private readonly IOrderRoutingService _routingService;
+        private readonly IUoMConversionService _uomConversionService;
 
-        public OrderService(SolarisDbContext context, IMapper mapper, IOrderRoutingService routingService)
+        public OrderService(
+            SolarisDbContext context,
+            IMapper mapper,
+            IOrderRoutingService routingService,
+            IUoMConversionService? uomConversionService = null)
         {
             _context = context;
             _mapper = mapper;
             _routingService = routingService;
+            _uomConversionService = uomConversionService ?? new UoMConversionService(context, mapper);
         }
 
         #region Truy vấn & Phân quyền Dữ liệu (Read & Data Isolation)
@@ -267,12 +273,15 @@ namespace backend.Services
                     decimal lineTotal = (item.Quantity * unitPrice) - item.DiscountAmount;
                     subTotal += lineTotal;
 
+                    // Quy đổi số lượng đặt hàng sang ĐVT cơ sở (Base UoM)
+                    decimal baseQty = await _uomConversionService.ConvertToBaseQuantityAsync(item.VariantId, item.UoMId, item.Quantity);
+
                     var detail = new OrderDetail
                     {
                         VariantId = item.VariantId,
                         UoMId = item.UoMId,
                         Quantity = item.Quantity,
-                        BaseQuantity = item.Quantity,
+                        BaseQuantity = baseQty,
                         UnitPrice = unitPrice,
                         DiscountAmount = item.DiscountAmount,
                         TotalPrice = lineTotal,
@@ -280,7 +289,7 @@ namespace backend.Services
                     };
                     order.Details.Add(detail);
 
-                    // 8. GIỮ CHỖ TỒN KHO nếu đã xác định được Kho xuất
+                    // 8. GIỮ CHỖ TỒN KHO nếu đã xác định được Kho xuất (theo Base UoM)
                     if (assignedWarehouseId.HasValue && assignedWarehouseId.Value > 0)
                     {
                         var inventories = await _context.WarehouseInventories
@@ -288,7 +297,7 @@ namespace backend.Services
                             .OrderBy(i => i.Batch != null ? i.Batch.ExpiryDate : DateTime.MaxValue)
                             .ToListAsync();
 
-                        decimal remainingToReserve = item.Quantity;
+                        decimal remainingToReserve = baseQty;
                         foreach (var inv in inventories)
                         {
                             if (remainingToReserve <= 0) break;
@@ -298,7 +307,7 @@ namespace backend.Services
                             inv.UpdatedAt = DateTime.UtcNow;
                             remainingToReserve -= reserveAmount;
 
-                            // Ghi sổ cái Reserve
+                            // Ghi sổ cái Reserve theo Base UoM
                             _context.InventoryTransactions.Add(new InventoryTransaction
                             {
                                 TransactionCode = $"TXN-{DateTimeHelper.VietnamNow:yyyyMMddHHmmss}-{Guid.NewGuid().ToString()[..4].ToUpper()}",
@@ -308,7 +317,7 @@ namespace backend.Services
                                 Type = TransactionType.Reserve,
                                 Quantity = reserveAmount,
                                 ReferenceCode = order.OrderCode,
-                                Note = $"Giữ chỗ đơn hàng {order.OrderCode}",
+                                Note = $"Giữ chỗ đơn hàng {order.OrderCode} ({item.Quantity} ĐVT -> {reserveAmount} Base UoM)",
                                 CreatedById = safeUserId,
                                 CreatedAt = DateTime.UtcNow
                             });
@@ -375,11 +384,15 @@ namespace backend.Services
                         var unissuedQty = item.Quantity - item.IssuedQuantity;
                         if (unissuedQty <= 0) continue;
 
+                        decimal unissuedBaseQty = item.BaseQuantity > 0
+                            ? (item.Quantity > 0 ? (unissuedQty / item.Quantity) * item.BaseQuantity : item.BaseQuantity)
+                            : await _uomConversionService.ConvertToBaseQuantityAsync(item.VariantId, item.UoMId, unissuedQty);
+
                         var inventories = await _context.WarehouseInventories
                             .Where(i => i.WarehouseId == order.WarehouseId.Value && i.VariantId == item.VariantId && i.QuantityReserved > 0)
                             .ToListAsync();
 
-                        decimal remainingToRelease = unissuedQty;
+                        decimal remainingToRelease = unissuedBaseQty;
                         foreach (var inv in inventories)
                         {
                             if (remainingToRelease <= 0) break;
@@ -398,7 +411,7 @@ namespace backend.Services
                                 Type = TransactionType.Unreserve,
                                 Quantity = releaseAmount,
                                 ReferenceCode = order.OrderCode,
-                                Note = $"Hủy giữ chỗ đơn hàng {order.OrderCode}",
+                                Note = $"Hủy giữ chỗ đơn hàng {order.OrderCode} ({unissuedQty} ĐVT -> {releaseAmount} Base UoM)",
                                 CreatedById = safeUserId,
                                 CreatedAt = DateTime.UtcNow
                             });

@@ -21,11 +21,16 @@ namespace backend.Services
     {
         private readonly SolarisDbContext _context;
         private readonly IMapper _mapper;
+        private readonly IUoMConversionService _uomConversionService;
 
-        public InventoryReceiptService(SolarisDbContext context, IMapper mapper)
+        public InventoryReceiptService(
+            SolarisDbContext context,
+            IMapper mapper,
+            IUoMConversionService? uomConversionService = null)
         {
             _context = context;
             _mapper = mapper;
+            _uomConversionService = uomConversionService ?? new UoMConversionService(context, mapper);
         }
 
         #region Truy vấn (Query)
@@ -280,7 +285,11 @@ namespace backend.Services
 
                 foreach (var detail in receipt.Details)
                 {
-                    // 1. Cập nhật két sắt tồn kho (WarehouseInventory)
+                    // Quy đổi số lượng nghiệm thu và từ chối về Đơn vị tính cơ sở (Base UoM)
+                    decimal baseAcceptedQty = await _uomConversionService.ConvertToBaseQuantityAsync(detail.VariantId, detail.UoMId, detail.AcceptedQuantity);
+                    decimal baseDamagedQty = await _uomConversionService.ConvertToBaseQuantityAsync(detail.VariantId, detail.UoMId, detail.RejectedQuantity);
+
+                    // 1. Cập nhật két sắt tồn kho (WarehouseInventory) theo Base UoM
                     var inventory = await _context.WarehouseInventories
                         .FirstOrDefaultAsync(x => x.WarehouseId == receipt.WarehouseId && 
                                                   x.VariantId == detail.VariantId && 
@@ -293,10 +302,10 @@ namespace backend.Services
                             WarehouseId = receipt.WarehouseId,
                             VariantId = detail.VariantId,
                             BatchId = detail.BatchId,
-                            QuantityAvailable = detail.AcceptedQuantity,
+                            QuantityAvailable = baseAcceptedQty,
                             QuantityReserved = 0,
                             QuantityQC = 0,
-                            QuantityDamaged = detail.RejectedQuantity,
+                            QuantityDamaged = baseDamagedQty,
                             CreatedAt = DateTime.UtcNow,
                             UpdatedAt = DateTime.UtcNow
                         };
@@ -304,13 +313,13 @@ namespace backend.Services
                     }
                     else
                     {
-                        inventory.QuantityAvailable += detail.AcceptedQuantity;
-                        inventory.QuantityDamaged += detail.RejectedQuantity;
+                        inventory.QuantityAvailable += baseAcceptedQty;
+                        inventory.QuantityDamaged += baseDamagedQty;
                         inventory.UpdatedAt = DateTime.UtcNow;
                     }
 
-                    // 2. Ghi sổ cái bất biến (InventoryTransaction)
-                    if (detail.AcceptedQuantity > 0)
+                    // 2. Ghi sổ cái bất biến (InventoryTransaction) theo Base UoM
+                    if (baseAcceptedQty > 0)
                     {
                         var invTransaction = new InventoryTransaction
                         {
@@ -319,16 +328,16 @@ namespace backend.Services
                             VariantId = detail.VariantId,
                             BatchId = detail.BatchId,
                             Type = TransactionType.Receipt,
-                            Quantity = detail.AcceptedQuantity,
+                            Quantity = baseAcceptedQty,
                             ReferenceCode = receipt.ReceiptCode,
-                            Note = $"Nhập kho hoàn tất theo phiếu {receipt.ReceiptCode}",
+                            Note = $"Nhập kho hoàn tất theo phiếu {receipt.ReceiptCode} ({detail.AcceptedQuantity} ĐVT gốc -> {baseAcceptedQty} Base UoM)",
                             CreatedById = receivedById,
                             CreatedAt = DateTime.UtcNow
                         };
                         _context.InventoryTransactions.Add(invTransaction);
                     }
 
-                    // 3. Cập nhật tiến độ dòng PO Detail
+                    // 3. Cập nhật tiến độ dòng PO Detail (giữ nguyên ĐVT của PO)
                     if (detail.PurchaseOrderDetailId.HasValue)
                     {
                         var poDetail = await _context.PurchaseOrderDetails

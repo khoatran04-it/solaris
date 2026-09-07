@@ -22,6 +22,7 @@ import { supplierApi } from '../../api/supplierApi';
 import { supplierProductApi } from '../../api/supplierProductApi';
 import { productVariantApi } from '../../api/productVariantApi';
 import { uomApi } from '../../api/uomApi';
+import { uomConversionApi } from '../../api/uomConversionApi';
 import { warehouseApi } from '../../api/warehouseApi';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { PurchaseOrderCreatePayload, PurchaseOrderStatus } from '../../types/purchaseOrder';
@@ -71,6 +72,33 @@ const PurchaseOrderForm: React.FC = () => {
   const [allVariants, setAllVariants] = useState<{ value: number; label: string }[]>([]);
   const [rawVariants, setRawVariants] = useState<any[]>([]);
   const [uoms, setUoms] = useState<{ value: number; label: string }[]>([]);
+  const [variantUoMsMap, setVariantUoMsMap] = useState<Record<number, { value: number; label: string }[]>>({});
+
+  const fetchValidUoMs = useCallback(async (vId: number) => {
+    if (!vId || variantUoMsMap[vId]) return;
+    try {
+      const opts = await uomConversionApi.getValidUoMs(vId);
+      if (opts && opts.length > 0) {
+        setVariantUoMsMap((prev) => ({
+          ...prev,
+          [vId]: opts.map((u) => ({
+            value: u.uoMId,
+            label: `${u.uoMName} (${u.description})`,
+          })),
+        }));
+      }
+    } catch (e) {
+      console.error('Lỗi tải ĐVT hợp lệ:', e);
+    }
+  }, [variantUoMsMap]);
+
+  useEffect(() => {
+    details.forEach((d) => {
+      if (d.variantId) {
+        fetchValidUoMs(Number(d.variantId));
+      }
+    });
+  }, [details, fetchValidUoMs]);
 
   // --- EFFECTS: LOAD TẤT CẢ OPTIONS ---
   const loadDropdownData = useCallback(async () => {
@@ -186,14 +214,16 @@ const PurchaseOrderForm: React.FC = () => {
     const newDetails = [...details];
     newDetails[index] = { ...newDetails[index], [field]: value };
 
-    // Tự động điền giá nhập và ĐVT mua từ bảng giá của nhà cung cấp
-    if (field === 'variantId' && value && supplierProducts.length > 0) {
-      const sp = supplierProducts.find((p) => p.variantId === Number(value));
-      if (sp) {
-        newDetails[index].unitPrice = sp.lastImportPrice || 0;
-        newDetails[index].uoMId = sp.purchaseUoMId || newDetails[index].uoMId;
-        if (sp.minimumOrderQuantity && newDetails[index].orderQuantity < sp.minimumOrderQuantity) {
-          newDetails[index].orderQuantity = sp.minimumOrderQuantity;
+    if (field === 'variantId' && value) {
+      fetchValidUoMs(Number(value));
+      if (supplierProducts.length > 0) {
+        const sp = supplierProducts.find((p) => p.variantId === Number(value));
+        if (sp) {
+          newDetails[index].unitPrice = sp.lastImportPrice || 0;
+          newDetails[index].uoMId = sp.purchaseUoMId || newDetails[index].uoMId;
+          if (sp.minimumOrderQuantity && newDetails[index].orderQuantity < sp.minimumOrderQuantity) {
+            newDetails[index].orderQuantity = sp.minimumOrderQuantity;
+          }
         }
       }
     }
@@ -522,7 +552,7 @@ const PurchaseOrderForm: React.FC = () => {
                           <td className="p-3 align-top">
                             <FormSelect
                               label=""
-                              options={uoms}
+                              options={row.variantId && variantUoMsMap[Number(row.variantId)] ? variantUoMsMap[Number(row.variantId)] : uoms}
                               value={row.uoMId}
                               showSearch
                               searchPlaceholder="Tìm ĐVT..."

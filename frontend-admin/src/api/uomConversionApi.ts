@@ -43,4 +43,9 @@ export const uomConversionApi = {
   toggleActive: (id: number): Promise<void> => {
     return axiosClient.patch(`/UoMConversions/${id}/toggle-active`);
   },
+
+  // 8. GET Valid UoMs for Variant (Động, không hardcode)
+  getValidUoMs: (variantId: number): Promise<ValidUoMOption[]> => {
+    return axiosClient.get(`/UoMConversions/valid-uoms/${variantId}`);
+  },
 };

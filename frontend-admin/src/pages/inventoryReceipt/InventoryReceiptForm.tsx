@@ -23,6 +23,7 @@ import { warehouseApi } from '../../api/warehouseApi';
 import { supplierApi } from '../../api/supplierApi';
 import { productVariantApi } from '../../api/productVariantApi';
 import { uomApi } from '../../api/uomApi';
+import { uomConversionApi } from '../../api/uomConversionApi';
 import { productBatchApi } from '../../api/productBatchApi';
 import { purchaseOrderApi } from '../../api/purchaseOrderApi';
 import { customerReturnApi } from '../../api/customerReturnApi';
@@ -72,6 +73,26 @@ const InventoryReceiptForm: React.FC = () => {
   const [variants, setVariants] = useState<SelectOption[]>([]);
   const [rawVariants, setRawVariants] = useState<any[]>([]);
   const [uoms, setUoms] = useState<SelectOption[]>([]);
+  const [variantUoMsMap, setVariantUoMsMap] = useState<Record<number, SelectOption[]>>({});
+
+  const fetchValidUoMs = useCallback(async (vId: number) => {
+    if (!vId || variantUoMsMap[vId]) return;
+    try {
+      const opts = await uomConversionApi.getValidUoMs(vId);
+      if (opts && opts.length > 0) {
+        setVariantUoMsMap((prev) => ({
+          ...prev,
+          [vId]: opts.map((u) => ({
+            value: u.uoMId,
+            label: `${u.uoMName} (${u.description})`,
+          })),
+        }));
+      }
+    } catch (e) {
+      console.error('Lỗi tải ĐVT hợp lệ:', e);
+    }
+  }, [variantUoMsMap]);
+
   const [batches, setBatches] = useState<{ id: number; variantId: number; batchCode: string }[]>(
     []
   );
@@ -115,6 +136,15 @@ const InventoryReceiptForm: React.FC = () => {
       rejectReason: '',
     },
   ]);
+
+  useEffect(() => {
+    details.forEach((d) => {
+      if (d.variantId) {
+        fetchValidUoMs(Number(d.variantId));
+      }
+    });
+  }, [details, fetchValidUoMs]);
+
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   // --- BATCH MODAL STATES ---
@@ -340,6 +370,9 @@ const InventoryReceiptForm: React.FC = () => {
 
           if (field === 'rejectedQuantity' && Number(value) === 0) {
             updated.rejectReason = '';
+          }
+          if (field === 'variantId' && value) {
+            fetchValidUoMs(Number(value));
           }
           return updated;
         }
@@ -693,7 +726,7 @@ const InventoryReceiptForm: React.FC = () => {
                         <td className="p-2">
                           <FormSelect
                             label=""
-                            options={uoms}
+                            options={row.variantId && variantUoMsMap[Number(row.variantId)] ? variantUoMsMap[Number(row.variantId)] : uoms}
                             value={row.uoMId}
                             placeholder="ĐVT"
                             onSelect={(val) => handleDetailChange(row.id, 'uoMId', val)}
