@@ -23,6 +23,7 @@ namespace backend.Configurations
             builder.Property(x => x.CreatedAt).HasColumnType("datetime2");
             builder.Property(x => x.UpdatedAt).HasColumnType("datetime2");
             builder.Property(x => x.IsActive);
+            builder.Property(x => x.RequiresColdChain).HasDefaultValue(false);
             builder.Property(x => x.IsDeleted).HasDefaultValue(false);
             builder.HasQueryFilter(x => !x.IsDeleted);
 

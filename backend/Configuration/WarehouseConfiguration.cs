@@ -23,6 +23,7 @@ namespace backend.Configurations
             builder.Property(x => x.MaxWeightCapacityKg).HasColumnType("decimal(18,2)");
             builder.Property(x => x.MaxPalletPositions);
             builder.Property(x => x.WarningThresholdPercent).HasDefaultValue(85);
+            builder.Property(x => x.MaxColdChainRadiusKm).HasDefaultValue(15.0);
 
             // Audit & Soft Delete
             builder.Property(x => x.CreatedAt).HasColumnType("datetime2");
