@@ -28,6 +28,7 @@ const INITIAL_STATE: ProductCategoryPayload = {
   imagePath: '',
   categoryGroupId: 0, // Dùng 0 để biểu diễn "Không thuộc nhóm nào" ở frontend
   isActive: true,
+  requiresColdChain: false,
 };
 
 const STATUS_OPTIONS = [
@@ -89,6 +90,7 @@ const ProductCategoryForm: React.FC = () => {
             imagePath: res.imagePath || '',
             categoryGroupId: res.categoryGroupId || 0, // Đưa undefined về 0 cho khớp UI
             isActive: res.isActive,
+            requiresColdChain: Boolean(res.requiresColdChain),
           });
           setOriginalCode((res.code || '').toLowerCase());
         })
@@ -152,6 +154,7 @@ const ProductCategoryForm: React.FC = () => {
         // Chuyển số 0 thành undefined để gửi xuống backend cho chuẩn kiểu nullable
         categoryGroupId: formData.categoryGroupId === 0 ? undefined : formData.categoryGroupId,
         isActive: Boolean(formData.isActive),
+        requiresColdChain: Boolean(formData.requiresColdChain),
       };
 
       if (isEditMode && id) {
@@ -222,6 +225,19 @@ const ProductCategoryForm: React.FC = () => {
                 options={STATUS_OPTIONS}
                 onSelect={(val) => handleFieldChange('isActive', val === 1)}
               />
+
+              <div className="col-span-full bg-blue-50/70 border border-blue-200 rounded-xl p-4 flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  id="requiresColdChain"
+                  checked={Boolean(formData.requiresColdChain)}
+                  onChange={(e) => handleFieldChange('requiresColdChain', e.target.checked)}
+                  className="w-5 h-5 text-blue-600 rounded border-slate-300 focus:ring-blue-500 cursor-pointer"
+                />
+                <label htmlFor="requiresColdChain" className="text-sm font-semibold text-slate-800 cursor-pointer select-none">
+                  ❄️ Yêu cầu bảo quản chuỗi lạnh (Thịt, cá, hải sản, rau củ tươi sống — Điều phối đội xe lạnh nội bộ, chặn giao GHN thông thường)
+                </label>
+              </div>
             </div>
           </FormSection>
 

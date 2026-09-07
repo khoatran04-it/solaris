@@ -15,7 +15,8 @@ namespace backend.Profiles
                 .ForMember(dest => dest.OrderCode, opt => opt.MapFrom(src => src.Order != null ? src.Order.OrderCode : null))
                 .ForMember(dest => dest.CreatedByName, opt => opt.MapFrom(src => src.CreatedBy != null ? src.CreatedBy.FullName : string.Empty))
                 .ForMember(dest => dest.DispatchedByName, opt => opt.MapFrom(src => src.DispatchedBy != null ? src.DispatchedBy.FullName : null))
-                .ForMember(dest => dest.ReceivedByName, opt => opt.MapFrom(src => src.ReceivedBy != null ? src.ReceivedBy.FullName : null));
+                .ForMember(dest => dest.ReceivedByName, opt => opt.MapFrom(src => src.ReceivedBy != null ? src.ReceivedBy.FullName : null))
+                .ForMember(dest => dest.InspectedByName, opt => opt.MapFrom(src => src.InspectedBy != null ? src.InspectedBy.FullName : null));
 
             // Transfer Create DTO Mapping
             CreateMap<InventoryTransferCreateDto, InventoryTransfer>()

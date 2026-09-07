@@ -59,7 +59,7 @@ namespace backend.Models
         /// <summary>Đơn vị vận chuyển (GHN, ViettelPost, Internal - Tự giao, None - Mua tại quầy).</summary>
         public string? ShippingProvider { get; set; }
 
-        /// <summary>Mã vận đơn giao hàng (Ví dụ: Mã Tracking của GHN để khách tra cứu trên App).</summary>
+        /// <summary>Mã vận đơn giao hàng (Ví dụ: Mã Tracking của GHN để khách tra cứu trên App, hoặc SLR-EXP-xxxx cho xe sàn).</summary>
         public string? TrackingCode { get; set; }
 
         /// <summary>Ngày dự kiến hàng tới tay khách.</summary>
@@ -70,6 +70,26 @@ namespace backend.Models
 
         /// <summary>Mã Phường/Xã định tuyến theo chuẩn API của GHN.</summary>
         public string? GhnWardCode { get; set; }
+
+        // --- Thông tin Vận chuyển Đội xe nội bộ Solaris Cold-Express ---
+        /// <summary>Mã chuyến xe nội bộ nếu được gán cho Đội xe Solaris.</summary>
+        public int? DeliveryTripId { get; set; }
+        public virtual DeliveryTrip? DeliveryTrip { get; set; }
+
+        /// <summary>Họ tên tài xế xe sàn giao đơn hàng này.</summary>
+        public string? DriverName { get; set; }
+
+        /// <summary>Số điện thoại tài xế xe sàn.</summary>
+        public string? DriverPhone { get; set; }
+
+        /// <summary>Biển số xe giao hàng.</summary>
+        public string? LicensePlate { get; set; }
+
+        /// <summary>Thời điểm tài xế chính thức xuất phát đi giao đơn.</summary>
+        public DateTime? DispatchedAt { get; set; }
+
+        /// <summary>Thời điểm tài xế giao hàng thành công tới tay khách.</summary>
+        public DateTime? DeliveredAt { get; set; }
         #endregion
 
         #region Tài chính & Thanh toán (Finance & Payment)

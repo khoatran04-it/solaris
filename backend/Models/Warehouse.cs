@@ -34,6 +34,9 @@ namespace backend.Models
 
         /// <summary>Ngưỡng cảnh báo lấp đầy (Phần trăm %, mặc định 85%).</summary>
         public int WarningThresholdPercent { get; set; } = 85;
+
+        /// <summary>Bán kính tối đa phục vụ giao hàng chuỗi lạnh hỏa tốc của kho (Km, mặc định 15.0 km).</summary>
+        public double MaxColdChainRadiusKm { get; set; } = 15.0;
         #endregion
 
         #region Liên kết Địa lý & Nhân sự

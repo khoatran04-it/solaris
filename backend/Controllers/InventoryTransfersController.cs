@@ -207,6 +207,40 @@ namespace backend.Controllers
         }
 
         /// <summary>
+        /// Kiểm đếm và tiếp nhận hàng chuyển kho (Inspection & Receive).
+        /// Phân luồng hàng nguyên vẹn vào QuantityAvailable và hàng hỏng/dập vào QuantityDamaged.
+        /// </summary>
+        /// <param name="id">ID phiếu điều chuyển.</param>
+        /// <param name="dto">Danh sách số lượng thực nhận và số lượng hỏng theo từng chi tiết.</param>
+        [HttpPost("{id:int}/inspect-and-receive")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> InspectAndReceive(int id, [FromBody] InventoryTransferInspectReceiveDto dto)
+        {
+            try
+            {
+                var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                int userId = 1;
+                if (!string.IsNullOrEmpty(userIdStr) && int.TryParse(userIdStr, out int parsedId))
+                {
+                    userId = parsedId;
+                }
+
+                await _service.InspectAndReceiveTransferAsync(id, userId, dto);
+                return Ok(new { message = "Kiểm đếm và nhận hàng tại kho đích thành công, đã phân loại hàng vào két sắt tồn kho" });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        /// <summary>
         /// Hủy phiếu điều chuyển kho (chỉ cho phép khi phiếu còn ở trạng thái Draft).
         /// </summary>
         /// <param name="id">ID phiếu điều chuyển cần hủy.</param>

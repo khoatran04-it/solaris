@@ -15,6 +15,7 @@ import {
   QrCode,
   ShieldCheck,
   Lock,
+  ThermometerSnowflake,
 } from "lucide-react";
 import { useAuthStore } from "@/stores/authStore";
 import { useCartStore } from "@/stores/cartStore";
@@ -346,19 +347,44 @@ export default function ThanhToanPage() {
     0,
     freeShippingThreshold - netSubTotal,
   );
+  const hasColdChain = Boolean(
+    cart.hasColdChain || cart.items.some((i) => i.requiresColdChain),
+  );
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
       {/* 1. Header */}
       <div>
-        <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-          Xác Nhận & Thanh Toán
+        <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight flex items-center gap-3">
+          <span>Xác Nhận & Thanh Toán</span>
+          {hasColdChain && (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-cyan-100 text-cyan-800 border border-cyan-300">
+              <ThermometerSnowflake className="w-3.5 h-3.5 text-cyan-600" />
+              Đơn hàng chuỗi lạnh (Cold-Chain)
+            </span>
+          )}
         </h1>
         <p className="text-xs text-slate-500 mt-1 font-medium">
-          Giao hàng nhanh toàn quốc qua GHN Express • Cổng thanh toán bảo mật
-          VNPay Sandbox
+          {hasColdChain
+            ? "Vận chuyển bảo quản lạnh chuyên dụng 0-4°C • Đội xe máy thùng lạnh Solaris (≤ 15km) • Cổng thanh toán bảo mật"
+            : "Giao hàng nhanh toàn quốc qua GHN Express • Cổng thanh toán bảo mật VNPay Sandbox"}
         </p>
       </div>
+
+      {/* Cold Chain Notification Banner */}
+      {hasColdChain && (
+        <div className="p-4 rounded-2xl bg-cyan-50/90 border border-cyan-200 flex items-start sm:items-center gap-3 text-xs text-cyan-950 shadow-2xs">
+          <ThermometerSnowflake className="w-5 h-5 text-cyan-600 shrink-0 mt-0.5 sm:mt-0" />
+          <div className="space-y-0.5">
+            <p className="font-bold text-cyan-900">
+              Chính sách giao hàng chuỗi lạnh chuyên dụng:
+            </p>
+            <p className="text-cyan-800 leading-relaxed">
+              Đơn hàng của bạn có thực phẩm tươi sống (thịt, cá, hải sản, rau củ). Solaris tự vận chuyển bằng <strong>Đội xe máy thùng lạnh chuyên dụng</strong> trong bán kính tối đa <strong>15 km</strong> từ kho xuất hàng để đảm bảo chuẩn tươi sống.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* 2. Freeship Alert Banner */}
       <div
@@ -398,9 +424,29 @@ export default function ThanhToanPage() {
       </div>
 
       {errorMessage && (
-        <div className="p-4 bg-rose-50 border border-rose-200 rounded-2xl flex items-center gap-3 text-rose-700 text-xs font-semibold animate-in fade-in">
-          <AlertCircle className="w-5 h-5 shrink-0 text-rose-600" />
-          <span>{errorMessage}</span>
+        <div className={`p-4 rounded-2xl border flex items-start gap-3 text-xs font-semibold animate-in fade-in ${
+          errorMessage.toLowerCase().includes("bán kính") || errorMessage.toLowerCase().includes("chuỗi lạnh")
+            ? "bg-amber-50 border-amber-300 text-amber-900"
+            : "bg-rose-50 border-rose-200 text-rose-700"
+        }`}>
+          {errorMessage.toLowerCase().includes("bán kính") || errorMessage.toLowerCase().includes("chuỗi lạnh") ? (
+            <ThermometerSnowflake className="w-5 h-5 shrink-0 text-amber-600 mt-0.5" />
+          ) : (
+            <AlertCircle className="w-5 h-5 shrink-0 text-rose-600 mt-0.5" />
+          )}
+          <div className="flex-1 space-y-1">
+            <p>{errorMessage}</p>
+            {(errorMessage.toLowerCase().includes("bán kính") || errorMessage.toLowerCase().includes("chuỗi lạnh")) && (
+              <div className="pt-1 flex items-center gap-3">
+                <Link
+                  href="/gio-hang"
+                  className="inline-flex items-center gap-1 text-xs font-bold text-amber-800 underline hover:text-amber-950"
+                >
+                  Quay lại giỏ hàng để điều chỉnh sản phẩm &rarr;
+                </Link>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -415,7 +461,9 @@ export default function ThanhToanPage() {
             <div className="flex items-center justify-between pb-3.5 border-b border-slate-100">
               <h2 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider flex items-center gap-2">
                 <span className="w-1.5 h-4 bg-emerald-600 rounded-full"></span>
-                1. Địa Chỉ Nhận Hàng (GHN Logistics)
+                {hasColdChain
+                  ? "1. Địa Chỉ Nhận Hàng (Đội Xe Lạnh ❄️ Solaris Cold-Express)"
+                  : "1. Địa Chỉ Nhận Hàng (GHN Logistics)"}
               </h2>
 
               {addresses.length > 0 && (
@@ -709,9 +757,16 @@ export default function ThanhToanPage() {
                   className="pt-3.5 first:pt-0 flex items-center justify-between text-xs gap-3"
                 >
                   <div className="flex-1 truncate">
-                    <p className="font-bold text-slate-900 truncate">
-                      {item.variantName}
-                    </p>
+                    <div className="flex items-center gap-1.5 truncate">
+                      <p className="font-bold text-slate-900 truncate">
+                        {item.variantName}
+                      </p>
+                      {item.requiresColdChain && (
+                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 bg-cyan-50 text-cyan-700 text-[9px] font-bold rounded border border-cyan-200 shrink-0">
+                          ❄️ Lạnh
+                        </span>
+                      )}
+                    </div>
                     <span className="text-[11px] text-slate-500 font-medium">
                       {item.quantity} x {formatVND(item.unitPrice)} (
                       {item.uoMName})
@@ -743,8 +798,14 @@ export default function ThanhToanPage() {
 
               <div className="flex justify-between items-center text-slate-600">
                 <span className="flex items-center gap-1">
-                  <Truck className="w-3.5 h-3.5 text-slate-400" />
-                  Phí giao hàng GHN:
+                  {hasColdChain ? (
+                    <ThermometerSnowflake className="w-3.5 h-3.5 text-cyan-600" />
+                  ) : (
+                    <Truck className="w-3.5 h-3.5 text-slate-400" />
+                  )}
+                  {hasColdChain
+                    ? "Solaris Cold-Express (Xe lạnh):"
+                    : "Phí giao hàng GHN:"}
                 </span>
                 {isCalculatingFee ? (
                   <span className="text-[11px] text-slate-400 italic">
@@ -787,14 +848,30 @@ export default function ThanhToanPage() {
             </button>
           </div>
 
-          <div className="p-5 bg-emerald-50/70 rounded-3xl border border-emerald-200/60 text-xs text-emerald-900 space-y-1.5">
+          <div
+            className={`p-5 rounded-3xl border text-xs space-y-1.5 ${
+              hasColdChain
+                ? "bg-cyan-50/80 border-cyan-200 text-cyan-950"
+                : "bg-emerald-50/70 border-emerald-200/60 text-emerald-900"
+            }`}
+          >
             <div className="flex items-center gap-2 font-bold">
-              <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
-              <span>Cam kết giao nông sản tươi mới 100%</span>
+              {hasColdChain ? (
+                <>
+                  <ThermometerSnowflake className="w-4 h-4 text-cyan-600 shrink-0" />
+                  <span>Bảo quản lạnh 0-4°C suốt hành trình giao nhận</span>
+                </>
+              ) : (
+                <>
+                  <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>Cam kết giao nông sản tươi mới 100%</span>
+                </>
+              )}
             </div>
             <p className="text-[11px] text-slate-600 leading-relaxed">
-              Đơn hàng được bàn giao ngay cho đơn vị vận chuyển GHN Express với
-              bao bì đóng gói bảo quản nông sản chuyên dụng.
+              {hasColdChain
+                ? "Đơn hàng được bảo quản trong thùng lạnh chuyên dụng của đội xe Solaris, vận chuyển hỏa tốc trong bán kính 15km để giữ trọn chất lượng tươi sống."
+                : "Đơn hàng được bàn giao ngay cho đơn vị vận chuyển GHN Express với bao bì đóng gói bảo quản nông sản chuyên dụng."}
             </p>
           </div>
         </div>

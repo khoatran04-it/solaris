@@ -116,6 +116,15 @@ export interface Order {
   expectedDeliveryDate?: string;
   paymentTransactionNo?: string;
 
+  requiresColdChain?: boolean;
+  canShipViaGhn?: boolean;
+  deliveryTripId?: number;
+  driverName?: string;
+  driverPhone?: string;
+  licensePlate?: string;
+  dispatchedAt?: string;
+  deliveredAt?: string;
+
   note?: string;
   cancellationReason?: string;
 

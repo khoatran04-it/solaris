@@ -54,6 +54,11 @@ namespace backend.Profiles
                 .ForMember(dest => dest.DeliveryAddress, opt => opt.MapFrom(src => src.DeliveryAddress))
                 .ForMember(dest => dest.TrackingCode, opt => opt.MapFrom(src => src.TrackingCode))
                 .ForMember(dest => dest.ShippingProvider, opt => opt.MapFrom(src => src.ShippingProvider))
+                .ForMember(dest => dest.RequiresColdChain, opt => opt.MapFrom(src =>
+                    src.Details != null && src.Details.Any(d => d.Variant != null && d.Variant.Product != null && d.Variant.Product.Category != null && d.Variant.Product.Category.RequiresColdChain)))
+                .ForMember(dest => dest.DriverName, opt => opt.MapFrom(src => src.DriverName))
+                .ForMember(dest => dest.DriverPhone, opt => opt.MapFrom(src => src.DriverPhone))
+                .ForMember(dest => dest.LicensePlate, opt => opt.MapFrom(src => src.LicensePlate))
                 .ForMember(dest => dest.ExpectedDeliveryDate, opt => opt.MapFrom(src => src.ExpectedDeliveryDate))
                 .ForMember(dest => dest.Note, opt => opt.MapFrom(src => src.Note))
                 .ForMember(dest => dest.CancellationReason, opt => opt.MapFrom(src => src.CancellationReason))

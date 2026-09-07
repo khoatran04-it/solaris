@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 
 namespace backend.DTOs.ShopDTOs
 {
@@ -57,6 +57,9 @@ namespace backend.DTOs.ShopDTOs
 
         /// <summary>Nguồn gốc / Xuất xứ nông sản (Ví dụ: Đà Lạt, Tiền Giang).</summary>
         public string? Origin { get; set; }
+
+        /// <summary>Cờ đánh dấu sản phẩm thuộc nhóm chuỗi lạnh (thịt, cá, hải sản, rau củ tươi sống).</summary>
+        public bool RequiresColdChain { get; set; }
         #endregion
     }
 
@@ -81,6 +84,9 @@ namespace backend.DTOs.ShopDTOs
 
         /// <summary>Tổng tiền ước tính thanh toán cuối cùng (Estimated Total).</summary>
         public decimal EstimatedTotal { get; set; }
+
+        /// <summary>Cờ tổng hợp: Có ít nhất một sản phẩm trong giỏ thuộc chuỗi lạnh (thịt, cá, rau củ tươi sống).</summary>
+        public bool HasColdChain { get; set; }
     }
     #endregion
 
