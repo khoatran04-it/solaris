@@ -19,6 +19,7 @@ import { warehouseApi } from '../../api/warehouseApi';
 import { productVariantApi } from '../../api/productVariantApi';
 import { productBatchApi } from '../../api/productBatchApi';
 import { uomApi } from '../../api/uomApi';
+import { uomConversionApi } from '../../api/uomConversionApi';
 import { useAuthStore } from '../../stores/useAuthStore';
 
 import {
@@ -100,6 +101,25 @@ const InventoryAdjustmentForm: React.FC = () => {
   >([]);
   const [batches, setBatches] = useState<ProductBatch[]>([]);
   const [uoms, setUoms] = useState<{ value: number; label: string }[]>([]);
+  const [variantUoMsMap, setVariantUoMsMap] = useState<Record<number, { value: number; label: string }[]>>({});
+
+  const fetchValidUoMs = useCallback(async (vId: number) => {
+    if (!vId || variantUoMsMap[vId]) return;
+    try {
+      const opts = await uomConversionApi.getValidUoMs(vId);
+      if (opts && opts.length > 0) {
+        setVariantUoMsMap((prev) => ({
+          ...prev,
+          [vId]: opts.map((u) => ({
+            value: u.uoMId,
+            label: `${u.uoMName} (${u.description})`,
+          })),
+        }));
+      }
+    } catch (e) {
+      console.error('Lỗi tải ĐVT hợp lệ:', e);
+    }
+  }, [variantUoMsMap]);
 
   // Form States
   const [warehouseId, setWarehouseId] = useState<number | ''>('');
@@ -119,6 +139,15 @@ const InventoryAdjustmentForm: React.FC = () => {
       reasonDetail: '',
     },
   ]);
+
+  useEffect(() => {
+    details.forEach((d) => {
+      if (d.variantId) {
+        fetchValidUoMs(Number(d.variantId));
+      }
+    });
+  }, [details, fetchValidUoMs]);
+
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const showToast = (type: 'success' | 'warning' | 'error', message: string) => {
@@ -186,6 +215,7 @@ const InventoryAdjustmentForm: React.FC = () => {
 
     // Tự động gán ĐVT và Đơn giá khi chọn Biến thể
     if (field === 'variantId' && value) {
+      fetchValidUoMs(Number(value));
       const v = variants.find((item) => item.value === Number(value));
       if (v) {
         if (v.prices && v.prices.length > 0) {
@@ -471,7 +501,7 @@ const InventoryAdjustmentForm: React.FC = () => {
                           <FormSelect
                             label=""
                             placeholder="ĐVT"
-                            options={uoms}
+                            options={row.variantId && variantUoMsMap[Number(row.variantId)] ? variantUoMsMap[Number(row.variantId)] : uoms}
                             value={row.uoMId}
                             error={errors[`uoMId_${idx}`]}
                             onSelect={(val) =>

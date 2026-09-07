@@ -34,3 +34,12 @@ export interface UoMConversionQueryParams extends PaginationParams {
   isStandard?: boolean;
   isActive?: boolean;
 }
+
+export interface ValidUoMOption {
+  uoMId: number;
+  uoMName: string;
+  uoMCode: string;
+  conversionFactorToBase: number;
+  isBaseUoM: boolean;
+  description: string;
+}

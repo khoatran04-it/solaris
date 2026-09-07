@@ -265,5 +265,279 @@ namespace backend.Services
         }
 
         #endregion
+
+        #region Thuật Toán & Quy Đổi Tồn Kho (Calculation Engine)
+
+        /// <inheritdoc />
+        public async Task<decimal> GetConversionFactorAsync(int variantId, int fromUoMId, int toUoMId)
+        {
+            if (fromUoMId <= 0 || toUoMId <= 0 || fromUoMId == toUoMId)
+                return 1m;
+
+            var variant = await _context.ProductVariants
+                .Include(v => v.Product)
+                .AsNoTracking()
+                .FirstOrDefaultAsync(v => v.Id == variantId);
+
+            int? productId = variant?.ProductId;
+
+            // Lấy toàn bộ quy tắc quy đổi có liên quan (đặc thù sản phẩm + tiêu chuẩn hệ thống)
+            var conversions = await _context.UoMConversions
+                .Where(c => c.IsActive && !c.IsDeleted && (c.ProductId == productId || c.ProductId == null))
+                .AsNoTracking()
+                .ToListAsync();
+
+            // Xây dựng đồ thị quy đổi 2 chiều có trọng số
+            var graph = new Dictionary<int, List<(int ToUoM, decimal Factor, bool IsProductSpecific)>>();
+
+            void AddEdge(int uom1, int uom2, decimal factor, bool isProduct)
+            {
+                if (factor <= 0) return;
+                if (!graph.ContainsKey(uom1)) graph[uom1] = new List<(int, decimal, bool)>();
+                if (!graph.ContainsKey(uom2)) graph[uom2] = new List<(int, decimal, bool)>();
+
+                graph[uom1].Add((uom2, factor, isProduct));
+                graph[uom2].Add((uom1, 1m / factor, isProduct));
+            }
+
+            // Nạp quy đổi tiêu chuẩn trước
+            foreach (var c in conversions.Where(x => x.ProductId == null && x.FromUoMId.HasValue && x.ToUoMId.HasValue))
+            {
+                AddEdge(c.FromUoMId!.Value, c.ToUoMId!.Value, c.ConversionFactor, false);
+            }
+
+            // Nạp quy đổi đặc thù sản phẩm (được ưu tiên trước)
+            foreach (var c in conversions.Where(x => x.ProductId == productId && x.FromUoMId.HasValue && x.ToUoMId.HasValue))
+            {
+                AddEdge(c.FromUoMId!.Value, c.ToUoMId!.Value, c.ConversionFactor, true);
+            }
+
+            // Thuật toán BFS tìm đường đi ngắn nhất giữa 2 ĐVT
+            var queue = new Queue<(int CurrentUoM, decimal CumulativeFactor)>();
+            var visited = new HashSet<int>();
+
+            queue.Enqueue((fromUoMId, 1m));
+            visited.Add(fromUoMId);
+
+            while (queue.Count > 0)
+            {
+                var (curr, factor) = queue.Dequeue();
+
+                if (curr == toUoMId)
+                    return factor;
+
+                if (graph.TryGetValue(curr, out var neighbors))
+                {
+                    foreach (var (nextUoM, edgeFactor, _) in neighbors.OrderByDescending(n => n.IsProductSpecific))
+                    {
+                        if (!visited.Contains(nextUoM))
+                        {
+                            visited.Add(nextUoM);
+                            queue.Enqueue((nextUoM, factor * edgeFactor));
+                        }
+                    }
+                }
+            }
+
+            return 1m;
+        }
+
+        /// <inheritdoc />
+        public async Task<decimal> ConvertToBaseQuantityAsync(int variantId, int fromUoMId, decimal quantity)
+        {
+            if (quantity == 0 || fromUoMId <= 0) return quantity;
+
+            var variant = await _context.ProductVariants
+                .Include(v => v.Product)
+                .AsNoTracking()
+                .FirstOrDefaultAsync(v => v.Id == variantId);
+
+            if (variant == null || variant.Product == null) return quantity;
+
+            int baseUoMId = variant.Product.BaseUoMId;
+            if (fromUoMId == baseUoMId) return quantity;
+
+            decimal factor = await GetConversionFactorAsync(variantId, fromUoMId, baseUoMId);
+            return Math.Round(quantity * factor, 4);
+        }
+
+        /// <inheritdoc />
+        public async Task<decimal> ConvertFromBaseQuantityAsync(int variantId, int targetUoMId, decimal baseQuantity)
+        {
+            if (baseQuantity == 0 || targetUoMId <= 0) return baseQuantity;
+
+            var variant = await _context.ProductVariants
+                .Include(v => v.Product)
+                .AsNoTracking()
+                .FirstOrDefaultAsync(v => v.Id == variantId);
+
+            if (variant == null || variant.Product == null) return baseQuantity;
+
+            int baseUoMId = variant.Product.BaseUoMId;
+            if (targetUoMId == baseUoMId) return baseQuantity;
+
+            decimal factor = await GetConversionFactorAsync(variantId, baseUoMId, targetUoMId);
+            return Math.Round(baseQuantity * factor, 4);
+        }
+
+        /// <inheritdoc />
+        public async Task<List<ValidUoMOptionDto>> GetValidUoMsForVariantAsync(int variantId)
+        {
+            var variant = await _context.ProductVariants
+                .Include(v => v.Product).ThenInclude(p => p!.BaseUoM)
+                .Include(v => v.Prices).ThenInclude(pr => pr.UoM)
+                .Include(v => v.SupplierProducts).ThenInclude(sp => sp.PurchaseUoM)
+                .AsNoTracking()
+                .FirstOrDefaultAsync(v => v.Id == variantId);
+
+            if (variant == null || variant.Product == null || variant.Product.BaseUoM == null)
+                return new List<ValidUoMOptionDto>();
+
+            var baseUoM = variant.Product.BaseUoM;
+            int baseUoMId = baseUoM.Id;
+
+            var result = new List<ValidUoMOptionDto>();
+            var addedUoMIds = new HashSet<int>();
+
+            // 1. Đơn vị cơ sở hạt nhân
+            result.Add(new ValidUoMOptionDto
+            {
+                UoMId = baseUoM.Id,
+                UoMName = baseUoM.Name,
+                UoMCode = baseUoM.Code,
+                ConversionFactorToBase = 1m,
+                IsBaseUoM = true,
+                Description = "Đơn vị cơ sở"
+            });
+            addedUoMIds.Add(baseUoM.Id);
+
+            // 2. Các ĐVT từ bảng quy đổi đặc thù của sản phẩm
+            var productConversions = await _context.UoMConversions
+                .Include(c => c.FromUoM)
+                .Include(c => c.ToUoM)
+                .Where(c => c.ProductId == variant.ProductId && c.IsActive && !c.IsDeleted)
+                .AsNoTracking()
+                .ToListAsync();
+
+            foreach (var c in productConversions)
+            {
+                if (c.FromUoM != null && !addedUoMIds.Contains(c.FromUoM.Id))
+                {
+                    decimal factor = await GetConversionFactorAsync(variantId, c.FromUoM.Id, baseUoMId);
+                    result.Add(new ValidUoMOptionDto
+                    {
+                        UoMId = c.FromUoM.Id,
+                        UoMName = c.FromUoM.Name,
+                        UoMCode = c.FromUoM.Code,
+                        ConversionFactorToBase = factor,
+                        IsBaseUoM = false,
+                        Description = $"⚡ 1 {c.FromUoM.Name} = {factor:G29} {baseUoM.Name}"
+                    });
+                    addedUoMIds.Add(c.FromUoM.Id);
+                }
+
+                if (c.ToUoM != null && !addedUoMIds.Contains(c.ToUoM.Id))
+                {
+                    decimal factor = await GetConversionFactorAsync(variantId, c.ToUoM.Id, baseUoMId);
+                    result.Add(new ValidUoMOptionDto
+                    {
+                        UoMId = c.ToUoM.Id,
+                        UoMName = c.ToUoM.Name,
+                        UoMCode = c.ToUoM.Code,
+                        ConversionFactorToBase = factor,
+                        IsBaseUoM = false,
+                        Description = $"⚡ 1 {c.ToUoM.Name} = {factor:G29} {baseUoM.Name}"
+                    });
+                    addedUoMIds.Add(c.ToUoM.Id);
+                }
+            }
+
+            // 3. Các ĐVT từ bảng giá bán (Prices)
+            foreach (var price in variant.Prices.Where(p => p.IsActive && !p.IsDeleted && p.UoM != null))
+            {
+                if (!addedUoMIds.Contains(price.UoMId))
+                {
+                    decimal factor = await GetConversionFactorAsync(variantId, price.UoMId, baseUoMId);
+                    result.Add(new ValidUoMOptionDto
+                    {
+                        UoMId = price.UoM!.Id,
+                        UoMName = price.UoM.Name,
+                        UoMCode = price.UoM.Code,
+                        ConversionFactorToBase = factor,
+                        IsBaseUoM = false,
+                        Description = factor != 1m ? $"⚡ 1 {price.UoM.Name} = {factor:G29} {baseUoM.Name}" : price.UoM.Name
+                    });
+                    addedUoMIds.Add(price.UoMId);
+                }
+            }
+
+            // 4. Các ĐVT từ bảng giá mua NCC (SupplierProducts)
+            foreach (var sp in variant.SupplierProducts.Where(s => s.IsActive && !s.IsDeleted && s.PurchaseUoM != null))
+            {
+                if (!addedUoMIds.Contains(sp.PurchaseUoMId))
+                {
+                    decimal factor = await GetConversionFactorAsync(variantId, sp.PurchaseUoMId, baseUoMId);
+                    result.Add(new ValidUoMOptionDto
+                    {
+                        UoMId = sp.PurchaseUoM!.Id,
+                        UoMName = sp.PurchaseUoM.Name,
+                        UoMCode = sp.PurchaseUoM.Code,
+                        ConversionFactorToBase = factor,
+                        IsBaseUoM = false,
+                        Description = factor != 1m ? $"⚡ 1 {sp.PurchaseUoM.Name} = {factor:G29} {baseUoM.Name}" : sp.PurchaseUoM.Name
+                    });
+                    addedUoMIds.Add(sp.PurchaseUoMId);
+                }
+            }
+
+            // 5. Các ĐVT quy đổi tiêu chuẩn chung cùng nhóm với Base UoM (nếu Base UoM có nhóm)
+            if (baseUoM.CategoryId.HasValue)
+            {
+                var standardConversions = await _context.UoMConversions
+                    .Include(c => c.FromUoM)
+                    .Include(c => c.ToUoM)
+                    .Where(c => c.ProductId == null && c.IsActive && !c.IsDeleted &&
+                               ((c.FromUoM != null && c.FromUoM.CategoryId == baseUoM.CategoryId) ||
+                                (c.ToUoM != null && c.ToUoM.CategoryId == baseUoM.CategoryId)))
+                    .AsNoTracking()
+                    .ToListAsync();
+
+                foreach (var c in standardConversions)
+                {
+                    if (c.FromUoM != null && !addedUoMIds.Contains(c.FromUoM.Id))
+                    {
+                        decimal factor = await GetConversionFactorAsync(variantId, c.FromUoM.Id, baseUoMId);
+                        result.Add(new ValidUoMOptionDto
+                        {
+                            UoMId = c.FromUoM.Id,
+                            UoMName = c.FromUoM.Name,
+                            UoMCode = c.FromUoM.Code,
+                            ConversionFactorToBase = factor,
+                            IsBaseUoM = false,
+                            Description = $"⚡ 1 {c.FromUoM.Name} = {factor:G29} {baseUoM.Name}"
+                        });
+                        addedUoMIds.Add(c.FromUoM.Id);
+                    }
+                    if (c.ToUoM != null && !addedUoMIds.Contains(c.ToUoM.Id))
+                    {
+                        decimal factor = await GetConversionFactorAsync(variantId, c.ToUoM.Id, baseUoMId);
+                        result.Add(new ValidUoMOptionDto
+                        {
+                            UoMId = c.ToUoM.Id,
+                            UoMName = c.ToUoM.Name,
+                            UoMCode = c.ToUoM.Code,
+                            ConversionFactorToBase = factor,
+                            IsBaseUoM = false,
+                            Description = $"⚡ 1 {c.ToUoM.Name} = {factor:G29} {baseUoM.Name}"
+                        });
+                        addedUoMIds.Add(c.ToUoM.Id);
+                    }
+                }
+            }
+
+            return result;
+        }
+
+        #endregion
     }
 }

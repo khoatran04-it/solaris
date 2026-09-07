@@ -20,6 +20,7 @@ import { orderApi } from '../../api/orderApi';
 import { warehouseApi } from '../../api/warehouseApi';
 import { productVariantApi } from '../../api/productVariantApi';
 import { uomApi } from '../../api/uomApi';
+import { uomConversionApi } from '../../api/uomConversionApi';
 import { useAuthStore } from '../../stores/useAuthStore';
 
 // Import types
@@ -98,6 +99,33 @@ const InventoryTransferForm: React.FC = () => {
     { value: number; label: string; prices?: any[]; baseUoMId?: number }[]
   >([]);
   const [uoms, setUoms] = useState<{ value: number; label: string }[]>([]);
+  const [variantUoMsMap, setVariantUoMsMap] = useState<Record<number, { value: number; label: string }[]>>({});
+
+  const fetchValidUoMs = useCallback(async (vId: number) => {
+    if (!vId || variantUoMsMap[vId]) return;
+    try {
+      const opts = await uomConversionApi.getValidUoMs(vId);
+      if (opts && opts.length > 0) {
+        setVariantUoMsMap((prev) => ({
+          ...prev,
+          [vId]: opts.map((u) => ({
+            value: u.uoMId,
+            label: `${u.uoMName} (${u.description})`,
+          })),
+        }));
+      }
+    } catch (e) {
+      console.error('Lỗi tải ĐVT hợp lệ:', e);
+    }
+  }, [variantUoMsMap]);
+
+  useEffect(() => {
+    details.forEach((d) => {
+      if (d.variantId) {
+        fetchValidUoMs(Number(d.variantId));
+      }
+    });
+  }, [details, fetchValidUoMs]);
 
   const showToast = (type: 'success' | 'warning' | 'error', message: string) => {
     setToast({ show: true, type, message });
@@ -305,6 +333,7 @@ const InventoryTransferForm: React.FC = () => {
 
         // Auto-fill UoM khi chọn SP
         if (field === 'variantId' && value) {
+          fetchValidUoMs(Number(value));
           const v = variants.find((item) => item.value === Number(value));
           if (v) {
             if (v.prices && v.prices.length > 0) {
@@ -566,7 +595,7 @@ const InventoryTransferForm: React.FC = () => {
                           <FormSelect
                             label=""
                             placeholder="ĐVT"
-                            options={uoms}
+                            options={row.variantId && variantUoMsMap[Number(row.variantId)] ? variantUoMsMap[Number(row.variantId)] : uoms}
                             value={row.uoMId}
                             error={errors[`uoMId_${row.id}`]}
                             onSelect={(val) =>

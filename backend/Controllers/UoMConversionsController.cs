@@ -70,6 +70,19 @@ namespace backend.Controllers
             return Ok(result);
         }
 
+        /// <summary>
+        /// Lấy danh sách Đơn vị tính hợp lệ của một Biến thể sản phẩm (SKU) kèm tỷ lệ quy đổi về Base UoM.
+        /// Dùng để hiển thị dropdown động trên giao diện (0% hardcode).
+        /// </summary>
+        [HttpGet("valid-uoms/{variantId:int}")]
+        [AllowAnonymous]
+        [ProducesResponseType(typeof(List<ValidUoMOptionDto>), StatusCodes.Status200OK)]
+        public async Task<IActionResult> GetValidUoMsForVariant(int variantId)
+        {
+            var result = await _service.GetValidUoMsForVariantAsync(variantId);
+            return Ok(result);
+        }
+
         #endregion
 
         #region Thao tác Dữ liệu (Command Endpoints)

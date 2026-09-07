@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { PackageCheck, Plus, Trash2, Sparkles, Save } from 'lucide-react';
 
@@ -21,6 +21,7 @@ import { warehouseApi } from '../../api/warehouseApi';
 import { productVariantApi } from '../../api/productVariantApi';
 import { productBatchApi } from '../../api/productBatchApi';
 import { uomApi } from '../../api/uomApi';
+import { uomConversionApi } from '../../api/uomConversionApi';
 import { useAuthStore } from '../../stores/useAuthStore';
 
 // Import types
@@ -109,6 +110,33 @@ const InventoryIssueForm: React.FC = () => {
   const [orders, setOrders] = useState<{ value: number; label: string }[]>([]);
   const [variants, setVariants] = useState<{ value: number; label: string; prices: any[] }[]>([]);
   const [uoms, setUoms] = useState<{ value: number; label: string }[]>([]);
+  const [variantUoMsMap, setVariantUoMsMap] = useState<Record<number, { value: number; label: string }[]>>({});
+
+  const fetchValidUoMs = useCallback(async (vId: number) => {
+    if (!vId || variantUoMsMap[vId]) return;
+    try {
+      const opts = await uomConversionApi.getValidUoMs(vId);
+      if (opts && opts.length > 0) {
+        setVariantUoMsMap((prev) => ({
+          ...prev,
+          [vId]: opts.map((u) => ({
+            value: u.uoMId,
+            label: `${u.uoMName} (${u.description})`,
+          })),
+        }));
+      }
+    } catch (e) {
+      console.error('Lỗi tải ĐVT hợp lệ:', e);
+    }
+  }, [variantUoMsMap]);
+
+  useEffect(() => {
+    details.forEach((d) => {
+      if (d.variantId) {
+        fetchValidUoMs(Number(d.variantId));
+      }
+    });
+  }, [details, fetchValidUoMs]);
 
   // Map lưu danh sách lô theo: key = `${warehouseId}_${variantId}`
   const [variantBatchesMap, setVariantBatchesMap] = useState<Record<string, SuggestedBatch[]>>({});
@@ -333,6 +361,7 @@ const InventoryIssueForm: React.FC = () => {
 
         // Auto-fill UoM & Giá khi chọn SP
         if (field === 'variantId' && value) {
+          fetchValidUoMs(Number(value));
           const v = variants.find((item) => item.value === Number(value));
           if (v && v.prices && v.prices.length > 0) {
             const defPrice = v.prices.find((p: any) => p.isDefault) || v.prices[0];
@@ -636,11 +665,15 @@ const InventoryIssueForm: React.FC = () => {
                         </td>
 
                         {/* Cột 2: Đơn vị tính */}
-                        <td className="p-2 w-28">
+                        <td className="p-2 w-36">
                           <FormSelect
                             label=""
                             placeholder="ĐVT"
-                            options={uoms}
+                            options={
+                              row.variantId && variantUoMsMap[Number(row.variantId)]
+                                ? variantUoMsMap[Number(row.variantId)]
+                                : uoms
+                            }
                             value={row.uoMId}
                             error={errors[`uoMId_${row.id}`]}
                             onSelect={(val) =>

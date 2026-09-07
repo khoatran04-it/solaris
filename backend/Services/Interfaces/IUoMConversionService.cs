@@ -70,5 +70,30 @@ namespace backend.Services.Interfaces
         /// <param name="id">Mã định danh của quy tắc cần thay đổi trạng thái.</param>
         Task<bool> ToggleActiveAsync(int id);
         #endregion
+
+        #region Thuật Toán & Quy Đổi Tồn Kho (Calculation Engine)
+        /// <summary>
+        /// Tìm hệ số quy đổi giữa 2 ĐVT bất kỳ cho một Biến thể sản phẩm (SKU).
+        /// Áp dụng thuật toán ưu tiên: ĐVT cơ sở -> Quy đổi đặc thù sản phẩm -> Quy đổi tiêu chuẩn hệ thống -> Thuận/Nghịch.
+        /// </summary>
+        Task<decimal> GetConversionFactorAsync(int variantId, int fromUoMId, int toUoMId);
+
+        /// <summary>
+        /// Quy đổi một số lượng bất kỳ theo ĐVT chỉ định về Đơn vị tính cơ sở (Base UoM) của sản phẩm.
+        /// Nghiệp vụ cốt lõi: Dùng làm chốt chặn trước khi cộng/trừ vào WarehouseInventory và InventoryTransaction.
+        /// </summary>
+        Task<decimal> ConvertToBaseQuantityAsync(int variantId, int fromUoMId, decimal quantity);
+
+        /// <summary>
+        /// Quy đổi từ số lượng theo ĐVT cơ sở (Base UoM) sang một ĐVT đích.
+        /// </summary>
+        Task<decimal> ConvertFromBaseQuantityAsync(int variantId, int targetUoMId, decimal baseQuantity);
+
+        /// <summary>
+        /// Trích xuất danh sách tất cả các Đơn vị tính hợp lệ của một Biến thể sản phẩm (0% hardcode):
+        /// Bao gồm: Base UoM, các ĐVT trong bảng giá bán (Prices), ĐVT mua hàng (SupplierProducts), và bảng quy đổi (UoMConversions).
+        /// </summary>
+        Task<List<ValidUoMOptionDto>> GetValidUoMsForVariantAsync(int variantId);
+        #endregion
     }
 }

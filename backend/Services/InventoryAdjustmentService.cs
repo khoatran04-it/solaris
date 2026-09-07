@@ -21,11 +21,13 @@ namespace backend.Services
     {
         private readonly SolarisDbContext _context;
         private readonly IMapper _mapper;
+        private readonly IUoMConversionService _uomConversionService;
 
-        public InventoryAdjustmentService(SolarisDbContext context, IMapper mapper)
+        public InventoryAdjustmentService(SolarisDbContext context, IMapper mapper, IUoMConversionService? uomConversionService = null)
         {
             _context = context;
             _mapper = mapper;
+            _uomConversionService = uomConversionService ?? new UoMConversionService(context, mapper);
         }
 
         #region Truy vấn & Phân quyền (Query & RBAC)
@@ -255,33 +257,35 @@ namespace backend.Services
                         _context.WarehouseInventories.Add(inv);
                     }
 
+                    decimal baseQty = await _uomConversionService.ConvertToBaseQuantityAsync(detail.VariantId, detail.UoMId, detail.Quantity);
+
                     TransactionType txnType = TransactionType.Adjustment;
-                    decimal qtySign = detail.Quantity;
+                    decimal qtySign = baseQty;
 
                     switch (detail.AdjustmentType)
                     {
                         case InventoryAdjustmentType.IncreaseAvailable:
-                            inv.QuantityAvailable += detail.Quantity;
-                            qtySign = detail.Quantity;
+                            inv.QuantityAvailable += baseQty;
+                            qtySign = baseQty;
                             txnType = TransactionType.Adjustment;
                             break;
 
                         case InventoryAdjustmentType.DecreaseAvailable:
-                            inv.QuantityAvailable = Math.Max(0, inv.QuantityAvailable - detail.Quantity);
-                            qtySign = -detail.Quantity;
+                            inv.QuantityAvailable = Math.Max(0, inv.QuantityAvailable - baseQty);
+                            qtySign = -baseQty;
                             txnType = TransactionType.Adjustment;
                             break;
 
                         case InventoryAdjustmentType.MoveToDamaged:
-                            inv.QuantityAvailable = Math.Max(0, inv.QuantityAvailable - detail.Quantity);
-                            inv.QuantityDamaged += detail.Quantity;
-                            qtySign = detail.Quantity;
+                            inv.QuantityAvailable = Math.Max(0, inv.QuantityAvailable - baseQty);
+                            inv.QuantityDamaged += baseQty;
+                            qtySign = baseQty;
                             txnType = TransactionType.Adjustment;
                             break;
 
                         case InventoryAdjustmentType.DisposeDamaged:
-                            inv.QuantityDamaged = Math.Max(0, inv.QuantityDamaged - detail.Quantity);
-                            qtySign = -detail.Quantity;
+                            inv.QuantityDamaged = Math.Max(0, inv.QuantityDamaged - baseQty);
+                            qtySign = -baseQty;
                             txnType = TransactionType.Adjustment;
                             break;
                     }
@@ -295,7 +299,7 @@ namespace backend.Services
                         Type = txnType,
                         Quantity = qtySign,
                         ReferenceCode = adj.AdjustmentCode,
-                        Note = $"Điều chỉnh kho ({adj.Reason}): {detail.ReasonDetail}",
+                        Note = $"Điều chỉnh kho ({adj.Reason}): {detail.ReasonDetail} ({detail.Quantity} ĐVT -> {baseQty} Base UoM)",
                         CreatedById = approvedById,
                         CreatedAt = DateTime.UtcNow
                     });

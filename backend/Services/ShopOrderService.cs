@@ -24,12 +24,18 @@ namespace backend.Services
         private readonly SolarisDbContext _context;
         private readonly IMapper _mapper;
         private readonly IOrderRoutingService _routingService;
+        private readonly IUoMConversionService _uomConversionService;
 
-        public ShopOrderService(SolarisDbContext context, IMapper mapper, IOrderRoutingService routingService)
+        public ShopOrderService(
+            SolarisDbContext context,
+            IMapper mapper,
+            IOrderRoutingService routingService,
+            IUoMConversionService? uomConversionService = null)
         {
             _context = context;
             _mapper = mapper;
             _routingService = routingService;
+            _uomConversionService = uomConversionService ?? new UoMConversionService(context, mapper);
         }
 
         public async Task<ShopOrderReadDto> CheckoutAsync(int customerId, ShopCheckoutRequestDto request)
@@ -144,13 +150,16 @@ namespace backend.Services
 
                     int reserveWarehouseId = selectedWarehouseId;
 
+                    // Quy đổi số lượng đặt hàng sang ĐVT cơ sở (Base UoM) để kiểm tra và giữ chỗ trong két sắt tồn kho
+                    decimal baseQty = await _uomConversionService.ConvertToBaseQuantityAsync(item.VariantId, item.UoMId, item.Quantity);
+
                     // Nếu kho đích không đủ hàng, tìm kho bán lẻ khác có lô còn hạn đủ số lượng để giữ chỗ (Reserve)
                     if (inventory == null)
                     {
                         var fallbackQuery = _context.WarehouseInventories
                             .Include(wi => wi.Batch)
                             .Where(wi => wi.VariantId == item.VariantId && 
-                                         wi.QuantityAvailable >= item.Quantity &&
+                                         wi.QuantityAvailable >= baseQty &&
                                          (wi.Batch == null || wi.Batch.ExpiryDate > now));
 
                         var filteredFallback = await fallbackQuery.FilterRetailOnlyAsync(_context);
@@ -170,12 +179,12 @@ namespace backend.Services
                     if (inventory == null)
                     {
                         inventory = await _context.WarehouseInventories
-                            .FirstOrDefaultAsync(wi => wi.WarehouseId == selectedWarehouseId && wi.VariantId == item.VariantId && wi.QuantityAvailable >= item.Quantity);
+                            .FirstOrDefaultAsync(wi => wi.WarehouseId == selectedWarehouseId && wi.VariantId == item.VariantId && wi.QuantityAvailable >= baseQty);
 
                         if (inventory == null)
                         {
                             var anyStockQuery = _context.WarehouseInventories
-                                .Where(wi => wi.VariantId == item.VariantId && wi.QuantityAvailable >= item.Quantity);
+                                .Where(wi => wi.VariantId == item.VariantId && wi.QuantityAvailable >= baseQty);
                             var filteredAnyStock = await anyStockQuery.FilterRetailOnlyAsync(_context);
                             inventory = await filteredAnyStock.FirstOrDefaultAsync();
                         }
@@ -186,18 +195,18 @@ namespace backend.Services
                         }
                     }
 
-                    if (inventory == null || inventory.QuantityAvailable < item.Quantity)
+                    if (inventory == null || inventory.QuantityAvailable < baseQty)
                     {
                         decimal currentAvail = inventory?.QuantityAvailable ?? 0;
-                        throw new InvalidOperationException($"Sản phẩm '{item.Variant.Name}' không đủ tồn kho khả dụng (Yêu cầu: {item.Quantity}, Còn: {currentAvail}).");
+                        throw new InvalidOperationException($"Sản phẩm '{item.Variant.Name}' không đủ tồn kho khả dụng (Yêu cầu: {baseQty} {item.Variant.Product?.BaseUoM?.Name ?? "ĐVT"}, Còn: {currentAvail}).");
                     }
 
-                    // Khóa giữ chỗ tồn kho tại kho thực tế đang giữ hàng
-                    inventory.QuantityAvailable -= item.Quantity;
-                    inventory.QuantityReserved += item.Quantity;
+                    // Khóa giữ chỗ tồn kho tại kho thực tế đang giữ hàng theo Base UoM
+                    inventory.QuantityAvailable -= baseQty;
+                    inventory.QuantityReserved += baseQty;
                     inventory.UpdatedAt = now;
 
-                    // Ghi sổ cái bất biến Reserve với CreatedById là ID nhân viên/hệ thống hợp lệ
+                    // Ghi sổ cái bất biến Reserve với CreatedById là ID nhân viên/hệ thống hợp lệ theo Base UoM
                     _context.InventoryTransactions.Add(new InventoryTransaction
                     {
                         TransactionCode = $"TX-{now:yyyyMMdd}-{Guid.NewGuid():N}".Substring(0, 20).ToUpperInvariant(),
@@ -205,9 +214,9 @@ namespace backend.Services
                         WarehouseId = reserveWarehouseId,
                         VariantId = item.VariantId,
                         BatchId = inventory.BatchId,
-                        Quantity = item.Quantity,
+                        Quantity = baseQty,
                         ReferenceCode = orderCode,
-                        Note = $"Khách hàng {customer.Name} ({customer.Code}) đặt hàng qua Shop (Kho xử lý đơn: #{selectedWarehouseId}, Giữ hàng tại kho #{reserveWarehouseId})",
+                        Note = $"Khách hàng {customer.Name} ({customer.Code}) đặt hàng qua Shop ({item.Quantity} ĐVT -> {baseQty} Base UoM, Giữ hàng tại kho #{reserveWarehouseId})",
                         CreatedById = systemUserId,
                         CreatedAt = now
                     });
@@ -247,7 +256,7 @@ namespace backend.Services
                         VariantId = item.VariantId,
                         UoMId = item.UoMId,
                         Quantity = item.Quantity,
-                        BaseQuantity = item.Quantity,
+                        BaseQuantity = baseQty,
                         UnitPrice = unitPrice,
                         DiscountAmount = discountAmount * item.Quantity,
                         TotalPrice = lineTotal,
@@ -382,7 +391,8 @@ namespace backend.Services
 
                         if (inv != null)
                         {
-                            decimal unreserveQty = Math.Min(inv.QuantityReserved, d.Quantity);
+                            decimal neededUnreserve = d.BaseQuantity > 0 ? d.BaseQuantity : d.Quantity;
+                            decimal unreserveQty = Math.Min(inv.QuantityReserved, neededUnreserve);
                             inv.QuantityReserved -= unreserveQty;
                             inv.QuantityAvailable += unreserveQty;
                             inv.UpdatedAt = now;
