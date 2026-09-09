@@ -43,6 +43,9 @@ export interface InteractiveOrderPayload {
   previousOrderCode?: string;
   items: InteractiveOrderItem[];
   stockWarning?: string;
+  isColdChainFeasible?: boolean;
+  ineligibleColdChainItems?: string[];
+  coldChainWarning?: string;
   subTotal: number;
   totalDiscount: number;
   shippingFee: number;
@@ -52,6 +55,16 @@ export interface InteractiveOrderPayload {
   suggestedDeliveryAddress?: string;
   suggestedReceiverName?: string;
   suggestedReceiverPhone?: string;
+}
+
+export interface AiProductCardPrice {
+  priceId: number;
+  uoMId: number;
+  uoMName: string;
+  price: number;
+  discountedPrice: number;
+  discountPercent: number;
+  isDefault: boolean;
 }
 
 export interface AiProductCard {
@@ -72,6 +85,7 @@ export interface AiProductCard {
   certification?: string;
   brixLevel?: string;
   isInStock: boolean;
+  availablePrices?: AiProductCardPrice[];
 }
 
 export interface ConfirmInteractiveOrderPayload {
@@ -81,8 +95,6 @@ export interface ConfirmInteractiveOrderPayload {
   receiverName?: string;
   receiverPhone?: string;
   deliveryAddress?: string;
-  ghnDistrictId?: number;
-  ghnWardCode?: string;
   shippingFee: number;
   paymentMethod: number; // 3 = VNPay, 1 = COD
   note?: string;
@@ -121,5 +133,18 @@ export interface AiOrderTracking {
   receiverPhone?: string;
   deliveryAddress?: string;
   shippingProvider?: string;
+  cancellationReason?: string;
+  deliveryTripCode?: string;
+  licensePlate?: string;
+  driverName?: string;
+  driverPhone?: string;
+  tripStatus?: number;
+  tripStatusName?: string;
+  vehicleType?: string;
+  isColdChainVehicle?: boolean;
+  startedAt?: string;
+  returnCode?: string;
+  returnStatus?: number;
+  refundAmount?: number;
   items: AiOrderTrackingItem[];
 }

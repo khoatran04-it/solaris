@@ -1,6 +1,7 @@
 using AutoMapper;
 using backend.Data;
 using backend.DTOs.VehicleDTOs;
+using backend.Helpers;
 using backend.Models;
 using backend.Models.Enums;
 using backend.Services.Interfaces;
@@ -16,11 +17,13 @@ namespace backend.Services
     {
         private readonly SolarisDbContext _context;
         private readonly IMapper _mapper;
+        private readonly IUoMConversionService _uomConversionService;
 
-        public DeliveryTripService(SolarisDbContext context, IMapper mapper)
+        public DeliveryTripService(SolarisDbContext context, IMapper mapper, IUoMConversionService? uomConversionService = null)
         {
             _context = context;
             _mapper = mapper;
+            _uomConversionService = uomConversionService ?? new UoMConversionService(context, mapper);
         }
 
         public async Task<List<DeliveryTripReadDto>> GetAllTripsAsync(string? status = null, string? tripType = null)
@@ -29,6 +32,9 @@ namespace backend.Services
                 .Include(t => t.Vehicle)
                 .Include(t => t.Warehouse)
                 .Include(t => t.InventoryTransfer)
+                    .ThenInclude(it => it!.FromWarehouse)
+                .Include(t => t.InventoryTransfer)
+                    .ThenInclude(it => it!.ToWarehouse)
                 .Include(t => t.TripOrders)
                     .ThenInclude(to => to.Order)
                 .Where(t => !t.IsDeleted)
@@ -54,8 +60,17 @@ namespace backend.Services
                 .Include(t => t.Vehicle)
                 .Include(t => t.Warehouse)
                 .Include(t => t.InventoryTransfer)
+                    .ThenInclude(it => it!.FromWarehouse)
+                .Include(t => t.InventoryTransfer)
+                    .ThenInclude(it => it!.ToWarehouse)
                 .Include(t => t.TripOrders)
                     .ThenInclude(to => to.Order)
+                .Include(t => t.CustomerReturns)
+                    .ThenInclude(cr => cr.Order)
+                .Include(t => t.CustomerReturns)
+                    .ThenInclude(cr => cr.Customer)
+                .Include(t => t.CustomerReturns)
+                    .ThenInclude(cr => cr.Details)
                 .FirstOrDefaultAsync(t => t.Id == id && !t.IsDeleted);
 
             return trip == null ? null : _mapper.Map<DeliveryTripReadDto>(trip);
@@ -131,9 +146,46 @@ namespace backend.Services
             // Gán chuyển kho B2B nếu có
             if (dto.TripType == "B2B_Transfer" && dto.InventoryTransferId.HasValue)
             {
-                var transfer = await _context.InventoryTransfers.FindAsync(dto.InventoryTransferId.Value);
+                var transfer = await _context.InventoryTransfers
+                    .Include(t => t.Details)
+                    .FirstOrDefaultAsync(t => t.Id == dto.InventoryTransferId.Value);
+
                 if (transfer != null)
                 {
+                    // Nếu phiếu đang ở trạng thái Draft, thực hiện trừ tồn kho kho nguồn và ghi nhận sổ cái (Dispatch)
+                    if (transfer.Status == InventoryTransferStatus.Draft)
+                    {
+                        foreach (var detail in transfer.Details)
+                        {
+                            decimal baseQty = await _uomConversionService.ConvertToBaseQuantityAsync(detail.VariantId, detail.UoMId, detail.Quantity);
+
+                            var sourceInv = await _context.WarehouseInventories
+                                .FirstOrDefaultAsync(i => i.WarehouseId == transfer.FromWarehouseId &&
+                                                          i.VariantId == detail.VariantId &&
+                                                          i.BatchId == detail.BatchId);
+
+                            if (sourceInv == null || sourceInv.QuantityAvailable < baseQty)
+                                throw new InvalidOperationException($"Kho nguồn không đủ số lượng khả dụng cho mặt hàng mã #{detail.VariantId}, lô #{detail.BatchId} (Hiện có: {sourceInv?.QuantityAvailable ?? 0}, Cần xuất: {baseQty} theo ĐVT cơ sở).");
+
+                            sourceInv.QuantityAvailable -= baseQty;
+                            sourceInv.UpdatedAt = DateTime.UtcNow;
+
+                            _context.InventoryTransactions.Add(new InventoryTransaction
+                            {
+                                TransactionCode = $"TXN-{DateTimeHelper.VietnamNow:yyyyMMddHHmmss}-{Guid.NewGuid().ToString()[..4].ToUpper()}",
+                                WarehouseId = transfer.FromWarehouseId,
+                                VariantId = detail.VariantId,
+                                BatchId = detail.BatchId,
+                                Type = TransactionType.TransferOut,
+                                Quantity = baseQty,
+                                ReferenceCode = transfer.TransferCode,
+                                Note = $"Xuất chuyển kho sang kho #{transfer.ToWarehouseId} (Chuyến xe {trip.TripCode}, Xe {vehicle.LicensePlate})",
+                                CreatedById = 1,
+                                CreatedAt = DateTime.UtcNow
+                            });
+                        }
+                    }
+
                     transfer.DeliveryTripId = trip.Id;
                     transfer.DriverName = trip.DriverName;
                     transfer.DriverPhone = trip.DriverPhone;
@@ -141,6 +193,21 @@ namespace backend.Services
                     transfer.DispatchedDate = DateTime.UtcNow;
                     transfer.Status = InventoryTransferStatus.InTransit;
                     transfer.UpdatedAt = DateTime.UtcNow;
+                }
+            }
+
+            // Gán thu hồi đơn trả RMA nếu có (TripType == B2C_Return)
+            if (dto.TripType == "B2C_Return" && dto.CustomerReturnIds != null && dto.CustomerReturnIds.Any())
+            {
+                var returns = await _context.CustomerReturns
+                    .Where(r => dto.CustomerReturnIds.Contains(r.Id) && !r.IsDeleted)
+                    .ToListAsync();
+
+                foreach (var ret in returns)
+                {
+                    ret.DeliveryTripId = trip.Id;
+                    ret.Status = CustomerReturnStatus.PickingUp; // Đang thu hồi
+                    ret.UpdatedAt = DateTime.UtcNow;
                 }
             }
 
@@ -255,21 +322,109 @@ namespace backend.Services
                 trip.Vehicle.UpdatedAt = DateTime.UtcNow;
             }
 
-            // Hoàn tất tất cả đơn hàng trong chuyến nếu chưa hoàn tất
+            // Xử lý các đơn hàng trong chuyến B2C_Delivery
             foreach (var to in trip.TripOrders)
             {
-                if (to.Status != "Delivered")
+                if (to.Status == "Delivered")
                 {
-                    to.Status = "Delivered";
-                    to.DeliveredAt = DateTime.UtcNow;
+                    if (to.Order != null && to.Order.Status != OrderStatus.Completed)
+                    {
+                        to.Order.Status = OrderStatus.Completed;
+                        to.Order.DeliveredAt ??= DateTime.UtcNow;
+                        to.Order.UpdatedAt = DateTime.UtcNow;
+                    }
                 }
+                else if (to.Status == "Failed")
+                {
+                    // BẢO TOÀN TRẠNG THÁI ĐÃ HỦY CHO ĐƠN BỊ TỪ CHỐI
+                    if (to.Order != null)
+                    {
+                        to.Order.Status = OrderStatus.Cancelled;
+                        to.Order.CancellationReason = to.FailureReason ?? to.Note ?? "Khách từ chối nhận hàng tại thời điểm giao";
+                        to.Order.UpdatedAt = DateTime.UtcNow;
 
-                if (to.Order != null && to.Order.Status != OrderStatus.Completed)
-                {
-                    to.Order.Status = OrderStatus.Completed;
-                    to.Order.DeliveredAt = DateTime.UtcNow;
-                    to.Order.UpdatedAt = DateTime.UtcNow;
+                        // TỰ ĐỘNG SINH PHIẾU RMA NẾU CHƯA CÓ
+                        bool hasRma = await _context.CustomerReturns.AnyAsync(r => r.OrderId == to.OrderId && !r.IsDeleted);
+                        if (!hasRma)
+                        {
+                            var autoRma = new CustomerReturn
+                            {
+                                ReturnCode = $"RET-{DateTimeHelper.VietnamDateString}-{Guid.NewGuid().ToString()[..6].ToUpper()}",
+                                OrderId = to.OrderId,
+                                CustomerId = to.Order.CustomerId,
+                                WarehouseId = to.Order.WarehouseId ?? trip.WarehouseId,
+                                ReceivedById = 1,
+                                Status = CustomerReturnStatus.Pending,
+                                ReturnType = CustomerReturnType.DoorstepRefusal,
+                                ReturnDate = DateTime.UtcNow,
+                                Reason = to.FailureReason ?? to.Note ?? "Hàng hoàn về từ chuyến giao thất bại / khách từ chối nhận",
+                                CreatedAt = DateTime.UtcNow,
+                                UpdatedAt = DateTime.UtcNow,
+                                IsDeleted = false
+                            };
+
+                            var orderWithDetails = await _context.Orders
+                                .Include(o => o.Details)
+                                .FirstOrDefaultAsync(o => o.Id == to.OrderId);
+
+                            if (orderWithDetails != null)
+                            {
+                                foreach (var detail in orderWithDetails.Details)
+                                {
+                                    int batchId = 0;
+                                    var issueDetail = await _context.InventoryIssueDetails
+                                        .Include(iid => iid.InventoryIssue)
+                                        .FirstOrDefaultAsync(iid => iid.InventoryIssue != null && iid.InventoryIssue.OrderId == to.OrderId && iid.VariantId == detail.VariantId && !iid.InventoryIssue.IsDeleted);
+
+                                    if (issueDetail != null && issueDetail.BatchId > 0)
+                                    {
+                                        batchId = issueDetail.BatchId;
+                                    }
+                                    else
+                                    {
+                                        var anyBatch = await _context.ProductBatches
+                                            .Where(b => b.VariantId == detail.VariantId && !b.IsDeleted)
+                                            .OrderByDescending(b => b.Id)
+                                            .FirstOrDefaultAsync();
+                                        batchId = anyBatch?.Id ?? 0;
+                                    }
+
+                                    if (batchId == 0)
+                                    {
+                                        var fallbackBatch = await _context.ProductBatches.FirstOrDefaultAsync(b => !b.IsDeleted);
+                                        batchId = fallbackBatch?.Id ?? 1;
+                                    }
+
+                                    autoRma.Details.Add(new CustomerReturnDetail
+                                    {
+                                        VariantId = detail.VariantId,
+                                        BatchId = batchId,
+                                        UoMId = detail.UoMId,
+                                        ReturnedQuantity = detail.Quantity,
+                                        UnitPrice = detail.UnitPrice,
+                                        AcceptedQuantity = 0,
+                                        DamagedQuantity = 0,
+                                        RefundAmount = 0
+                                    });
+                                }
+                            }
+
+                            _context.CustomerReturns.Add(autoRma);
+                        }
+                    }
                 }
+            }
+
+            // Xử lý các phiếu trả hàng thu hồi trong chuyến (B2C_Return)
+            var returnIdsInTrip = await _context.CustomerReturns
+                .Where(r => r.DeliveryTripId == trip.Id && !r.IsDeleted)
+                .ToListAsync();
+
+            foreach (var ret in returnIdsInTrip)
+            {
+                // Hàng đã về tới kho an toàn -> Chuyển sang Inspecting (Chờ kiểm định QC)
+                ret.Status = CustomerReturnStatus.Inspecting;
+                ret.UpdatedAt = DateTime.UtcNow;
             }
 
             await _context.SaveChangesAsync();
@@ -297,18 +452,51 @@ namespace backend.Services
                 tripOrder.Order.UpdatedAt = DateTime.UtcNow;
             }
 
-            // Kiểm tra xem tất cả các đơn trong chuyến đã giao xong chưa
+            // Kiểm tra xem tất cả các đơn trong chuyến đã giao xong (Delivered hoặc Failed) chưa
             var allOrders = await _context.DeliveryTripOrders.Where(to => to.TripId == tripId).ToListAsync();
-            if (allOrders.All(o => o.Status == "Delivered"))
+            if (allOrders.All(o => o.Status == "Delivered" || o.Status == "Failed"))
             {
-                if (tripOrder.Trip != null)
+                if (tripOrder.Trip != null && tripOrder.Trip.Status != "Completed")
                 {
-                    tripOrder.Trip.Status = "Completed";
-                    tripOrder.Trip.CompletedAt = DateTime.UtcNow;
-                    if (tripOrder.Trip.Vehicle != null)
-                    {
-                        tripOrder.Trip.Vehicle.Status = "Available";
-                    }
+                    // Chuyển sang Returning (Chờ xe quay về kho và chốt COD/thùng lạnh)
+                    // Xe vẫn ở trạng thái OnTrip cho đến khi Quản lý kho bấm Xác nhận xe đã về kho!
+                    tripOrder.Trip.Status = "Returning";
+                    tripOrder.Trip.UpdatedAt = DateTime.UtcNow;
+                }
+            }
+
+            await _context.SaveChangesAsync();
+            return await GetTripByIdAsync(tripId) ?? new DeliveryTripReadDto();
+        }
+
+        public async Task<DeliveryTripReadDto> MarkTripOrderFailedAsync(int tripId, int orderId, string reason)
+        {
+            var tripOrder = await _context.DeliveryTripOrders
+                .Include(to => to.Order)
+                .Include(to => to.Trip)
+                    .ThenInclude(t => t!.Vehicle)
+                .FirstOrDefaultAsync(to => to.TripId == tripId && to.OrderId == orderId);
+
+            if (tripOrder == null) throw new InvalidOperationException("Không tìm thấy đơn hàng trong chuyến xe này.");
+
+            tripOrder.Status = "Failed";
+            tripOrder.FailureReason = reason;
+
+            if (tripOrder.Order != null)
+            {
+                tripOrder.Order.Status = OrderStatus.Cancelled;
+                tripOrder.Order.CancellationReason = $"Khách từ chối nhận: {reason}";
+                tripOrder.Order.UpdatedAt = DateTime.UtcNow;
+            }
+
+            // Kiểm tra xem tất cả các đơn trong chuyến đã giao xong (Delivered hoặc Failed) chưa
+            var allOrders = await _context.DeliveryTripOrders.Where(to => to.TripId == tripId).ToListAsync();
+            if (allOrders.All(o => o.Status == "Delivered" || o.Status == "Failed"))
+            {
+                if (tripOrder.Trip != null && tripOrder.Trip.Status != "Completed")
+                {
+                    tripOrder.Trip.Status = "Returning";
+                    tripOrder.Trip.UpdatedAt = DateTime.UtcNow;
                 }
             }
 
@@ -327,34 +515,134 @@ namespace backend.Services
             var activeTrips = await _context.DeliveryTrips
                 .Include(t => t.Vehicle)
                 .Include(t => t.Warehouse)
+                .Include(t => t.InventoryTransfer)
+                    .ThenInclude(it => it!.FromWarehouse)
+                .Include(t => t.InventoryTransfer)
+                    .ThenInclude(it => it!.ToWarehouse)
                 .Include(t => t.TripOrders)
-                .Where(t => !t.IsDeleted && (t.Status == "Preparing" || t.Status == "InTransit"))
+                    .ThenInclude(to => to.Order)
+                .Include(t => t.CustomerReturns)
+                    .ThenInclude(cr => cr.Order)
+                .Include(t => t.CustomerReturns)
+                    .ThenInclude(cr => cr.Customer)
+                .Include(t => t.CustomerReturns)
+                    .ThenInclude(cr => cr.Details)
+                .Where(t => !t.IsDeleted && (t.Status == "Preparing" || t.Status == "InTransit" || t.Status == "Returning"))
                 .OrderByDescending(t => t.CreatedAt)
-                .Take(10)
+                .Take(15)
                 .ToListAsync();
 
-            // Đơn hàng đang đóng gói hoặc đã duyệt chờ gán xe
+            // 1. Đơn hàng B2C chờ gán xe:
+            // RÀNG BUỘC KHO: CHỈ lấy các đơn hàng ĐÃ HOÀN TẤT PHIẾU XUẤT KHO!
             var pendingOrders = await _context.Orders
+                .Include(o => o.Warehouse)
+                .Include(o => o.CustomerAddress)
+                .Include(o => o.InventoryIssues)
                 .Include(o => o.Details)
                     .ThenInclude(d => d.Variant)
                         .ThenInclude(v => v!.Product)
                             .ThenInclude(p => p!.Category)
-                .Where(o => !o.IsDeleted && (o.Status == OrderStatus.Processing || o.Status == OrderStatus.Confirmed) && o.DeliveryTripId == null)
+                .Where(o => !o.IsDeleted &&
+                            o.DeliveryTripId == null &&
+                            o.Status != OrderStatus.Cancelled &&
+                            o.Status != OrderStatus.Completed &&
+                            !(o.ShippingProvider == "GHN" && !string.IsNullOrEmpty(o.TrackingCode)) &&
+                            (o.InventoryIssues.Any(i => !i.IsDeleted && i.Status == InventoryIssueStatus.Completed) ||
+                             (o.Details.Any() && o.Details.All(d => d.IssuedQuantity >= d.Quantity))))
                 .OrderByDescending(o => o.CreatedAt)
                 .ToListAsync();
 
             var pendingColdChainCount = pendingOrders.Count(o => o.Details.Any(d => d.Variant?.Product?.Category?.RequiresColdChain == true));
 
-            var waitingList = pendingOrders.Take(15).Select(o => new OrderWaitingDispatchDto
+            var waitingOrdersList = pendingOrders.Take(50).Select(o =>
             {
-                OrderId = o.Id,
-                OrderCode = o.OrderCode,
-                ReceiverName = o.ReceiverName ?? "Khách hàng",
-                ReceiverPhone = o.ReceiverPhone ?? string.Empty,
-                DeliveryAddress = o.DeliveryAddress ?? string.Empty,
-                TotalAmount = o.TotalAmount,
-                RequiresColdChain = o.Details.Any(d => d.Variant?.Product?.Category?.RequiresColdChain == true),
-                CreatedAt = o.CreatedAt
+                string province = o.CustomerAddress?.Province ?? string.Empty;
+                string district = o.CustomerAddress?.District ?? string.Empty;
+                string ward = o.CustomerAddress?.Ward ?? string.Empty;
+
+                if (string.IsNullOrEmpty(province) && !string.IsNullOrEmpty(o.DeliveryAddress))
+                {
+                    var parts = o.DeliveryAddress.Split(',', StringSplitOptions.TrimEntries);
+                    if (parts.Length >= 2)
+                    {
+                        province = parts[^1];
+                        district = parts[^2];
+                    }
+                }
+
+                return new OrderWaitingDispatchDto
+                {
+                    OrderId = o.Id,
+                    OrderCode = o.OrderCode,
+                    ReceiverName = o.ReceiverName ?? "Khách hàng",
+                    ReceiverPhone = o.ReceiverPhone ?? string.Empty,
+                    DeliveryAddress = o.DeliveryAddress ?? string.Empty,
+                    TotalAmount = o.TotalAmount,
+                    RequiresColdChain = o.Details.Any(d => d.Variant?.Product?.Category?.RequiresColdChain == true),
+                    WarehouseId = o.WarehouseId,
+                    WarehouseName = o.Warehouse?.Name ?? (o.WarehouseId.HasValue ? $"Kho #{o.WarehouseId}" : "Chưa gán"),
+                    Province = province,
+                    District = district,
+                    Ward = ward,
+                    HasCompletedIssue = true,
+                    CreatedAt = o.CreatedAt
+                };
+            }).ToList();
+
+            // 2. Các phiếu chuyển kho liên chi nhánh đang ở trạng thái Nháp chờ gán xe tải (B2B)
+            var pendingTransfers = await _context.InventoryTransfers
+                .Include(t => t.FromWarehouse)
+                .Include(t => t.ToWarehouse)
+                .Include(t => t.CreatedBy)
+                .Include(t => t.Details)
+                .Where(t => !t.IsDeleted && t.Status == InventoryTransferStatus.Draft && t.DeliveryTripId == null)
+                .OrderByDescending(t => t.CreatedAt)
+                .Take(20)
+                .ToListAsync();
+
+            var waitingTransfersList = pendingTransfers.Select(t => new TransferWaitingDispatchDto
+            {
+                TransferId = t.Id,
+                TransferCode = t.TransferCode,
+                FromWarehouseId = t.FromWarehouseId,
+                FromWarehouseName = t.FromWarehouse?.Name ?? $"Kho #{t.FromWarehouseId}",
+                ToWarehouseId = t.ToWarehouseId,
+                ToWarehouseName = t.ToWarehouse?.Name ?? $"Kho #{t.ToWarehouseId}",
+                TotalItems = t.Details.Count,
+                CreatedByName = t.CreatedBy?.FullName ?? "Quản trị viên",
+                CreatedAt = t.CreatedAt,
+                Note = t.Note
+            }).ToList();
+
+            // 3. Các phiếu trả hàng (RMA) đã duyệt chờ gán xe thu hồi (Tab 3)
+            var pendingReturns = await _context.CustomerReturns
+                .Include(r => r.Order)
+                .Include(r => r.Customer)
+                .Include(r => r.Warehouse)
+                .Include(r => r.Details)
+                .Where(r => !r.IsDeleted &&
+                            r.Status == CustomerReturnStatus.Approved &&
+                            r.DeliveryTripId == null &&
+                            r.ReturnType == CustomerReturnType.PostDeliveryReturn)
+                .OrderByDescending(r => r.CreatedAt)
+                .Take(30)
+                .ToListAsync();
+
+            var waitingReturnsList = pendingReturns.Select(r => new ReturnWaitingDispatchDto
+            {
+                ReturnId = r.Id,
+                ReturnCode = r.ReturnCode,
+                OrderId = r.OrderId,
+                OrderCode = r.Order?.OrderCode ?? string.Empty,
+                CustomerName = r.Customer?.Name ?? "Khách hàng",
+                CustomerPhone = r.Customer?.PhoneNumber ?? string.Empty,
+                PickupAddress = r.Order?.DeliveryAddress ?? "Địa chỉ khách hàng",
+                WarehouseId = r.WarehouseId,
+                WarehouseName = r.Warehouse?.Name ?? $"Kho #{r.WarehouseId}",
+                Reason = r.Reason ?? "Yêu cầu đổi trả",
+                TotalRefundEstimated = r.RefundAmount > 0 ? r.RefundAmount : r.Details.Sum(d => d.ReturnedQuantity * d.UnitPrice),
+                TotalItems = r.Details.Count,
+                ReturnDate = r.ReturnDate
             }).ToList();
 
             return new TransportationDashboardStatsDto
@@ -366,7 +654,9 @@ namespace backend.Services
                 PendingColdChainOrders = pendingColdChainCount,
                 ActiveTripsCount = activeTrips.Count,
                 RecentActiveTrips = _mapper.Map<List<DeliveryTripReadDto>>(activeTrips),
-                OrdersWaitingDispatch = waitingList
+                OrdersWaitingDispatch = waitingOrdersList,
+                TransfersWaitingDispatch = waitingTransfersList,
+                ReturnsWaitingDispatch = waitingReturnsList
             };
         }
     }

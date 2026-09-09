@@ -13,7 +13,7 @@ interface DetailHeaderProps {
   title: string;
   subtitle: string | React.ReactNode;
   onBack: () => void;
-  icon: LucideIcon;
+  icon?: LucideIcon;
 }
 export const DetailHeader: React.FC<DetailHeaderProps> = ({
   title,
@@ -24,10 +24,10 @@ export const DetailHeader: React.FC<DetailHeaderProps> = ({
   <div className="flex justify-between items-end mb-2">
     <div>
       <div className="flex items-center gap-2 mb-1.5">
-        <Icon className="w-6 h-6 text-yellow-500 fill-yellow-100" />
+        {Icon && <Icon className="w-6 h-6 text-yellow-500 fill-yellow-100" />}
         <h2 className="m-0 font-bold text-3xl text-slate-800 tracking-tight">{title}</h2>
       </div>
-      <div className="text-slate-500 text-sm font-medium ml-8">{subtitle}</div>
+      <div className={`text-slate-500 text-sm font-medium ${Icon ? 'ml-8' : ''}`}>{subtitle}</div>
     </div>
     <button
       type="button"
@@ -56,7 +56,7 @@ interface TabButtonProps {
   active: boolean;
   onClick: () => void;
   label: string;
-  icon: LucideIcon;
+  icon?: LucideIcon;
 }
 export const TabButton: React.FC<TabButtonProps> = ({ active, onClick, label, icon: Icon }) => (
   <button
@@ -71,7 +71,7 @@ export const TabButton: React.FC<TabButtonProps> = ({ active, onClick, label, ic
             }
         `}
   >
-    <Icon size={16} className={active ? 'text-yellow-500' : 'text-slate-400'} />
+    {Icon && <Icon size={16} className={active ? 'text-yellow-500' : 'text-slate-400'} />}
     {label}
   </button>
 );

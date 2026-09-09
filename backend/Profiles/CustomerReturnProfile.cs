@@ -1,6 +1,7 @@
 using AutoMapper;
 using backend.DTOs.CustomerReturnDTOs;
 using backend.Models;
+using backend.Models.Enums;
 
 namespace backend.Profiles
 {
@@ -24,7 +25,8 @@ namespace backend.Profiles
                 .ForMember(dest => dest.OrderCode, opt => opt.MapFrom(src => src.Order != null ? src.Order.OrderCode : string.Empty))
                 .ForMember(dest => dest.CustomerName, opt => opt.MapFrom(src => src.Customer != null ? src.Customer.Name : string.Empty))
                 .ForMember(dest => dest.WarehouseName, opt => opt.MapFrom(src => src.Warehouse != null ? src.Warehouse.Name : string.Empty))
-                .ForMember(dest => dest.ReceivedByName, opt => opt.MapFrom(src => src.ReceivedBy != null ? src.ReceivedBy.FullName : null));
+                .ForMember(dest => dest.ReceivedByName, opt => opt.MapFrom(src => src.ReceivedBy != null ? src.ReceivedBy.FullName : null))
+                .ForMember(dest => dest.ReturnTypeName, opt => opt.MapFrom(src => src.ReturnType == CustomerReturnType.DoorstepRefusal ? "Thu hồi trực tiếp khi giao" : "Thu hồi tại nhà khách"));
             #endregion
 
             #region 2. Map Khởi tạo Phiếu Trả Hàng (RMA Create Command)

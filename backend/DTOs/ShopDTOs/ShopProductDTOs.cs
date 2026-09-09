@@ -40,6 +40,9 @@ namespace backend.DTOs.ShopDTOs
 
         /// <summary>Đơn vị tính cơ sở (Ví dụ: Kg, Quả).</summary>
         public string BaseUoMName { get; set; } = string.Empty;
+
+        /// <summary>Số lượng quy cách / biến thể của sản phẩm cha.</summary>
+        public int VariantCount { get; set; } = 1;
         #endregion
 
         #region Giá bán & Khuyến mãi (Theo biến thể mặc định)
@@ -262,6 +265,9 @@ namespace backend.DTOs.ShopDTOs
         #region Sắp xếp & Phân trang
         /// <summary>Quy tắc sắp xếp (Hỗ trợ: price-asc, price-desc, name-asc, newest, discount).</summary>
         public string? SortBy { get; set; }
+
+        /// <summary>Kho hàng bán lẻ được chọn (Store-Locking). Tồn kho và tình trạng còn hàng sẽ chỉ tính riêng cho kho này.</summary>
+        public int? WarehouseId { get; set; }
 
         public int PageIndex { get; set; } = 1;
         public int PageSize { get; set; } = 12;

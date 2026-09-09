@@ -42,6 +42,7 @@ import {
   PaymentMethodLabels,
   RoutingPreviewResult,
 } from '../../types/order';
+import { DocumentPrintModal } from '../../components/commons/DocumentPrintModal';
 
 const OrderDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -56,14 +57,8 @@ const OrderDetail: React.FC = () => {
   // Cancel modal
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
+  const [printModalOpen, setPrintModalOpen] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
-
-  // Internal dispatch modal (Đội xe lạnh)
-  const [internalDispatchModalOpen, setInternalDispatchModalOpen] = useState(false);
-  const [availableVehicles, setAvailableVehicles] = useState<DeliveryVehicle[]>([]);
-  const [selectedDispatchVehicleId, setSelectedDispatchVehicleId] = useState<number>(0);
-  const [dispatchNote, setDispatchNote] = useState('');
-  const [dispatchLoading, setDispatchLoading] = useState(false);
 
   // Toast
   const [toast, setToast] = useState<{
@@ -156,40 +151,6 @@ const OrderDetail: React.FC = () => {
     }
   };
 
-  const handleOpenInternalDispatch = async () => {
-    try {
-      const vehicles = await vehicleApi.getAllVehicles({ status: 'Available' });
-      setAvailableVehicles(vehicles);
-      if (vehicles.length > 0) {
-        setSelectedDispatchVehicleId(vehicles[0].id);
-      }
-      setInternalDispatchModalOpen(true);
-    } catch (err) {
-      showToast('error', 'Lỗi khi tải danh sách phương tiện nội bộ');
-    }
-  };
-
-  const handleConfirmInternalDispatch = async () => {
-    if (!order || !selectedDispatchVehicleId) {
-      showToast('warning', 'Vui lòng chọn phương tiện giao hàng');
-      return;
-    }
-    try {
-      setDispatchLoading(true);
-      await vehicleApi.dispatchOrderInternal(order.id, {
-        vehicleId: selectedDispatchVehicleId,
-        note: dispatchNote || 'Giao hàng bằng xe thùng lạnh nội bộ',
-      });
-      showToast('success', 'ĐÃ GÁN ĐỘI XE NỘI BỘ THÀNH CÔNG! Đơn hàng chuyển sang Đang giao.');
-      setInternalDispatchModalOpen(false);
-      fetchOrder();
-    } catch (err: any) {
-      showToast('error', err.response?.data?.message || 'Lỗi khi điều phối xe nội bộ');
-    } finally {
-      setDispatchLoading(false);
-    }
-  };
-
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(
       amount || 0
@@ -243,9 +204,9 @@ const OrderDetail: React.FC = () => {
 
           <div className="h-6 w-px bg-slate-200 mx-2 hidden md:block"></div>
 
-          {/* Nút luồng đi tiếp: Nằm bên trái */}
+          {/* Nút luồng đi tiếp: Nằm bên trái (100% Text - Không Icon) */}
           <div className="flex items-center gap-2">
-            {/* Nút Duyệt Đơn Hàng (Pending -> Confirmed) */}
+            {/* 1. Nút Duyệt Đơn Hàng (Pending -> Confirmed) */}
             {order.status === OrderStatus.Pending && (
               <button
                 onClick={async () => {
@@ -263,143 +224,119 @@ const OrderDetail: React.FC = () => {
                   }
                 }}
                 disabled={actionLoading}
-                className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg font-bold text-sm hover:bg-emerald-700 transition-all shadow-sm shadow-emerald-200 disabled:opacity-50"
+                className="px-4 py-2 bg-emerald-600 text-white rounded-lg font-bold text-sm hover:bg-emerald-700 transition-all shadow-xs disabled:opacity-50"
               >
-                <CheckCircle size={16} /> Duyệt Đơn Hàng
+                Duyệt Đơn Hàng
               </button>
             )}
 
-            {/* Nút Đẩy Đơn Sang GHN: Disable kèm chú thích nếu đơn có hàng chuỗi lạnh */}
-            {!order.trackingCode &&
-              !order.deliveryTripId &&
-              order.status !== OrderStatus.Cancelled &&
-              order.status !== OrderStatus.Completed && (
-                <div className="relative group">
-                  <button
-                    onClick={async () => {
-                      if (order.canShipViaGhn === false || order.requiresColdChain) {
-                        showToast(
-                          'warning',
-                          'Đơn hàng chứa sản phẩm chuỗi lạnh (thịt, cá, rau củ), không thể giao qua GHN. Vui lòng bấm "Giao Nội Bộ"!'
-                        );
-                        return;
-                      }
-                      try {
-                        setActionLoading(true);
-                        const res = await orderApi.createGhnOrder(order.id);
-                        showToast('success', `ĐÃ TẠO VẬN ĐƠN GHN: ${res.orderCode}`);
-                        fetchOrder();
-                      } catch (err: any) {
-                        showToast('error', err.response?.data?.message || 'Lỗi đẩy đơn sang GHN');
-                      } finally {
-                        setActionLoading(false);
-                      }
-                    }}
-                    disabled={
-                      actionLoading ||
-                      order.canShipViaGhn === false ||
-                      Boolean(order.requiresColdChain)
-                    }
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-sm transition-all shadow-sm ${
-                      order.canShipViaGhn === false || order.requiresColdChain
-                        ? 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed'
-                        : 'bg-blue-600 text-white hover:bg-blue-700 shadow-blue-200'
-                    }`}
-                  >
-                    <Truck size={16} /> Tạo Đơn GHN
-                  </button>
-                  {(order.canShipViaGhn === false || order.requiresColdChain) && (
-                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block w-56 p-2 bg-slate-900 text-white text-[11px] rounded-lg text-center shadow-xl z-20 pointer-events-none">
-                      ❄️ Đơn hàng có sản phẩm chuỗi lạnh, không hỗ trợ GHN. Vui lòng chọn Giao Nội Bộ.
-                    </div>
-                  )}
-                </div>
-              )}
-
-            {/* Nút Giao Nội Bộ (Đội Xe Thùng Lạnh Solaris) */}
-            {!order.deliveryTripId &&
-              !order.trackingCode &&
-              order.status !== OrderStatus.Cancelled &&
-              order.status !== OrderStatus.Completed && (
-                <button
-                  onClick={handleOpenInternalDispatch}
-                  disabled={actionLoading}
-                  className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-lg font-bold text-sm transition-all shadow-sm shadow-emerald-200"
-                >
-                  <Bike size={16} /> Giao Nội Bộ (Xe Lạnh)
-                </button>
-              )}
-
-            {/* Nút Xuất Kho Đơn Hàng: Chỉ hiện khi chưa xuất đủ và trạng thái là Confirmed hoặc Processing */}
+            {/* 2. Nút Tạo Phiếu Xuất Kho: Khi đơn đã Confirmed hoặc Processing và còn hàng cần xuất */}
             {(order.status === OrderStatus.Confirmed || order.status === OrderStatus.Processing) &&
               order.details?.some((d) => (d.issuedQuantity || 0) < d.quantity) && (
                 <button
                   onClick={() => navigate(`/inventory-issues/create?orderId=${order.id}`)}
-                  className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg font-bold text-sm hover:bg-indigo-700 transition-all shadow-sm shadow-indigo-200"
+                  className="px-4 py-2 bg-indigo-600 text-white rounded-lg font-bold text-sm hover:bg-indigo-700 transition-all shadow-xs"
                 >
-                  <PackageCheck size={16} /> Xuất Kho Đơn Hàng
+                  Tạo Phiếu Xuất Kho
                 </button>
               )}
 
-            {/* Nút Chuyển Kho Bổ Sung: Chỉ hiện khi chưa xuất đủ và trạng thái là Confirmed hoặc Processing */}
-            {(order.status === OrderStatus.Confirmed || order.status === OrderStatus.Processing) &&
-              order.details?.some((d) => (d.issuedQuantity || 0) < d.quantity) && (
-                <button
-                  onClick={() => navigate(`/inventory-transfers/create?orderId=${order.id}`)}
-                  className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-lg font-bold text-sm hover:bg-amber-600 transition-all shadow-sm shadow-amber-200"
-                >
-                  <Truck size={16} /> Chuyển Kho Bổ Sung
-                </button>
-              )}
-
+            {/* 3. Khi đơn đang giao hàng: Hiển thị badge khóa hủy và nút xác nhận đã giao */}
             {order.status === OrderStatus.Shipping && (
-              <button
-                onClick={async () => {
-                  try {
-                    setActionLoading(true);
-                    await orderApi.updateStatus(order.id, {
-                      status: OrderStatus.Completed,
-                      paymentStatus: 3, // Paid
-                    });
-                    showToast('success', 'ĐÃ CẬP NHẬT ĐƠN HÀNG: GIAO THÀNH CÔNG & ĐÃ THANH TOÁN!');
-                    fetchOrder();
-                  } catch (err: any) {
-                    showToast(
-                      'error',
-                      err.response?.data?.message || 'Lỗi cập nhật trạng thái đơn'
+              <>
+                <span className="px-3 py-1.5 bg-amber-50 text-amber-800 border border-amber-200 rounded-lg text-xs font-bold">
+                  Đang giao hàng (Không thể hủy đơn)
+                </span>
+                <button
+                  onClick={async () => {
+                    try {
+                      setActionLoading(true);
+                      await orderApi.updateStatus(order.id, {
+                        status: OrderStatus.Completed,
+                        paymentStatus: 3, // Paid
+                      });
+                      showToast(
+                        'success',
+                        'ĐÃ CẬP NHẬT ĐƠN HÀNG: GIAO THÀNH CÔNG & ĐÃ THANH TOÁN!'
+                      );
+                      fetchOrder();
+                    } catch (err: any) {
+                      showToast(
+                        'error',
+                        err.response?.data?.message || 'Lỗi cập nhật trạng thái đơn'
+                      );
+                    } finally {
+                      setActionLoading(false);
+                    }
+                  }}
+                  disabled={actionLoading}
+                  className="px-4 py-2 bg-emerald-600 text-white rounded-lg font-bold text-sm hover:bg-emerald-700 transition-all shadow-xs disabled:opacity-50"
+                >
+                  Xác Nhận Đã Giao Hàng
+                </button>
+                <button
+                  onClick={async () => {
+                    const reason = window.prompt(
+                      'Nhập lý do khách từ chối nhận hàng (ví dụ: Hàng dập nát, Giao trễ, Đổi ý...):',
+                      'Khách từ chối nhận hàng'
                     );
-                  } finally {
-                    setActionLoading(false);
-                  }
-                }}
-                disabled={actionLoading}
-                className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg font-bold text-sm hover:bg-emerald-700 transition-all shadow-sm shadow-emerald-200 disabled:opacity-50"
-              >
-                <PackageCheck size={16} /> Xác Nhận Đã Giao Hàng
-              </button>
+                    if (!reason || !reason.trim()) return;
+
+                    try {
+                      setActionLoading(true);
+                      await orderApi.updateStatus(order.id, {
+                        status: OrderStatus.Cancelled,
+                        cancellationReason: `Khách từ chối nhận: ${reason.trim()}`,
+                      });
+                      showToast('warning', 'ĐÃ GHI NHẬN KHÁCH TỪ CHỐI NHẬN - ĐANG HOÀN VỀ KHO!');
+                      fetchOrder();
+                    } catch (err: any) {
+                      showToast(
+                        'error',
+                        err.response?.data?.message || 'Lỗi cập nhật trạng thái đơn'
+                      );
+                    } finally {
+                      setActionLoading(false);
+                    }
+                  }}
+                  disabled={actionLoading}
+                  className="px-4 py-2 bg-rose-50 text-rose-700 border border-rose-200 rounded-lg font-bold text-sm hover:bg-rose-100 transition-all shadow-xs disabled:opacity-50"
+                >
+                  Khách Từ Chối Nhận (Hoàn Về)
+                </button>
+              </>
             )}
 
-            {(order.status === OrderStatus.Shipping || order.status === OrderStatus.Completed) && (
+            {order.status === OrderStatus.Completed && (
               <button
                 onClick={() => navigate(`/customer-returns/create?orderId=${order.id}`)}
-                className="flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-lg font-bold text-sm hover:bg-teal-700 transition-all shadow-sm shadow-teal-200"
+                className="px-4 py-2 bg-teal-600 text-white rounded-lg font-bold text-sm hover:bg-teal-700 transition-all shadow-xs"
               >
-                <RotateCcw size={16} /> Tiếp Nhận Khách Trả
+                Tiếp Nhận Khách Trả
               </button>
             )}
+
+            {/* Nút In Hóa Đơn & Phiếu Giao Hàng */}
+            <button
+              onClick={() => setPrintModalOpen(true)}
+              className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-lg font-bold text-sm transition-all shadow-xs"
+              title="In hóa đơn bán hàng kiêm phiếu giao hàng"
+            >
+              In Phiếu Giao Hàng
+            </button>
           </div>
         </div>
 
-        {/* Nút Hủy Đơn: Nằm sát góc phải */}
+        {/* Nút Hủy Đơn: Nằm sát góc phải (CHỈ KHI CHƯA GIAO HÀNG) */}
         {(order.status === OrderStatus.Draft ||
           order.status === OrderStatus.Pending ||
           order.status === OrderStatus.Confirmed ||
           order.status === OrderStatus.Processing) && (
           <button
             onClick={() => setCancelModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-white text-rose-600 border border-rose-200 rounded-lg font-bold text-sm hover:bg-rose-50 transition-colors shadow-sm"
+            className="px-4 py-2 bg-white text-rose-600 border border-rose-200 rounded-lg font-bold text-sm hover:bg-rose-50 transition-colors shadow-xs"
           >
-            <XCircle size={16} strokeWidth={2.5} /> Hủy Đơn Này
+            Hủy Đơn Này
           </button>
         )}
       </div>
@@ -524,7 +461,11 @@ const OrderDetail: React.FC = () => {
               <p className="text-xs text-slate-600 pt-1 font-medium">
                 Đơn vị vận chuyển:{' '}
                 <strong className="text-blue-900 font-black">
-                  {order.shippingProvider || 'GHN'}
+                  {order.shippingProvider === 'Internal' || order.deliveryTripId
+                    ? 'Đội Xe Thùng Lạnh Solaris'
+                    : order.shippingProvider === 'GHN'
+                      ? 'Giao Hàng Nhanh (GHN)'
+                      : order.shippingProvider || 'Đội Xe Thùng Lạnh Solaris'}
                 </strong>
                 {order.trackingCode && (
                   <>
@@ -653,10 +594,18 @@ const OrderDetail: React.FC = () => {
 
                 {order.trackingCode && (
                   <InfoField
-                    label="Mã vận đơn GHN"
+                    label={
+                      order.shippingProvider === 'Internal' ||
+                      order.deliveryTripId ||
+                      order.trackingCode.startsWith('SLR-EXP')
+                        ? 'Mã vận đơn nội bộ'
+                        : order.shippingProvider === 'GHN'
+                          ? 'Mã vận đơn GHN'
+                          : 'Mã vận đơn'
+                    }
                     value={
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 text-blue-700 font-mono font-bold rounded-md border border-blue-200">
-                        🚚 {order.trackingCode}
+                      <span className="inline-flex items-center px-2.5 py-1 bg-blue-50 text-blue-700 font-mono font-bold rounded-md border border-blue-200">
+                        {order.trackingCode}
                       </span>
                     }
                   />
@@ -677,7 +626,7 @@ const OrderDetail: React.FC = () => {
                   <div className="col-span-full p-4 bg-emerald-50/80 rounded-xl border border-emerald-200 flex flex-col md:flex-row md:items-center justify-between gap-3">
                     <div>
                       <span className="font-extrabold text-emerald-800 text-xs flex items-center gap-1.5 mb-1">
-                        🛵 Đội Xe Thùng Lạnh Solaris (Chuyến xe #{order.deliveryTripId})
+                        Đội Xe Thùng Lạnh Solaris (Chuyến xe #{order.deliveryTripId})
                       </span>
                       <div className="text-xs text-slate-700 flex flex-wrap gap-4">
                         <span>
@@ -707,8 +656,8 @@ const OrderDetail: React.FC = () => {
                   <div className="col-span-full p-3 bg-blue-50/70 border border-blue-200 rounded-xl flex items-center gap-2 text-xs text-blue-800 font-bold">
                     <span>❄️</span>
                     <span>
-                      Đơn hàng có sản phẩm chuỗi lạnh (thịt, cá, hải sản, rau củ tươi sống) — Được vận
-                      chuyển bằng xe máy trang bị thùng giữ nhiệt lạnh Solaris Cold-Express.
+                      Đơn hàng có sản phẩm chuỗi lạnh (thịt, cá, hải sản, rau củ tươi sống) — Được
+                      vận chuyển bằng xe máy trang bị thùng giữ nhiệt lạnh Solaris Cold-Express.
                     </span>
                   </div>
                 )}
@@ -941,87 +890,39 @@ const OrderDetail: React.FC = () => {
         </div>
       )}
 
-      {/* MODAL GIAO HÀNG NỘI BỘ (XE THÙNG LẠNH SOLARIS) */}
-      {internalDispatchModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200 border border-slate-100">
-            <div className="px-6 py-4 border-b border-emerald-100 bg-emerald-50/60 flex items-center justify-between">
-              <h3 className="text-base font-black text-emerald-800 flex items-center gap-2">
-                <Bike className="w-5 h-5 text-emerald-600" />
-                Điều Phối Xe Giao Hàng Nội Bộ
-              </h3>
-              <button
-                onClick={() => setInternalDispatchModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 font-bold"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="p-6 space-y-4">
-              <div className="p-3 bg-blue-50 rounded-xl border border-blue-100 text-xs text-blue-800">
-                Gán phương tiện từ <strong>Đội xe thùng lạnh Solaris</strong> cho đơn hàng{' '}
-                <strong>{order.orderCode}</strong>. Đơn hàng sẽ được chuyển sang trạng thái{' '}
-                <strong>Đang giao hàng (Shipping)</strong>.
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase mb-1.5">
-                  Chọn Phương Tiện & Tài Xế:
-                </label>
-                {availableVehicles.length === 0 ? (
-                  <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-xs">
-                    ⚠️ Hiện không có phương tiện nào ở trạng thái &quot;Sẵn sàng&quot;. Vui lòng kiểm tra lại
-                    trang Quản lý Đội xe.
-                  </div>
-                ) : (
-                  <select
-                    value={selectedDispatchVehicleId}
-                    onChange={(e) => setSelectedDispatchVehicleId(Number(e.target.value))}
-                    className="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-xs font-medium focus:ring-2 focus:ring-emerald-500 outline-none"
-                  >
-                    {availableVehicles.map((v) => (
-                      <option key={v.id} value={v.id}>
-                        {v.vehicleType === 'Motorbike' ? '🛵 Xe máy: ' : '🚚 Xe tải: '}
-                        {v.licensePlate} — {v.driverName || 'Tài xế'} ({v.driverPhone})
-                      </option>
-                    ))}
-                  </select>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase mb-1.5">
-                  Ghi Chú Giao Hàng (Tùy chọn):
-                </label>
-                <input
-                  type="text"
-                  placeholder="Ví dụ: Thùng lạnh số 2, giao nhanh trong 2h..."
-                  value={dispatchNote}
-                  onChange={(e) => setDispatchNote(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs outline-none focus:ring-2 focus:ring-emerald-500"
-                />
-              </div>
-            </div>
-
-            <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
-              <button
-                onClick={() => setInternalDispatchModalOpen(false)}
-                disabled={dispatchLoading}
-                className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition-all"
-              >
-                Đóng
-              </button>
-              <button
-                onClick={handleConfirmInternalDispatch}
-                disabled={dispatchLoading || !selectedDispatchVehicleId}
-                className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md transition-all disabled:opacity-50"
-              >
-                {dispatchLoading ? 'Đang điều phối...' : 'Xác Nhận Giao Hàng'}
-              </button>
-            </div>
-          </div>
-        </div>
+      {order && (
+        <DocumentPrintModal
+          isOpen={printModalOpen}
+          onClose={() => setPrintModalOpen(false)}
+          documentTitle="HÓA ĐƠN BÁN HÀNG KIÊM PHIẾU GIAO HÀNG"
+          documentSubtitle="Hệ thống chuỗi thực phẩm sạch & bảo quản chuỗi lạnh Solaris"
+          documentCode={order.orderCode}
+          documentDate={order.orderDate}
+          warehouseName={order.warehouseName}
+          creatorName={order.createdByName}
+          partyTitle="Khách hàng / Người nhận"
+          partyName={order.receiverName || order.customerName || 'Khách lẻ'}
+          partyPhone={order.receiverPhone || order.customerPhone}
+          partyAddress={order.deliveryAddress}
+          referenceCode={order.orderCode}
+          paymentMethodName={PaymentMethodLabels[order.paymentMethod] || 'Tiền mặt / COD'}
+          paymentStatusName={PaymentStatusLabels[order.paymentStatus]}
+          codAmount={order.paymentStatus !== 3 && order.paymentMethod === 1 ? order.totalAmount : 0}
+          shippingFee={order.shippingFee}
+          discountAmount={order.discountAmount}
+          subTotal={order.subTotal}
+          totalAmount={order.totalAmount}
+          notes={order.note || 'Giao hàng thực phẩm tươi sạch - Giữ nhiệt độ mát'}
+          items={(order.details || []).map((d: any) => ({
+            skuCode: d.variantCode,
+            productName: d.variantName,
+            batchCode: d.batchCode,
+            uoMName: d.uoMName || 'Kg',
+            quantity: d.quantity,
+            unitPrice: d.unitPrice,
+            totalPrice: d.totalPrice,
+          }))}
+        />
       )}
     </DetailPageContainer>
   );

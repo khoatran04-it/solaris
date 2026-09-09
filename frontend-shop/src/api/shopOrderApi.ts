@@ -23,6 +23,9 @@ const shopOrderApi = {
 
   confirmDelivery: (orderCode: string) =>
     axiosClient.post<ShopOrder>(`/orders/${orderCode}/confirm-delivery`),
+
+  rejectDelivery: (orderCode: string, data: { reason: string }) =>
+    axiosClient.post<ShopOrder>(`/orders/${orderCode}/reject-delivery`, data),
 };
 
 export default shopOrderApi;

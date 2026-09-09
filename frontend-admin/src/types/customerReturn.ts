@@ -9,12 +9,14 @@ export enum CustomerReturnStatus {
   Inspecting = 3,
   Completed = 4,
   Rejected = 5,
+  PickingUp = 6,
 }
 
 export const CustomerReturnStatusLabels: Record<CustomerReturnStatus, string> = {
   [CustomerReturnStatus.Pending]: 'Chờ tiếp nhận',
-  [CustomerReturnStatus.Approved]: 'Đã duyệt',
-  [CustomerReturnStatus.Inspecting]: 'Đang xử lý',
+  [CustomerReturnStatus.Approved]: 'Đã duyệt (Chờ thu hồi)',
+  [CustomerReturnStatus.PickingUp]: 'Đang thu hồi',
+  [CustomerReturnStatus.Inspecting]: 'Chờ kiểm định QC',
   [CustomerReturnStatus.Completed]: 'Đã hoàn tất',
   [CustomerReturnStatus.Rejected]: 'Từ chối trả hàng',
 };
@@ -22,9 +24,25 @@ export const CustomerReturnStatusLabels: Record<CustomerReturnStatus, string> = 
 export const CustomerReturnStatusColors: Record<CustomerReturnStatus, string> = {
   [CustomerReturnStatus.Pending]: 'bg-amber-50 text-amber-700 border-amber-200',
   [CustomerReturnStatus.Approved]: 'bg-blue-50 text-blue-700 border-blue-200',
+  [CustomerReturnStatus.PickingUp]: 'bg-indigo-50 text-indigo-700 border-indigo-200',
   [CustomerReturnStatus.Inspecting]: 'bg-purple-50 text-purple-700 border-purple-200',
   [CustomerReturnStatus.Completed]: 'bg-emerald-50 text-emerald-700 border-emerald-200',
   [CustomerReturnStatus.Rejected]: 'bg-rose-50 text-rose-700 border-rose-200',
+};
+
+export enum CustomerReturnType {
+  DoorstepRefusal = 1,
+  PostDeliveryReturn = 2,
+}
+
+export const CustomerReturnTypeLabels: Record<CustomerReturnType, string> = {
+  [CustomerReturnType.DoorstepRefusal]: 'Thu hồi trực tiếp khi giao',
+  [CustomerReturnType.PostDeliveryReturn]: 'Thu hồi tại nhà khách',
+};
+
+export const CustomerReturnTypeColors: Record<CustomerReturnType, string> = {
+  [CustomerReturnType.DoorstepRefusal]: 'bg-sky-50 text-sky-700 border-sky-200',
+  [CustomerReturnType.PostDeliveryReturn]: 'bg-amber-50 text-amber-700 border-amber-200',
 };
 
 // =========================================================
@@ -65,10 +83,13 @@ export interface CustomerReturn {
 
   returnDate: string;
   status: CustomerReturnStatus;
+  returnType?: CustomerReturnType;
+  returnTypeName?: string;
 
   refundAmount: number;
   reason?: string;
   inspectionNotes?: string;
+  deliveryTripId?: number;
 
   createdAt: string;
   updatedAt: string;

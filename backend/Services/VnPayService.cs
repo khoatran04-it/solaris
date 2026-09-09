@@ -52,8 +52,8 @@ namespace backend.Services
             payLib.AddRequestData("vnp_CurrCode", "VND");
             payLib.AddRequestData("vnp_IpAddr", GetIpAddress(httpContext));
             payLib.AddRequestData("vnp_Locale", "vn");
-            payLib.AddRequestData("vnp_OrderInfo", string.IsNullOrWhiteSpace(request.OrderDescription) 
-                ? $"Thanh toan don hang {order.OrderCode}" 
+            payLib.AddRequestData("vnp_OrderInfo", string.IsNullOrWhiteSpace(request.OrderDescription)
+                ? $"Thanh toan don hang {order.OrderCode}"
                 : request.OrderDescription);
             payLib.AddRequestData("vnp_OrderType", "other");
             payLib.AddRequestData("vnp_ReturnUrl", returnUrl);

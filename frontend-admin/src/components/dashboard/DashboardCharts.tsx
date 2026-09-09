@@ -357,13 +357,23 @@ export const CapacityGauge: React.FC<CapacityGaugeProps> = ({
   status = 'Safe',
 }) => {
   const clamped = Math.min(100, Math.max(0, percent));
-  const remaining = 100 - clamped;
+  // Nếu có hàng tồn nhưng tỷ lệ quá nhỏ, hiển thị 1 vệt cung màu tối thiểu 1.5% để người dùng nhìn thấy trực quan
+  const visualArcPercent = value > 0 ? Math.max(clamped, 1.5) : clamped;
+  const remaining = 100 - visualArcPercent;
   const color = status === 'Critical' ? '#f43f5e' : status === 'Warning' ? '#f59e0b' : '#10b981';
 
   const gaugeData = [
-    { name: 'Đã dùng', value: clamped },
+    { name: 'Đã dùng', value: visualArcPercent },
     { name: 'Còn trống', value: remaining },
   ];
+
+  // Hiển thị số phần trăm: nếu có hàng tồn nhưng < 0.1% -> '< 0.1%', < 10% -> 1 chữ số thập phân, còn lại làm tròn
+  const percentText =
+    value > 0 && clamped < 0.1
+      ? '< 0.1%'
+      : clamped > 0 && clamped < 10
+        ? `${clamped.toFixed(1)}%`
+        : `${clamped.toFixed(0)}%`;
 
   return (
     <div className="flex flex-col items-center">
@@ -388,7 +398,7 @@ export const CapacityGauge: React.FC<CapacityGaugeProps> = ({
         </ResponsiveContainer>
         <div className="absolute top-7 flex flex-col items-center pointer-events-none">
           <span className="text-sm font-black tracking-tight" style={{ color }}>
-            {clamped.toFixed(0)}%
+            {percentText}
           </span>
           <span className="text-[10px] text-slate-500 font-semibold uppercase">{status}</span>
         </div>

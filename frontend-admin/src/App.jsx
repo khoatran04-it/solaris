@@ -13,6 +13,8 @@ import OverviewDashboard from './pages/dashboard/OverviewDashboard';
 import SalesGeographyDashboard from './pages/dashboard/SalesGeographyDashboard';
 import InventoryCapacityDashboard from './pages/dashboard/InventoryCapacityDashboard';
 import QualityExpiryDashboard from './pages/dashboard/QualityExpiryDashboard';
+import FinancialPerformanceDashboard from './pages/dashboard/FinancialPerformanceDashboard';
+import PriceVolatilityDashboard from './pages/dashboard/PriceVolatilityDashboard';
 
 // =============================================================================
 // 📦 MODULE 1: IDENTITY & ACCESS MANAGEMENT (IAM)
@@ -133,6 +135,8 @@ function App() {
           <Route path="/" element={<Layout />}>
             {/* 📊 DASHBOARDS & EXECUTIVE REPORTING */}
             <Route index element={<OverviewDashboard />} />
+            <Route path="dashboards/finance" element={<FinancialPerformanceDashboard />} />
+            <Route path="dashboards/price-volatility" element={<PriceVolatilityDashboard />} />
             <Route path="dashboards/sales" element={<SalesGeographyDashboard />} />
             <Route path="dashboards/inventory" element={<InventoryCapacityDashboard />} />
             <Route path="dashboards/quality" element={<QualityExpiryDashboard />} />
@@ -286,6 +290,7 @@ function App() {
             </Route>
 
             {/* 📦 MODULE 8: TRANSPORTATION & DISPATCH */}
+            <Route path="transportation" element={<TransportationDashboardPage />} />
             <Route path="transportation/dashboard" element={<TransportationDashboardPage />} />
             <Route path="transportation/vehicles" element={<VehicleManagementPage />} />
 

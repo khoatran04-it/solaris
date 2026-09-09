@@ -37,10 +37,11 @@ const MENU_CONFIG: MenuItem[] = [
   // 1. BÀN LÀM VIỆC & TỔNG QUAN
   {
     id: 'dashboard',
-    label: 'Tổng quan Bàn làm việc',
+    label: 'Bàn làm việc',
     icon: LayoutDashboard,
     children: [
-      { label: 'Tổng quan kinh doanh', path: '/' },
+      { label: 'Bàn làm việc Điều hành', path: '/' },
+      { label: 'Dòng tiền & Công nợ', path: '/dashboards/finance' },
     ],
   },
   // 2. SẢN PHẨM & MASTER DATA
@@ -86,7 +87,11 @@ const MENU_CONFIG: MenuItem[] = [
     label: 'Mua hàng & Cung ứng',
     icon: ShoppingCart,
     children: [
-      { label: 'Đơn mua hàng (PO)', path: '/purchase-orders', permission: PERMISSIONS.PURCHASE.VIEW },
+      {
+        label: 'Đơn mua hàng (PO)',
+        path: '/purchase-orders',
+        permission: PERMISSIONS.PURCHASE.VIEW,
+      },
       {
         label: 'Sản phẩm Nhà cung cấp',
         path: '/supplier-products',
@@ -203,7 +208,8 @@ const MENU_CONFIG: MenuItem[] = [
     label: 'Báo cáo & Thống kê',
     icon: BarChart3,
     children: [
-      { label: 'Doanh số & Địa lý', path: '/dashboards/sales' },
+      { label: 'Biến động Giá & Biên lãi', path: '/dashboards/price-volatility' },
+      { label: 'Doanh số & Khách hàng', path: '/dashboards/sales' },
       { label: 'Tồn kho & Sức chứa', path: '/dashboards/inventory' },
       { label: 'Chất lượng & Hạn dùng', path: '/dashboards/quality' },
     ],

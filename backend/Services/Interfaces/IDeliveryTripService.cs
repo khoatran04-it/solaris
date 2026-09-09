@@ -13,6 +13,7 @@ namespace backend.Services.Interfaces
         Task<DeliveryTripReadDto> StartTripAsync(int tripId);
         Task<DeliveryTripReadDto> CompleteTripAsync(int tripId);
         Task<DeliveryTripReadDto> MarkTripOrderDeliveredAsync(int tripId, int orderId, string? note);
+        Task<DeliveryTripReadDto> MarkTripOrderFailedAsync(int tripId, int orderId, string reason);
         Task<TransportationDashboardStatsDto> GetTransportationDashboardStatsAsync();
     }
 }

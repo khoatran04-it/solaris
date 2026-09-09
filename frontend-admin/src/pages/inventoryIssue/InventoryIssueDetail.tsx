@@ -23,25 +23,31 @@ import { Toast } from '../../components/commons/Toast';
 import { DateCell, DateTimeCell } from '../../components/commons/ListUI';
 
 import { inventoryIssueApi } from '../../api/inventoryIssueApi';
+import { orderApi } from '../../api/orderApi';
+import { Order } from '../../types/order';
 import {
   InventoryIssue,
   InventoryIssueStatus,
   InventoryIssueStatusLabels,
   InventoryIssueStatusColors,
 } from '../../types/inventoryIssue';
+import { DocumentPrintModal } from '../../components/commons/DocumentPrintModal';
 
 const InventoryIssueDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
   const [issue, setIssue] = useState<InventoryIssue | null>(null);
+  const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'info' | 'items'>('info');
 
   // Actions
   const [actionLoading, setActionLoading] = useState(false);
+  const [ghnLoading, setGhnLoading] = useState(false);
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
+  const [printModalOpen, setPrintModalOpen] = useState(false);
 
   // Toast
   const [toast, setToast] = useState<{
@@ -65,6 +71,14 @@ const InventoryIssueDetail: React.FC = () => {
       setLoading(true);
       const data = await inventoryIssueApi.getById(Number(id));
       setIssue(data);
+      if (data.orderId) {
+        try {
+          const ord = await orderApi.getById(data.orderId);
+          setOrder(ord);
+        } catch (oErr) {
+          console.error('Không thể tải đơn hàng liên kết:', oErr);
+        }
+      }
     } catch (error) {
       console.error('Error fetching issue:', error);
       showToast('error', 'KHÔNG THỂ TẢI DỮ LIỆU PHIẾU XUẤT KHO');
@@ -72,6 +86,23 @@ const InventoryIssueDetail: React.FC = () => {
       setLoading(false);
     }
   }, [id]);
+
+  const handleCreateGhn = async () => {
+    if (!issue?.orderId) {
+      showToast('warning', 'Phiếu xuất kho không liên kết với đơn bán hàng nào.');
+      return;
+    }
+    try {
+      setGhnLoading(true);
+      const res = await orderApi.createGhnOrder(issue.orderId);
+      showToast('success', `ĐÃ TẠO VẬN ĐƠN GHN: ${res.orderCode}`);
+      fetchIssue();
+    } catch (err: any) {
+      showToast('error', err.response?.data?.message || 'Lỗi đẩy đơn sang GHN');
+    } finally {
+      setGhnLoading(false);
+    }
+  };
 
   useEffect(() => {
     fetchIssue();
@@ -146,54 +177,117 @@ const InventoryIssueDetail: React.FC = () => {
         icon={PackageCheck}
       />
 
-      {/* ================= THÀNH CÔNG CỤ (ACTION TOOLBAR) ================= */}
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-6 p-4 bg-white border border-slate-200 rounded-xl shadow-sm">
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <span className="text-[13px] font-bold text-slate-500 uppercase tracking-wide">
-              Trạng thái:
-            </span>
-            <span
-              className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold border shadow-sm ${InventoryIssueStatusColors[issue.status]}`}
-            >
-              {InventoryIssueStatusLabels[issue.status]}
-            </span>
+      {/* ================= THANH CÔNG CỤ (ACTION TOOLBAR) ================= */}
+      <div className="flex flex-col gap-3 mb-6">
+        <div className="flex flex-wrap items-center justify-between gap-3 p-4 bg-white border border-slate-200 rounded-xl shadow-xs">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <span className="text-[13px] font-bold text-slate-500 uppercase tracking-wide">
+                Trạng thái:
+              </span>
+              <span
+                className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold border ${InventoryIssueStatusColors[issue.status]}`}
+              >
+                {InventoryIssueStatusLabels[issue.status]}
+              </span>
+            </div>
+
+            {/* Vách ngăn nếu có nút tiếp theo */}
+            <div className="h-6 w-px bg-slate-200 mx-2 hidden md:block"></div>
+
+            {/* CÁC NÚT KHI ĐANG XỬ LÝ / CHỜ XUẤT */}
+            {(issue.status === InventoryIssueStatus.Pending ||
+              issue.status === InventoryIssueStatus.Picking) && (
+              <button
+                onClick={handleCompleteIssue}
+                disabled={actionLoading}
+                className="px-5 py-2 bg-emerald-600 text-white rounded-lg font-bold text-sm hover:bg-emerald-700 transition-all shadow-xs disabled:opacity-50"
+              >
+                {actionLoading ? 'Đang xử lý...' : 'Hoàn Tất Xuất Kho'}
+              </button>
+            )}
+
+            {/* CÁC NÚT GIAO VẬN KHI ĐÃ HOÀN TẤT XUẤT KHO (3 NÚT TEXT THUẦN THEME SOLARIS) */}
+            {issue.status === InventoryIssueStatus.Completed && (
+              <div className="flex items-center gap-2.5 flex-wrap">
+                {/* Nút 1: Tạo Đơn GHN (Khóa mờ nếu là hàng chuỗi lạnh) */}
+                {order?.requiresColdChain ? (
+                  <button
+                    disabled
+                    title="Đơn hàng có chứa đồ tươi sống/cấp đông, GHN không hỗ trợ bảo quản lạnh!"
+                    className="px-4 py-2 bg-slate-100 text-slate-400 border border-slate-200 rounded-lg font-bold text-sm cursor-not-allowed opacity-60"
+                  >
+                    Tạo Đơn GHN (Không hỗ trợ hàng lạnh)
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleCreateGhn}
+                    disabled={ghnLoading || !!order?.trackingCode || !!order?.deliveryTripId}
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold text-sm shadow-xs transition-all disabled:opacity-50"
+                  >
+                    {ghnLoading
+                      ? 'Đang tạo đơn...'
+                      : order?.deliveryTripId ||
+                          order?.shippingProvider === 'Internal' ||
+                          order?.trackingCode?.startsWith('SLR-EXP')
+                        ? 'Đã Điều Phối Xe Nội Bộ'
+                        : order?.trackingCode
+                          ? `Đã Tạo GHN (${order.trackingCode})`
+                          : 'Tạo Đơn GHN'}
+                  </button>
+                )}
+
+                {/* Nút 2: Điều Phối Xe Nội Bộ (Chạy qua Tab B2C) */}
+                <button
+                  onClick={() => {
+                    navigate(
+                      `/transportation/dashboard?tab=b2c&highlightOrderId=${issue.orderId || ''}`
+                    );
+                  }}
+                  className="px-4 py-2 bg-amber-400 hover:bg-amber-500 text-slate-900 rounded-lg font-bold text-sm shadow-xs transition-all"
+                >
+                  Điều Phối Xe Giao Hàng
+                </button>
+
+                {/* Nút 3: In Phiếu Xuất & Tem Kiện (Web Print Preview A5/A6) */}
+                <button
+                  onClick={() => setPrintModalOpen(true)}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 rounded-lg font-bold text-sm shadow-xs transition-all"
+                >
+                  In Phiếu Xuất & Tem Kiện
+                </button>
+              </div>
+            )}
           </div>
 
-          {/* Vách ngăn nếu có nút tiếp theo */}
-          {(issue.status === InventoryIssueStatus.Pending ||
-            issue.status === InventoryIssueStatus.Picking) && (
-            <div className="h-6 w-px bg-slate-200 mx-2 hidden md:block"></div>
-          )}
-
-          {/* Nút Hoàn tất (Nằm bên trái) */}
+          {/* Nút Hủy Phiếu: Nằm góc phải khi chưa hoàn tất */}
           {(issue.status === InventoryIssueStatus.Pending ||
             issue.status === InventoryIssueStatus.Picking) && (
             <button
-              onClick={handleCompleteIssue}
+              onClick={() => setCancelModalOpen(true)}
               disabled={actionLoading}
-              className="flex items-center gap-2 px-5 py-2 bg-emerald-600 text-white rounded-lg font-bold text-sm hover:bg-emerald-700 transition-all shadow-sm shadow-emerald-200 disabled:opacity-50"
+              className="px-4 py-2 bg-white text-rose-600 border border-rose-200 rounded-lg font-bold text-sm hover:bg-rose-50 transition-colors shadow-xs"
             >
-              {actionLoading ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <CheckCircle size={16} />
-              )}
-              Hoàn Tất Xuất Kho
+              Hủy Phiếu Xuất
             </button>
           )}
         </div>
 
-        {/* Nút Hủy Phiếu: Nằm góc phải */}
-        {(issue.status === InventoryIssueStatus.Pending ||
-          issue.status === InventoryIssueStatus.Picking) && (
-          <button
-            onClick={() => setCancelModalOpen(true)}
-            disabled={actionLoading}
-            className="flex items-center gap-2 px-4 py-2 bg-white text-rose-600 border border-rose-200 rounded-lg font-bold text-sm hover:bg-rose-50 transition-colors shadow-sm"
-          >
-            <XCircle size={16} strokeWidth={2.5} /> Hủy Phiếu Xuất
-          </button>
+        {/* THÔNG BÁO BẢO QUẢN CHUỖI LẠNH (NẾU CÓ) */}
+        {issue.status === InventoryIssueStatus.Completed && order?.requiresColdChain && (
+          <div className="p-3.5 bg-amber-50/80 border border-amber-200 rounded-xl text-xs text-amber-900 font-medium flex items-center justify-between">
+            <div>
+              <span className="font-bold uppercase tracking-wide mr-2 text-amber-950">
+                Lưu ý bảo quản chuỗi lạnh:
+              </span>
+              Đơn hàng có chứa mặt hàng thực phẩm tươi sống / cấp đông. Hệ thống đã tự động khóa
+              cổng giao hàng GHN để đảm bảo an toàn thực phẩm. Vui lòng sử dụng Đội Xe Máy Thùng
+              Lạnh Nội Bộ tại Trung Tâm Vận Tải.
+            </div>
+            <span className="px-2.5 py-1 bg-amber-200/80 text-amber-950 font-bold rounded-lg shrink-0">
+              Bảo quản 0°C đến 4°C
+            </span>
+          </div>
         )}
       </div>
 
@@ -359,9 +453,7 @@ const InventoryIssueDetail: React.FC = () => {
         <div className="fixed inset-0 z-60 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 animate-in fade-in">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
             <div className="px-6 py-4 border-b border-rose-100 bg-rose-50/50">
-              <h3 className="text-lg font-black text-rose-700 flex items-center gap-2">
-                <AlertCircle size={20} strokeWidth={2.5} /> Xác Nhận Hủy Phiếu Xuất
-              </h3>
+              <h3 className="text-lg font-black text-rose-700">Xác Nhận Hủy Phiếu Xuất Kho</h3>
             </div>
             <div className="p-6">
               <p className="text-sm text-slate-600 mb-5 leading-relaxed">
@@ -393,21 +485,89 @@ const InventoryIssueDetail: React.FC = () => {
                   setCancelReason('');
                 }}
                 disabled={actionLoading}
-                className="px-5 py-2 text-sm font-bold text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors shadow-sm"
+                className="px-5 py-2 text-sm font-bold text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors shadow-xs"
               >
                 Đóng Lại
               </button>
               <button
                 onClick={handleCancelIssue}
                 disabled={actionLoading || !cancelReason.trim()}
-                className="px-5 py-2 bg-rose-600 text-white rounded-lg text-sm font-bold hover:bg-rose-700 transition-colors disabled:opacity-50 shadow-sm flex items-center gap-2"
+                className="px-5 py-2 bg-rose-600 text-white rounded-lg text-sm font-bold hover:bg-rose-700 transition-colors disabled:opacity-50 shadow-xs"
               >
-                {actionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                Xác Nhận Hủy
+                {actionLoading ? 'Đang hủy...' : 'Xác Nhận Hủy'}
               </button>
             </div>
           </div>
         </div>
+      )}
+
+      {/* ================= MODAL IN PHIẾU XUẤT KHO (REUSABLE COMPONENT) ================= */}
+      {issue && (
+        <DocumentPrintModal
+          isOpen={printModalOpen}
+          onClose={() => setPrintModalOpen(false)}
+          documentTitle="PHIẾU XUẤT KHO KIÊM BIÊN BẢN BÀN GIAO"
+          documentSubtitle="Hệ thống chuỗi thực phẩm sạch & bảo quản chuỗi lạnh Solaris"
+          documentCode={issue.issueCode}
+          documentDate={issue.issueDate}
+          warehouseName={issue.warehouseName}
+          creatorName={issue.issuedByName}
+          partyTitle="Người nhận hàng / Đơn vị nhận"
+          partyName={issue.receiverName || 'Khách hàng'}
+          partyPhone={issue.receiverPhone}
+          partyAddress={issue.deliveryAddress}
+          referenceCode={issue.orderCode || 'Xuất nội bộ'}
+          paymentMethodName={
+            order
+              ? order.paymentMethod === 1
+                ? 'Tiền mặt / COD'
+                : 'Chuyển khoản / Điện tử'
+              : undefined
+          }
+          paymentStatusName={
+            order
+              ? order.paymentStatus === 3
+                ? 'Đã thanh toán'
+                : 'Chưa thanh toán / Thu COD'
+              : undefined
+          }
+          codAmount={
+            order && order.paymentStatus !== 3 && order.paymentMethod === 1 ? order.totalAmount : 0
+          }
+          totalAmount={order?.totalAmount}
+          notes={issue.note || 'Hàng thực phẩm tươi sạch - Giao nhanh đúng dải nhiệt độ'}
+          items={(issue.details || []).map((item) => ({
+            skuCode: item.variantCode,
+            productName: item.variantName,
+            batchCode: item.batchCode || 'Lô mặc định',
+            uoMName: item.uoMName,
+            quantity: item.quantity,
+          }))}
+          signatures={[
+            {
+              title: 'Thủ Kho Xuất Hàng',
+              subtitle: '(Ký, ghi rõ họ tên)',
+              name: issue.issuedByName,
+            },
+            {
+              title: 'Người Kiểm Đếm',
+              subtitle: '(Ký xác nhận)',
+              name: issue.warehouseName
+                ? `Kho: ${issue.warehouseName}`
+                : '........................',
+            },
+            {
+              title: 'Tài Xế Giao Hàng',
+              subtitle: '(Ký nhận kiện hàng)',
+              name: '........................',
+            },
+            {
+              title: 'Người Nhận Hàng',
+              subtitle: '(Kiểm tra và ký nhận)',
+              name: issue.receiverName || '........................',
+            },
+          ]}
+        />
       )}
     </DetailPageContainer>
   );

@@ -373,9 +373,7 @@ describe('Module 05 - ProductVariantForm Component', () => {
     // 4. Modal hiển thị: Kiểm tra Đơn vị cơ sở đã được khóa cố định theo sản phẩm
     await waitFor(() => {
       expect(screen.getByText(/Cấu Hình Quy Đổi Nhanh/i)).toBeInTheDocument();
-      expect(
-        screen.getByText(/Cố định theo đơn vị cơ sở/i)
-      ).toBeInTheDocument();
+      expect(screen.getByText(/Cố định theo đơn vị cơ sở/i)).toBeInTheDocument();
     });
 
     // 5. Chọn ĐVT lớn (Thùng 10Kg)

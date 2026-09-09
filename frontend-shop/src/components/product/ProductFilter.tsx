@@ -71,7 +71,9 @@ function ProductFilterContent({
   }, []);
 
   // Trạng thái mở rộng cho từng danh mục con (Cấp 2 chứa Cấp 3)
-  const [expandedCategories, setExpandedCategories] = useState<Record<number, boolean>>({});
+  const [expandedCategories, setExpandedCategories] = useState<
+    Record<number, boolean>
+  >({});
 
   const toggleGroup = (groupId: number) => {
     setExpandedGroups((prev) => ({
@@ -105,12 +107,19 @@ function ProductFilterContent({
     if (currentCatSlug || currentProductSlug || currentRouteSlug) {
       categories.forEach((g) => {
         g.categories.forEach((c) => {
-          const isCatMatched = c.categorySlug === currentCatSlug || c.categorySlug === currentRouteSlug;
+          const isCatMatched =
+            c.categorySlug === currentCatSlug ||
+            c.categorySlug === currentRouteSlug;
           const isProdMatched = c.products?.some(
-            (p) => p.productSlug === currentProductSlug || p.productSlug === currentRouteSlug,
+            (p) =>
+              p.productSlug === currentProductSlug ||
+              p.productSlug === currentRouteSlug,
           );
           if (isCatMatched || isProdMatched) {
-            setExpandedCategories((prev) => ({ ...prev, [c.categoryId]: true }));
+            setExpandedCategories((prev) => ({
+              ...prev,
+              [c.categoryId]: true,
+            }));
             setExpandedGroups((prev) => ({ ...prev, [g.groupId]: true }));
           }
         });
@@ -119,7 +128,10 @@ function ProductFilterContent({
   }, [currentCatSlug, currentProductSlug, currentRouteSlug, categories]);
 
   const isCategoryActive = (categorySlug: string) => {
-    return (currentCatSlug === categorySlug || currentRouteSlug === categorySlug) && !currentProductSlug;
+    return (
+      (currentCatSlug === categorySlug || currentRouteSlug === categorySlug) &&
+      !currentProductSlug
+    );
   };
 
   const isProductActive = (productSlug: string) => {
@@ -127,10 +139,13 @@ function ProductFilterContent({
   };
 
   const isGroupActive = (groupSlug: string) => {
-    return currentRouteSlug === groupSlug && !currentCatSlug && !currentProductSlug;
+    return (
+      currentRouteSlug === groupSlug && !currentCatSlug && !currentProductSlug
+    );
   };
 
-  const isAllActive = !currentCatSlug && !currentProductSlug && !currentRouteSlug;
+  const isAllActive =
+    !currentCatSlug && !currentProductSlug && !currentRouteSlug;
 
   const handleSelectCategory = (catSlug?: string) => {
     if (!catSlug) {
@@ -345,13 +360,16 @@ function ProductFilterContent({
                     {group.categories.map((cat) => {
                       const active = isCategoryActive(cat.categorySlug);
                       const isCatExpanded = expandedCategories[cat.categoryId];
-                      const hasProducts = cat.products && cat.products.length > 0;
+                      const hasProducts =
+                        cat.products && cat.products.length > 0;
 
                       return (
                         <div key={cat.categoryId} className="space-y-1">
                           <div className="flex items-center gap-1">
                             <button
-                              onClick={() => handleSelectCategory(cat.categorySlug)}
+                              onClick={() =>
+                                handleSelectCategory(cat.categorySlug)
+                              }
                               className={`flex-1 text-left text-xs px-3 py-2 rounded-xl flex items-center justify-between transition-all cursor-pointer ${
                                 active
                                   ? "bg-emerald-600 text-white font-extrabold shadow-2xs"
@@ -370,9 +388,15 @@ function ProductFilterContent({
 
                             {hasProducts && (
                               <button
-                                onClick={(e) => toggleCategory(cat.categoryId, e)}
+                                onClick={(e) =>
+                                  toggleCategory(cat.categoryId, e)
+                                }
                                 className="p-1.5 text-slate-400 hover:text-emerald-700 hover:bg-white rounded-lg cursor-pointer transition-colors"
-                                title={isCatExpanded ? "Thu gọn dòng sản phẩm" : "Mở rộng dòng sản phẩm"}
+                                title={
+                                  isCatExpanded
+                                    ? "Thu gọn dòng sản phẩm"
+                                    : "Mở rộng dòng sản phẩm"
+                                }
                               >
                                 {isCatExpanded ? (
                                   <ChevronUp className="w-3.5 h-3.5" />
@@ -387,12 +411,16 @@ function ProductFilterContent({
                           {isCatExpanded && hasProducts && (
                             <div className="pl-3.5 pr-1 py-1 space-y-1 border-l-2 border-emerald-200/60 ml-3">
                               {cat.products!.map((prod) => {
-                                const prodActive = isProductActive(prod.productSlug);
+                                const prodActive = isProductActive(
+                                  prod.productSlug,
+                                );
 
                                 return (
                                   <button
                                     key={prod.productId}
-                                    onClick={() => handleSelectProduct(prod.productSlug)}
+                                    onClick={() =>
+                                      handleSelectProduct(prod.productSlug)
+                                    }
                                     className={`w-full text-left text-[11px] px-2.5 py-1.5 rounded-lg flex items-center justify-between transition-all cursor-pointer ${
                                       prodActive
                                         ? "bg-emerald-100 text-emerald-900 font-bold border border-emerald-300 shadow-2xs"

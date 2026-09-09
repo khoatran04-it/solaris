@@ -81,11 +81,15 @@ export default function GioHangPage() {
       </div>
 
       {/* Cold Chain Banner */}
-      {(cart?.hasColdChain || cart?.items?.some((i) => i.requiresColdChain)) && (
+      {(cart?.hasColdChain ||
+        cart?.items?.some((i) => i.requiresColdChain)) && (
         <div className="p-4 rounded-2xl bg-cyan-50/90 border border-cyan-200 flex items-center gap-3 text-cyan-950 text-xs font-medium shadow-2xs">
           <ThermometerSnowflake className="w-5 h-5 text-cyan-600 shrink-0" />
           <span>
-            <strong>Chuỗi cung ứng lạnh Solaris Cold-Chain:</strong> Giỏ hàng của bạn có thực phẩm tươi sống (thịt, cá, hải sản, rau củ). Đơn hàng sẽ được vận chuyển hỏa tốc bằng xe máy thùng lạnh chuyên dụng trong bán kính tối đa 15km để giữ trọn độ tươi ngon.
+            <strong>Chuỗi cung ứng lạnh Solaris Cold-Chain:</strong> Giỏ hàng
+            của bạn có thực phẩm tươi sống (thịt, cá, hải sản, rau củ). Đơn hàng
+            sẽ được vận chuyển hỏa tốc bằng xe máy thùng lạnh chuyên dụng trong
+            bán kính tối đa 15km để giữ trọn độ tươi ngon.
           </span>
         </div>
       )}

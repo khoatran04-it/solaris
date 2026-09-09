@@ -28,6 +28,7 @@ import {
   PaymentStatusLabels,
   PaymentStatusColors,
 } from '../../types/order';
+import { ExportCsvButton } from '../../utils/exportUtils';
 
 const OrderList: React.FC = () => {
   const navigate = useNavigate();
@@ -191,6 +192,89 @@ const OrderList: React.FC = () => {
         onAdd={() => navigate('/orders/create')}
         icon={ShoppingBag}
         searchPlaceholder="Tìm kiếm theo mã đơn, người nhận, SĐT..."
+        action={
+          <ExportCsvButton
+            filename={`Danh-sach-don-hang_${new Date().toISOString().slice(0, 10)}`}
+            label="Xuất CSV"
+            currentPageData={orders}
+            totalItems={totalItems}
+            filterSnapshots={[
+              { label: 'Từ khóa', value: debouncedSearch },
+              {
+                label: 'Khách hàng',
+                value: customerFilter
+                  .map((id) => customerOptions.find((o) => o.value === id)?.label)
+                  .filter(Boolean)
+                  .join(', '),
+              },
+              {
+                label: 'Kho xuất',
+                value: warehouseFilter
+                  .map((id) => warehouseOptions.find((o) => o.value === id)?.label)
+                  .filter(Boolean)
+                  .join(', '),
+              },
+              {
+                label: 'Trạng thái',
+                value:
+                  statusFilter.length > 0
+                    ? OrderStatusLabels[Number(statusFilter[0]) as OrderStatus] || ''
+                    : '',
+              },
+              {
+                label: 'Thanh toán',
+                value:
+                  paymentStatusFilter.length > 0
+                    ? PaymentStatusLabels[Number(paymentStatusFilter[0]) as PaymentStatus] || ''
+                    : '',
+              },
+              {
+                label: 'Từ ngày',
+                value: fromDateFilter ? fromDateFilter.toLocaleDateString('vi-VN') : '',
+              },
+              {
+                label: 'Đến ngày',
+                value: toDateFilter ? toDateFilter.toLocaleDateString('vi-VN') : '',
+              },
+            ]}
+            onFetchAll={async () => {
+              const res = await orderApi.getAll({
+                search: debouncedSearch || undefined,
+                customerId: customerFilter.length > 0 ? Number(customerFilter[0]) : undefined,
+                warehouseId: warehouseFilter.length > 0 ? Number(warehouseFilter[0]) : undefined,
+                status: statusFilter.length > 0 ? Number(statusFilter[0]) : undefined,
+                paymentStatus:
+                  paymentStatusFilter.length > 0 ? Number(paymentStatusFilter[0]) : undefined,
+                startDate: fromDateFilter ? fromDateFilter.toLocaleDateString('en-CA') : undefined,
+                endDate: toDateFilter ? toDateFilter.toLocaleDateString('en-CA') : undefined,
+                pageIndex: 1,
+                pageSize: totalItems || 1000,
+              });
+              return res.items || [];
+            }}
+            columns={[
+              { header: 'Mã Đơn', accessor: (o) => o.orderCode },
+              { header: 'Khách Hàng', accessor: (o) => o.customerName },
+              { header: 'Người Nhận', accessor: (o) => o.receiverName || o.customerName },
+              { header: 'Số Điện Thoại', accessor: (o) => o.receiverPhone || o.customerPhone },
+              { header: 'Địa Chỉ Giao Hàng', accessor: (o) => o.deliveryAddress },
+              { header: 'Kho Xuất', accessor: (o) => o.warehouseName },
+              {
+                header: 'Ngày Đặt',
+                accessor: (o) => new Date(o.orderDate).toLocaleDateString('vi-VN'),
+              },
+              { header: 'Tổng Tiền (VNĐ)', accessor: (o) => o.totalAmount },
+              {
+                header: 'Trạng Thái Đơn',
+                accessor: (o) => OrderStatusLabels[o.status] || o.status,
+              },
+              {
+                header: 'Trạng Thái Thanh Toán',
+                accessor: (o) => PaymentStatusLabels[o.paymentStatus] || o.paymentStatus,
+              },
+            ]}
+          />
+        }
       />
 
       <ListCard>
@@ -289,9 +373,19 @@ const OrderList: React.FC = () => {
                   >
                     {/* CELL 1: MÃ ĐƠN */}
                     <td className="py-3 px-6">
-                      <span className="inline-block px-2.5 py-1 bg-slate-100 text-slate-700 rounded-md font-bold text-[13px] border border-slate-200 shadow-sm">
-                        {order.orderCode}
-                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="inline-block px-2.5 py-1 bg-slate-100 text-slate-700 rounded-md font-bold text-[13px] border border-slate-200 shadow-sm">
+                          {order.orderCode}
+                        </span>
+                        {order.requiresColdChain && (
+                          <span
+                            className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-cyan-50 text-cyan-700 border border-cyan-200 rounded text-[10px] font-bold"
+                            title="Đơn hàng chuỗi lạnh - Giao nội bộ"
+                          >
+                            ❄️ Lạnh
+                          </span>
+                        )}
+                      </div>
                     </td>
 
                     {/* CELL 2: KHÁCH HÀNG */}

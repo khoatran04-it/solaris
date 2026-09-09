@@ -24,6 +24,7 @@ import {
   DateTimeCell,
   StatusBadge,
 } from '../../components/commons/ListUI';
+import { ExportCsvButton } from '../../utils/exportUtils';
 
 const ProductVariantList: React.FC = () => {
   const navigate = useNavigate();
@@ -69,7 +70,11 @@ const ProductVariantList: React.FC = () => {
   useEffect(() => {
     productApi
       .getAllList()
-      .then((res) => setProductOptions(res.map((p: any) => ({ label: p.code ? `${p.name} - ${p.code}` : p.name, value: p.id }))))
+      .then((res) =>
+        setProductOptions(
+          res.map((p: any) => ({ label: p.code ? `${p.name} - ${p.code}` : p.name, value: p.id }))
+        )
+      )
       .catch(() => showToast('warning', 'Không tải được bộ lọc Sản phẩm'));
   }, []);
 
@@ -150,6 +155,75 @@ const ProductVariantList: React.FC = () => {
         onAdd={() => navigate('/product-variants/create')}
         icon={Box}
         searchPlaceholder="Tìm kiếm theo mã SKU, tên biến thể..."
+        action={
+          <ExportCsvButton
+            filename={`Danh-sach-bien-the-sku_${new Date().toISOString().slice(0, 10)}`}
+            label="Xuất CSV"
+            currentPageData={data}
+            totalItems={totalItems}
+            filterSnapshots={[
+              { label: 'Từ khóa', value: debouncedSearch },
+              {
+                label: 'Sản phẩm gốc',
+                value: productFilter
+                  .map((id) => productOptions.find((o) => o.value === id)?.label)
+                  .filter(Boolean)
+                  .join(', '),
+              },
+              {
+                label: 'Trạng thái',
+                value:
+                  statusFilter.length === 1
+                    ? statusFilter[0] === 1
+                      ? 'Hoạt động'
+                      : 'Tạm khóa'
+                    : '',
+              },
+              {
+                label: 'Ngày tạo',
+                value: createdAtFilter ? createdAtFilter.toLocaleDateString('vi-VN') : '',
+              },
+              {
+                label: 'Ngày sửa',
+                value: updatedAtFilter ? updatedAtFilter.toLocaleDateString('vi-VN') : '',
+              },
+            ]}
+            onFetchAll={async () => {
+              const response = await productVariantApi.getAll({
+                search: debouncedSearch,
+                pageIndex: 1,
+                pageSize: totalItems || 1000,
+                productId: productFilter.length > 0 ? productFilter.join(',') : undefined,
+                isActive: statusFilter.length === 1 ? statusFilter[0] === 1 : undefined,
+                createdAt: createdAtFilter
+                  ? createdAtFilter.toLocaleDateString('en-CA')
+                  : undefined,
+                updatedAt: updatedAtFilter
+                  ? updatedAtFilter.toLocaleDateString('en-CA')
+                  : undefined,
+              });
+              return response.items || [];
+            }}
+            columns={[
+              { header: 'Mã SKU', accessor: (v) => v.code },
+              { header: 'Tên Biến Thể', accessor: (v) => v.name },
+              { header: 'Sản Phẩm Gốc', accessor: (v) => v.productName || '' },
+              { header: 'ĐVT Bán', accessor: (v) => v.baseUoMName || '' },
+              { header: 'Tồn Kho Khả Dụng', accessor: (v) => v.quantityAvailable ?? 0 },
+              { header: 'Trạng Thái', accessor: (v) => (v.isActive ? 'Hoạt động' : 'Tạm khóa') },
+              {
+                header: 'Ngày Tạo',
+                accessor: (v) =>
+                  v.createdAt ? new Date(v.createdAt).toLocaleDateString('vi-VN') : '',
+              },
+              {
+                header: 'Ngày Cập Nhật',
+                accessor: (v) =>
+                  v.updatedAt ? new Date(v.updatedAt).toLocaleDateString('vi-VN') : '',
+              },
+            ]}
+          />
+        }
       />
 
       <ListCard>
@@ -174,11 +248,17 @@ const ProductVariantList: React.FC = () => {
                   Giá Mặc Định
                 </th>
 
-                <th className="w-[9%] py-4 px-2 text-xs font-bold text-slate-500 uppercase tracking-wider text-center" title="Mức định mức tồn kho tối thiểu (Safety Stock)">
+                <th
+                  className="w-[9%] py-4 px-2 text-xs font-bold text-slate-500 uppercase tracking-wider text-center"
+                  title="Mức định mức tồn kho tối thiểu (Safety Stock)"
+                >
                   Tồn Tối Thiểu
                 </th>
 
-                <th className="w-[11%] py-4 px-2 text-xs font-bold text-slate-500 uppercase tracking-wider text-center" title="Số lượng tồn kho khả dụng thực tế hiện có trong các kho">
+                <th
+                  className="w-[11%] py-4 px-2 text-xs font-bold text-slate-500 uppercase tracking-wider text-center"
+                  title="Số lượng tồn kho khả dụng thực tế hiện có trong các kho"
+                >
                   Tồn Khả Dụng
                 </th>
 
@@ -320,17 +400,14 @@ const ProductVariantList: React.FC = () => {
                         {(() => {
                           const available = item.quantityAvailable ?? 0;
                           const minStock = item.inventoryGuideline;
-                          let badgeClass =
-                            'bg-emerald-50 text-emerald-700 border-emerald-200';
+                          let badgeClass = 'bg-emerald-50 text-emerald-700 border-emerald-200';
                           let title = `Tồn khả dụng: ${available.toLocaleString('vi-VN')} (Dồi dào)`;
 
                           if (available === 0) {
-                            badgeClass =
-                              'bg-rose-50 text-rose-700 border-rose-200';
+                            badgeClass = 'bg-rose-50 text-rose-700 border-rose-200';
                             title = 'Hết hàng khả dụng';
                           } else if (available <= minStock) {
-                            badgeClass =
-                              'bg-amber-50 text-amber-700 border-amber-200';
+                            badgeClass = 'bg-amber-50 text-amber-700 border-amber-200';
                             title = `Tồn khả dụng: ${available.toLocaleString('vi-VN')} (Sắp hết / Dưới mức an toàn)`;
                           }
 

@@ -287,6 +287,15 @@ namespace backend.Services
                     entity.Address.StreetAddress = dto.Address.StreetAddress.Trim();
                     entity.Address.Latitude = dto.Address.Latitude;
                     entity.Address.Longitude = dto.Address.Longitude;
+
+                    // Tự động gán tọa độ mặc định nếu người dùng để trống hoặc nhập 0
+                    if (entity.Address.Latitude == 0 && entity.Address.Longitude == 0)
+                    {
+                        var (defLat, defLng) = GetDefaultCoordinatesForDistrict(entity.Address.Province, entity.Address.District);
+                        entity.Address.Latitude = defLat;
+                        entity.Address.Longitude = defLng;
+                    }
+
                     entity.Address.CreatedAt = DateTime.UtcNow;
                     entity.Address.UpdatedAt = DateTime.UtcNow;
                 }
@@ -363,6 +372,15 @@ namespace backend.Services
                     entity.Address.StreetAddress = dto.Address.StreetAddress.Trim();
                     entity.Address.Latitude = dto.Address.Latitude;
                     entity.Address.Longitude = dto.Address.Longitude;
+
+                    // Tự động gán tọa độ mặc định nếu người dùng để trống hoặc nhập 0
+                    if (entity.Address.Latitude == 0 && entity.Address.Longitude == 0)
+                    {
+                        var (defLat, defLng) = GetDefaultCoordinatesForDistrict(entity.Address.Province, entity.Address.District);
+                        entity.Address.Latitude = defLat;
+                        entity.Address.Longitude = defLng;
+                    }
+
                     entity.Address.UpdatedAt = DateTime.UtcNow;
                 }
 
@@ -470,6 +488,43 @@ namespace backend.Services
             });
         }
 
+        #endregion
+
+        #region Helper Methods
+        /// <summary>
+        /// Ước tính tọa độ trung tâm cho Quận/Huyện phổ biến để tránh lỗi khoảng cách vô cực khi người dùng không nhập GPS.
+        /// </summary>
+        private static (double Lat, double Lng) GetDefaultCoordinatesForDistrict(string province, string district)
+        {
+            var p = province.ToLowerInvariant();
+            var d = district.ToLowerInvariant();
+
+            if (p.Contains("hồ chí minh") || p.Contains("hcm"))
+            {
+                if (d.Contains("quận 1") || d.Contains("quan 1")) return (10.7769, 106.7009);
+                if (d.Contains("quận 3") || d.Contains("quan 3")) return (10.7828, 106.6853);
+                if (d.Contains("quận 4") || d.Contains("quan 4")) return (10.7584, 106.7118);
+                if (d.Contains("quận 5") || d.Contains("quan 5")) return (10.7540, 106.6667);
+                if (d.Contains("quận 7") || d.Contains("quan 7")) return (10.7420, 106.6975);
+                if (d.Contains("quận 10") || d.Contains("quan 10")) return (10.7716, 106.6669);
+                if (d.Contains("bình thạnh") || d.Contains("binh thanh")) return (10.8030, 106.7100);
+                if (d.Contains("tân bình") || d.Contains("tan binh")) return (10.8015, 106.6548);
+                if (d.Contains("thủ đức") || d.Contains("thu duc")) return (10.8494, 106.7537);
+                return (10.7769, 106.7009); // Mặc định trung tâm TP.HCM
+            }
+
+            if (p.Contains("hà nội") || p.Contains("ha noi"))
+            {
+                return (21.0285, 105.8542); // Trung tâm Hà Nội
+            }
+
+            if (p.Contains("đà nẵng") || p.Contains("da nang"))
+            {
+                return (16.0544, 108.2022); // Trung tâm Đà Nẵng
+            }
+
+            return (0, 0);
+        }
         #endregion
     }
 }

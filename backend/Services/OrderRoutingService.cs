@@ -1,5 +1,7 @@
 using backend.Data;
 using backend.DTOs.OrderDTOs;
+using backend.Helpers;
+using backend.Models;
 using backend.Models.Enums;
 using backend.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
@@ -17,7 +19,13 @@ namespace backend.Services
             _distanceService = distanceService;
         }
 
-        public async Task<RoutingResultDto> DetermineOptimalWarehouseAsync(int? customerAddressId, List<OrderDetailCreateDto> items)
+        public async Task<RoutingResultDto> DetermineOptimalWarehouseAsync(
+            int? customerAddressId,
+            List<OrderDetailCreateDto> items,
+            double directLat = 0,
+            double directLng = 0,
+            string? province = null,
+            string? district = null)
         {
             // Chỉ định tuyến đơn hàng đến Kho Bán Lẻ đang hoạt động
             var warehouses = await _context.Warehouses
@@ -30,26 +38,64 @@ namespace backend.Services
                 throw new InvalidOperationException("Hệ thống chưa có kho hàng nào đang hoạt động.");
             }
 
-            double custLat = 0;
-            double custLon = 0;
+            double custLat = directLat;
+            double custLon = directLng;
+            string custProvince = province?.Trim() ?? string.Empty;
+            string custDistrict = district?.Trim() ?? string.Empty;
 
             if (customerAddressId.HasValue)
             {
                 var address = await _context.CustomerAddresses.FindAsync(customerAddressId.Value);
                 if (address != null)
                 {
-                    custLat = address.Latitude;
-                    custLon = address.Longitude;
+                    if (address.Latitude != 0 && address.Longitude != 0)
+                    {
+                        custLat = address.Latitude;
+                        custLon = address.Longitude;
+                    }
+                    if (string.IsNullOrEmpty(custProvince) && !string.IsNullOrEmpty(address.Province))
+                        custProvince = address.Province;
+                    if (string.IsNullOrEmpty(custDistrict) && !string.IsNullOrEmpty(address.District))
+                        custDistrict = address.District;
                 }
             }
 
-            // 1. Tính khoảng cách và sắp xếp kho từ gần nhất -> xa nhất
+            // 1. Tính khoảng cách an toàn với Fallback theo cấp hành chính (tránh lỗi vô cực khi thiếu GPS)
+            double CalculateSafeDistance(Warehouse wh)
+            {
+                if (wh.Address == null) return 5.0;
+
+                bool hasCustCoords = custLat != 0 && custLon != 0;
+                bool hasWhCoords = wh.Address.Latitude != 0 && wh.Address.Longitude != 0;
+
+                if (hasCustCoords && hasWhCoords)
+                {
+                    double d = _distanceService.CalculateDistanceKm(custLat, custLon, wh.Address.Latitude, wh.Address.Longitude);
+                    if (!double.IsInfinity(d) && !double.IsNaN(d) && d < 99999)
+                    {
+                        return d;
+                    }
+                }
+
+                // Fallback địa lý theo Tỉnh / Quận nếu thiếu GPS hoặc GPS không hợp lệ
+                if (!string.IsNullOrEmpty(wh.Address.Province) && !string.IsNullOrEmpty(custProvince))
+                {
+                    bool sameProvince = GeoHelper.IsSameLocation(wh.Address.Province, custProvince);
+                    bool sameDistrict = GeoHelper.IsSameLocation(wh.Address.District, custDistrict);
+
+                    if (sameDistrict) return 3.0; // Cùng quận: ước tính ~3km
+                    if (sameProvince) return 7.5; // Cùng tỉnh/TP (ví dụ cùng TP.HCM): ước tính ~7.5km
+                    return 100.0; // Khác tỉnh thành
+                }
+
+                return 5.0; // Mặc định trong nội thành
+            }
+
+            // Tính khoảng cách và sắp xếp kho từ gần nhất -> xa nhất
             var warehousesWithDistance = warehouses.Select(w => new
             {
                 Warehouse = w,
-                Distance = (custLat != 0 && custLon != 0 && w.Address != null)
-                    ? _distanceService.CalculateDistanceKm(custLat, custLon, w.Address.Latitude, w.Address.Longitude)
-                    : 0.0
+                Distance = CalculateSafeDistance(w)
             })
             .OrderBy(x => x.Distance)
             .ToList();
@@ -127,8 +173,8 @@ namespace backend.Services
                 var firstMissing = targetMissingList.First();
                 var sourceWh = await _context.WarehouseInventories
                     .Include(i => i.Warehouse)
-                    .Where(i => i.WarehouseId != nearest.Warehouse.Id && 
-                                i.VariantId == firstMissing.VariantId && 
+                    .Where(i => i.WarehouseId != nearest.Warehouse.Id &&
+                                i.VariantId == firstMissing.VariantId &&
                                 i.QuantityAvailable >= firstMissing.MissingQuantity &&
                                 (i.Warehouse == null || i.Warehouse.WarehouseType != WarehouseTypeConstants.Damaged))
                     .Select(i => i.Warehouse)

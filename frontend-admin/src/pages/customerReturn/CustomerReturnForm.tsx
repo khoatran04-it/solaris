@@ -100,25 +100,30 @@ const CustomerReturnForm: React.FC = () => {
     []
   );
   const [uoms, setUoms] = useState<{ value: number; label: string }[]>([]);
-  const [variantUoMsMap, setVariantUoMsMap] = useState<Record<number, { value: number; label: string }[]>>({});
+  const [variantUoMsMap, setVariantUoMsMap] = useState<
+    Record<number, { value: number; label: string }[]>
+  >({});
 
-  const fetchValidUoMs = useCallback(async (vId: number) => {
-    if (!vId || variantUoMsMap[vId]) return;
-    try {
-      const opts = await uomConversionApi.getValidUoMs(vId);
-      if (opts && opts.length > 0) {
-        setVariantUoMsMap((prev) => ({
-          ...prev,
-          [vId]: opts.map((u) => ({
-            value: u.uoMId,
-            label: `${u.uoMName} (${u.description})`,
-          })),
-        }));
+  const fetchValidUoMs = useCallback(
+    async (vId: number) => {
+      if (!vId || variantUoMsMap[vId]) return;
+      try {
+        const opts = await uomConversionApi.getValidUoMs(vId);
+        if (opts && opts.length > 0) {
+          setVariantUoMsMap((prev) => ({
+            ...prev,
+            [vId]: opts.map((u) => ({
+              value: u.uoMId,
+              label: `${u.uoMName} (${u.description})`,
+            })),
+          }));
+        }
+      } catch (e) {
+        console.error('Lỗi tải ĐVT hợp lệ:', e);
       }
-    } catch (e) {
-      console.error('Lỗi tải ĐVT hợp lệ:', e);
-    }
-  }, [variantUoMsMap]);
+    },
+    [variantUoMsMap]
+  );
 
   useEffect(() => {
     details.forEach((d) => {

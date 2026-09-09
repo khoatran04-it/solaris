@@ -33,6 +33,7 @@ import {
 } from '../../components/commons/TabUI';
 import { DateCell, DateTimeCell, TableEmpty } from '../../components/commons/ListUI';
 import { ConfirmDeleteModal } from '../../components/modals/ConfirmDeleteModal';
+import { DocumentPrintModal } from '../../components/commons/DocumentPrintModal';
 
 type TabType = 'info' | 'details';
 
@@ -47,6 +48,7 @@ const InventoryReceiptDetail: React.FC = () => {
   const [toast, setToast] = useState<{ show: boolean; type: 'error' | 'success'; message: string }>(
     { show: false, type: 'error', message: '' }
   );
+  const [printModalOpen, setPrintModalOpen] = useState(false);
 
   // Cancel Modal States
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
@@ -165,43 +167,56 @@ const InventoryReceiptDetail: React.FC = () => {
           </span>
         </div>
 
-        {/* Chờ Nhập Kho hoặc Đang Kiểm Đếm đều có quyền Hoàn tất hoặc Hủy */}
-        {(receipt.status === InventoryReceiptStatus.Pending ||
-          receipt.status === InventoryReceiptStatus.Inspecting) && (
-          <div className="flex items-center gap-2">
-            {receipt.status === InventoryReceiptStatus.Pending && (
-              <button
-                onClick={() => setIsDeleteModalOpen(true)}
-                disabled={isCancelling || isCompleting || isDeleting}
-                className="flex items-center gap-1.5 px-3 py-2 bg-rose-50 text-rose-600 border border-rose-200/80 rounded-lg font-bold text-xs hover:bg-rose-100 transition-colors cursor-pointer"
-              >
-                <Trash2 size={15} /> Xóa Phiếu
-              </button>
-            )}
-            <button
-              onClick={() => {
-                setCancelReason('');
-                setIsCancelModalOpen(true);
-              }}
-              disabled={isCancelling || isCompleting || isDeleting}
-              className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 text-slate-700 border border-slate-200 rounded-lg font-bold text-xs hover:bg-slate-200 transition-colors cursor-pointer"
-            >
-              <XCircle size={15} /> Hủy Phiếu
-            </button>
-            <button
-              onClick={handleComplete}
-              disabled={isCompleting || isCancelling || isDeleting}
-              className="flex items-center gap-2 px-5 py-2 bg-emerald-600 text-white rounded-lg font-bold text-xs hover:bg-emerald-700 transition-all shadow-sm shadow-emerald-200 disabled:opacity-50 cursor-pointer"
-            >
-              {isCompleting ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <CheckCircle size={15} />
+        <div className="flex items-center gap-2">
+          {/* NÚT IN PHIẾU NHẬP KHO */}
+          <button
+            type="button"
+            onClick={() => setPrintModalOpen(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-white text-slate-700 border border-slate-200 rounded-lg font-bold text-xs hover:bg-slate-50 transition-colors shadow-xs cursor-pointer"
+            title="In Phiếu Nhập Kho Nông Sản (GRN)"
+          >
+            In Phiếu Nhập Kho
+          </button>
+
+          {/* Chờ Nhập Kho hoặc Đang Kiểm Đếm đều có quyền Hoàn tất hoặc Hủy */}
+          {(receipt.status === InventoryReceiptStatus.Pending ||
+            receipt.status === InventoryReceiptStatus.Inspecting) && (
+            <>
+              {receipt.status === InventoryReceiptStatus.Pending && (
+                <button
+                  onClick={() => setIsDeleteModalOpen(true)}
+                  disabled={isCancelling || isCompleting || isDeleting}
+                  className="flex items-center gap-1.5 px-3 py-2 bg-rose-50 text-rose-600 border border-rose-200/80 rounded-lg font-bold text-xs hover:bg-rose-100 transition-colors cursor-pointer"
+                >
+                  <Trash2 size={15} /> Xóa Phiếu
+                </button>
               )}
-              Hoàn Tất Nhập Kho
-            </button>
-          </div>
-        )}
+              <button
+                onClick={() => {
+                  setCancelReason('');
+                  setIsCancelModalOpen(true);
+                }}
+                disabled={isCancelling || isCompleting || isDeleting}
+                className="flex items-center gap-1.5 px-4 py-2 bg-white text-slate-600 border border-slate-300 rounded-lg font-bold text-xs hover:bg-slate-50 transition-colors cursor-pointer"
+              >
+                <XCircle size={15} /> Hủy Phiếu
+              </button>
+
+              <button
+                onClick={handleComplete}
+                disabled={isCompleting || isCancelling || isDeleting}
+                className="flex items-center gap-2 px-5 py-2 bg-emerald-600 text-white rounded-lg font-bold text-xs hover:bg-emerald-700 transition-all shadow-sm shadow-emerald-200 disabled:opacity-50 cursor-pointer"
+              >
+                {isCompleting ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <CheckCircle size={15} />
+                )}
+                Hoàn Tất Nhập Kho
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
       {/* ================= TABS ĐIỀU HƯỚNG ================= */}
@@ -441,6 +456,48 @@ const InventoryReceiptDetail: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {receipt && (
+        <DocumentPrintModal
+          isOpen={printModalOpen}
+          onClose={() => setPrintModalOpen(false)}
+          documentTitle="PHIẾU NHẬP KHO NÔNG SẢN (GRN)"
+          documentSubtitle="Hệ thống tiếp nhận, kiểm định chất lượng & nhập kho Solaris"
+          documentCode={receipt.receiptCode}
+          documentDate={receipt.receiptDate || receipt.createdAt}
+          warehouseName={receipt.warehouseName}
+          creatorName={receipt.receivedByName}
+          partyTitle="Nhà cung cấp / Đối tác"
+          partyName={receipt.supplierName || 'Nội bộ / Nhập kho'}
+          referenceCode={receipt.poCode || receipt.receiptCode}
+          notes={
+            receipt.note ||
+            'Hàng nhập đã qua kiểm đếm cân trọng lượng và kiểm tra tiêu chuẩn cảm quan.'
+          }
+          items={(receipt.details || []).map((d) => ({
+            skuCode: d.variantCode,
+            productName: d.variantName,
+            batchCode: d.batchCode,
+            uoMName: d.uoMName || 'Kg',
+            quantity: d.acceptedQuantity > 0 ? d.acceptedQuantity : d.expectedQuantity,
+            qcStatus:
+              d.rejectedQuantity > 0
+                ? `Nhận ${d.acceptedQuantity} / Loại ${d.rejectedQuantity}`
+                : 'Đạt chuẩn 100%',
+            note:
+              d.rejectReason || (d.actualWeightKg ? `Cân nặng: ${d.actualWeightKg} kg` : undefined),
+          }))}
+          signatures={[
+            {
+              title: 'Thủ Kho Tiếp Nhận',
+              subtitle: '(Ký, ghi rõ họ tên)',
+              name: receipt.receivedByName,
+            },
+            { title: 'KCS / Kiểm Định Viên', subtitle: '(Ký, đánh giá cảm quan)' },
+            { title: 'Người Giao Hàng', subtitle: '(Ký, xác nhận bàn giao)' },
+          ]}
+        />
       )}
 
       {/* ================= MODAL XÓA PHIẾU ================= */}

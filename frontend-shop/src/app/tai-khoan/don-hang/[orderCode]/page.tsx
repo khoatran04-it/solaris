@@ -32,6 +32,9 @@ export default function OrderDetailPage() {
   const [showConfirmDeliveryModal, setShowConfirmDeliveryModal] =
     useState(false);
   const [isConfirmingDelivery, setIsConfirmingDelivery] = useState(false);
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [rejectReason, setRejectReason] = useState("");
+  const [isRejecting, setIsRejecting] = useState(false);
 
   useEffect(() => {
     initAuth();
@@ -88,6 +91,24 @@ export default function OrderDetailPage() {
     }
   };
 
+  const handleRejectDelivery = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!rejectReason.trim()) return;
+
+    setIsRejecting(true);
+    try {
+      const updated = await shopOrderApi.rejectDelivery(orderCode, {
+        reason: rejectReason.trim(),
+      });
+      setOrder(updated);
+      setShowRejectModal(false);
+    } catch (error: any) {
+      alert(error?.message || "Không thể từ chối nhận hàng.");
+    } finally {
+      setIsRejecting(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="max-w-7xl mx-auto px-4 py-16 text-center text-xs font-semibold text-slate-500">
@@ -112,10 +133,17 @@ export default function OrderDetailPage() {
 
   const canCancel =
     order.statusName === "Chờ xác nhận" || order.statusName === "Đã xác nhận";
+  const isShipping = order.statusName === "Đang giao hàng";
   const canConfirmDelivery =
-    order.statusName === "Đang giao hàng" ||
-    order.statusName === "Đang chuẩn bị hàng";
-  const canReturn = order.statusName === "Giao thành công";
+    isShipping || order.statusName === "Đang chuẩn bị hàng";
+  const canRejectDelivery = isShipping;
+  const isWithin12Hours = order.deliveredAt
+    ? Date.now() - new Date(order.deliveredAt).getTime() <= 12 * 60 * 60 * 1000
+    : true;
+  const canReturn =
+    (order.statusName === "Giao thành công" || order.status === 4) &&
+    isWithin12Hours &&
+    !order.hasReturnRequest;
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
@@ -162,6 +190,24 @@ export default function OrderDetailPage() {
             </button>
           )}
 
+          {canRejectDelivery && (
+            <button
+              onClick={() => setShowRejectModal(true)}
+              className="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold rounded-xl border border-rose-200 transition-colors cursor-pointer"
+            >
+              Từ chối nhận / Trả hàng
+            </button>
+          )}
+
+          {order.hasReturnRequest && (
+            <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-amber-50 text-amber-800 border border-amber-200/80 text-xs font-bold rounded-xl">
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>
+                Đã yêu cầu đổi trả ({order.returnStatusName || "Chờ tiếp nhận"})
+              </span>
+            </span>
+          )}
+
           {canReturn && (
             <Link
               href={`/tai-khoan/tra-hang?orderCode=${order.orderCode}`}
@@ -173,6 +219,16 @@ export default function OrderDetailPage() {
           )}
         </div>
       </div>
+
+      {order.statusName === "Đã hủy" && order.cancellationReason && (
+        <div className="p-4 bg-rose-50 border border-rose-200 rounded-2xl text-xs text-rose-800 flex items-start gap-3">
+          <div className="font-extrabold shrink-0">Thông Báo:</div>
+          <div>
+            Đơn hàng đã dừng xử lý. <strong>Lý do:</strong>{" "}
+            {order.cancellationReason}
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* Left (7 Cols): Items list */}
@@ -389,6 +445,76 @@ export default function OrderDetailPage() {
                   : "Đã Nhận Hàng Thành Công"}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reject Delivery Modal */}
+      {showRejectModal && (
+        <div className="fixed inset-0 bg-slate-950/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 sm:p-7 max-w-md w-full shadow-2xl space-y-4 animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-black text-slate-900">
+                Từ Chối Nhận Hàng / Trả Hàng
+              </h3>
+              <button
+                onClick={() => setShowRejectModal(false)}
+                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <p className="text-xs text-slate-500 leading-relaxed">
+              Bạn có thể từ chối nhận đơn hàng khi tài xế giao đến nếu nông sản
+              không đạt yêu cầu. Vui lòng cho Solaris biết lý do:
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {[
+                "Nông sản dập nát / hư hỏng",
+                "Giao trễ hơn hẹn, đổi ý",
+                "Sai số lượng / sai món",
+                "Khác",
+              ].map((preset) => (
+                <button
+                  key={preset}
+                  type="button"
+                  onClick={() => setRejectReason(preset)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
+                    rejectReason === preset
+                      ? "bg-rose-50 border-rose-300 text-rose-700 font-bold"
+                      : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
+                  }`}
+                >
+                  {preset}
+                </button>
+              ))}
+            </div>
+            <form onSubmit={handleRejectDelivery} className="space-y-4">
+              <textarea
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                placeholder="Mô tả chi tiết lý do từ chối nhận hàng..."
+                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-medium focus:outline-none focus:border-rose-500 focus:bg-white focus:ring-4 focus:ring-rose-500/15"
+                rows={3}
+                required
+              />
+              <div className="flex justify-end gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setShowRejectModal(false)}
+                  className="px-4 py-2.5 bg-slate-100 text-slate-700 font-bold text-xs rounded-xl"
+                >
+                  Quay lại
+                </button>
+                <button
+                  type="submit"
+                  disabled={isRejecting}
+                  className="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl transition-all shadow-md shadow-rose-600/20 disabled:opacity-50"
+                >
+                  {isRejecting ? "Đang xử lý..." : "Xác Nhận Từ Chối"}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

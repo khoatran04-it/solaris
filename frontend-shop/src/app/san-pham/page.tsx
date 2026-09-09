@@ -32,6 +32,7 @@ interface SanPhamPageProps {
     cert?: string;
     sort?: string;
     page?: string;
+    warehouseId?: string;
   }>;
 }
 
@@ -45,10 +46,13 @@ export default async function SanPhamPage({ searchParams }: SanPhamPageProps) {
   const origin = params.origin || "";
   const cert = params.cert || "";
   const sort = params.sort || "newest";
+  const warehouseId = params.warehouseId
+    ? parseInt(params.warehouseId, 10)
+    : undefined;
 
   const filterParams: ShopProductFilterParams = {
     pageIndex: page,
-    pageSize: 12,
+    pageSize: 20,
     search: search || undefined,
     categorySlug: categorySlug || undefined,
     categoryGroupSlug: groupSlug || undefined,
@@ -56,6 +60,7 @@ export default async function SanPhamPage({ searchParams }: SanPhamPageProps) {
     origin: origin || undefined,
     certification: cert || undefined,
     sortBy: sort,
+    warehouseId: warehouseId,
   };
 
   let productsResult: PagedResult<ShopProductCard> = {
@@ -101,7 +106,7 @@ export default async function SanPhamPage({ searchParams }: SanPhamPageProps) {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+    <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
       {/* 1. Header Banner & Breadcrumbs */}
       <div className="bg-gradient-to-r from-emerald-800 via-emerald-700 to-teal-800 rounded-3xl p-6 sm:p-8 text-white shadow-lg relative overflow-hidden">
         <div className="absolute right-0 top-0 w-80 h-80 bg-white/5 rounded-full blur-3xl pointer-events-none" />
@@ -111,7 +116,10 @@ export default async function SanPhamPage({ searchParams }: SanPhamPageProps) {
               Trang chủ
             </Link>
             <span>/</span>
-            <Link href="/san-pham" className="hover:text-white transition-colors">
+            <Link
+              href="/san-pham"
+              className="hover:text-white transition-colors"
+            >
               Tất cả sản phẩm
             </Link>
             {activeProductName && (
@@ -137,8 +145,8 @@ export default async function SanPhamPage({ searchParams }: SanPhamPageProps) {
               {search
                 ? `Kết quả tìm kiếm cho "${search}"`
                 : activeProductName
-                ? activeProductName
-                : "Tất Cả Nông Sản Sạch"}
+                  ? activeProductName
+                  : "Tất Cả Nông Sản Sạch"}
             </h1>
             <p className="text-xs text-emerald-100/90 leading-relaxed font-normal">
               Tuyển chọn nông sản hữu cơ, trái cây nhập khẩu và rau củ Đà Lạt
@@ -170,7 +178,7 @@ export default async function SanPhamPage({ searchParams }: SanPhamPageProps) {
         <div className="lg:col-span-3 space-y-8">
           {productsResult.items.length > 0 ? (
             <>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-3.5">
                 {productsResult.items.map((product) => (
                   <ProductCard key={product.id} product={product} />
                 ))}

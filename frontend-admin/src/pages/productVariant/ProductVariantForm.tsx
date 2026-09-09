@@ -125,7 +125,12 @@ const ProductVariantForm: React.FC = () => {
     ])
       .then(([products, uoms, conversions]) => {
         setRawProducts(products || []);
-        setProductOptions((products || []).map((p: any) => ({ label: p.code ? `${p.name} - ${p.code}` : p.name, value: p.id })));
+        setProductOptions(
+          (products || []).map((p: any) => ({
+            label: p.code ? `${p.name} - ${p.code}` : p.name,
+            value: p.id,
+          }))
+        );
         setUomOptions((uoms || []).map((u: any) => ({ label: u.name, value: u.id })));
         setUomConversions(conversions || []);
       })
@@ -452,7 +457,10 @@ const ProductVariantForm: React.FC = () => {
     e.preventDefault();
     const validation = validateForm();
     if (!validation.isValid) {
-      return showToast('warning', validation.errorMessage || 'Vui lòng kiểm tra lại các trường báo đỏ!');
+      return showToast(
+        'warning',
+        validation.errorMessage || 'Vui lòng kiểm tra lại các trường báo đỏ!'
+      );
     }
 
     setLoading(true);
@@ -541,13 +549,8 @@ const ProductVariantForm: React.FC = () => {
                       value={formData.productId}
                       error={errors.productId}
                       onSelect={(val) => handleFieldChange('productId', val)}
-                      disabled={isEditMode}
+                      disabled={loading}
                     />
-                    {!isEditMode && (
-                      <p className="text-xs text-blue-600 mt-2 font-medium italic">
-                        * Thuộc tính động sẽ tự tải dựa trên Sản phẩm gốc bạn chọn.
-                      </p>
-                    )}
                   </div>
                   <FormInput
                     label="Mã SKU (Barcode)"
@@ -750,6 +753,35 @@ const ProductVariantForm: React.FC = () => {
                 Dòng được tích <strong>Mặc định</strong> sẽ hiển thị trên mặt tiền của website.
               </p>
 
+              {currentProd && (
+                <div className="mb-4 p-3.5 bg-amber-50/80 border border-amber-200 rounded-2xl flex items-center justify-between text-xs font-semibold text-slate-800">
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-2 bg-amber-400 text-slate-900 rounded-xl shadow-2xs">
+                      <Package size={16} strokeWidth={2.5} />
+                    </div>
+                    <div>
+                      <span className="text-[11px] text-slate-400 font-bold uppercase tracking-wider block">
+                        Sản phẩm áp dụng quy cách
+                      </span>
+                      <span className="font-extrabold text-slate-900 text-sm">
+                        {currentProd.name}
+                      </span>
+                      <span className="text-slate-500 ml-1.5 font-medium">
+                        ({currentProd.code})
+                      </span>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-[11px] text-amber-800 font-bold uppercase tracking-wider block">
+                      Đơn vị cơ sở
+                    </span>
+                    <span className="inline-flex px-2.5 py-0.5 rounded-lg bg-amber-100 text-amber-900 font-black text-xs border border-amber-300">
+                      {currentProd.baseUoMName || 'Kg'}
+                    </span>
+                  </div>
+                </div>
+              )}
+
               {errors.prices && (
                 <div className="mb-4 p-3.5 bg-rose-50 text-rose-600 text-sm font-bold rounded-xl border border-rose-200 flex items-start gap-2.5 shadow-2xs">
                   <AlertCircle size={18} className="shrink-0 mt-0.5 text-rose-500" />
@@ -826,17 +858,18 @@ const ProductVariantForm: React.FC = () => {
                               if (conv) {
                                 const fromName =
                                   conv.fromUoMName ||
-                                  uomOptions.find((u) => u.value === row.uoMId)?.label?.split(' ')[0] ||
+                                  uomOptions
+                                    .find((u) => u.value === row.uoMId)
+                                    ?.label?.split(' ')[0] ||
                                   'ĐVT';
                                 const toName =
-                                  conv.toUoMName ||
-                                  currentProd?.baseUoMName ||
-                                  'ĐV cơ sở';
+                                  conv.toUoMName || currentProd?.baseUoMName || 'ĐV cơ sở';
                                 return (
                                   <div className="mt-1.5 inline-flex items-center gap-1.5 text-[11px] font-bold text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200/90 shadow-2xs">
                                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
                                     <span>
-                                      1 {fromName} = {conv.conversionFactor.toLocaleString('vi-VN')} {toName}
+                                      1 {fromName} = {conv.conversionFactor.toLocaleString('vi-VN')}{' '}
+                                      {toName}
                                     </span>
                                   </div>
                                 );
@@ -976,6 +1009,7 @@ const ProductVariantForm: React.FC = () => {
         baseUoMName={currentProd?.baseUoMName}
         initialFromUoMId={quickConvModal.fromUoMId}
         uomOptions={uomOptions}
+        existingConversions={uomConversions}
         onSuccess={handleQuickConversionSuccess}
       />
     </PageContainer>

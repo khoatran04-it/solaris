@@ -62,9 +62,25 @@ namespace backend.Profiles
                 .ForMember(dest => dest.ExpectedDeliveryDate, opt => opt.MapFrom(src => src.ExpectedDeliveryDate))
                 .ForMember(dest => dest.Note, opt => opt.MapFrom(src => src.Note))
                 .ForMember(dest => dest.CancellationReason, opt => opt.MapFrom(src => src.CancellationReason))
+                .ForMember(dest => dest.DeliveredAt, opt => opt.MapFrom(src => src.DeliveredAt))
+                .ForMember(dest => dest.HasReturnRequest, opt => opt.MapFrom(src => src.CustomerReturns != null && src.CustomerReturns.Any(r => !r.IsDeleted)))
+                .ForMember(dest => dest.ReturnCode, opt => opt.MapFrom(src => src.CustomerReturns != null ? src.CustomerReturns.Where(r => !r.IsDeleted).OrderByDescending(r => r.Id).Select(r => r.ReturnCode).FirstOrDefault() : null))
+                .ForMember(dest => dest.ReturnStatus, opt => opt.MapFrom(src => src.CustomerReturns != null ? src.CustomerReturns.Where(r => !r.IsDeleted).OrderByDescending(r => r.Id).Select(r => (CustomerReturnStatus?)r.Status).FirstOrDefault() : null))
+                .ForMember(dest => dest.ReturnStatusName, opt => opt.MapFrom(src => src.CustomerReturns != null ? src.CustomerReturns.Where(r => !r.IsDeleted).OrderByDescending(r => r.Id).Select(r => GetReturnStatusName(r.Status)).FirstOrDefault() : null))
                 .ForMember(dest => dest.Items, opt => opt.MapFrom(src => src.Details));
             #endregion
         }
+
+        private static string? GetReturnStatusName(CustomerReturnStatus status) => status switch
+        {
+            CustomerReturnStatus.Pending => "Chờ tiếp nhận",
+            CustomerReturnStatus.Approved => "Đã duyệt",
+            CustomerReturnStatus.PickingUp => "Đang thu hồi",
+            CustomerReturnStatus.Inspecting => "Đang kiểm định",
+            CustomerReturnStatus.Completed => "Hoàn tất",
+            CustomerReturnStatus.Rejected => "Từ chối",
+            _ => null
+        };
 
         private static string GetOrderStatusName(OrderStatus status) => status switch
         {

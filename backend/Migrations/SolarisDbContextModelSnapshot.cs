@@ -419,6 +419,9 @@ namespace backend.Migrations
                     b.Property<DateTime?>("DeletedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<int?>("DeliveryTripId")
+                        .HasColumnType("int");
+
                     b.Property<string>("InspectionNotes")
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
@@ -449,6 +452,9 @@ namespace backend.Migrations
                     b.Property<DateTime>("ReturnDate")
                         .HasColumnType("datetime2");
 
+                    b.Property<int>("ReturnType")
+                        .HasColumnType("int");
+
                     b.Property<int>("Status")
                         .HasColumnType("int");
 
@@ -461,6 +467,8 @@ namespace backend.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("CustomerId");
+
+                    b.HasIndex("DeliveryTripId");
 
                     b.HasIndex("OrderId");
 
@@ -3325,6 +3333,11 @@ namespace backend.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("backend.Models.DeliveryTrip", "DeliveryTrip")
+                        .WithMany("CustomerReturns")
+                        .HasForeignKey("DeliveryTripId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("backend.Models.Order", "Order")
                         .WithMany("CustomerReturns")
                         .HasForeignKey("OrderId")
@@ -3343,6 +3356,8 @@ namespace backend.Migrations
                         .IsRequired();
 
                     b.Navigation("Customer");
+
+                    b.Navigation("DeliveryTrip");
 
                     b.Navigation("Order");
 
@@ -4348,6 +4363,8 @@ namespace backend.Migrations
 
             modelBuilder.Entity("backend.Models.DeliveryTrip", b =>
                 {
+                    b.Navigation("CustomerReturns");
+
                     b.Navigation("TripOrders");
                 });
 

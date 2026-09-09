@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { RefreshCw } from 'lucide-react';
 import { dashboardApi } from '../../api/dashboardApi';
 import type { DashboardSalesGeographyDto, DashboardPeriod } from '../../types/dashboard';
@@ -70,10 +70,11 @@ export default function SalesGeographyDashboard() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-200/80 pb-5">
           <div>
             <h1 className="text-xl font-bold text-slate-900 tracking-tight">
-              Doanh số & Phân bổ Địa lý
+              Doanh số & Khách hàng
             </h1>
             <p className="text-xs text-slate-500 mt-1">
-              Phân tích sản phẩm bán chạy, cơ cấu ngành hàng và khu vực giao dịch trọng điểm
+              Phân tích sản phẩm bán chạy, cơ cấu phân khúc khách hàng và thị trường giao dịch trọng
+              điểm
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -123,12 +124,54 @@ export default function SalesGeographyDashboard() {
                 />
               </DashCard>
 
-              {/* Category Breakdown */}
+              {/* Top Products Table */}
               <DashCard
-                title="Cơ cấu Ngành hàng"
-                subtitle="Tỷ trọng doanh thu theo nhóm danh mục sản phẩm"
+                title="Chi tiết Doanh số Mặt hàng"
+                subtitle="Sản lượng xuất bán và tỷ trọng doanh thu từng SKU"
               >
-                <DonutChart data={categoryData} size={170} />
+                <div className="overflow-x-auto max-h-64">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="text-slate-400 font-semibold uppercase tracking-wider text-[10px] border-b border-slate-100">
+                        <th className="text-left pb-2 font-bold">Mặt hàng</th>
+                        <th className="text-center pb-2 font-bold">Số lượng</th>
+                        <th className="text-right pb-2 font-bold">Doanh số</th>
+                        <th className="text-right pb-2 font-bold">Tỷ trọng</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {!data?.topProducts || data.topProducts.length === 0 ? (
+                        <tr>
+                          <td colSpan={4} className="py-6 text-center text-slate-400">
+                            Chưa có dữ liệu sản phẩm trong kỳ
+                          </td>
+                        </tr>
+                      ) : (
+                        data.topProducts.map((p) => (
+                          <tr key={p.variantId} className="hover:bg-slate-50/50">
+                            <td className="py-2">
+                              <div className="font-semibold text-slate-800 line-clamp-1">
+                                {p.name}
+                              </div>
+                              <div className="text-[10px] text-slate-400 font-mono">{p.code}</div>
+                            </td>
+                            <td className="py-2 text-center text-slate-600 font-medium">
+                              {fmtNum(p.quantitySold)} {p.uoM}
+                            </td>
+                            <td className="py-2 text-right font-bold text-slate-900">
+                              {fmtVnd(p.totalRevenue)}
+                            </td>
+                            <td className="py-2 text-right">
+                              <span className="font-bold text-[11px] text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded-full border border-emerald-200/60">
+                                {p.revenuePercent}%
+                              </span>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </DashCard>
             </div>
 

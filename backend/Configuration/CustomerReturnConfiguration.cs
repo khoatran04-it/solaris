@@ -44,6 +44,11 @@ namespace backend.Configurations
                    .WithMany()
                    .HasForeignKey(x => x.ReceivedById)
                    .OnDelete(DeleteBehavior.Restrict);
+
+            builder.HasOne(x => x.DeliveryTrip)
+                   .WithMany(t => t.CustomerReturns)
+                   .HasForeignKey(x => x.DeliveryTripId)
+                   .OnDelete(DeleteBehavior.SetNull);
         }
     }
 }

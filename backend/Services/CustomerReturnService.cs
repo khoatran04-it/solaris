@@ -161,6 +161,7 @@ namespace backend.Services
                     ReceivedById = safeUserId,
                     ReturnDate = dto.ReturnDate ?? DateTime.UtcNow,
                     Status = CustomerReturnStatus.Pending,
+                    ReturnType = dto.ReturnType,
                     Reason = dto.Reason?.Trim(),
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow,
@@ -208,7 +209,16 @@ namespace backend.Services
                     safeUserId = firstUser?.Id ?? 1;
                 }
 
-                ret.Status = CustomerReturnStatus.Approved;
+                // Nếu là đơn hàng shipper mang về luôn (DoorstepRefusal), hàng ĐÃ Ở TRONG KHO rồi -> chuyển thẳng sang Inspecting
+                // Nếu là đơn khách yêu cầu tại nhà (PostDeliveryReturn), hàng ĐANG Ở NHÀ KHÁCH -> chuyển sang Approved để điều phối xe
+                if (ret.ReturnType == CustomerReturnType.DoorstepRefusal)
+                {
+                    ret.Status = CustomerReturnStatus.Inspecting;
+                }
+                else
+                {
+                    ret.Status = CustomerReturnStatus.Approved;
+                }
                 ret.ReceivedById = safeUserId;
                 ret.UpdatedAt = DateTime.UtcNow;
 

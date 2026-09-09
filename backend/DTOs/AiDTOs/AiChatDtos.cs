@@ -130,6 +130,17 @@ namespace backend.DTOs.AiDTOs
         public string? SuggestedReceiverName { get; set; }
         public string? SuggestedReceiverPhone { get; set; }
         #endregion
+
+        #region Rào chắn Khoảng cách Chuỗi lạnh (Cold-Chain Feasibility)
+        /// <summary>Cờ hiệu địa chỉ nhận hàng có nằm trong bán kính phục vụ của xe thùng lạnh TMS không.</summary>
+        public bool IsColdChainFeasible { get; set; } = true;
+
+        /// <summary>Danh sách tên các sản phẩm cần giữ lạnh không thể giao đến địa chỉ hiện tại.</summary>
+        public List<string> IneligibleColdChainItems { get; set; } = new List<string>();
+
+        /// <summary>Cảnh báo chi tiết về khoảng cách và lý do không thể bảo quản nhiệt độ mát 2-8°C.</summary>
+        public string? ColdChainWarning { get; set; }
+        #endregion
     }
     #endregion
 
@@ -212,6 +223,18 @@ namespace backend.DTOs.AiDTOs
 
         /// <summary>Cờ báo hiệu còn hàng hay không, giúp Frontend disable nút "Thêm vào giỏ" nếu hết hàng.</summary>
         public bool IsInStock { get; set; }
+
+        /// <summary>Toàn bộ bảng giá quy cách bán khả dụng của biến thể (Cách 2: Bán lẻ Kg, Hộp 3kg, Thùng 10kg...).</summary>
+        public List<AiProductCardPriceDto> AvailablePrices { get; set; } = new List<AiProductCardPriceDto>();
+    }
+
+    public class AiProductCardPriceDto
+    {
+        public int UoMId { get; set; }
+        public string UoMName { get; set; } = string.Empty;
+        public decimal Price { get; set; }
+        public decimal DiscountedPrice { get; set; }
+        public bool IsDefault { get; set; }
     }
     #endregion
 
@@ -242,7 +265,26 @@ namespace backend.DTOs.AiDTOs
         public string? ReceiverPhone { get; set; }
         public string? DeliveryAddress { get; set; }
         public string? ShippingProvider { get; set; }
+        public string? CancellationReason { get; set; }
         public List<AiOrderTrackingItemDto> Items { get; set; } = new List<AiOrderTrackingItemDto>();
+
+        #region Thông tin Đội xe & Chuyến xe giao hàng TMS
+        public string? DeliveryTripCode { get; set; }
+        public string? LicensePlate { get; set; }
+        public string? DriverName { get; set; }
+        public string? DriverPhone { get; set; }
+        public string? TripStatus { get; set; }
+        public string? TripStatusName { get; set; }
+        public string? VehicleType { get; set; }
+        public bool? IsColdChainVehicle { get; set; }
+        public DateTime? StartedAt { get; set; }
+        #endregion
+
+        #region Khiếu nại Đổi trả hàng (RMA)
+        public string? ReturnCode { get; set; }
+        public string? ReturnStatus { get; set; }
+        public decimal? RefundAmount { get; set; }
+        #endregion
     }
     #endregion
 }

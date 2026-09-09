@@ -9,6 +9,7 @@ namespace backend.Services.Interfaces
         Task<PagedResult<ShopOrderReadDto>> GetCustomerOrdersAsync(int customerId, int pageIndex = 1, int pageSize = 10);
         Task<ShopOrderReadDto?> GetOrderByCodeAsync(int customerId, string orderCode);
         Task<ShopOrderReadDto> ConfirmDeliveryAsync(int customerId, string orderCode);
+        Task<ShopOrderReadDto> RejectDeliveryAsync(int customerId, string orderCode, string reason);
         Task<bool> CancelOrderAsync(int customerId, string orderCode, string reason);
     }
 }

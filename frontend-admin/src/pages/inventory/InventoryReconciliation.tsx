@@ -22,6 +22,7 @@ import { TabGroup, TabButton } from '../../components/commons/TabUI';
 import { FormSelect } from '../../components/commons/FormUI';
 import CustomDatePicker from '../../components/commons/CustomDatePicker';
 import { Toast } from '../../components/commons/Toast';
+import { ExportCsvButton } from '../../utils/exportUtils';
 
 import { inventoryReconciliationApi } from '../../api/inventoryReconciliationApi';
 import { warehouseApi } from '../../api/warehouseApi';
@@ -207,11 +208,84 @@ const InventoryReconciliation: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2 w-full lg:w-auto justify-end">
+          {activeTab === 'shift' ? (
+            <ExportCsvButton
+              filename={`Can-doi-chot-ca_${formatDateParam(fromDate)}_den_${formatDateParam(toDate)}`}
+              label="Xuất CSV Chốt Ca"
+              data={shiftData?.details || []}
+              filterSnapshots={[
+                {
+                  label: 'Kho hàng',
+                  value: warehouseOptions.find((w) => w.value === selectedWarehouseId)?.label || '',
+                },
+                { label: 'Từ ngày', value: fromDate.toLocaleDateString('vi-VN') },
+                { label: 'Đến ngày', value: toDate.toLocaleDateString('vi-VN') },
+              ]}
+              columns={[
+                { header: 'Mã SKU', accessor: (d) => d.variantCode },
+                { header: 'Tên Sản Phẩm', accessor: (d) => d.variantName },
+                { header: 'ĐVT', accessor: (d) => d.uoMName },
+                { header: 'Tồn Đầu Kỳ', accessor: (d) => d.openingStock },
+                { header: 'Nhập Trong Kỳ', accessor: (d) => d.inflowQuantity },
+                { header: 'Xuất Bán/Chuyển', accessor: (d) => d.outflowQuantity },
+                { header: 'Hao Hụt/Hủy', accessor: (d) => d.scrapQuantity },
+                { header: 'Tồn Cuối Kỳ', accessor: (d) => d.closingStock },
+              ]}
+            />
+          ) : (
+            <ExportCsvButton
+              filename={`So-cai-the-kho_${formatDateParam(fromDate)}_den_${formatDateParam(toDate)}`}
+              label="Xuất CSV Sổ Cái"
+              currentPageData={ledgerEntries}
+              totalItems={ledgerTotalItems}
+              filterSnapshots={[
+                {
+                  label: 'Kho hàng',
+                  value: warehouseOptions.find((w) => w.value === selectedWarehouseId)?.label || '',
+                },
+                { label: 'Từ ngày', value: fromDate.toLocaleDateString('vi-VN') },
+                { label: 'Đến ngày', value: toDate.toLocaleDateString('vi-VN') },
+              ]}
+              onFetchAll={async () => {
+                const res = await inventoryReconciliationApi.getStockLedger(
+                  selectedWarehouseId,
+                  formatDateParam(fromDate),
+                  formatDateParam(toDate),
+                  1,
+                  ledgerTotalItems || 1000
+                );
+                return res.items || [];
+              }}
+              columns={[
+                {
+                  header: 'Thời Gian',
+                  accessor: (e) => new Date(e.createdAt).toLocaleString('vi-VN'),
+                },
+                { header: 'Mã Chứng Từ', accessor: (e) => e.documentCode },
+                {
+                  header: 'Loại Nghiệp Vụ',
+                  accessor: (e) => e.transactionTypeName || e.transactionType,
+                },
+                { header: 'Mã SKU', accessor: (e) => e.variantCode },
+                { header: 'Tên Nông Sản', accessor: (e) => e.variantName },
+                { header: 'Số Lô Batch', accessor: (e) => e.batchCode },
+                { header: 'ĐVT', accessor: (e) => e.uoMName },
+                { header: 'Tồn Trước', accessor: (e) => e.beforeQuantity },
+                {
+                  header: 'Biến Động',
+                  accessor: (e) =>
+                    e.changeQuantity > 0 ? `+${e.changeQuantity}` : e.changeQuantity,
+                },
+                { header: 'Tồn Sau', accessor: (e) => e.afterQuantity },
+              ]}
+            />
+          )}
+
           <button
             onClick={() => (activeTab === 'shift' ? fetchShiftReport() : fetchLedger())}
-            className="flex items-center gap-2 px-5 py-2.5 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 font-bold text-sm rounded-xl transition-all shadow-2xs cursor-pointer"
+            className="flex items-center gap-2 px-4 py-2 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 font-bold text-xs rounded-xl transition-all shadow-2xs cursor-pointer"
           >
-            <RefreshCw size={16} className={shiftLoading || ledgerLoading ? 'animate-spin' : ''} />
+            <RefreshCw size={15} className={shiftLoading || ledgerLoading ? 'animate-spin' : ''} />
             Tải Lại Số Liệu
           </button>
         </div>

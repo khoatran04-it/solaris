@@ -38,9 +38,9 @@ namespace backend.Controllers.Shop
         [HttpGet("{slug}")]
         [ProducesResponseType(typeof(ShopProductDetailDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<ActionResult<ShopProductDetailDto>> GetProductBySlug(string slug)
+        public async Task<ActionResult<ShopProductDetailDto>> GetProductBySlug(string slug, [FromQuery] int? warehouseId = null)
         {
-            var product = await _productService.GetProductBySlugAsync(slug);
+            var product = await _productService.GetProductBySlugAsync(slug, warehouseId);
             if (product == null)
                 return NotFound(new { message = "Không tìm thấy sản phẩm." });
 
@@ -63,9 +63,9 @@ namespace backend.Controllers.Shop
         /// </summary>
         [HttpGet("featured")]
         [ProducesResponseType(typeof(List<ShopProductCardDto>), StatusCodes.Status200OK)]
-        public async Task<ActionResult<List<ShopProductCardDto>>> GetFeatured([FromQuery] int limit = 8)
+        public async Task<ActionResult<List<ShopProductCardDto>>> GetFeatured([FromQuery] int limit = 8, [FromQuery] int? warehouseId = null)
         {
-            var items = await _productService.GetFeaturedProductsAsync(limit);
+            var items = await _productService.GetFeaturedProductsAsync(limit, warehouseId);
             return Ok(items);
         }
 
@@ -74,9 +74,9 @@ namespace backend.Controllers.Shop
         /// </summary>
         [HttpGet("new-arrivals")]
         [ProducesResponseType(typeof(List<ShopProductCardDto>), StatusCodes.Status200OK)]
-        public async Task<ActionResult<List<ShopProductCardDto>>> GetNewArrivals([FromQuery] int limit = 8)
+        public async Task<ActionResult<List<ShopProductCardDto>>> GetNewArrivals([FromQuery] int limit = 8, [FromQuery] int? warehouseId = null)
         {
-            var items = await _productService.GetNewArrivalsAsync(limit);
+            var items = await _productService.GetNewArrivalsAsync(limit, warehouseId);
             return Ok(items);
         }
 

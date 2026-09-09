@@ -40,6 +40,10 @@ export interface DeliveryTripOrder {
   deliveredAt?: string;
   failureReason?: string;
   note?: string;
+  paymentMethodName?: string;
+  paymentStatusName?: string;
+  isPaid?: boolean;
+  codAmount?: number;
 }
 
 export interface DeliveryTrip {
@@ -62,8 +66,26 @@ export interface DeliveryTrip {
   deliveredOrders: number;
   inventoryTransferId?: number;
   transferCode?: string;
+  fromWarehouseName?: string;
+  toWarehouseName?: string;
   createdAt: string;
   orders: DeliveryTripOrder[];
+  returns?: DeliveryTripReturn[];
+}
+
+export interface DeliveryTripReturn {
+  returnId: number;
+  returnCode: string;
+  orderId: number;
+  orderCode: string;
+  customerName: string;
+  customerPhone: string;
+  pickupAddress: string;
+  reason: string;
+  totalItems: number;
+  refundAmount: number;
+  status: string;
+  statusName: string;
 }
 
 export interface DeliveryTripPayload {
@@ -71,8 +93,9 @@ export interface DeliveryTripPayload {
   warehouseId: number;
   tripType: string;
   note?: string;
-  orderIds: number[];
+  orderIds?: number[];
   inventoryTransferId?: number;
+  customerReturnIds?: number[];
 }
 
 export interface OrderWaitingDispatch {
@@ -83,7 +106,42 @@ export interface OrderWaitingDispatch {
   deliveryAddress: string;
   totalAmount: number;
   requiresColdChain: boolean;
+  warehouseId?: number;
+  warehouseName?: string;
+  province?: string;
+  district?: string;
+  ward?: string;
+  hasCompletedIssue?: boolean;
   createdAt: string;
+}
+
+export interface TransferWaitingDispatch {
+  transferId: number;
+  transferCode: string;
+  fromWarehouseId: number;
+  fromWarehouseName: string;
+  toWarehouseId: number;
+  toWarehouseName: string;
+  totalItems: number;
+  createdByName?: string;
+  createdAt: string;
+  note?: string;
+}
+
+export interface ReturnWaitingDispatch {
+  returnId: number;
+  returnCode: string;
+  orderId: number;
+  orderCode: string;
+  customerName: string;
+  customerPhone: string;
+  pickupAddress: string;
+  warehouseId: number;
+  warehouseName: string;
+  reason: string;
+  totalRefundEstimated: number;
+  totalItems: number;
+  returnDate: string;
 }
 
 export interface TransportationDashboardStats {
@@ -95,6 +153,8 @@ export interface TransportationDashboardStats {
   activeTripsCount: number;
   recentActiveTrips: DeliveryTrip[];
   ordersWaitingDispatch: OrderWaitingDispatch[];
+  transfersWaitingDispatch: TransferWaitingDispatch[];
+  returnsWaitingDispatch: ReturnWaitingDispatch[];
 }
 
 export interface DispatchInternalPayload {

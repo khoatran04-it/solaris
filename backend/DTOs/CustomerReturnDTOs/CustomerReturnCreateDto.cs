@@ -1,3 +1,4 @@
+using backend.Models.Enums;
 using System;
 using System.Collections.Generic;
 
@@ -18,6 +19,9 @@ namespace backend.DTOs.CustomerReturnDTOs
 
         /// <summary>Mã Khách hàng yêu cầu trả hàng.</summary>
         public int CustomerId { get; set; }
+
+        /// <summary>Hình thức hoàn trả (Mặc định là PostDeliveryReturn nếu do khách/CSKH tạo).</summary>
+        public CustomerReturnType ReturnType { get; set; } = CustomerReturnType.PostDeliveryReturn;
         #endregion
 
         #region Vận hành & Tiếp nhận

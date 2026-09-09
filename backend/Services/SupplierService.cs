@@ -209,7 +209,7 @@ namespace backend.Services
         public async Task<bool> UpdateAsync(int id, SupplierUpdateDto dto)
         {
             var supplier = await _context.Suppliers.FirstOrDefaultAsync(s => s.Id == id);
-            if (supplier == null) 
+            if (supplier == null)
                 throw new KeyNotFoundException("Không tìm thấy thông tin nhà cung cấp.");
 
             var trimmedCode = dto.Code.Trim().ToUpper();
@@ -253,7 +253,7 @@ namespace backend.Services
                 .Include(s => s.SupplierProducts)
                 .FirstOrDefaultAsync(s => s.Id == id);
 
-            if (supplier == null) 
+            if (supplier == null)
                 throw new KeyNotFoundException("Không tìm thấy nhà cung cấp để xóa.");
 
             // Safety Shield 1: Chặn xóa nếu đã có Đơn mua hàng (PO)
@@ -278,7 +278,7 @@ namespace backend.Services
         public async Task<bool> ToggleActiveAsync(int id)
         {
             var supplier = await _context.Suppliers.FindAsync(id);
-            if (supplier == null) 
+            if (supplier == null)
                 throw new KeyNotFoundException("Không tìm thấy nhà cung cấp.");
 
             return await _context.ExecuteInTransactionAsync(async () =>

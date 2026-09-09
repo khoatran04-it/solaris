@@ -374,6 +374,27 @@ namespace backend.Services
                 transfer.ReceivedDate = DateTime.UtcNow;
                 transfer.UpdatedAt = DateTime.UtcNow;
 
+                // Nếu có liên kết Chuyến xe tải nội bộ, tự động hoàn tất chuyến xe và giải phóng xe tải
+                if (transfer.DeliveryTripId.HasValue)
+                {
+                    var trip = await _context.DeliveryTrips
+                        .Include(t => t.Vehicle)
+                        .FirstOrDefaultAsync(t => t.Id == transfer.DeliveryTripId.Value);
+
+                    if (trip != null)
+                    {
+                        trip.Status = "Completed";
+                        trip.CompletedAt = DateTime.UtcNow;
+                        trip.UpdatedAt = DateTime.UtcNow;
+
+                        if (trip.Vehicle != null)
+                        {
+                            trip.Vehicle.Status = "Available";
+                            trip.Vehicle.UpdatedAt = DateTime.UtcNow;
+                        }
+                    }
+                }
+
                 await _context.SaveChangesAsync();
                 return true;
             });

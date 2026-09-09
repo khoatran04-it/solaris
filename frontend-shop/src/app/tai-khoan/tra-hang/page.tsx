@@ -62,17 +62,26 @@ function TraHangContent() {
     try {
       const ord: ShopOrder = await shopOrderApi.getByCode(orderCode.trim());
 
-      // Kiểm tra thời hạn 12 giờ
-      if (ord.orderDate) {
-        const orderTime = new Date(ord.orderDate).getTime();
-        const diffHours = (Date.now() - orderTime) / (1000 * 60 * 60);
+      // Kiểm tra thời hạn 12 giờ kể từ khi nhận hàng
+      if (ord.deliveredAt) {
+        const deliveryTime = new Date(ord.deliveredAt).getTime();
+        const diffHours = (Date.now() - deliveryTime) / (1000 * 60 * 60);
         if (diffHours > 12) {
           alert(
-            `Đơn hàng ${ord.orderCode} đã đặt cách đây hơn 12 giờ. Chính sách nông sản tươi Solaris chỉ hỗ trợ đổi/trả trong vòng 12 giờ.`,
+            `Đơn hàng ${ord.orderCode} đã nhận cách đây hơn 12 giờ. Chính sách nông sản tươi Solaris chỉ hỗ trợ đổi/trả trong vòng 12 giờ kể từ khi nhận hàng.`,
           );
           setTargetOrder(null);
           return;
         }
+      }
+
+      // Kiểm tra xem đơn hàng đã có yêu cầu đổi trả chưa
+      if (ord.hasReturnRequest) {
+        alert(
+          `Đơn hàng ${ord.orderCode} đã gửi yêu cầu đổi trả (Mã: ${ord.returnCode || "RET"}, Trạng thái: ${ord.returnStatusName || "Chờ tiếp nhận"}). Vui lòng không gửi lặp lại.`,
+        );
+        setTargetOrder(null);
+        return;
       }
 
       setTargetOrder(ord);

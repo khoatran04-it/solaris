@@ -17,6 +17,15 @@ namespace backend.DTOs.CustomerReturnDTOs
 
         /// <summary>Mã phiếu trả hàng (Ví dụ: RET-20260817-001).</summary>
         public string ReturnCode { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Hình thức hoàn trả: 1 = DoorstepRefusal (Thu hồi trực tiếp khi giao), 2 = PostDeliveryReturn (Thu hồi tại nhà khách)
+        /// </summary>
+        public CustomerReturnType ReturnType { get; set; } = CustomerReturnType.PostDeliveryReturn;
+        public string ReturnTypeName { get; set; } = "Thu hồi tại nhà khách";
+
+        /// <summary>ID chuyến xe thu hồi (nếu có).</summary>
+        public int? DeliveryTripId { get; set; }
         #endregion
 
         #region Đối soát Chứng từ & Khách hàng (Flattened)

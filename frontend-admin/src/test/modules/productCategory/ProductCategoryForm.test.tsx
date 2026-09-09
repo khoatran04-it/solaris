@@ -1,4 +1,4 @@
-﻿import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
@@ -51,8 +51,8 @@ describe('Module 04 - ProductCategoryForm Component', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Thêm Mới Danh Mục Sản Phẩm')).toBeInTheDocument();
-      expect(screen.getByPlaceholderText('VD: DIENTHOAI')).toBeInTheDocument();
-      expect(screen.getByPlaceholderText('VD: Điện thoại di động')).toBeInTheDocument();
+      expect(screen.getByPlaceholderText('CAT-GRAIN-RICE')).toBeInTheDocument();
+      expect(screen.getByPlaceholderText('Gạo & Hạt Ngũ Cốc Đặc Sản')).toBeInTheDocument();
       expect(screen.getByText('Thuộc Nhóm Danh Mục')).toBeInTheDocument();
       expect(screen.getByPlaceholderText('https://...')).toBeInTheDocument();
     });
@@ -99,8 +99,8 @@ describe('Module 04 - ProductCategoryForm Component', () => {
       expect(screen.getByText('Thêm Mới Danh Mục Sản Phẩm')).toBeInTheDocument();
     });
 
-    const codeInput = screen.getByPlaceholderText('VD: DIENTHOAI');
-    const nameInput = screen.getByPlaceholderText('VD: Điện thoại di động');
+    const codeInput = screen.getByPlaceholderText('CAT-GRAIN-RICE');
+    const nameInput = screen.getByPlaceholderText('Gạo & Hạt Ngũ Cốc Đặc Sản');
 
     fireEvent.change(codeInput, { target: { value: 'veg_organic' } });
     fireEvent.change(nameInput, { target: { value: 'Rau cải sạch' } });
@@ -132,8 +132,8 @@ describe('Module 04 - ProductCategoryForm Component', () => {
       expect(screen.getByText('Thêm Mới Danh Mục Sản Phẩm')).toBeInTheDocument();
     });
 
-    const codeInput = screen.getByPlaceholderText('VD: DIENTHOAI');
-    const nameInput = screen.getByPlaceholderText('VD: Điện thoại di động');
+    const codeInput = screen.getByPlaceholderText('CAT-GRAIN-RICE');
+    const nameInput = screen.getByPlaceholderText('Gạo & Hạt Ngũ Cốc Đặc Sản');
 
     fireEvent.change(codeInput, { target: { value: 'MEAT_FRESH' } });
     fireEvent.change(nameInput, { target: { value: 'Thịt tươi các loại' } });

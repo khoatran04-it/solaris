@@ -380,7 +380,11 @@ export default function ThanhToanPage() {
               Chính sách giao hàng chuỗi lạnh chuyên dụng:
             </p>
             <p className="text-cyan-800 leading-relaxed">
-              Đơn hàng của bạn có thực phẩm tươi sống (thịt, cá, hải sản, rau củ). Solaris tự vận chuyển bằng <strong>Đội xe máy thùng lạnh chuyên dụng</strong> trong bán kính tối đa <strong>15 km</strong> từ kho xuất hàng để đảm bảo chuẩn tươi sống.
+              Đơn hàng của bạn có thực phẩm tươi sống (thịt, cá, hải sản, rau
+              củ). Solaris tự vận chuyển bằng{" "}
+              <strong>Đội xe máy thùng lạnh chuyên dụng</strong> trong bán kính
+              tối đa <strong>15 km</strong> từ kho xuất hàng để đảm bảo chuẩn
+              tươi sống.
             </p>
           </div>
         </div>
@@ -424,19 +428,24 @@ export default function ThanhToanPage() {
       </div>
 
       {errorMessage && (
-        <div className={`p-4 rounded-2xl border flex items-start gap-3 text-xs font-semibold animate-in fade-in ${
-          errorMessage.toLowerCase().includes("bán kính") || errorMessage.toLowerCase().includes("chuỗi lạnh")
-            ? "bg-amber-50 border-amber-300 text-amber-900"
-            : "bg-rose-50 border-rose-200 text-rose-700"
-        }`}>
-          {errorMessage.toLowerCase().includes("bán kính") || errorMessage.toLowerCase().includes("chuỗi lạnh") ? (
+        <div
+          className={`p-4 rounded-2xl border flex items-start gap-3 text-xs font-semibold animate-in fade-in ${
+            errorMessage.toLowerCase().includes("bán kính") ||
+            errorMessage.toLowerCase().includes("chuỗi lạnh")
+              ? "bg-amber-50 border-amber-300 text-amber-900"
+              : "bg-rose-50 border-rose-200 text-rose-700"
+          }`}
+        >
+          {errorMessage.toLowerCase().includes("bán kính") ||
+          errorMessage.toLowerCase().includes("chuỗi lạnh") ? (
             <ThermometerSnowflake className="w-5 h-5 shrink-0 text-amber-600 mt-0.5" />
           ) : (
             <AlertCircle className="w-5 h-5 shrink-0 text-rose-600 mt-0.5" />
           )}
           <div className="flex-1 space-y-1">
             <p>{errorMessage}</p>
-            {(errorMessage.toLowerCase().includes("bán kính") || errorMessage.toLowerCase().includes("chuỗi lạnh")) && (
+            {(errorMessage.toLowerCase().includes("bán kính") ||
+              errorMessage.toLowerCase().includes("chuỗi lạnh")) && (
               <div className="pt-1 flex items-center gap-3">
                 <Link
                   href="/gio-hang"

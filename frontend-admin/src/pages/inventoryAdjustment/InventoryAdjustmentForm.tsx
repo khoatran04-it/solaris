@@ -103,26 +103,31 @@ const InventoryAdjustmentForm: React.FC = () => {
   >([]);
   const [batches, setBatches] = useState<ProductBatch[]>([]);
   const [uoms, setUoms] = useState<{ value: number; label: string }[]>([]);
-  const [variantUoMsMap, setVariantUoMsMap] = useState<Record<number, { value: number; label: string }[]>>({});
+  const [variantUoMsMap, setVariantUoMsMap] = useState<
+    Record<number, { value: number; label: string }[]>
+  >({});
   const [variantBatchesMap, setVariantBatchesMap] = useState<Record<string, SuggestedBatch[]>>({});
 
-  const fetchValidUoMs = useCallback(async (vId: number) => {
-    if (!vId || variantUoMsMap[vId]) return;
-    try {
-      const opts = await uomConversionApi.getValidUoMs(vId);
-      if (opts && opts.length > 0) {
-        setVariantUoMsMap((prev) => ({
-          ...prev,
-          [vId]: opts.map((u) => ({
-            value: u.uoMId,
-            label: `${u.uoMName} (${u.description})`,
-          })),
-        }));
+  const fetchValidUoMs = useCallback(
+    async (vId: number) => {
+      if (!vId || variantUoMsMap[vId]) return;
+      try {
+        const opts = await uomConversionApi.getValidUoMs(vId);
+        if (opts && opts.length > 0) {
+          setVariantUoMsMap((prev) => ({
+            ...prev,
+            [vId]: opts.map((u) => ({
+              value: u.uoMId,
+              label: `${u.uoMName} (${u.description})`,
+            })),
+          }));
+        }
+      } catch {
+        // Bỏ qua lỗi hoặc không làm gián đoạn worker rpc
       }
-    } catch {
-      // Bỏ qua lỗi hoặc không làm gián đoạn worker rpc
-    }
-  }, [variantUoMsMap]);
+    },
+    [variantUoMsMap]
+  );
 
   // Fetch batches cho 1 variant tại kho được chọn
   const fetchBatchesForVariant = useCallback(
@@ -298,7 +303,8 @@ const InventoryAdjustmentForm: React.FC = () => {
     const targetBatchId = field === 'batchId' ? Number(value) : Number(currentRow?.batchId);
     const targetQty = field === 'quantity' ? Number(value) : Number(currentRow?.quantity);
     const targetVarId = field === 'variantId' ? Number(value) : Number(currentRow?.variantId);
-    const targetAdjType = field === 'adjustmentType' ? Number(value) : Number(currentRow?.adjustmentType);
+    const targetAdjType =
+      field === 'adjustmentType' ? Number(value) : Number(currentRow?.adjustmentType);
 
     if (targetBatchId && warehouseId && targetVarId) {
       const batchesList = variantBatchesMap[`${warehouseId}_${targetVarId}`] || [];
@@ -310,7 +316,10 @@ const InventoryAdjustmentForm: React.FC = () => {
         targetAdjType === InventoryAdjustmentType.MoveToDamaged
       ) {
         if (maxAvailable <= 0) {
-          setErrors((prev) => ({ ...prev, [`quantity_${index}`]: 'Lô này đã hết tồn kho khả dụng' }));
+          setErrors((prev) => ({
+            ...prev,
+            [`quantity_${index}`]: 'Lô này đã hết tồn kho khả dụng',
+          }));
         } else if (targetQty > maxAvailable) {
           setErrors((prev) => ({
             ...prev,
@@ -636,7 +645,11 @@ const InventoryAdjustmentForm: React.FC = () => {
                           <FormSelect
                             label=""
                             placeholder="ĐVT"
-                            options={row.variantId && variantUoMsMap[Number(row.variantId)] ? variantUoMsMap[Number(row.variantId)] : uoms}
+                            options={
+                              row.variantId && variantUoMsMap[Number(row.variantId)]
+                                ? variantUoMsMap[Number(row.variantId)]
+                                : uoms
+                            }
                             value={row.uoMId}
                             disabled={Boolean(row.variantId)}
                             error={errors[`uoMId_${idx}`]}

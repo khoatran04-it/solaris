@@ -21,8 +21,8 @@ async function getHomeData() {
     const [promotions, categories, featured, newArrivals] = await Promise.all([
       shopProductApi.getPromotions().catch(() => []),
       shopProductApi.getCategories().catch(() => []),
-      shopProductApi.getFeatured(8).catch(() => []),
-      shopProductApi.getNewArrivals(8).catch(() => []),
+      shopProductApi.getFeatured(14).catch(() => []),
+      shopProductApi.getNewArrivals(14).catch(() => []),
     ]);
 
     return { promotions, categories, featured, newArrivals };
@@ -37,12 +37,12 @@ export default async function HomePage() {
   return (
     <div className="space-y-16 pb-20">
       {/* 1. Hero Promo Banner Slider */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+      <section className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
         <PromoBannerSlider promotions={promotions} />
       </section>
 
       {/* 2. Category Quick Access Cards */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <section className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center max-w-2xl mx-auto space-y-2 mb-10">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-bold rounded-full">
             <Sparkles className="w-3 h-3 text-amber-500" />
@@ -89,7 +89,7 @@ export default async function HomePage() {
 
       {/* 3. Featured / Flash Sale Products */}
       {featured.length > 0 && (
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <section className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between mb-8 pb-4 border-b border-slate-200">
             <div className="flex items-center gap-3">
               <div className="p-2.5 bg-rose-100 text-rose-600 rounded-2xl">
@@ -114,7 +114,7 @@ export default async function HomePage() {
             </Link>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-3 sm:gap-3.5">
             {featured.map((product) => (
               <ProductCard key={product.id} product={product} />
             ))}
@@ -124,7 +124,7 @@ export default async function HomePage() {
 
       {/* 4. Fresh Harvest / New Arrivals */}
       {newArrivals.length > 0 && (
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <section className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between mb-8 pb-4 border-b border-slate-200">
             <div className="flex items-center gap-3">
               <div className="p-2.5 bg-emerald-100 text-emerald-700 rounded-2xl">
@@ -149,7 +149,7 @@ export default async function HomePage() {
             </Link>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-3 sm:gap-3.5">
             {newArrivals.map((product) => (
               <ProductCard key={product.id} product={product} />
             ))}
@@ -158,7 +158,7 @@ export default async function HomePage() {
       )}
 
       {/* 5. Trust & Quality Banner (Farm to Table) */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <section className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="bg-gradient-to-br from-emerald-900 via-emerald-800 to-teal-900 rounded-3xl p-8 sm:p-12 text-white shadow-xl grid grid-cols-1 lg:grid-cols-12 gap-10 items-center relative overflow-hidden">
           <div className="absolute right-0 bottom-0 w-96 h-96 bg-emerald-400/10 rounded-full blur-3xl pointer-events-none" />
 

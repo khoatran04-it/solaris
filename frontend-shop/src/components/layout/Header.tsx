@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { useAuthStore } from "@/stores/authStore";
 import { useCartStore } from "@/stores/cartStore";
+import { useLocationStore } from "@/stores/locationStore";
 import { ShopCategoryTree } from "@/types/product";
 import shopProductApi from "@/api/shopProductApi";
 
@@ -28,6 +29,8 @@ export default function Header() {
   const router = useRouter();
   const { user, isAuthenticated, initAuth, logout } = useAuthStore();
   const { totalCount, fetchCart } = useCartStore();
+  const { deliveryAddress, deliveryDistrict, openModal, initLocation } =
+    useLocationStore();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [categories, setCategories] = useState<ShopCategoryTree[]>([]);
@@ -37,13 +40,14 @@ export default function Header() {
   useEffect(() => {
     initAuth();
     fetchCart();
+    initLocation();
 
     // Load categories for navigation
     shopProductApi
       .getCategories()
       .then((res) => setCategories(res))
       .catch(() => {});
-  }, [initAuth, fetchCart]);
+  }, [initAuth, fetchCart, initLocation]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -70,7 +74,24 @@ export default function Header() {
             <span className="sm:hidden">Nông sản sạch — Giao nhanh 2h</span>
           </div>
 
-          <div className="flex items-center gap-4 text-emerald-100">
+          <div className="flex items-center gap-3 text-emerald-100">
+            {/* Top Bar Location Selector (NO ICON - Pure Text & Badges) */}
+            <button
+              type="button"
+              onClick={openModal}
+              className="flex items-center gap-1.5 bg-white/20 hover:bg-white/30 text-white px-2.5 py-0.5 rounded-full text-[10px] font-bold transition-all cursor-pointer"
+            >
+              <span className="opacity-80">GIAO ĐẾN:</span>
+              <span className="underline decoration-emerald-300 underline-offset-2">
+                {deliveryDistrict
+                  ? `${deliveryDistrict}, TP.HCM`
+                  : "Chọn địa chỉ..."}
+              </span>
+              <span className="text-[9px] bg-white/30 px-1 rounded font-black">
+                [ĐỔI]
+              </span>
+            </button>
+
             <span className="hidden md:flex items-center gap-1">
               <Clock className="w-3 h-3 text-emerald-200" />
               <span>Giao hàng: 7:00 - 21:00</span>
@@ -125,6 +146,32 @@ export default function Header() {
                 </span>
               </div>
             </Link>
+          </div>
+
+          {/* Location Selector Pill (NO ICON - Pure Text & Badges) */}
+          <div
+            onClick={openModal}
+            className="hidden xl:flex items-center gap-2 px-3.5 py-2 bg-slate-50 hover:bg-emerald-50/80 border border-slate-200/90 hover:border-emerald-300 rounded-2xl cursor-pointer transition-all select-none group"
+            title="Bấm để đổi địa chỉ nhận hàng"
+          >
+            <div className="flex flex-col text-left">
+              <div className="flex items-center gap-1.5">
+                <span className="text-[9px] font-black uppercase tracking-wider text-emerald-800 bg-emerald-100/90 px-1.5 py-0.2 rounded font-mono">
+                  GIAO ĐẾN
+                </span>
+                <span className="text-xs font-bold text-slate-800 group-hover:text-emerald-800 transition-colors truncate max-w-[150px]">
+                  {deliveryDistrict
+                    ? `${deliveryDistrict}, TP.HCM`
+                    : "TP. Hồ Chí Minh"}
+                </span>
+              </div>
+              <span className="text-[10px] font-medium text-slate-400 mt-0.5 truncate max-w-[180px]">
+                {deliveryAddress || "Giao tươi 2 giờ"} •{" "}
+                <span className="text-emerald-700 font-bold group-hover:underline">
+                  [Đổi]
+                </span>
+              </span>
+            </div>
           </div>
 
           {/* Search Bar (Desktop) */}

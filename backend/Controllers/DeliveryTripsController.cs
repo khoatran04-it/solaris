@@ -123,6 +123,25 @@ namespace backend.Controllers
         }
 
         /// <summary>
+        /// Đánh dấu một điểm dừng / đơn hàng trong chuyến xe giao thất bại hoặc khách từ chối nhận.
+        /// </summary>
+        [HttpPost("{id:int}/orders/{orderId:int}/failed")]
+        [ProducesResponseType(typeof(DeliveryTripReadDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> MarkOrderFailed(int id, int orderId, [FromBody] MarkOrderFailedRequest? request)
+        {
+            try
+            {
+                var trip = await _deliveryTripService.MarkTripOrderFailedAsync(id, orderId, request?.Reason ?? "Khách từ chối nhận hàng");
+                return Ok(trip);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        /// <summary>
         /// Hoàn tất toàn bộ chuyến xe (Tất cả hàng đã giao xong, xe quay về trạng thái sẵn sàng).
         /// </summary>
         [HttpPost("{id:int}/complete")]
@@ -145,5 +164,10 @@ namespace backend.Controllers
     public class MarkOrderDeliveredRequest
     {
         public string? Note { get; set; }
+    }
+
+    public class MarkOrderFailedRequest
+    {
+        public string Reason { get; set; } = "Khách từ chối nhận hàng";
     }
 }

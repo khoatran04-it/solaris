@@ -22,6 +22,7 @@ import {
   PurchaseOrderStatusLabels,
   PurchaseOrderStatusColors,
 } from '../../types/purchaseOrder';
+import { DocumentPrintModal } from '../../components/commons/DocumentPrintModal';
 
 const PurchaseOrderDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -39,6 +40,7 @@ const PurchaseOrderDetail: React.FC = () => {
   );
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
+  const [printModalOpen, setPrintModalOpen] = useState(false);
 
   // --- EFFECTS ---
   const fetchPo = useCallback(async () => {
@@ -156,6 +158,15 @@ const PurchaseOrderDetail: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-3">
+          {/* NÚT IN CHỨNG TỪ */}
+          <button
+            type="button"
+            onClick={() => setPrintModalOpen(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-white text-slate-700 border border-slate-200 rounded-xl font-bold text-xs hover:bg-slate-50 transition-colors shadow-xs cursor-pointer"
+            title="In Đơn Đặt Mua Hàng Nông Sản chuẩn đối soát"
+          >
+            In Đơn Mua Hàng
+          </button>
           {/* NÚT: DRAFT -> PROCESSING */}
           {po.status === PurchaseOrderStatus.Draft && (
             <button
@@ -455,6 +466,45 @@ const PurchaseOrderDetail: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {po && (
+        <DocumentPrintModal
+          isOpen={printModalOpen}
+          onClose={() => setPrintModalOpen(false)}
+          documentTitle="ĐƠN ĐẶT MUA HÀNG NÔNG SẢN (PO)"
+          documentSubtitle="Hệ thống cung ứng nông sản an toàn & chuỗi lạnh Solaris"
+          documentCode={po.orderCode}
+          documentDate={po.orderDate}
+          warehouseName={po.warehouseName || extractWarehouse(po.note)}
+          creatorName={po.createdByName}
+          partyTitle="Nhà cung cấp / Hợp tác xã"
+          partyName={po.supplierName}
+          referenceCode={po.orderCode}
+          notes={
+            cleanNoteText ||
+            'Giao hàng đúng chủng loại, quy cách tươi sạch và chứng chỉ an toàn cam kết.'
+          }
+          subTotal={po.totalAmount}
+          totalAmount={po.totalAmount}
+          items={(po.details || []).map((d) => ({
+            skuCode: d.variantCode,
+            productName: d.variantName,
+            uoMName: d.uoMName || 'Kg',
+            quantity: d.orderQuantity,
+            unitPrice: d.unitPrice,
+            totalPrice: d.totalPrice,
+          }))}
+          signatures={[
+            { title: 'Người Lập Đơn', subtitle: '(Ký, ghi rõ họ tên)', name: po.createdByName },
+            { title: 'Quản Lý Thu Mua', subtitle: '(Ký, duyệt đơn)' },
+            {
+              title: 'Đại Diện Nhà Vườn',
+              subtitle: '(Ký, xác nhận nhận đơn)',
+              name: po.supplierName,
+            },
+          ]}
+        />
       )}
 
       <Toast {...toast} />

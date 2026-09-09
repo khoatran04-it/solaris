@@ -97,7 +97,7 @@ namespace backend.Services
             if (!string.IsNullOrWhiteSpace(search))
             {
                 var lowerSearch = search.Trim().ToLower();
-                query = query.Where(x => 
+                query = query.Where(x =>
                     (x.SupplierSKU != null && x.SupplierSKU.ToLower().Contains(lowerSearch)) ||
                     (x.Variant != null && (x.Variant.Name.ToLower().Contains(lowerSearch) || x.Variant.Code.ToLower().Contains(lowerSearch))) ||
                     (x.Supplier != null && x.Supplier.Name.ToLower().Contains(lowerSearch))

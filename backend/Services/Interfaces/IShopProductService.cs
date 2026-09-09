@@ -1,4 +1,4 @@
-﻿using backend.DTOs;
+using backend.DTOs;
 using backend.DTOs.ShopDTOs;
 
 namespace backend.Services.Interfaces
@@ -30,14 +30,16 @@ namespace backend.Services.Interfaces
         /// Thường là các sản phẩm có lượt mua cao hoặc được admin đánh dấu nổi bật để hiển thị trên Trang chủ.
         /// </summary>
         /// <param name="limit">Số lượng sản phẩm tối đa cần lấy (mặc định 8).</param>
-        Task<List<ShopProductCardDto>> GetFeaturedProductsAsync(int limit = 8);
+        /// <param name="warehouseId">Mã kho bán lẻ được chọn (Store-Locking).</param>
+        Task<List<ShopProductCardDto>> GetFeaturedProductsAsync(int limit = 8, int? warehouseId = null);
 
         /// <summary>
         /// Lấy danh sách Hàng mới về (New Arrivals).
         /// Dựa trên ngày tạo sản phẩm gần nhất.
         /// </summary>
         /// <param name="limit">Số lượng sản phẩm tối đa cần lấy (mặc định 8).</param>
-        Task<List<ShopProductCardDto>> GetNewArrivalsAsync(int limit = 8);
+        /// <param name="warehouseId">Mã kho bán lẻ được chọn (Store-Locking).</param>
+        Task<List<ShopProductCardDto>> GetNewArrivalsAsync(int limit = 8, int? warehouseId = null);
         #endregion
 
         #region Chi tiết Sản phẩm (Product Details)
@@ -46,8 +48,9 @@ namespace backend.Services.Interfaces
         /// Dùng để render Trang Chi tiết Sản phẩm (PDP - Product Detail Page) thông qua đường dẫn thân thiện (Slug).
         /// </summary>
         /// <param name="slug">Đường dẫn SEO của sản phẩm (Ví dụ: tao-envy-new-zealand).</param>
+        /// <param name="warehouseId">Mã kho bán lẻ được chọn (Store-Locking).</param>
         /// <returns>Chi tiết sản phẩm hoặc null nếu không tìm thấy/sản phẩm đã bị ẩn.</returns>
-        Task<ShopProductDetailDto?> GetProductBySlugAsync(string slug);
+        Task<ShopProductDetailDto?> GetProductBySlugAsync(string slug, int? warehouseId = null);
         #endregion
 
         #region Khuyến mãi & Chiến dịch (Promotions)

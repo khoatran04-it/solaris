@@ -76,8 +76,27 @@ namespace backend.DTOs.VehicleDTOs
         public int DeliveredOrders { get; set; }
         public int? InventoryTransferId { get; set; }
         public string? TransferCode { get; set; }
+        public string? FromWarehouseName { get; set; }
+        public string? ToWarehouseName { get; set; }
         public DateTime CreatedAt { get; set; }
         public List<DeliveryTripOrderReadDto> Orders { get; set; } = new();
+        public List<DeliveryTripReturnReadDto> Returns { get; set; } = new();
+    }
+
+    public class DeliveryTripReturnReadDto
+    {
+        public int ReturnId { get; set; }
+        public string ReturnCode { get; set; } = string.Empty;
+        public int OrderId { get; set; }
+        public string OrderCode { get; set; } = string.Empty;
+        public string CustomerName { get; set; } = string.Empty;
+        public string CustomerPhone { get; set; } = string.Empty;
+        public string PickupAddress { get; set; } = string.Empty;
+        public string Reason { get; set; } = string.Empty;
+        public int TotalItems { get; set; }
+        public decimal RefundAmount { get; set; }
+        public string Status { get; set; } = string.Empty;
+        public string StatusName { get; set; } = string.Empty;
     }
 
     public class DeliveryTripCreateDto
@@ -90,6 +109,8 @@ namespace backend.DTOs.VehicleDTOs
         public List<int> OrderIds { get; set; } = new();
         /// <summary>ID phiếu điều chuyển liên kết (nếu TripType == B2B_Transfer).</summary>
         public int? InventoryTransferId { get; set; }
+        /// <summary>Danh sách ID phiếu trả hàng cần thu hồi (nếu TripType == B2C_Return).</summary>
+        public List<int> CustomerReturnIds { get; set; } = new();
     }
 
     public class DeliveryTripOrderReadDto
@@ -106,6 +127,10 @@ namespace backend.DTOs.VehicleDTOs
         public DateTime? DeliveredAt { get; set; }
         public string? FailureReason { get; set; }
         public string? Note { get; set; }
+        public string PaymentMethodName { get; set; } = string.Empty;
+        public string PaymentStatusName { get; set; } = string.Empty;
+        public bool IsPaid { get; set; }
+        public decimal CodAmount { get; set; }
     }
 
     public class DispatchInternalOrderDto
@@ -128,6 +153,25 @@ namespace backend.DTOs.VehicleDTOs
         public int ActiveTripsCount { get; set; }
         public List<DeliveryTripReadDto> RecentActiveTrips { get; set; } = new();
         public List<OrderWaitingDispatchDto> OrdersWaitingDispatch { get; set; } = new();
+        public List<TransferWaitingDispatchDto> TransfersWaitingDispatch { get; set; } = new();
+        public List<ReturnWaitingDispatchDto> ReturnsWaitingDispatch { get; set; } = new();
+    }
+
+    public class ReturnWaitingDispatchDto
+    {
+        public int ReturnId { get; set; }
+        public string ReturnCode { get; set; } = string.Empty;
+        public int OrderId { get; set; }
+        public string OrderCode { get; set; } = string.Empty;
+        public string CustomerName { get; set; } = string.Empty;
+        public string CustomerPhone { get; set; } = string.Empty;
+        public string PickupAddress { get; set; } = string.Empty;
+        public int WarehouseId { get; set; }
+        public string WarehouseName { get; set; } = string.Empty;
+        public string Reason { get; set; } = string.Empty;
+        public decimal TotalRefundEstimated { get; set; }
+        public int TotalItems { get; set; }
+        public DateTime ReturnDate { get; set; }
     }
 
     public class OrderWaitingDispatchDto
@@ -139,6 +183,26 @@ namespace backend.DTOs.VehicleDTOs
         public string DeliveryAddress { get; set; } = string.Empty;
         public decimal TotalAmount { get; set; }
         public bool RequiresColdChain { get; set; }
+        public int? WarehouseId { get; set; }
+        public string WarehouseName { get; set; } = string.Empty;
+        public string Province { get; set; } = string.Empty;
+        public string District { get; set; } = string.Empty;
+        public string Ward { get; set; } = string.Empty;
+        public bool HasCompletedIssue { get; set; }
         public DateTime CreatedAt { get; set; }
+    }
+
+    public class TransferWaitingDispatchDto
+    {
+        public int TransferId { get; set; }
+        public string TransferCode { get; set; } = string.Empty;
+        public int FromWarehouseId { get; set; }
+        public string FromWarehouseName { get; set; } = string.Empty;
+        public int ToWarehouseId { get; set; }
+        public string ToWarehouseName { get; set; } = string.Empty;
+        public int TotalItems { get; set; }
+        public string? CreatedByName { get; set; }
+        public DateTime CreatedAt { get; set; }
+        public string? Note { get; set; }
     }
 }

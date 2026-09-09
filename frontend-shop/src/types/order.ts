@@ -35,6 +35,11 @@ export interface ShopOrder {
   expectedDeliveryDate?: string;
   note?: string;
   cancellationReason?: string;
+  deliveredAt?: string;
+  hasReturnRequest?: boolean;
+  returnCode?: string;
+  returnStatus?: number;
+  returnStatusName?: string;
   items: ShopOrderItem[];
 }
 

@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { TrendingUp, ShoppingBag, CheckCircle2, DollarSign, RefreshCw } from 'lucide-react';
 import { dashboardApi } from '../../api/dashboardApi';
 import type { DashboardOverviewDto, DashboardPeriod } from '../../types/dashboard';
@@ -87,10 +87,10 @@ export default function OverviewDashboard() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-200/80 pb-5">
           <div>
             <h1 className="text-xl font-bold text-slate-900 tracking-tight">
-              Tổng quan Kinh doanh
+              Bàn làm việc Điều hành
             </h1>
             <p className="text-xs text-slate-500 mt-1">
-              Theo dõi doanh thu, tiến độ đơn hàng và chỉ số tài chính quan trọng
+              Tổng hợp nhịp đập kinh doanh, tiến độ xử lý đơn hàng và các chỉ số sức khỏe trọng yếu
             </p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">

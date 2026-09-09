@@ -3,6 +3,7 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import ProductDetailClient from "@/components/product/ProductDetailClient";
 import { useCartStore } from "@/stores/cartStore";
+import { useAuthStore } from "@/stores/authStore";
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({
@@ -69,6 +70,11 @@ describe("Module 12 - ProductDetailClient Component", () => {
     useCartStore.setState({
       addItem: mockAddItem,
     });
+    useAuthStore.setState({
+      isAuthenticated: true,
+      user: { id: 1, name: "Test User" } as any,
+      token: "mock-token",
+    });
   });
 
   // TC01: RENDER CHI TIẾT SẢN PHẨM & ĐƠN GIÁ
@@ -121,8 +127,6 @@ describe("Module 12 - ProductDetailClient Component", () => {
         /Thịt heo ba chỉ là phần thịt nằm ở bụng heo, có lớp mỡ và nạc xen kẽ./,
       ),
     ).toBeInTheDocument();
-    expect(
-      screen.getByText(/Thịt Heo nuôi chuẩn VietGAP/),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/Thịt Heo nuôi chuẩn VietGAP/)).toBeInTheDocument();
   });
 });

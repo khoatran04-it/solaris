@@ -35,6 +35,7 @@ export interface ShopProductCard {
   brixLevel?: string;
   isInStock: boolean;
   totalAvailableStock: number;
+  variantCount?: number;
 }
 
 export interface ShopVariantPrice {
@@ -114,6 +115,7 @@ export interface ShopProductFilterParams {
   origin?: string;
   certification?: string;
   sortBy?: string;
+  warehouseId?: number;
   pageIndex?: number;
   pageSize?: number;
 }

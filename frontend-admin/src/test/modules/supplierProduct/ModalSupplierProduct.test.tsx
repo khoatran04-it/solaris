@@ -32,9 +32,7 @@ vi.mock('../../../api/uomApi', () => ({
 }));
 
 describe('ModalSupplierProduct Component', () => {
-  const mockSuppliers = [
-    { id: 1, code: 'NCC01', name: 'Nông trại Xanh Đà Lạt' },
-  ];
+  const mockSuppliers = [{ id: 1, code: 'NCC01', name: 'Nông trại Xanh Đà Lạt' }];
 
   const mockVariants = [
     {
@@ -44,9 +42,7 @@ describe('ModalSupplierProduct Component', () => {
       productId: 100,
       baseUoMId: 5,
       baseUoMName: 'Kilogram',
-      prices: [
-        { priceId: 1, uoMId: 5, uoMName: 'Kilogram', price: 45000, isDefault: true },
-      ],
+      prices: [{ priceId: 1, uoMId: 5, uoMName: 'Kilogram', price: 45000, isDefault: true }],
     },
     {
       id: 11,
@@ -55,9 +51,7 @@ describe('ModalSupplierProduct Component', () => {
       productId: 101,
       baseUoMId: 8,
       baseUoMName: 'Gói',
-      prices: [
-        { priceId: 2, uoMId: 8, uoMName: 'Gói', price: 4000, isDefault: true },
-      ],
+      prices: [{ priceId: 2, uoMId: 8, uoMName: 'Gói', price: 4000, isDefault: true }],
     },
   ];
 
@@ -84,13 +78,7 @@ describe('ModalSupplierProduct Component', () => {
   });
 
   it('TC01 - Render modal đúng tiêu đề và tải đầy đủ danh mục khi isOpen = true', async () => {
-    render(
-      <ModalSupplierProduct
-        isOpen={true}
-        onClose={mockOnClose}
-        onSave={mockOnSave}
-      />
-    );
+    render(<ModalSupplierProduct isOpen={true} onClose={mockOnClose} onSave={mockOnSave} />);
 
     expect(screen.getByText('Thêm Sản Phẩm Vào Danh Mục NCC')).toBeInTheDocument();
     expect(screen.getByText(/Thiết lập đơn giá nhập và chính sách cung ứng/i)).toBeInTheDocument();
@@ -104,13 +92,7 @@ describe('ModalSupplierProduct Component', () => {
   });
 
   it('TC02 - Tự động nhận diện ĐVT và khóa cứng Đơn vị tính mua hàng khi chọn Sản phẩm biến thể', async () => {
-    render(
-      <ModalSupplierProduct
-        isOpen={true}
-        onClose={mockOnClose}
-        onSave={mockOnSave}
-      />
-    );
+    render(<ModalSupplierProduct isOpen={true} onClose={mockOnClose} onSave={mockOnSave} />);
 
     await waitFor(() => {
       expect(screen.getByText('Chọn sản phẩm biến thể...')).toBeInTheDocument();
@@ -138,13 +120,7 @@ describe('ModalSupplierProduct Component', () => {
   });
 
   it('TC03 - Kiểm tra validation khi form thiếu dữ liệu bắt buộc', async () => {
-    render(
-      <ModalSupplierProduct
-        isOpen={true}
-        onClose={mockOnClose}
-        onSave={mockOnSave}
-      />
-    );
+    render(<ModalSupplierProduct isOpen={true} onClose={mockOnClose} onSave={mockOnSave} />);
 
     await waitFor(() => {
       expect(screen.getByText('Thêm Vào Bảng Giá')).toBeInTheDocument();
@@ -163,13 +139,7 @@ describe('ModalSupplierProduct Component', () => {
   });
 
   it('TC04 - Submit thành công dữ liệu bảng giá với ĐVT đã được khóa cố định', async () => {
-    render(
-      <ModalSupplierProduct
-        isOpen={true}
-        onClose={mockOnClose}
-        onSave={mockOnSave}
-      />
-    );
+    render(<ModalSupplierProduct isOpen={true} onClose={mockOnClose} onSave={mockOnSave} />);
 
     await waitFor(() => {
       expect(screen.getByText('Chọn nhà cung cấp...')).toBeInTheDocument();

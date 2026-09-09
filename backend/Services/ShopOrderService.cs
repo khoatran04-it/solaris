@@ -74,6 +74,8 @@ namespace backend.Services
             double destLat = request.Latitude;
             double destLng = request.Longitude;
             int? customerAddressId = request.CustomerAddressId;
+            string destProvince = request.Province?.Trim() ?? string.Empty;
+            string destDistrict = request.District?.Trim() ?? string.Empty;
 
             if (customerAddressId.HasValue)
             {
@@ -85,11 +87,15 @@ namespace backend.Services
                     deliveryAddress = addr.FullAddress;
                     destLat = addr.Latitude;
                     destLng = addr.Longitude;
+                    destProvince = addr.Province;
+                    destDistrict = addr.District;
                 }
             }
             else if (!string.IsNullOrWhiteSpace(request.Province) && !string.IsNullOrWhiteSpace(request.StreetAddress))
             {
                 deliveryAddress = $"{request.StreetAddress.Trim()}, {request.Ward?.Trim()}, {request.District?.Trim()}, {request.Province.Trim()}";
+                destProvince = request.Province.Trim();
+                destDistrict = request.District?.Trim() ?? string.Empty;
             }
             else
             {
@@ -102,6 +108,8 @@ namespace backend.Services
                     destLat = defaultAddr.Latitude;
                     destLng = defaultAddr.Longitude;
                     customerAddressId = defaultAddr.Id;
+                    destProvince = defaultAddr.Province;
+                    destDistrict = defaultAddr.District;
                 }
                 else
                 {
@@ -125,7 +133,13 @@ namespace backend.Services
                     Quantity = i.Quantity
                 }).ToList();
 
-                var routing = await _routingService.DetermineOptimalWarehouseAsync(customerAddressId, cartItemsDto);
+                var routing = await _routingService.DetermineOptimalWarehouseAsync(
+                    customerAddressId,
+                    cartItemsDto,
+                    destLat,
+                    destLng,
+                    destProvince,
+                    destDistrict);
                 int selectedWarehouseId = routing.OptimalWarehouseId;
 
                 // 2. Rào chắn Khoảng cách Chuỗi lạnh (Cold-Chain Geo-fencing Guard)
@@ -135,10 +149,32 @@ namespace backend.Services
                     .FirstOrDefaultAsync(w => w.Id == selectedWarehouseId);
 
                 double distanceKm = routing.DistanceKm;
-                if (distanceKm <= 0 && destLat != 0 && destLng != 0 && targetWarehouse?.Address != null)
+
+                // Kiểm tra an toàn: Nếu distanceKm chưa hợp lệ mà có GPS cả hai bên thì tính lại qua Haversine
+                if ((distanceKm <= 0 || distanceKm >= 99999 || double.IsInfinity(distanceKm) || double.IsNaN(distanceKm)) &&
+                    destLat != 0 && destLng != 0 && targetWarehouse?.Address != null &&
+                    targetWarehouse.Address.Latitude != 0 && targetWarehouse.Address.Longitude != 0)
                 {
                     var distanceService = new DistanceService();
                     distanceKm = distanceService.CalculateDistanceKm(destLat, destLng, targetWarehouse.Address.Latitude, targetWarehouse.Address.Longitude);
+                }
+
+                // Fallback theo cấp hành chính nếu khoảng cách vẫn bất thường
+                if (distanceKm <= 0 || distanceKm >= 99999 || double.IsInfinity(distanceKm) || double.IsNaN(distanceKm))
+                {
+                    if (targetWarehouse?.Address != null && !string.IsNullOrEmpty(targetWarehouse.Address.Province) && !string.IsNullOrEmpty(destProvince))
+                    {
+                        bool sameProvince = GeoHelper.IsSameLocation(targetWarehouse.Address.Province, destProvince);
+                        bool sameDistrict = GeoHelper.IsSameLocation(targetWarehouse.Address.District, destDistrict);
+
+                        if (sameDistrict) distanceKm = 3.0;
+                        else if (sameProvince) distanceKm = 7.5;
+                        else distanceKm = 100.0;
+                    }
+                    else
+                    {
+                        distanceKm = 5.0; // Mặc định trong nội thành
+                    }
                 }
 
                 double maxRadius = (targetWarehouse != null && targetWarehouse.MaxColdChainRadiusKm > 0)
@@ -147,7 +183,8 @@ namespace backend.Services
 
                 if (hasColdChain && distanceKm > maxRadius)
                 {
-                    throw new InvalidOperationException($"Đơn hàng có sản phẩm chuỗi lạnh (thịt, cá, rau củ tươi sống) nhưng khoảng cách giao hàng ({distanceKm:F1} km) vượt quá bán kính bảo quản tối đa ({maxRadius} km) của kho {targetWarehouse?.Name ?? "xuất hàng"}. Quý khách vui lòng chọn địa chỉ gần hơn hoặc loại bỏ các sản phẩm tươi sống để giao hàng thường.");
+                    string displayDist = (distanceKm >= 9999 || double.IsInfinity(distanceKm)) ? "> 50" : $"{distanceKm:F1}";
+                    throw new InvalidOperationException($"Đơn hàng có sản phẩm chuỗi lạnh (thịt, cá, rau củ tươi sống) nhưng khoảng cách giao hàng ({displayDist} km) vượt quá bán kính bảo quản tối đa ({maxRadius} km) của kho {targetWarehouse?.Name ?? "xuất hàng"}. Quý khách vui lòng chọn địa chỉ gần hơn hoặc loại bỏ các sản phẩm tươi sống để giao hàng thường.");
                 }
 
                 // 3. Chuẩn bị chi tiết đơn hàng & Tính giá
@@ -167,8 +204,8 @@ namespace backend.Services
                     // Kiểm tra tồn kho khả dụng tại kho đích trước (ưu tiên lô còn hạn sử dụng theo FEFO)
                     var inventory = await _context.WarehouseInventories
                         .Include(wi => wi.Batch)
-                        .Where(wi => wi.WarehouseId == selectedWarehouseId && 
-                                     wi.VariantId == item.VariantId && 
+                        .Where(wi => wi.WarehouseId == selectedWarehouseId &&
+                                     wi.VariantId == item.VariantId &&
                                      wi.QuantityAvailable >= item.Quantity &&
                                      (wi.Batch == null || wi.Batch.ExpiryDate > now))
                         .OrderBy(wi => wi.Batch != null ? wi.Batch.ExpiryDate : DateTime.MaxValue)
@@ -184,7 +221,7 @@ namespace backend.Services
                     {
                         var fallbackQuery = _context.WarehouseInventories
                             .Include(wi => wi.Batch)
-                            .Where(wi => wi.VariantId == item.VariantId && 
+                            .Where(wi => wi.VariantId == item.VariantId &&
                                          wi.QuantityAvailable >= baseQty &&
                                          (wi.Batch == null || wi.Batch.ExpiryDate > now));
 
@@ -223,8 +260,11 @@ namespace backend.Services
 
                     if (inventory == null || inventory.QuantityAvailable < baseQty)
                     {
-                        decimal currentAvail = inventory?.QuantityAvailable ?? 0;
-                        throw new InvalidOperationException($"Sản phẩm '{item.Variant.Name}' không đủ tồn kho khả dụng (Yêu cầu: {baseQty} {item.Variant.Product?.BaseUoM?.Name ?? "ĐVT"}, Còn: {currentAvail}).");
+                        var targetStock = await _context.WarehouseInventories
+                            .Where(wi => wi.WarehouseId == selectedWarehouseId && wi.VariantId == item.VariantId)
+                            .SumAsync(wi => (decimal?)wi.QuantityAvailable) ?? 0;
+
+                        throw new InvalidOperationException($"Sản phẩm '{item.Variant.Name}' không đủ tồn kho khả dụng tại {targetWarehouse?.Name ?? "kho gần bạn nhất"} (Yêu cầu: {baseQty} {item.Variant.Product?.BaseUoM?.Name ?? "ĐVT"}, Kho hiện có: {targetStock}). Quý khách vui lòng giảm số lượng.");
                     }
 
                     // Khóa giữ chỗ tồn kho tại kho thực tế đang giữ hàng theo Base UoM
@@ -338,6 +378,7 @@ namespace backend.Services
         public async Task<PagedResult<ShopOrderReadDto>> GetCustomerOrdersAsync(int customerId, int pageIndex = 1, int pageSize = 10)
         {
             var query = _context.Orders
+                .Include(o => o.CustomerReturns)
                 .Include(o => o.Details)
                     .ThenInclude(d => d.Variant)
                         .ThenInclude(v => v!.Product)
@@ -371,6 +412,7 @@ namespace backend.Services
         public async Task<ShopOrderReadDto?> GetOrderByCodeAsync(int customerId, string orderCode)
         {
             var order = await _context.Orders
+                .Include(o => o.CustomerReturns)
                 .Include(o => o.Details)
                     .ThenInclude(d => d.Variant)
                         .ThenInclude(v => v!.Product)
@@ -470,6 +512,7 @@ namespace backend.Services
 
                 // 1. Chuyển trạng thái đơn hàng sang Hoàn Tất (Giao thành công)
                 order.Status = OrderStatus.Completed;
+                order.DeliveredAt = now;
                 order.UpdatedAt = now;
 
                 // 2. Nếu là COD hoặc chưa thanh toán, đánh dấu Đã Thanh Toán (khách đã nhận hàng và trả tiền)
@@ -478,9 +521,31 @@ namespace backend.Services
                     order.PaymentStatus = PaymentStatus.Paid;
                 }
 
+                // 3. Tự động đồng bộ sang DeliveryTripOrder nếu đơn này đi theo chuyến xe nội bộ
+                var tripOrder = await _context.DeliveryTripOrders
+                    .Include(t => t.Trip)
+                        .ThenInclude(tr => tr!.TripOrders)
+                    .FirstOrDefaultAsync(t => t.OrderId == order.Id);
+
+                if (tripOrder != null)
+                {
+                    tripOrder.Status = "Delivered";
+                    tripOrder.DeliveredAt = now;
+
+                    if (tripOrder.Trip != null)
+                    {
+                        bool allFinished = tripOrder.Trip.TripOrders.All(o => o.Id == tripOrder.Id || o.Status == "Delivered" || o.Status == "Failed");
+                        if (allFinished && tripOrder.Trip.Status != "Completed")
+                        {
+                            tripOrder.Trip.Status = "Returning";
+                            tripOrder.Trip.UpdatedAt = now;
+                        }
+                    }
+                }
+
                 await _context.SaveChangesAsync();
 
-                // 3. Tự động tính tổng chi tiêu hoàn tất và xét nâng hạng thành viên (Customer Tier)
+                // 4. Tự động tính tổng chi tiêu hoàn tất và xét nâng hạng thành viên (Customer Tier)
                 var customer = await _context.Customers.FirstOrDefaultAsync(c => c.Id == customerId && !c.IsDeleted);
                 if (customer != null)
                 {
@@ -505,9 +570,58 @@ namespace backend.Services
             });
         }
 
+        public async Task<ShopOrderReadDto> RejectDeliveryAsync(int customerId, string orderCode, string reason)
+        {
+            return await _context.ExecuteInTransactionAsync(async () =>
+            {
+                var order = await _context.Orders
+                    .Include(o => o.Details)
+                    .FirstOrDefaultAsync(o => o.CustomerId == customerId && o.OrderCode == orderCode.Trim() && !o.IsDeleted);
+
+                if (order == null)
+                    throw new KeyNotFoundException("Không tìm thấy đơn hàng.");
+
+                if (order.Status == OrderStatus.Completed)
+                    throw new InvalidOperationException("Đơn hàng đã giao thành công, không thể từ chối nhận. Quý khách vui lòng tạo Yêu cầu Đổi trả (RMA).");
+
+                var now = DateTime.UtcNow;
+
+                // 1. Chuyển trạng thái đơn hàng sang Cancelled (với lý do Khách từ chối nhận)
+                order.Status = OrderStatus.Cancelled;
+                order.CancellationReason = $"Khách từ chối nhận: {reason.Trim()}";
+                order.UpdatedAt = now;
+
+                // 2. Cập nhật DeliveryTripOrder sang Failed nếu đơn thuộc chuyến xe
+                var tripOrder = await _context.DeliveryTripOrders
+                    .Include(t => t.Trip)
+                        .ThenInclude(tr => tr!.TripOrders)
+                    .FirstOrDefaultAsync(t => t.OrderId == order.Id);
+
+                if (tripOrder != null)
+                {
+                    tripOrder.Status = "Failed";
+                    tripOrder.FailureReason = reason.Trim();
+
+                    if (tripOrder.Trip != null)
+                    {
+                        bool allFinished = tripOrder.Trip.TripOrders.All(o => o.Id == tripOrder.Id || o.Status == "Delivered" || o.Status == "Failed");
+                        if (allFinished && tripOrder.Trip.Status != "Completed")
+                        {
+                            tripOrder.Trip.Status = "Returning";
+                            tripOrder.Trip.UpdatedAt = now;
+                        }
+                    }
+                }
+
+                await _context.SaveChangesAsync();
+                return await GetOrderByCodeInternalAsync(order.Id);
+            });
+        }
+
         private async Task<ShopOrderReadDto> GetOrderByCodeInternalAsync(int orderId)
         {
             var order = await _context.Orders
+                .Include(o => o.CustomerReturns)
                 .Include(o => o.Details)
                     .ThenInclude(d => d.Variant)
                         .ThenInclude(v => v!.Product)

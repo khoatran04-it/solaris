@@ -27,6 +27,7 @@ interface ListHeaderProps {
   onAdd: () => void;
   searchPlaceholder?: string;
   icon: LucideIcon;
+  action?: React.ReactNode;
 }
 export const ListHeader: React.FC<ListHeaderProps> = ({
   title,
@@ -36,6 +37,7 @@ export const ListHeader: React.FC<ListHeaderProps> = ({
   onAdd,
   searchPlaceholder,
   icon: Icon,
+  action,
 }) => (
   <div className="flex justify-between items-end mb-2">
     <div>
@@ -45,7 +47,8 @@ export const ListHeader: React.FC<ListHeaderProps> = ({
       </div>
       <p className="text-slate-500 text-sm font-medium ml-8 truncate max-w-2xl">{subtitle}</p>
     </div>
-    <div className="flex gap-4">
+    <div className="flex gap-4 items-center">
+      {action && <div>{action}</div>}
       <div className="flex items-center bg-white/80 backdrop-blur-md border border-slate-200/80 rounded-xl px-4 py-2.5 w-80 focus-within:border-yellow-400 focus-within:ring-4 focus-within:ring-yellow-400/20 transition-all duration-300 shadow-sm">
         <Search size={18} className="text-slate-400 mr-2.5" />
         <input

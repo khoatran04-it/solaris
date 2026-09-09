@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http;
 using System.Text.Json;
 
 namespace backend.Middlewares
@@ -41,12 +41,21 @@ namespace backend.Middlewares
             context.Response.ContentType = "application/json"; // Set định dạng trả về là JSON
             context.Response.StatusCode = 500; // Mặc định lỗi sập server là 500
 
+            // Bóc tách toàn bộ InnerException để phục vụ chẩn đoán lỗi chính xác (đặc biệt là DbUpdateException / SqlException)
+            var detailsBuilder = new System.Text.StringBuilder(exception.Message);
+            var inner = exception.InnerException;
+            while (inner != null)
+            {
+                detailsBuilder.Append(" ---> ").Append(inner.Message);
+                inner = inner.InnerException;
+            }
+
             // Tự định nghĩa cấu trúc lỗi bạn muốn gửi về Frontend
             var response = new
             {
                 StatusCode = context.Response.StatusCode,
                 Message = "Hệ thống đang gặp sự cố, vui lòng thử lại sau!",
-                Details = exception.Message // (Thực tế khi lên Production người ta thường giấu cái Details này đi)
+                Details = detailsBuilder.ToString()
             };
 
             // Đóng gói thành JSON và gửi về

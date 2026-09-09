@@ -72,5 +72,9 @@ namespace backend.Models
         #region Danh sách Đơn hàng thuộc chuyến (Nếu TripType == B2C_Delivery)
         public virtual ICollection<DeliveryTripOrder> TripOrders { get; set; } = new List<DeliveryTripOrder>();
         #endregion
+
+        #region Danh sách Phiếu Trả Hàng thu hồi trong chuyến (Nếu TripType == B2C_Return)
+        public virtual ICollection<CustomerReturn> CustomerReturns { get; set; } = new List<CustomerReturn>();
+        #endregion
     }
 }

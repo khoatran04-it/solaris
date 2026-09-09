@@ -196,7 +196,7 @@ export const FormSelect: React.FC<FormSelectProps> = ({
   );
 
   return (
-    <div className="flex flex-col relative" ref={containerRef}>
+    <div className={`flex flex-col relative ${isOpen ? 'z-50' : 'z-0'}`} ref={containerRef}>
       <FormLabel label={label} required={required} />
       <div
         // Ngăn chặn onClick khi component ở trạng thái disabled
@@ -367,4 +367,3 @@ export const FormCurrencyInput: React.FC<CurrencyInputProps> = ({
     </div>
   );
 };
-

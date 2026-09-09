@@ -198,12 +198,19 @@ namespace backend.Services
             var order = await _context.Orders
                 .Include(o => o.Details)
                     .ThenInclude(d => d.Variant)
+                        .ThenInclude(v => v!.Product)
+                            .ThenInclude(p => p!.Category)
                 .Include(o => o.Customer)
                 .FirstOrDefaultAsync(o => o.Id == orderId && !o.IsDeleted);
 
             if (order == null)
             {
                 throw new KeyNotFoundException($"Không tìm thấy đơn hàng ID {orderId}.");
+            }
+
+            if (order.Details.Any(d => d.Variant?.Product?.Category?.RequiresColdChain == true))
+            {
+                throw new InvalidOperationException("Đơn hàng chứa sản phẩm chuỗi lạnh (thịt, cá, hải sản, rau củ tươi sống). Không hỗ trợ giao qua GHN, vui lòng sử dụng Đội xe giao nội bộ!");
             }
 
             var ghnSection = _config.GetSection("GhnSettings");
@@ -316,6 +323,8 @@ namespace backend.Services
             // Cập nhật vào Database
             order.TrackingCode = trackingCode;
             order.ShippingProvider = "GHN";
+            order.Status = OrderStatus.Shipping;
+            order.DispatchedAt = DateTime.UtcNow;
             order.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();

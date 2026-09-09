@@ -15,6 +15,7 @@ interface QuickUoMConversionModalProps {
   baseUoMName?: string;
   initialFromUoMId?: number;
   uomOptions: { label: string; value: number }[];
+  existingConversions?: UoMConversion[];
   onSuccess: (newConversion: UoMConversion) => void;
 }
 
@@ -28,6 +29,7 @@ export const QuickUoMConversionModal: React.FC<QuickUoMConversionModalProps> = (
   baseUoMName,
   initialFromUoMId,
   uomOptions,
+  existingConversions,
   onSuccess,
 }) => {
   const [fromUoMId, setFromUoMId] = useState<number>(initialFromUoMId || 0);
@@ -36,14 +38,37 @@ export const QuickUoMConversionModal: React.FC<QuickUoMConversionModalProps> = (
   const [error, setError] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
+  const effectiveToUoMId = baseUoMId || toUoMId;
+
+  // Kiểm tra xem đã có quy tắc quy đổi đặc thù cho cặp [fromUoMId -> effectiveToUoMId] của sản phẩm này chưa
+  const existingRule = useMemo(() => {
+    if (!productId || !fromUoMId || !effectiveToUoMId) return undefined;
+    return existingConversions?.find(
+      (c) =>
+        c.isActive &&
+        c.productId === productId &&
+        c.fromUoMId === fromUoMId &&
+        c.toUoMId === effectiveToUoMId
+    );
+  }, [existingConversions, productId, fromUoMId, effectiveToUoMId]);
+
   useEffect(() => {
     if (isOpen) {
-      setFromUoMId(initialFromUoMId || 0);
+      const initFrom = initialFromUoMId || 0;
+      setFromUoMId(initFrom);
       setToUoMId(baseUoMId || 0);
-      setConversionFactor(1);
+      const targetTo = baseUoMId || 0;
+      const match = existingConversions?.find(
+        (c) =>
+          c.isActive &&
+          c.productId === productId &&
+          c.fromUoMId === initFrom &&
+          c.toUoMId === targetTo
+      );
+      setConversionFactor(match ? match.conversionFactor : 1);
       setError('');
     }
-  }, [isOpen, initialFromUoMId, baseUoMId]);
+  }, [isOpen, initialFromUoMId, baseUoMId, productId, existingConversions]);
 
   // UX: Đóng modal khi bấm phím Escape
   useEffect(() => {
@@ -87,7 +112,9 @@ export const QuickUoMConversionModal: React.FC<QuickUoMConversionModalProps> = (
 
   if (!isOpen) return null;
 
-  const selectedFrom = fromUoMOptions.find((u) => u.value === fromUoMId) || uomOptions.find((u) => u.value === fromUoMId);
+  const selectedFrom =
+    fromUoMOptions.find((u) => u.value === fromUoMId) ||
+    uomOptions.find((u) => u.value === fromUoMId);
   const selectedTo = toUoMOptions.find((u) => u.value === (baseUoMId || toUoMId)) || {
     label: baseUoMName || 'Đơn vị cơ sở',
     value: baseUoMId || 0,
@@ -95,7 +122,6 @@ export const QuickUoMConversionModal: React.FC<QuickUoMConversionModalProps> = (
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const effectiveToUoMId = baseUoMId || toUoMId;
 
     if (!productId || productId <= 0) {
       setError('Thiếu thông tin sản phẩm áp dụng.');
@@ -122,17 +148,40 @@ export const QuickUoMConversionModal: React.FC<QuickUoMConversionModalProps> = (
       setIsSubmitting(true);
       setError('');
 
-      const res = await uomConversionApi.create({
-        fromUoMId,
-        toUoMId: effectiveToUoMId,
-        conversionFactor,
-        productId,
-        isActive: true,
-      });
+      if (existingRule) {
+        // Cập nhật quy tắc quy đổi đã tồn tại của sản phẩm này (Upsert)
+        await uomConversionApi.update(existingRule.id, {
+          fromUoMId,
+          toUoMId: effectiveToUoMId,
+          conversionFactor,
+          productId,
+          isActive: true,
+        });
 
-      if (res) {
-        onSuccess(res);
+        const updatedConv: UoMConversion = {
+          ...existingRule,
+          conversionFactor,
+          fromUoMId,
+          toUoMId: effectiveToUoMId,
+          fromUoMName: selectedFrom?.label?.split(' ')[0] || existingRule.fromUoMName,
+          toUoMName: selectedTo?.label?.split(' ')[0] || existingRule.toUoMName,
+        };
+        onSuccess(updatedConv);
         onClose();
+      } else {
+        // Tạo mới quy tắc quy đổi đặc thù
+        const res = await uomConversionApi.create({
+          fromUoMId,
+          toUoMId: effectiveToUoMId,
+          conversionFactor,
+          productId,
+          isActive: true,
+        });
+
+        if (res) {
+          onSuccess(res);
+          onClose();
+        }
       }
     } catch (err: any) {
       setError(
@@ -162,10 +211,12 @@ export const QuickUoMConversionModal: React.FC<QuickUoMConversionModalProps> = (
             </div>
             <div>
               <h3 className="text-base font-extrabold text-slate-900 leading-tight">
-                Cấu Hình Quy Đổi Nhanh
+                {existingRule ? 'Cập Nhật Quy Đổi Sản Phẩm' : 'Cấu Hình Quy Đổi Nhanh'}
               </h3>
               <p className="text-xs text-slate-500 font-medium">
-                Thiết lập tỷ lệ bao bì riêng cho sản phẩm này
+                {existingRule
+                  ? 'Cập nhật hệ số bao bì đã có cho sản phẩm này'
+                  : 'Thiết lập tỷ lệ bao bì riêng cho sản phẩm này'}
               </p>
             </div>
           </div>
@@ -205,6 +256,21 @@ export const QuickUoMConversionModal: React.FC<QuickUoMConversionModalProps> = (
               </div>
             </div>
 
+            {/* BADGE THÔNG BÁO ĐANG CẬP NHẬT QUY TẮC HIỆN CÓ */}
+            {existingRule && selectedFrom && selectedTo && (
+              <div className="p-3 bg-blue-50 border border-blue-200 rounded-2xl flex items-center gap-2.5 text-xs font-semibold text-blue-900 animate-in fade-in">
+                <Repeat size={16} className="text-blue-600 shrink-0" />
+                <span>
+                  Sản phẩm này đã có quy tắc quy đổi:{' '}
+                  <b>
+                    1 {selectedFrom.label.split(' ')[0]} = {existingRule.conversionFactor}{' '}
+                    {selectedTo.label.split(' ')[0]}
+                  </b>
+                  . Bạn có thể thay đổi hệ số và bấm <b>Cập Nhật Quy Đổi</b>.
+                </span>
+              </div>
+            )}
+
             {/* PREVIEW CÔNG THỨC TOÁN HỌC TRỰC QUAN */}
             {selectedFrom && selectedTo && conversionFactor > 0 && (
               <div className="p-3.5 bg-amber-50/70 border border-amber-200 rounded-2xl flex items-center justify-center gap-2.5 text-sm font-bold text-slate-800">
@@ -238,8 +304,19 @@ export const QuickUoMConversionModal: React.FC<QuickUoMConversionModalProps> = (
                 options={fromUoMOptions}
                 value={fromUoMId}
                 onSelect={(val) => {
-                  setFromUoMId(Number(val));
+                  const newFromId = Number(val);
+                  setFromUoMId(newFromId);
                   setError('');
+                  const match = existingConversions?.find(
+                    (c) =>
+                      c.isActive &&
+                      c.productId === productId &&
+                      c.fromUoMId === newFromId &&
+                      c.toUoMId === effectiveToUoMId
+                  );
+                  if (match) {
+                    setConversionFactor(match.conversionFactor);
+                  }
                 }}
               />
 
@@ -268,7 +345,8 @@ export const QuickUoMConversionModal: React.FC<QuickUoMConversionModalProps> = (
               />
               <p className="text-[11px] text-amber-800 font-semibold mt-1.5 flex items-center gap-1.5 bg-amber-50/80 px-3 py-1.5 rounded-xl border border-amber-200">
                 <span>
-                  Cố định theo đơn vị cơ sở (<b>{baseUoMName || 'Gốc'}</b>). Quy cách đóng gói đặc thù của sản phẩm chỉ được quy đổi về đơn vị cơ sở này.
+                  Cố định theo đơn vị cơ sở (<b>{baseUoMName || 'Gốc'}</b>). Quy cách đóng gói đặc
+                  thù của sản phẩm chỉ được quy đổi về đơn vị cơ sở này.
                 </span>
               </p>
             </div>
@@ -298,7 +376,7 @@ export const QuickUoMConversionModal: React.FC<QuickUoMConversionModalProps> = (
               ) : (
                 <>
                   <Save size={16} strokeWidth={2.5} />
-                  <span>Lưu Quy Đổi</span>
+                  <span>{existingRule ? 'Cập Nhật Quy Đổi' : 'Lưu Quy Đổi'}</span>
                 </>
               )}
             </button>

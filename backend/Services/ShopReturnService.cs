@@ -109,6 +109,7 @@ namespace backend.Services
                     WarehouseId = order.WarehouseId ?? 1,
                     ReturnDate = now,
                     Status = CustomerReturnStatus.Pending,
+                    ReturnType = CustomerReturnType.PostDeliveryReturn,
                     RefundAmount = totalRefund,
                     Reason = request.Reason?.Trim(),
                     CreatedAt = now,
