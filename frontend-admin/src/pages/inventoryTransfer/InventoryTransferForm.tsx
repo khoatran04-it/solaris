@@ -23,9 +23,9 @@ import { uomApi } from '../../api/uomApi';
 import { uomConversionApi } from '../../api/uomConversionApi';
 import { useAuthStore } from '../../stores/useAuthStore';
 
-// Import types
 import { InventoryTransferCreatePayload } from '../../types/inventoryTransfer';
 import { SuggestedBatch } from '../../types/inventoryIssue';
+import { ValidUoMOption } from '../../types/uomConversion';
 
 // --- FORM STATE TYPES ---
 interface DetailRow {
@@ -33,7 +33,7 @@ interface DetailRow {
   variantId: number | '';
   batchId: number | '';
   uoMId: number | '';
-  quantity: number;
+  quantity: number | '';
 }
 
 interface TransferFormState {
@@ -99,25 +99,25 @@ const InventoryTransferForm: React.FC = () => {
     { value: number; label: string; prices?: any[]; baseUoMId?: number }[]
   >([]);
   const [uoms, setUoms] = useState<{ value: number; label: string }[]>([]);
-  const [variantUoMsMap, setVariantUoMsMap] = useState<Record<number, { value: number; label: string }[]>>({});
+  const [variantUoMsMap, setVariantUoMsMap] = useState<Record<number, ValidUoMOption[]>>({});
 
-  const fetchValidUoMs = useCallback(async (vId: number) => {
-    if (!vId || variantUoMsMap[vId]) return;
-    try {
-      const opts = await uomConversionApi.getValidUoMs(vId);
-      if (opts && opts.length > 0) {
-        setVariantUoMsMap((prev) => ({
-          ...prev,
-          [vId]: opts.map((u) => ({
-            value: u.uoMId,
-            label: `${u.uoMName} (${u.description})`,
-          })),
-        }));
+  const fetchValidUoMs = useCallback(
+    async (vId: number) => {
+      if (!vId || variantUoMsMap[vId]) return;
+      try {
+        const opts = await uomConversionApi.getValidUoMs(vId);
+        if (opts && opts.length > 0) {
+          setVariantUoMsMap((prev) => ({
+            ...prev,
+            [vId]: opts,
+          }));
+        }
+      } catch (e) {
+        console.error('Lỗi tải ĐVT hợp lệ:', e);
       }
-    } catch (e) {
-      console.error('Lỗi tải ĐVT hợp lệ:', e);
-    }
-  }, [variantUoMsMap]);
+    },
+    [variantUoMsMap]
+  );
 
   useEffect(() => {
     details.forEach((d) => {
@@ -366,23 +366,30 @@ const InventoryTransferForm: React.FC = () => {
       }
     }
 
-    // Kiểm tra tồn kho khả dụng ngay khi nhập số lượng hoặc chọn lô
+    // Kiểm tra tồn kho khả dụng ngay khi nhập số lượng, chọn lô hoặc đổi ĐVT
     const currentRow = details.find((r) => r.id === id);
     const targetBatchId = field === 'batchId' ? Number(value) : Number(currentRow?.batchId);
     const targetQty = field === 'quantity' ? Number(value) : Number(currentRow?.quantity);
     const targetVarId = field === 'variantId' ? Number(value) : Number(currentRow?.variantId);
+    const targetUoMId = field === 'uoMId' ? Number(value) : Number(currentRow?.uoMId);
 
     if (targetBatchId && formData.fromWarehouseId && targetVarId) {
       const batches = variantBatchesMap[`${formData.fromWarehouseId}_${targetVarId}`] || [];
       const batchObj = batches.find((b) => b.batchId === targetBatchId);
       const maxAvailable = batchObj ? batchObj.quantityAvailable : 0;
 
+      const validOpts = variantUoMsMap[targetVarId] || [];
+      const currentUomOpt = validOpts.find((u) => u.uoMId === targetUoMId);
+      const factor = currentUomOpt ? currentUomOpt.conversionFactorToBase : 1;
+      const requiredBaseQty = targetQty * factor;
+
       if (maxAvailable <= 0) {
         setErrors((prev) => ({ ...prev, [`quantity_${id}`]: 'Lô này đã hết tồn kho' }));
-      } else if (targetQty > maxAvailable) {
+      } else if (requiredBaseQty > maxAvailable) {
+        const maxInUoM = factor === 1 ? maxAvailable : Math.floor(maxAvailable / factor);
         setErrors((prev) => ({
           ...prev,
-          [`quantity_${id}`]: `Tối đa ${maxAvailable} (tồn khả dụng)`,
+          [`quantity_${id}`]: `Tối đa ${maxInUoM} (tồn khả dụng)`,
         }));
       } else {
         setErrors((prev) => {
@@ -458,16 +465,26 @@ const InventoryTransferForm: React.FC = () => {
           const batchObj = batches.find((b) => b.batchId === Number(d.batchId));
           const maxAvailable = batchObj ? batchObj.quantityAvailable : 0;
 
-          // Tổng số lượng cho cùng 1 lô (nếu nhiều dòng chọn cùng 1 lô)
-          const totalForBatch = details
+          // Tổng số lượng quy về ĐVT cơ sở cho cùng 1 lô (nếu nhiều dòng chọn cùng 1 lô)
+          const totalBaseForBatch = details
             .filter((x) => x.variantId === d.variantId && x.batchId === d.batchId)
-            .reduce((sum, x) => sum + Number(x.quantity || 0), 0);
+            .reduce((sum, x) => {
+              const xOpts = variantUoMsMap[Number(x.variantId)] || [];
+              const xUom = xOpts.find((u) => u.uoMId === Number(x.uoMId));
+              const xFactor = xUom ? xUom.conversionFactorToBase : 1;
+              return sum + Number(x.quantity || 0) * xFactor;
+            }, 0);
+
+          const dOpts = variantUoMsMap[Number(d.variantId)] || [];
+          const dUom = dOpts.find((u) => u.uoMId === Number(d.uoMId));
+          const dFactor = dUom ? dUom.conversionFactorToBase : 1;
 
           if (maxAvailable <= 0) {
             errs[`quantity_${d.id}`] = 'Lô đã hết tồn';
             hasOverStock = true;
-          } else if (totalForBatch > maxAvailable) {
-            errs[`quantity_${d.id}`] = `Vượt tồn (tối đa ${maxAvailable})`;
+          } else if (totalBaseForBatch > maxAvailable) {
+            const maxInUoM = dFactor === 1 ? maxAvailable : Math.floor(maxAvailable / dFactor);
+            errs[`quantity_${d.id}`] = `Vượt tồn (tối đa ${maxInUoM})`;
             hasOverStock = true;
           }
         }
@@ -597,13 +614,13 @@ const InventoryTransferForm: React.FC = () => {
                     <th className="px-3 py-3.5 min-w-[240px]">
                       Sản phẩm <span className="text-red-500">*</span>
                     </th>
-                    <th className="px-3 py-3.5 w-28 min-w-[90px]">
-                      ĐVT <span className="text-red-500">*</span>
+                    <th className="px-3 py-3.5 w-48 min-w-[170px]">
+                      ĐVT Chuyển <span className="text-red-500">*</span>
                     </th>
                     <th className="px-3 py-3.5 min-w-[340px]">
                       Lô Hàng Tại Kho Nguồn (Batch) <span className="text-red-500">*</span>
                     </th>
-                    <th className="px-3 py-3.5 w-24 text-center bg-amber-50/50 text-amber-900 border-x border-amber-100/70">
+                    <th className="px-3 py-3.5 w-28 text-center bg-amber-50/50 text-amber-900 border-x border-amber-100/70 min-w-[110px]">
                       Số lượng <span className="text-red-500">*</span>
                     </th>
                     <th className="px-3 py-3.5 w-12 text-center">Xóa</th>
@@ -641,13 +658,22 @@ const InventoryTransferForm: React.FC = () => {
                           />
                         </td>
 
-                        {/* Cột 2: Đơn vị tính (Khóa khi đã chọn SKU để chống sai lệch ĐVT giữa các kho) */}
-                        <td className="p-2 w-28">
+                        {/* Cột 2: Đơn vị tính (Nạp các ĐVT hợp lệ theo sản phẩm - Mở khóa tự do) */}
+                        <td className="p-2 w-48 min-w-[170px]">
                           <FormSelect
                             label=""
-                            placeholder="ĐVT"
-                            disabled={Boolean(row.variantId)}
-                            options={row.variantId && variantUoMsMap[Number(row.variantId)] ? variantUoMsMap[Number(row.variantId)] : uoms}
+                            placeholder="Chọn ĐVT..."
+                            disabled={!row.variantId}
+                            options={
+                              row.variantId &&
+                              variantUoMsMap[Number(row.variantId)] &&
+                              variantUoMsMap[Number(row.variantId)].length > 0
+                                ? variantUoMsMap[Number(row.variantId)].map((u) => ({
+                                    value: u.uoMId,
+                                    label: `${u.uoMName} (${u.description})`,
+                                  }))
+                                : uoms
+                            }
                             value={row.uoMId}
                             error={errors[`uoMId_${row.id}`]}
                             onSelect={(val) =>
@@ -686,18 +712,42 @@ const InventoryTransferForm: React.FC = () => {
                               handleDetailChange(row.id, 'batchId', val ? Number(val) : '')
                             }
                           />
-                          {row.batchId && (
-                            <div className="mt-1 text-[11px] font-semibold text-emerald-700 flex items-center justify-between">
-                              <span>Tồn khả dụng lô:</span>
-                              <span className="font-extrabold px-1.5 py-0.5 bg-emerald-50 rounded text-emerald-800 border border-emerald-200/60">
-                                {rowBatches.find((b) => b.batchId === Number(row.batchId))?.quantityAvailable ?? 0}
-                              </span>
-                            </div>
-                          )}
+                          {row.batchId &&
+                            (() => {
+                              const selectedBatch = rowBatches.find(
+                                (b) => b.batchId === Number(row.batchId)
+                              );
+                              const availBase = selectedBatch?.quantityAvailable ?? 0;
+                              const opts = variantUoMsMap[Number(row.variantId)] || [];
+                              const currentUom = opts.find((u) => u.uoMId === Number(row.uoMId));
+                              const baseUom = opts.find((u) => u.isBaseUoM);
+
+                              let equivalentText = '';
+                              if (
+                                currentUom &&
+                                !currentUom.isBaseUoM &&
+                                currentUom.conversionFactorToBase > 0
+                              ) {
+                                const equivQty = (availBase / currentUom.conversionFactorToBase)
+                                  .toFixed(1)
+                                  .replace(/\.0$/, '');
+                                equivalentText = ` (≈ ${equivQty} ${currentUom.uoMName})`;
+                              }
+
+                              return (
+                                <div className="mt-1 text-[11px] font-semibold text-emerald-700 flex items-center justify-between">
+                                  <span>Tồn khả dụng lô:</span>
+                                  <span className="font-extrabold px-1.5 py-0.5 bg-emerald-50 rounded text-emerald-800 border border-emerald-200/60">
+                                    {availBase.toLocaleString('vi-VN')} {baseUom?.uoMName || 'Kg'}
+                                    {equivalentText}
+                                  </span>
+                                </div>
+                              );
+                            })()}
                         </td>
 
-                        {/* Cột 4: Số lượng */}
-                        <td className="p-2 bg-amber-50/20 border-x border-amber-100/50 w-24">
+                        {/* Cột 4: Số lượng & Quy đổi tương đương */}
+                        <td className="p-2 bg-amber-50/20 border-x border-amber-100/50 w-28 min-w-[110px]">
                           <FormInput
                             label=""
                             type="number"
@@ -710,10 +760,28 @@ const InventoryTransferForm: React.FC = () => {
                               handleDetailChange(
                                 row.id,
                                 'quantity',
-                                Math.max(1, parseInt(e.target.value, 10) || 1)
+                                e.target.value === ''
+                                  ? ''
+                                  : Math.max(1, parseInt(e.target.value, 10) || 1)
                               )
                             }
                           />
+                          {(() => {
+                            if (!row.variantId || !row.uoMId) return null;
+                            const opts = variantUoMsMap[Number(row.variantId)] || [];
+                            const currentUom = opts.find((u) => u.uoMId === Number(row.uoMId));
+                            const baseUom = opts.find((u) => u.isBaseUoM);
+                            if (currentUom && !currentUom.isBaseUoM && baseUom && row.quantity) {
+                              const converted =
+                                Number(row.quantity) * currentUom.conversionFactorToBase;
+                              return (
+                                <div className="mt-1 text-center text-[10px] font-bold text-amber-800 bg-amber-100/80 px-1 py-0.5 rounded border border-amber-200/80">
+                                  ≈ {converted.toLocaleString('vi-VN')} {baseUom.uoMName}
+                                </div>
+                              );
+                            }
+                            return null;
+                          })()}
                         </td>
 
                         {/* Cột 5: Xóa */}

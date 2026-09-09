@@ -87,21 +87,18 @@ const InventoryAuditForm: React.FC = () => {
     setTimeout(() => setToast((prev) => ({ ...prev, show: false })), 3000);
   };
 
-  const fetchBatchesForVariant = useCallback(
-    async (whId: number, varId: number) => {
-      if (!whId || !varId) return [];
-      const key = `${whId}_${varId}`;
-      try {
-        const res = await inventoryIssueApi.getSuggestedBatches(whId, varId, 999999);
-        setVariantBatchesMap((prev) => ({ ...prev, [key]: res || [] }));
-        return res || [];
-      } catch {
-        setVariantBatchesMap((prev) => ({ ...prev, [key]: [] }));
-        return [];
-      }
-    },
-    []
-  );
+  const fetchBatchesForVariant = useCallback(async (whId: number, varId: number) => {
+    if (!whId || !varId) return [];
+    const key = `${whId}_${varId}`;
+    try {
+      const res = await inventoryIssueApi.getSuggestedBatches(whId, varId, 999999);
+      setVariantBatchesMap((prev) => ({ ...prev, [key]: res || [] }));
+      return res || [];
+    } catch {
+      setVariantBatchesMap((prev) => ({ ...prev, [key]: [] }));
+      return [];
+    }
+  }, []);
 
   useEffect(() => {
     const loadInitData = async () => {
@@ -375,7 +372,9 @@ const InventoryAuditForm: React.FC = () => {
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {specificItems.map((row, idx) => {
-                      const rowBatches = batches.filter((b) => b.variantId === Number(row.variantId));
+                      const rowBatches = batches.filter(
+                        (b) => b.variantId === Number(row.variantId)
+                      );
                       const suggestedBatches =
                         warehouseId && row.variantId
                           ? variantBatchesMap[`${warehouseId}_${row.variantId}`] || []

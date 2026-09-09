@@ -398,10 +398,9 @@ export const useCartStore = create<CartState>((set, get) => ({
         items: guestItems,
       });
       saveGuestCartToStorage([]);
-      const totalCount = updatedCart.items.reduce(
-        (sum, item) => sum + item.quantity,
-        0,
-      );
+      const totalCount = updatedCart?.items
+        ? updatedCart.items.reduce((sum, item) => sum + item.quantity, 0)
+        : 0;
       set({ cart: updatedCart, guestItems: [], totalCount });
     } catch (error) {
       console.error(

@@ -13,6 +13,8 @@ import OverviewDashboard from './pages/dashboard/OverviewDashboard';
 import SalesGeographyDashboard from './pages/dashboard/SalesGeographyDashboard';
 import InventoryCapacityDashboard from './pages/dashboard/InventoryCapacityDashboard';
 import QualityExpiryDashboard from './pages/dashboard/QualityExpiryDashboard';
+import FinancialPerformanceDashboard from './pages/dashboard/FinancialPerformanceDashboard';
+import PriceVolatilityDashboard from './pages/dashboard/PriceVolatilityDashboard';
 
 // =============================================================================
 // 📦 MODULE 1: IDENTITY & ACCESS MANAGEMENT (IAM)
@@ -133,9 +135,21 @@ function App() {
           <Route path="/" element={<Layout />}>
             {/* 📊 DASHBOARDS & EXECUTIVE REPORTING */}
             <Route index element={<OverviewDashboard />} />
-            <Route path="dashboards/sales" element={<SalesGeographyDashboard />} />
-            <Route path="dashboards/inventory" element={<InventoryCapacityDashboard />} />
-            <Route path="dashboards/quality" element={<QualityExpiryDashboard />} />
+            <Route element={<ProtectedRoute requiredPermission={PERMISSIONS.DASHBOARD.FINANCE} />}>
+              <Route path="dashboards/finance" element={<FinancialPerformanceDashboard />} />
+            </Route>
+            <Route element={<ProtectedRoute requiredPermission={PERMISSIONS.DASHBOARD.PRICE} />}>
+              <Route path="dashboards/price-volatility" element={<PriceVolatilityDashboard />} />
+            </Route>
+            <Route element={<ProtectedRoute requiredPermission={PERMISSIONS.DASHBOARD.SALES} />}>
+              <Route path="dashboards/sales" element={<SalesGeographyDashboard />} />
+            </Route>
+            <Route element={<ProtectedRoute requiredPermission={PERMISSIONS.DASHBOARD.INVENTORY} />}>
+              <Route path="dashboards/inventory" element={<InventoryCapacityDashboard />} />
+            </Route>
+            <Route element={<ProtectedRoute requiredPermission={PERMISSIONS.DASHBOARD.QUALITY} />}>
+              <Route path="dashboards/quality" element={<QualityExpiryDashboard />} />
+            </Route>
 
             {/* 📦 MODULE 1: IAM & PHÂN QUYỀN (RÀNG BUỘC RBAC) */}
             <Route element={<ProtectedRoute requiredPermission={PERMISSIONS.SYSTEM.ROLE_VIEW} />}>
@@ -228,6 +242,8 @@ function App() {
 
             <Route element={<ProtectedRoute requiredPermission={PERMISSIONS.INVENTORY.VIEW} />}>
               <Route path="inventories" element={<InventoryDashboard />} />
+            </Route>
+            <Route element={<ProtectedRoute requiredPermissions={[PERMISSIONS.INVENTORY.RECONCILIATION_VIEW, PERMISSIONS.INVENTORY.VIEW]} />}>
               <Route path="inventory-reconciliation" element={<InventoryReconciliation />} />
             </Route>
 
@@ -286,8 +302,13 @@ function App() {
             </Route>
 
             {/* 📦 MODULE 8: TRANSPORTATION & DISPATCH */}
-            <Route path="transportation/dashboard" element={<TransportationDashboardPage />} />
-            <Route path="transportation/vehicles" element={<VehicleManagementPage />} />
+            <Route element={<ProtectedRoute requiredPermission={PERMISSIONS.TRANSPORTATION.TRIP_VIEW} />}>
+              <Route path="transportation" element={<TransportationDashboardPage />} />
+              <Route path="transportation/dashboard" element={<TransportationDashboardPage />} />
+            </Route>
+            <Route element={<ProtectedRoute requiredPermission={PERMISSIONS.TRANSPORTATION.VEHICLE_VIEW} />}>
+              <Route path="transportation/vehicles" element={<VehicleManagementPage />} />
+            </Route>
 
             {/* 404 Not Found */}
             <Route path="*" element={<h2>404 - Không tìm thấy trang</h2>} />

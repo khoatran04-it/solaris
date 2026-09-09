@@ -171,6 +171,15 @@ namespace backend.DTOs.ShopDTOs
         /// <summary>Lý do hủy đơn (Nếu đơn đã bị hủy).</summary>
         public string? CancellationReason { get; set; }
 
+        /// <summary>Thời điểm giao hàng thành công thực tế.</summary>
+        public DateTime? DeliveredAt { get; set; }
+
+        /// <summary>Đã gửi yêu cầu đổi trả (RMA) hay chưa.</summary>
+        public bool HasReturnRequest { get; set; }
+        public string? ReturnCode { get; set; }
+        public CustomerReturnStatus? ReturnStatus { get; set; }
+        public string? ReturnStatusName { get; set; }
+
         /// <summary>Danh sách các mặt hàng trong đơn.</summary>
         public List<ShopOrderItemDto> Items { get; set; } = new List<ShopOrderItemDto>();
         #endregion
@@ -189,6 +198,13 @@ namespace backend.DTOs.ShopDTOs
         /// Lý do khách hàng muốn hủy.
         /// Dữ liệu cực kỳ quan trọng cho đội Marketing/Operations để phân tích tỷ lệ rớt đơn (Drop-off Rate).
         /// </summary>
+        public required string Reason { get; set; }
+    }
+    #endregion
+
+    #region 5. DTO Khách hàng Từ chối Nhận hàng / Trả hàng khi Shipper giao đến
+    public class ShopOrderRejectRequestDto
+    {
         public required string Reason { get; set; }
     }
     #endregion

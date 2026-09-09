@@ -308,8 +308,8 @@ namespace backend.Services
 
                     // 1. Cập nhật két sắt tồn kho (WarehouseInventory) theo Base UoM
                     var inventory = await _context.WarehouseInventories
-                        .FirstOrDefaultAsync(x => x.WarehouseId == receipt.WarehouseId && 
-                                                  x.VariantId == detail.VariantId && 
+                        .FirstOrDefaultAsync(x => x.WarehouseId == receipt.WarehouseId &&
+                                                  x.VariantId == detail.VariantId &&
                                                   x.BatchId == detail.BatchId);
 
                     if (inventory == null)

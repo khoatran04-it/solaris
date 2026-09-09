@@ -170,7 +170,7 @@ const UoMForm: React.FC = () => {
 
       <FormHeader
         title={isEditMode ? 'Chỉnh Sửa Đơn Vị Tính' : 'Thêm Đơn Vị Tính'}
-        subtitle="Định nghĩa đơn vị và hỗ trợ từ khóa cho AI"
+        subtitle="Định nghĩa đơn vị và từ đồng nghĩa"
         onBack={() => navigate('/uoms')}
         icon={Scale}
       />
@@ -199,15 +199,12 @@ const UoMForm: React.FC = () => {
               />
               <div className="md:col-span-2">
                 <FormTextarea
-                  label="Từ đồng nghĩa (AI Keywords)"
+                  label="Từ đồng nghĩa"
                   placeholder="Cách nhau bằng dấu phẩy. VD: kg, kí, kí lô, kilogram"
                   value={formData.synonyms || ''}
                   rows={2}
                   onChange={(e: any) => handleFieldChange('synonyms', e.target.value)}
                 />
-                <p className="mt-1.5 text-[11px] text-indigo-500 italic font-medium">
-                  * Mẹo: Cung cấp càng nhiều từ đồng nghĩa thì AI Chatbot càng dễ hiểu lệnh của bạn.
-                </p>
               </div>
             </div>
           </FormSection>

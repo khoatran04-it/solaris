@@ -135,7 +135,9 @@ export default async function CategoryPage({
     productSlug = sParams.product;
     for (const g of categories) {
       for (const c of g.categories) {
-        const matchedProd = c.products?.find((p) => p.productSlug === productSlug);
+        const matchedProd = c.products?.find(
+          (p) => p.productSlug === productSlug,
+        );
         if (matchedProd) {
           title = matchedProd.productName;
           if (!matchedGroupName) matchedGroupName = g.groupName;
@@ -163,7 +165,7 @@ export default async function CategoryPage({
     totalRecords: 0,
     totalPages: 0,
     currentPage: 1,
-    pageSize: 12,
+    pageSize: 20,
   };
 
   try {
@@ -171,7 +173,7 @@ export default async function CategoryPage({
   } catch {}
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+    <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
       {/* 1. Header Banner & Breadcrumb */}
       <div className="bg-gradient-to-r from-emerald-800 via-emerald-700 to-teal-800 rounded-3xl p-6 sm:p-8 text-white shadow-lg relative overflow-hidden">
         <div className="absolute right-0 top-0 w-80 h-80 bg-white/5 rounded-full blur-3xl pointer-events-none" />
@@ -238,7 +240,7 @@ export default async function CategoryPage({
         <div className="lg:col-span-3 space-y-8">
           {productsResult.items.length > 0 ? (
             <>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-3.5">
                 {productsResult.items.map((product) => (
                   <ProductCard key={product.id} product={product} />
                 ))}

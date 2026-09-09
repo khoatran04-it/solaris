@@ -15,6 +15,7 @@ import { CustomFilter } from '../../components/commons/CustomFilter';
 import { CustomDateFilter } from '../../components/commons/CustomDateFilter';
 import { Toast } from '../../components/commons/Toast';
 import { ConfirmDeleteModal } from '../../components/modals/ConfirmDeleteModal';
+import { ExportCsvButton } from '../../utils/exportUtils';
 
 import { customerReturnApi } from '../../api/customerReturnApi';
 import { warehouseApi } from '../../api/warehouseApi';
@@ -23,6 +24,9 @@ import {
   CustomerReturnStatus,
   CustomerReturnStatusLabels,
   CustomerReturnStatusColors,
+  CustomerReturnType,
+  CustomerReturnTypeLabels,
+  CustomerReturnTypeColors,
 } from '../../types/customerReturn';
 
 const CustomerReturnList: React.FC = () => {
@@ -158,6 +162,72 @@ const CustomerReturnList: React.FC = () => {
         onAdd={() => navigate('/customer-returns/create')}
         icon={RotateCcw}
         searchPlaceholder="Tìm kiếm theo mã phiếu, mã đơn hàng..."
+        action={
+          <ExportCsvButton
+            filename={`Danh-sach-don-tra-hang_${new Date().toISOString().slice(0, 10)}`}
+            label="Xuất CSV"
+            currentPageData={returns}
+            totalItems={totalItems}
+            filterSnapshots={[
+              { label: 'Từ khóa', value: debouncedSearch },
+              {
+                label: 'Kho tiếp nhận',
+                value: warehouseFilter
+                  .map((id) => warehouseOptions.find((o) => o.value === id)?.label)
+                  .filter(Boolean)
+                  .join(', '),
+              },
+              {
+                label: 'Trạng thái',
+                value:
+                  statusFilter.length > 0
+                    ? CustomerReturnStatusLabels[Number(statusFilter[0]) as CustomerReturnStatus] ||
+                      ''
+                    : '',
+              },
+              {
+                label: 'Từ ngày',
+                value: fromDateFilter ? fromDateFilter.toLocaleDateString('vi-VN') : '',
+              },
+              {
+                label: 'Đến ngày',
+                value: toDateFilter ? toDateFilter.toLocaleDateString('vi-VN') : '',
+              },
+            ]}
+            onFetchAll={async () => {
+              const response = await customerReturnApi.getAll({
+                search: debouncedSearch,
+                pageIndex: 1,
+                pageSize: totalItems || 1000,
+                warehouseId: warehouseFilter.length > 0 ? Number(warehouseFilter[0]) : undefined,
+                status: statusFilter.length > 0 ? Number(statusFilter[0]) : undefined,
+                fromDate: fromDateFilter ? fromDateFilter.toLocaleDateString('en-CA') : undefined,
+                toDate: toDateFilter ? toDateFilter.toLocaleDateString('en-CA') : undefined,
+              });
+              return response.items || [];
+            }}
+            columns={[
+              { header: 'Mã RMA', accessor: (r) => r.returnCode },
+              { header: 'Mã Đơn Gốc', accessor: (r) => r.orderCode },
+              { header: 'Khách Hàng', accessor: (r) => r.customerName },
+              { header: 'Kho Tiếp Nhận', accessor: (r) => r.warehouseName },
+              {
+                header: 'Trạng Thái',
+                accessor: (r) => CustomerReturnStatusLabels[r.status] || r.status,
+              },
+              {
+                header: 'Hình Thức Thu Hồi',
+                accessor: (r) => CustomerReturnTypeLabels[r.returnType] || r.returnType,
+              },
+              { header: 'Tiền Hoàn Trả (VNĐ)', accessor: (r) => r.refundAmount },
+              {
+                header: 'Ngày Lập Phiếu',
+                accessor: (r) =>
+                  r.returnDate ? new Date(r.returnDate).toLocaleDateString('vi-VN') : '',
+              },
+            ]}
+          />
+        }
       />
 
       <ListCard>
@@ -248,7 +318,19 @@ const CustomerReturnList: React.FC = () => {
                     </td>
 
                     {/* CELL 2: MÃ PHIẾU */}
-                    <td className="px-4 py-3.5 font-bold text-indigo-600">{ret.returnCode}</td>
+                    <td className="px-4 py-3.5">
+                      <span className="font-bold text-indigo-600 block">{ret.returnCode}</span>
+                      {ret.returnType && (
+                        <span
+                          className={`inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                            CustomerReturnTypeColors[ret.returnType] ||
+                            'bg-slate-100 text-slate-700 border-slate-200'
+                          }`}
+                        >
+                          {CustomerReturnTypeLabels[ret.returnType] || ret.returnTypeName}
+                        </span>
+                      )}
+                    </td>
 
                     {/* CELL 3: ĐƠN HÀNG GỐC */}
                     <td className="px-4 py-3.5 font-medium text-slate-800">

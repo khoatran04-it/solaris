@@ -5,7 +5,7 @@ namespace backend.DTOs.Validator
 {
     public class ProductCategoryGroupCreateDtoValidator : AbstractValidator<ProductCategoryGroupCreateDto>
     {
-        public ProductCategoryGroupCreateDtoValidator() 
+        public ProductCategoryGroupCreateDtoValidator()
         {
             RuleFor(x => x.Code)
                 .NotEmpty().WithMessage("Mã phân loại không được để trống.")

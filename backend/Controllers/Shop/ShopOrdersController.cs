@@ -176,5 +176,39 @@ namespace backend.Controllers.Shop
                 return BadRequest(new { message = ex.Message });
             }
         }
+
+        /// <summary>
+        /// Khách hàng từ chối nhận hàng khi shipper giao tới cửa (Hàng dập nát, giao trễ, không đúng món...).
+        /// Chuyển trạng thái đơn hàng sang Cancelled (với lý do từ chối), đồng thời cập nhật chuyến xe nội bộ sang Failed/Returning.
+        /// </summary>
+        /// <param name="orderCode">Mã đơn hàng từ chối nhận.</param>
+        /// <param name="request">Lý do từ chối nhận hàng.</param>
+        /// <returns>Dữ liệu đơn hàng sau khi cập nhật.</returns>
+        [HttpPost("{orderCode}/reject-delivery")]
+        [ProducesResponseType(typeof(ShopOrderReadDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        public async Task<ActionResult<ShopOrderReadDto>> RejectDelivery(string orderCode, [FromBody] ShopOrderRejectRequestDto request)
+        {
+            try
+            {
+                int customerId = GetCurrentCustomerId();
+                var order = await _orderService.RejectDeliveryAsync(customerId, orderCode, request.Reason);
+                return Ok(order);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
     }
 }

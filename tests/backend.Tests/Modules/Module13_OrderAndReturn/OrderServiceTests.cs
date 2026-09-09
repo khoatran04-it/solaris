@@ -62,8 +62,9 @@ namespace backend.Tests.Modules.Module13_OrderAndReturn
                 Status = OrderStatus.Confirmed,
                 PaymentStatus = PaymentStatus.Paid,
                 SubTotal = 200000m,
+                DiscountAmount = 10000m,
                 ShippingFee = 30000m,
-                TotalAmount = 230000m,
+                TotalAmount = 220000m,
                 OrderDate = now,
                 CreatedAt = now,
                 UpdatedAt = now,
@@ -168,11 +169,15 @@ namespace backend.Tests.Modules.Module13_OrderAndReturn
             var customer = new Customer { Id = 1, Code = "CUST-001", Name = "Lê Thị B", PhoneNumber = "0987654321", IsActive = true };
             var warehouse = new Warehouse { Id = 1, Code = "WH-01", Name = "Kho Tổng", IsActive = true };
             var uom = new UoM { Id = 1, Code = "KG", Name = "Kilogram", IsActive = true };
-            var variant = new ProductVariant { Id = 10, Code = "SKU-CAM", Name = "Cam Sành", IsActive = true };
+            var category = new ProductCategory { Id = 1, Code = "CAT-FRUIT", Name = "Trái cây", Slug = "trai-cay", IsActive = true };
+            var product = new Product { Id = 1, Code = "PROD-CAM", Name = "Cam Sành", Slug = "cam-sanh", CategoryId = 1, Category = category, BaseUoMId = 1, IsActive = true };
+            var variant = new ProductVariant { Id = 10, Code = "SKU-CAM", Name = "Cam Sành", ProductId = 1, Product = product, IsActive = true };
             var batch = new ProductBatch { Id = 5, BatchCode = "BATCH-CAM-01", VariantId = 10, ExpiryDate = now.AddDays(20) };
 
             context.Customers.Add(customer);
             context.Warehouses.Add(warehouse);
+            context.ProductCategories.Add(category);
+            context.Products.Add(product);
             context.UoMs.Add(uom);
             context.ProductVariants.Add(variant);
             context.ProductBatches.Add(batch);
@@ -192,7 +197,7 @@ namespace backend.Tests.Modules.Module13_OrderAndReturn
                 UpdatedAt = now,
                 Details = new List<OrderDetail>
                 {
-                    new OrderDetail { Id = 1, VariantId = 10, UoMId = 1, Quantity = 5, UnitPrice = 30000m, TotalPrice = 150000m, IssuedQuantity = 5 }
+                    new OrderDetail { Id = 1, OrderId = 100, VariantId = 10, UoMId = 1, Quantity = 5, UnitPrice = 30000m, TotalPrice = 150000m, IssuedQuantity = 5 }
                 }
             };
 

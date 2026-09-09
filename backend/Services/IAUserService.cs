@@ -244,10 +244,24 @@ namespace backend.Services
                 {
                     _context.IAUserRoles.RemoveRange(entity.UserRoles);
                 }
-                if (dto.RoleIds.Any())
+
+                var targetRoleIds = dto.RoleIds?.Distinct().ToList() ?? new List<int>();
+
+                // Bảo vệ tài khoản admin tối cao: Luôn giữ vai trò ADMIN
+                if (entity.Username.Equals("admin", StringComparison.OrdinalIgnoreCase))
+                {
+                    var adminRole = await _context.IARoles.FirstOrDefaultAsync(r => r.Code == "ADMIN");
+                    if (adminRole != null && !targetRoleIds.Contains(adminRole.Id))
+                    {
+                        targetRoleIds.Add(adminRole.Id);
+                    }
+                    entity.IsActive = true;
+                }
+
+                if (targetRoleIds.Any())
                 {
                     _context.IAUserRoles.AddRange(
-                        dto.RoleIds.Distinct().Select(rId => new IAUserRole { UserId = id, RoleId = rId }));
+                        targetRoleIds.Select(rId => new IAUserRole { UserId = id, RoleId = rId }));
                 }
 
                 // 2. Đồng bộ Kho hàng (Warehouses)

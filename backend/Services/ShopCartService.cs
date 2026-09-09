@@ -188,13 +188,15 @@ namespace backend.Services
                         newItem.AddedAt = DateTime.UtcNow;
                         newItem.UpdatedAt = DateTime.UtcNow;
                         cart.Items.Add(newItem);
+                        _context.ShoppingCartItems.Add(newItem);
                     }
                 }
 
                 cart.UpdatedAt = DateTime.UtcNow;
                 await _context.SaveChangesAsync();
 
-                return await BuildCartDtoAsync(cart);
+                // Nạp lại toàn bộ giỏ hàng với đầy đủ Include (Variant, Prices, UoM, Category) để hiển thị chính xác
+                return await GetCartAsync(customerId);
             });
         }
 
@@ -305,10 +307,38 @@ namespace backend.Services
                     UpdatedAt = DateTime.UtcNow
                 };
                 _context.ShoppingCarts.Add(cart);
-                await _context.SaveChangesAsync();
+                try
+                {
+                    await _context.SaveChangesAsync();
+                }
+                catch (DbUpdateException)
+                {
+                    // Xử lý Race Condition: Nếu request song song (ví dụ fetchCart khi chuyển trang) vừa tạo giỏ xong
+                    _context.Entry(cart).State = EntityState.Detached;
+                    cart = await _context.ShoppingCarts
+                        .Include(c => c.Items)
+                            .ThenInclude(i => i.Variant)
+                                .ThenInclude(v => v!.Product)
+                                    .ThenInclude(p => p!.Category)
+                        .Include(c => c.Items)
+                            .ThenInclude(i => i.Variant)
+                                .ThenInclude(v => v!.Prices.Where(pr => pr.IsActive && !pr.IsDeleted))
+                                    .ThenInclude(pr => pr.UoM)
+                        .Include(c => c.Items)
+                            .ThenInclude(i => i.Variant)
+                                .ThenInclude(v => v!.Attributes)
+                                    .ThenInclude(a => a.AttributeDefinition)
+                        .Include(c => c.Items)
+                            .ThenInclude(i => i.Variant)
+                                .ThenInclude(v => v!.PromotionVariants)
+                                    .ThenInclude(pv => pv.PromotionCampaign)
+                        .Include(c => c.Items)
+                            .ThenInclude(i => i.UoM)
+                        .FirstOrDefaultAsync(c => c.CustomerId == customerId);
+                }
             }
 
-            return cart;
+            return cart!;
         }
 
         /// <summary>

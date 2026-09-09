@@ -1,15 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import {
-  RotateCcw,
-  FileText,
-  Package,
-  ShieldCheck,
-  XCircle,
-  CheckCircle,
-  AlertCircle,
-  Loader2,
-} from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 
 import {
   DetailPageContainer,
@@ -29,9 +20,13 @@ import {
   CustomerReturnStatus,
   CustomerReturnStatusLabels,
   CustomerReturnStatusColors,
+  CustomerReturnType,
+  CustomerReturnTypeLabels,
+  CustomerReturnTypeColors,
   CustomerReturnInspectionPayload,
   CustomerReturnItemInspectionPayload,
 } from '../../types/customerReturn';
+import { DocumentPrintModal } from '../../components/commons/DocumentPrintModal';
 
 const CustomerReturnDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -50,6 +45,7 @@ const CustomerReturnDetail: React.FC = () => {
   // Reject Modal
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
+  const [printModalOpen, setPrintModalOpen] = useState(false);
 
   // Toast
   const [toast, setToast] = useState<{
@@ -78,11 +74,18 @@ const CustomerReturnDetail: React.FC = () => {
         setInspectionItems(
           data.details.map((d) => ({
             detailId: d.id,
-            acceptedQuantity: d.acceptedQuantity > 0 ? d.acceptedQuantity : d.returnedQuantity,
+            acceptedQuantity:
+              d.acceptedQuantity > 0 || d.damagedQuantity > 0
+                ? d.acceptedQuantity
+                : d.returnedQuantity,
             damagedQuantity: d.damagedQuantity,
             rejectReason: d.rejectReason || '',
           }))
         );
+      }
+
+      if (data.inspectionNotes) {
+        setInspectionNotes(data.inspectionNotes);
       }
     } catch (error) {
       console.error('Lỗi tải phiếu trả hàng:', error);
@@ -148,20 +151,6 @@ const CustomerReturnDetail: React.FC = () => {
     }
   };
 
-  const handleCompleteReturn = async () => {
-    if (!ret) return;
-    try {
-      setActionLoading(true);
-      await customerReturnApi.complete(ret.id);
-      showToast('success', 'ĐÃ HOÀN TẤT PHIẾU TRẢ HÀNG & HẠCH TOÁN TỒN KHO THÀNH CÔNG!');
-      fetchReturn();
-    } catch (err: any) {
-      showToast('error', err.response?.data?.message || 'Không thể hoàn tất phiếu trả hàng!');
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
   const handleReject = async () => {
     if (!ret || !rejectReason.trim()) return;
     try {
@@ -199,6 +188,11 @@ const CustomerReturnDetail: React.FC = () => {
       </div>
     );
 
+  const isQcCompleted = Boolean(
+    (ret.inspectionNotes && ret.inspectionNotes.trim().length > 0) ||
+    ret.details?.some((d) => (d.acceptedQuantity ?? 0) > 0 || (d.damagedQuantity ?? 0) > 0)
+  );
+
   return (
     <DetailPageContainer>
       <Toast {...toast} />
@@ -211,81 +205,123 @@ const CustomerReturnDetail: React.FC = () => {
           </>
         }
         onBack={() => navigate('/customer-returns')}
-        icon={RotateCcw}
       />
 
       {/* ================= THÀNH CÔNG CỤ (ACTION TOOLBAR) ================= */}
       <div className="flex flex-wrap items-center justify-between gap-3 mb-6 p-4 bg-white border border-slate-200 rounded-xl shadow-sm">
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
+        <div className="flex items-center gap-4 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap">
             <span className="text-[13px] font-bold text-slate-500 uppercase tracking-wide">
               Trạng thái:
             </span>
             <span
-              className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold border shadow-sm ${CustomerReturnStatusColors[ret.status]}`}
+              className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold border shadow-xs ${CustomerReturnStatusColors[ret.status]}`}
             >
               {CustomerReturnStatusLabels[ret.status]}
             </span>
+
+            {/* Badge Hình Thức Thu Hồi - Gọn gàng, chuẩn màu theme, không icon */}
+            {ret.returnType && (
+              <span
+                className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold border shadow-xs ${
+                  CustomerReturnTypeColors[ret.returnType] ||
+                  'bg-slate-100 text-slate-700 border-slate-200'
+                }`}
+              >
+                {CustomerReturnTypeLabels[ret.returnType] || ret.returnTypeName}
+              </span>
+            )}
+
             {ret.status === CustomerReturnStatus.Completed && (
-              <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200 shadow-sm">
+              <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200 shadow-xs">
                 Đã hoàn tiền: {formatCurrency(ret.refundAmount)}
               </span>
             )}
           </div>
 
-          <div className="h-6 w-px bg-slate-200 mx-2 hidden md:block"></div>
+          <div className="h-6 w-px bg-slate-200 mx-1 hidden md:block"></div>
 
-          {/* Nhóm nút theo từng trạng thái */}
-          <div className="flex items-center gap-2">
+          {/* Nhóm nút theo từng trạng thái - 100% Typography No Icon */}
+          <div className="flex items-center flex-wrap gap-2">
             {/* 1. Trạng thái Pending: Nút Duyệt Yêu Cầu */}
             {ret.status === CustomerReturnStatus.Pending && (
               <button
                 onClick={handleApprove}
                 disabled={actionLoading}
-                className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg font-bold text-sm hover:bg-emerald-700 transition-all shadow-sm shadow-emerald-200 disabled:opacity-50"
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs transition-all shadow-xs disabled:opacity-50 cursor-pointer"
               >
-                <CheckCircle size={16} /> Duyệt Yêu Cầu
+                {actionLoading ? 'Đang duyệt...' : 'Duyệt Yêu Cầu'}
               </button>
             )}
 
-            {/* 2. Trạng thái Approved: Nút Kiểm Định QC (khi hàng về kho) */}
+            {/* 2. Trạng thái Approved: Nút Điều Phối Xe Thu Hồi (Chỉ áp dụng đơn thu hồi tại nhà khách) */}
             {ret.status === CustomerReturnStatus.Approved && (
-              <button
-                onClick={() => setQcModalOpen(true)}
-                disabled={actionLoading}
-                className="flex items-center gap-2 px-5 py-2 bg-indigo-600 text-white rounded-lg font-bold text-sm hover:bg-indigo-700 transition-all shadow-sm shadow-indigo-200 disabled:opacity-50"
-              >
-                <ShieldCheck size={16} /> Kiểm Định QC & Nghiệm Thu
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() =>
+                    navigate(`/transportation/dashboard?tab=rma&highlightReturnId=${ret.id}`)
+                  }
+                  className="px-4 py-2 bg-amber-400 hover:bg-amber-500 text-slate-900 rounded-xl font-bold text-xs transition-all shadow-xs cursor-pointer"
+                >
+                  Điều Phối Xe Thu Hồi
+                </button>
+              </div>
             )}
 
-            {/* 3. Trạng thái Inspecting (Đang xử lý sau khi QC): Nút Tạo Phiếu Nhập Kho Thu Hồi + Hoàn tất */}
+            {/* 3. Trạng thái PickingUp: Đang trên đường lấy hàng */}
+            {ret.status === CustomerReturnStatus.PickingUp && (
+              <div className="flex items-center gap-2">
+                <span className="px-3 py-1 bg-indigo-50 border border-indigo-200 text-indigo-800 rounded-full font-bold text-xs">
+                  Tài xế đang đi thu hồi hàng
+                </span>
+                <button
+                  onClick={() => navigate('/transportation/dashboard?tab=rma')}
+                  className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-xs transition-all cursor-pointer"
+                >
+                  Xem Bảng Điều Phối
+                </button>
+              </div>
+            )}
+
+            {/* 4. Trạng thái Inspecting (Xe đã về kho / Thu hồi trực tiếp khi giao): Quy trình tuần tự */}
             {ret.status === CustomerReturnStatus.Inspecting && (
               <>
-                <button
-                  onClick={() => navigate(`/inventory-receipts/create?returnId=${ret.id}`)}
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-bold text-sm hover:bg-blue-700 transition-all shadow-sm shadow-blue-200"
-                >
-                  <Package size={16} /> Tạo Phiếu Nhập Kho Thu Hồi
-                </button>
-
-                <button
-                  onClick={handleCompleteReturn}
-                  disabled={actionLoading}
-                  className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg font-bold text-sm hover:bg-emerald-700 transition-all shadow-sm shadow-emerald-200 disabled:opacity-50"
-                >
-                  <CheckCircle size={16} /> Hoàn Tất Trả Hàng
-                </button>
-
-                <button
-                  onClick={() => setQcModalOpen(true)}
-                  disabled={actionLoading}
-                  className="flex items-center gap-2 px-3 py-2 bg-slate-100 text-slate-700 rounded-lg font-medium text-xs hover:bg-slate-200 transition-all"
-                >
-                  <ShieldCheck size={14} /> Sửa Kết Quả QC
-                </button>
+                {!isQcCompleted ? (
+                  <button
+                    onClick={() => setQcModalOpen(true)}
+                    disabled={actionLoading}
+                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs transition-all shadow-xs disabled:opacity-50 cursor-pointer"
+                  >
+                    Kiểm Định QC & Nghiệm Thu
+                  </button>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => navigate(`/inventory-receipts/create?returnId=${ret.id}`)}
+                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-xs transition-all shadow-xs cursor-pointer"
+                    >
+                      Tạo Phiếu Nhập Kho Thu Hồi
+                    </button>
+                    <button
+                      onClick={() => setQcModalOpen(true)}
+                      disabled={actionLoading}
+                      className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-medium text-xs transition-all cursor-pointer"
+                    >
+                      Kiểm Định Lại QC
+                    </button>
+                  </div>
+                )}
               </>
             )}
+
+            {/* Nút In Biên Bản Tiếp Nhận & Đổi Trả */}
+            <button
+              onClick={() => setPrintModalOpen(true)}
+              className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl font-bold text-xs transition-all shadow-xs cursor-pointer"
+              title="In biên bản tiếp nhận hàng đổi trả và kết quả kiểm định QC"
+            >
+              In Biên Bản Đổi Trả
+            </button>
           </div>
         </div>
 
@@ -296,9 +332,9 @@ const CustomerReturnDetail: React.FC = () => {
           <button
             onClick={() => setRejectModalOpen(true)}
             disabled={actionLoading}
-            className="flex items-center gap-2 px-4 py-2 bg-white text-rose-600 border border-rose-200 rounded-lg font-bold text-sm hover:bg-rose-50 transition-colors shadow-sm"
+            className="px-4 py-2 bg-white text-rose-600 border border-rose-200 rounded-xl font-bold text-xs hover:bg-rose-50 transition-colors shadow-xs cursor-pointer"
           >
-            <XCircle size={16} strokeWidth={2.5} /> Từ Chối Trả Hàng
+            Từ Chối Trả Hàng
           </button>
         )}
       </div>
@@ -308,13 +344,11 @@ const CustomerReturnDetail: React.FC = () => {
         <TabButton
           active={activeTab === 'info'}
           onClick={() => setActiveTab('info')}
-          icon={FileText}
           label="1. THÔNG TIN CHUNG"
         />
         <TabButton
           active={activeTab === 'items'}
           onClick={() => setActiveTab('items')}
-          icon={Package}
           label={`2. CHI TIẾT KIỂM ĐỊNH QC (${ret.details?.length || 0})`}
         />
       </TabGroup>
@@ -345,6 +379,36 @@ const CustomerReturnDetail: React.FC = () => {
                   value={<span className="font-bold text-indigo-700">{ret.warehouseName}</span>}
                 />
                 <InfoField label="Người tiếp nhận / QC" value={ret.receivedByName || '---'} />
+
+                {/* Hình thức thu hồi */}
+                <InfoField
+                  label="Hình thức thu hồi"
+                  value={
+                    ret.returnType ? (
+                      <span
+                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold border ${
+                          CustomerReturnTypeColors[ret.returnType] ||
+                          'bg-slate-100 text-slate-700 border-slate-200'
+                        }`}
+                      >
+                        {CustomerReturnTypeLabels[ret.returnType] || ret.returnTypeName}
+                      </span>
+                    ) : (
+                      '---'
+                    )
+                  }
+                />
+
+                {ret.deliveryTripId && (
+                  <InfoField
+                    label="Chuyến giao hàng"
+                    value={
+                      <span className="font-bold text-indigo-700">
+                        Chuyến xe #{ret.deliveryTripId}
+                      </span>
+                    }
+                  />
+                )}
 
                 <div className="flex flex-col items-start">
                   <span className="text-[11px] font-bold text-slate-400 uppercase mb-1">
@@ -467,17 +531,15 @@ const CustomerReturnDetail: React.FC = () => {
         <div className="fixed inset-0 z-60 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 overflow-y-auto animate-in fade-in">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-4xl overflow-hidden my-8 animate-in zoom-in-95 duration-200">
             <div className="px-6 py-4 border-b border-indigo-100 bg-indigo-50/50 flex items-center justify-between">
-              <h3 className="text-lg font-black text-indigo-900 flex items-center gap-2">
-                <ShieldCheck size={20} className="text-indigo-600" /> Nghiệm Thu Kiểm Định QC
-              </h3>
+              <h3 className="text-lg font-black text-indigo-900">Nghiệm Thu Kiểm Định QC</h3>
               <span className="text-xs font-bold text-slate-500 bg-white px-2.5 py-1 rounded-lg border border-slate-200">
                 Mã: {ret.returnCode}
               </span>
             </div>
             <div className="p-6 max-h-[70vh] overflow-y-auto">
               <p className="text-xs text-slate-600 mb-5 leading-relaxed bg-indigo-50/30 p-3 rounded-xl border border-indigo-100">
-                <strong>Hướng dẫn:</strong> Phân loại số lượng hàng đạt tiêu chuẩn (sẽ cộng lại
-                vào <strong>Tồn kho Khả Dụng</strong>) và số lượng hàng hư hỏng (sẽ cộng vào{' '}
+                <strong>Hướng dẫn:</strong> Phân loại số lượng hàng đạt tiêu chuẩn (sẽ cộng lại vào{' '}
+                <strong>Tồn kho Khả Dụng</strong>) và số lượng hàng hư hỏng (sẽ cộng vào{' '}
                 <strong>Tồn kho Hàng Lỗi/Hỏng</strong>).
               </p>
 
@@ -586,11 +648,7 @@ const CustomerReturnDetail: React.FC = () => {
                 disabled={actionLoading}
                 className="px-5 py-2 bg-indigo-600 text-white rounded-lg text-sm font-bold hover:bg-indigo-700 transition-all disabled:opacity-50 flex items-center gap-2 shadow-sm shadow-indigo-200"
               >
-                {actionLoading ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <CheckCircle size={16} />
-                )}
+                {actionLoading && <Loader2 className="w-4 h-4 animate-spin" />}
                 Lưu Kết Quả Kiểm Định & Chuyển Sang Xử Lý
               </button>
             </div>
@@ -603,9 +661,7 @@ const CustomerReturnDetail: React.FC = () => {
         <div className="fixed inset-0 z-60 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 animate-in fade-in">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
             <div className="px-6 py-4 border-b border-rose-100 bg-rose-50/50">
-              <h3 className="text-lg font-black text-rose-700 flex items-center gap-2">
-                <XCircle size={20} strokeWidth={2.5} /> Từ Chối Nhận Hàng Hoàn Trả
-              </h3>
+              <h3 className="text-lg font-black text-rose-700">Từ Chối Nhận Hàng Hoàn Trả</h3>
             </div>
             <div className="p-6">
               <p className="text-sm text-slate-600 mb-5 leading-relaxed">
@@ -645,12 +701,73 @@ const CustomerReturnDetail: React.FC = () => {
                 disabled={actionLoading || !rejectReason.trim()}
                 className="px-5 py-2 bg-rose-600 text-white rounded-lg text-sm font-bold hover:bg-rose-700 transition-colors disabled:opacity-50 shadow-sm flex items-center gap-2"
               >
-                {actionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                {actionLoading && <Loader2 className="w-4 h-4 animate-spin" />}
                 Xác Nhận Từ Chối
               </button>
             </div>
           </div>
         </div>
+      )}
+
+      {/* ================= MODAL IN BIÊN BẢN ĐỔI TRẢ (REUSABLE COMPONENT) ================= */}
+      {ret && (
+        <DocumentPrintModal
+          isOpen={printModalOpen}
+          onClose={() => setPrintModalOpen(false)}
+          documentTitle="BIÊN BẢN TIẾP NHẬN & KIỂM ĐỊNH ĐỔI TRẢ HÀNG"
+          documentSubtitle="Hệ thống quản lý chất lượng & chuỗi thực phẩm sạch Solaris"
+          documentCode={ret.returnCode}
+          documentDate={ret.returnDate}
+          creatorName={ret.createdByName || 'Bộ phận CSKH'}
+          partyTitle="Khách hàng hoàn trả"
+          partyName={ret.customerName || 'Khách hàng'}
+          partyPhone={ret.customerPhone}
+          partyAddress={ret.pickupAddress}
+          referenceCode={ret.orderCode}
+          notes={
+            ret.reason
+              ? `Lý do trả: ${ret.reason}. Ghi chú QC: ${ret.inspectionNotes || '---'}`
+              : undefined
+          }
+          totalAmount={ret.refundAmount}
+          items={(ret.details || []).map((d: any) => ({
+            skuCode: d.variantCode,
+            productName: d.variantName,
+            batchCode: d.batchCode,
+            uoMName: d.uoMName || 'Kg',
+            quantity: d.returnedQuantity,
+            unitPrice: d.unitPrice,
+            totalPrice: d.refundAmount,
+            qcStatus:
+              d.damagedQuantity > 0
+                ? `Tái nhập: ${d.acceptedQuantity} / Hủy: ${d.damagedQuantity}`
+                : d.acceptedQuantity > 0
+                  ? `Đạt chuẩn (${d.acceptedQuantity})`
+                  : 'Chờ kiểm định',
+          }))}
+          signatures={[
+            {
+              title: 'Người Tiếp Nhận (CSKH)',
+              subtitle: '(Ký, ghi rõ họ tên)',
+              name: ret.createdByName || 'Bộ phận CSKH',
+            },
+            {
+              title: 'Nhân Viên Kiểm Định QC',
+              subtitle: '(Ký xác nhận phân loại)',
+              name: 'Bộ phận KCS / QC',
+            },
+            {
+              title: 'Thủ Kho Nhận Hàng',
+              subtitle: '(Ký xác nhận nhập xô)',
+              name: '........................',
+            },
+            {
+              title: 'Khách Hàng',
+              subtitle: '(Ký xác nhận bàn giao)',
+              name: ret.customerName || '........................',
+            },
+          ]}
+        />
       )}
     </DetailPageContainer>
   );

@@ -4,6 +4,7 @@ import "./globals.css";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import ChatbotWidget from "@/components/chat/ChatbotWidget";
+import LocationModal from "@/components/location/LocationModal";
 
 const jakartaSans = Plus_Jakarta_Sans({
   subsets: ["latin", "vietnamese"],
@@ -56,6 +57,7 @@ export default function RootLayout({
         <main className="flex-1">{children}</main>
         <Footer />
         <ChatbotWidget />
+        <LocationModal />
       </body>
     </html>
   );

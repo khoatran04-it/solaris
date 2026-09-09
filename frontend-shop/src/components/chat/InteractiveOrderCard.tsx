@@ -23,6 +23,7 @@ import { ShopAddress } from "@/types/customer";
 import { formatVND } from "@/lib/utils";
 import shopAiApi from "@/api/shopAiApi";
 import shopCustomerApi from "@/api/shopCustomerApi";
+import { useAuthStore } from "@/stores/authStore";
 
 interface InteractiveOrderCardProps {
   sessionId: number;
@@ -35,6 +36,7 @@ export default function InteractiveOrderCard({
   payload,
   onOrderSuccess,
 }: InteractiveOrderCardProps) {
+  const { isAuthenticated } = useAuthStore();
   const [items, setItems] = useState<InteractiveOrderItem[]>(
     payload.items || [],
   );
@@ -159,8 +161,24 @@ export default function InteractiveOrderCard({
 
   // Confirm & Place Order
   const handleConfirmOrder = async () => {
+    if (!isAuthenticated) {
+      alert(
+        "Vui lòng đăng nhập tài khoản để xác nhận đặt hàng và lưu địa chỉ nhận hàng.",
+      );
+      // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+      window.location.href = "/dang-nhap";
+      return;
+    }
+
     if (items.length === 0) {
       alert("Đơn hàng không có sản phẩm nào.");
+      return;
+    }
+
+    if (payload.isColdChainFeasible === false) {
+      alert(
+        `Không thể đặt hàng: ${payload.coldChainWarning || "Địa chỉ nhận hàng vượt quá bán kính bảo quản lạnh 2-8°C của kho xe lạnh."}\nVui lòng chọn địa chỉ giao hàng gần kho hơn hoặc bỏ các sản phẩm lạnh khỏi đơn hàng.`,
+      );
       return;
     }
 
@@ -213,8 +231,12 @@ export default function InteractiveOrderCard({
         <p className="text-[11px] text-emerald-700">
           Mã đơn: <span className="font-mono font-bold">{orderCode}</span>
         </p>
-        <p className="text-[10px] text-slate-500">
-          Đơn hàng đang được kho Solaris đóng gói để giao nhanh qua GHN Express.
+        <span className="inline-block px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-bold border border-amber-200">
+          Trạng thái: Chờ xử lý
+        </span>
+        <p className="text-[10px] text-slate-600 leading-relaxed">
+          Kho Solaris đang chuẩn bị soạn hàng theo chuẩn FEFO và đóng gói vào xe
+          máy/xe tải thùng lạnh chuyên dụng TMS (2°C - 8°C).
         </p>
       </div>
     );
@@ -241,6 +263,34 @@ export default function InteractiveOrderCard({
           Báo giá động
         </span>
       </div>
+
+      {/* Cold-Chain Radius Feasibility Warning */}
+      {payload.isColdChainFeasible === false && (
+        <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-900 text-[11px] flex items-start gap-2.5">
+          <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+          <div className="space-y-1">
+            <span className="font-bold text-rose-800 text-[11px] uppercase tracking-wide">
+              Cảnh báo khoảng cách chuỗi lạnh (TMS 2°C - 8°C)
+            </span>
+            <p className="text-[10px] leading-relaxed text-rose-700">
+              {payload.coldChainWarning ||
+                "Địa chỉ nhận hàng vượt quá bán kính bảo quản lạnh tối đa của kho xe lạnh."}
+            </p>
+            {payload.ineligibleColdChainItems &&
+              payload.ineligibleColdChainItems.length > 0 && (
+                <div className="text-[10px] text-rose-800 font-semibold bg-white/70 p-1.5 rounded-lg border border-rose-200/60">
+                  Sản phẩm không hỗ trợ giao xa:{" "}
+                  {payload.ineligibleColdChainItems.join(", ")}
+                </div>
+              )}
+            <p className="text-[9.5px] text-rose-600 italic">
+              Lý do: Không đảm bảo dải nhiệt độ mát 2°C - 8°C trong thời gian
+              vận chuyển dẫn đến nguy cơ suy giảm độ tươi ngon. Vui lòng đổi địa
+              chỉ nhận hàng gần kho hơn.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Stock Warning Banner (nếu có) */}
       {payload.stockWarning && (
@@ -269,7 +319,8 @@ export default function InteractiveOrderCard({
           <>
             <Truck className="w-4 h-4 text-emerald-600 shrink-0" />
             <span>
-              Đơn hàng đã đạt <strong>MIỄN PHÍ GIAO HÀNG</strong> qua GHN!
+              Đơn hàng đã đạt{" "}
+              <strong>MIỄN PHÍ VẬN CHUYỂN XE LẠNH TMS (2°C - 8°C)</strong>!
             </span>
           </>
         ) : (
@@ -277,7 +328,7 @@ export default function InteractiveOrderCard({
             <Gift className="w-4 h-4 text-amber-600 shrink-0" />
             <span>
               Thêm <strong>{formatVND(missingForFreeship)}</strong> để được{" "}
-              <strong>FREESHIP</strong>.
+              <strong>FREESHIP XE LẠNH</strong>.
             </span>
           </>
         )}
@@ -472,7 +523,7 @@ export default function InteractiveOrderCard({
       {/* Price Summary & Submit Button */}
       <div className="pt-2 border-t border-slate-100 space-y-2">
         <div className="flex justify-between items-center text-xs">
-          <span className="text-slate-500">Phí ship GHN:</span>
+          <span className="text-slate-500">Phí ship xe lạnh TMS:</span>
           <span className="font-semibold text-slate-800">
             {isFreeShipping ? (
               <span className="text-emerald-600 font-bold">Miễn phí</span>
@@ -494,10 +545,21 @@ export default function InteractiveOrderCard({
           </p>
         )}
 
+        {payload.isColdChainFeasible === false && (
+          <p className="text-[10px] text-rose-700 text-center font-semibold">
+            🚫 Không thể đặt hàng do vượt bán kính vận chuyển xe lạnh 2-8°C.
+          </p>
+        )}
+
         <button
           type="button"
           onClick={handleConfirmOrder}
-          disabled={isSubmitting || items.length === 0 || hasNoAddress}
+          disabled={
+            isSubmitting ||
+            items.length === 0 ||
+            hasNoAddress ||
+            payload.isColdChainFeasible === false
+          }
           className="w-full py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl font-bold text-xs transition-all shadow-md shadow-emerald-600/20 flex items-center justify-center gap-1.5 active:scale-98 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
         >
           <span>

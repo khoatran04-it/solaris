@@ -1,4 +1,4 @@
-﻿// ============================================================
+// ============================================================
 // DASHBOARD TYPES — Solaris Admin
 // ============================================================
 
@@ -169,3 +169,117 @@ export interface DashboardQualityExpiryDto {
 }
 
 export type DashboardPeriod = 'today' | '7days' | '30days' | 'year';
+
+// --- Dashboard 5: Financial & Cash Flow Performance ---
+export interface FinancialTimelinePoint {
+  label: string;
+  revenue: number;
+  cogs: number;
+  grossProfit: number;
+  cashInflow: number;
+  cashOutflow: number;
+}
+
+export interface CashFlowBridgeDto {
+  grossSales: number;
+  onlinePaymentInflow: number;
+  codCollectedInflow: number;
+  codInTransitAmount: number;
+  customerRefundOutflow: number;
+  inboundGoodsReceiptOutflow: number;
+  pendingPoCommitment: number;
+  netOperatingCashFlow: number;
+}
+
+export interface SupplierPayableItem {
+  supplierId: number;
+  supplierName: string;
+  supplierCode: string;
+  totalPoCount: number;
+  totalPoValue: number;
+  receivedValue: number;
+  qcRejectedValue: number;
+  pendingCommitment: number;
+}
+
+export interface CategoryProfitabilityItem {
+  categoryGroupName: string;
+  revenue: number;
+  cogs: number;
+  grossProfit: number;
+  grossMarginPercent: number;
+  quantitySold: number;
+}
+
+export interface ShrinkageLossDto {
+  damagedStockValue: number;
+  expiringStockRiskValue: number;
+  returnRefundLoss: number;
+  totalShrinkageLoss: number;
+}
+
+export interface DashboardFinancialPerformanceDto {
+  grossRevenue: number;
+  customerRefunds: number;
+  netRevenue: number;
+  totalCogs: number;
+  grossProfit: number;
+  grossMarginPercent: number;
+  totalPoValue: number;
+  totalGoodsReceivedValue: number;
+  estimatedNetCashFlow: number;
+  netRevenueGrowthPercent: number;
+  cashFlowBridge: CashFlowBridgeDto;
+  timeline: FinancialTimelinePoint[];
+  supplierPayables: SupplierPayableItem[];
+  categoryProfitability: CategoryProfitabilityItem[];
+  shrinkageLoss: ShrinkageLossDto;
+}
+
+// --- Dashboard 6: Price Volatility & Margin Spread ---
+export type PriceVolatilityTimeframe = 'week' | 'month' | 'year';
+
+export interface SkuSelectItem {
+  variantId: number;
+  variantName: string;
+  variantCode: string;
+  productName: string;
+  baseUoMName: string;
+}
+
+export interface PriceVolatilityPoint {
+  label: string;
+  avgImportPrice: number;
+  avgSellingPrice: number;
+  spread: number;
+  marginPercent: number;
+  isProfit: boolean;
+}
+
+export interface PriceTransactionDetail {
+  date: string;
+  type: string;
+  documentCode: string;
+  partnerName: string;
+  originalUnitPrice: number;
+  originalUoMName: string;
+  normalizedUnitPrice: number;
+  quantityInBaseUoM: number;
+  baseUoMName: string;
+}
+
+export interface DashboardPriceVolatilityDto {
+  variantId: number;
+  variantName: string;
+  variantCode: string;
+  productName: string;
+  baseUoMName: string;
+  latestImportPrice: number;
+  currentSellingPrice: number;
+  priceSpread: number;
+  marginPercent: number;
+  importPriceChangePercent: number;
+  isLossMaking: boolean;
+  timeline: PriceVolatilityPoint[];
+  transactions: PriceTransactionDetail[];
+}

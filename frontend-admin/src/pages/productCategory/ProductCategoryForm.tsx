@@ -195,7 +195,7 @@ const ProductCategoryForm: React.FC = () => {
               <FormInput
                 label="Mã Danh Mục"
                 required
-                placeholder="VD: DIENTHOAI"
+                placeholder="CAT-GRAIN-RICE"
                 value={formData.code}
                 error={errors.code}
                 disabled={loading}
@@ -204,7 +204,7 @@ const ProductCategoryForm: React.FC = () => {
               <FormInput
                 label="Tên Danh Mục"
                 required
-                placeholder="VD: Điện thoại di động"
+                placeholder="Gạo & Hạt Ngũ Cốc Đặc Sản"
                 value={formData.name}
                 error={errors.name}
                 disabled={loading}
@@ -234,8 +234,12 @@ const ProductCategoryForm: React.FC = () => {
                   onChange={(e) => handleFieldChange('requiresColdChain', e.target.checked)}
                   className="w-5 h-5 text-blue-600 rounded border-slate-300 focus:ring-blue-500 cursor-pointer"
                 />
-                <label htmlFor="requiresColdChain" className="text-sm font-semibold text-slate-800 cursor-pointer select-none">
-                  ❄️ Yêu cầu bảo quản chuỗi lạnh (Thịt, cá, hải sản, rau củ tươi sống — Điều phối đội xe lạnh nội bộ, chặn giao GHN thông thường)
+                <label
+                  htmlFor="requiresColdChain"
+                  className="text-sm font-semibold text-slate-800 cursor-pointer select-none"
+                >
+                  Yêu cầu bảo quản lạnh (Thịt, cá, hải sản, rau củ tươi sống — Điều phối đội xe lạnh
+                  nội bộ)
                 </label>
               </div>
             </div>

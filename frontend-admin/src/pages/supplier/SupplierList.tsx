@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Hexagon, Edit3, Trash2, Eye, Building2, Mail, Phone } from 'lucide-react';
 
@@ -24,6 +24,7 @@ import {
   DateTimeCell,
   StatusBadge,
 } from '../../components/commons/ListUI';
+import { ExportCsvButton } from '../../utils/exportUtils';
 
 const SupplierList: React.FC = () => {
   const navigate = useNavigate();
@@ -156,6 +157,76 @@ const SupplierList: React.FC = () => {
         onAdd={() => navigate('/suppliers/create')}
         icon={Hexagon}
         searchPlaceholder="Tìm kiếm theo mã, tên, số điện thoại..."
+        action={
+          <ExportCsvButton
+            filename={`Danh-sach-nha-cung-cap_${new Date().toISOString().slice(0, 10)}`}
+            label="Xuất CSV"
+            currentPageData={data}
+            totalItems={totalItems}
+            filterSnapshots={[
+              { label: 'Từ khóa', value: debouncedSearch },
+              {
+                label: 'Phân loại',
+                value: typeFilter
+                  .map((id) => typeOptions.find((o) => o.value === id)?.label)
+                  .filter(Boolean)
+                  .join(', '),
+              },
+              {
+                label: 'Trạng thái',
+                value:
+                  statusFilter.length === 1
+                    ? statusFilter[0] === 1
+                      ? 'Hoạt động'
+                      : 'Ngừng hoạt động'
+                    : '',
+              },
+              {
+                label: 'Ngày tạo',
+                value: createdAtFilter ? createdAtFilter.toLocaleDateString('vi-VN') : '',
+              },
+              {
+                label: 'Ngày sửa',
+                value: updatedAtFilter ? updatedAtFilter.toLocaleDateString('vi-VN') : '',
+              },
+            ]}
+            onFetchAll={async () => {
+              const isActiveParam = statusFilter.length === 1 ? statusFilter[0] === 1 : undefined;
+              const response = await supplierApi.getAll({
+                search: debouncedSearch,
+                pageIndex: 1,
+                pageSize: totalItems || 1000,
+                supplierTypeIds: typeFilter.length > 0 ? typeFilter.join(',') : undefined,
+                isActive: isActiveParam,
+                createdAt: createdAtFilter
+                  ? createdAtFilter.toLocaleDateString('en-CA')
+                  : undefined,
+                updatedAt: updatedAtFilter
+                  ? updatedAtFilter.toLocaleDateString('en-CA')
+                  : undefined,
+              });
+              return response.items || [];
+            }}
+            columns={[
+              { header: 'Mã NCC', accessor: (s) => s.code },
+              { header: 'Tên Đối Tác', accessor: (s) => s.name },
+              { header: 'Phân Loại', accessor: (s) => s.supplierTypeName || '' },
+              { header: 'Mã Số Thuế', accessor: (s) => s.taxCode || '' },
+              { header: 'Số Điện Thoại', accessor: (s) => s.phone || '' },
+              { header: 'Email', accessor: (s) => s.email || '' },
+              { header: 'Địa Chỉ', accessor: (s) => s.address || '' },
+              {
+                header: 'Trạng Thái',
+                accessor: (s) => (s.isActive ? 'Hoạt động' : 'Ngừng hoạt động'),
+              },
+              {
+                header: 'Ngày Hợp Tác',
+                accessor: (s) =>
+                  s.createdAt ? new Date(s.createdAt).toLocaleDateString('vi-VN') : '',
+              },
+            ]}
+          />
+        }
       />
 
       <ListCard>

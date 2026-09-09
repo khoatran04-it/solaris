@@ -300,7 +300,7 @@ describe("Module 15 - ChatbotWidget Component (UI Testing in RAM)", () => {
     });
   });
 
-  it("TC07 - Hiển thị màn hình khóa Member Lock khi chưa đăng nhập và không gọi API sessions", async () => {
+  it("TC07 - Cho phép khách vãng lai (chưa đăng nhập) mở khung chat tư vấn và tải phiên chat của guest", async () => {
     useAuthStore.setState({
       isAuthenticated: false,
       user: null,
@@ -313,22 +313,13 @@ describe("Module 15 - ChatbotWidget Component (UI Testing in RAM)", () => {
     fireEvent.click(openBtn);
 
     await waitFor(() => {
-      expect(screen.getByText("Dành Riêng Cho Thành Viên")).toBeInTheDocument();
+      expect(screen.getByText(/Solaris AI xin chào bạn/i)).toBeInTheDocument();
       expect(
-        screen.getByText("Đăng Nhập Để Trò Chuyện Với AI"),
-      ).toBeInTheDocument();
-      expect(
-        screen.getByRole("link", { name: /Đăng nhập ngay/i }),
-      ).toBeInTheDocument();
-      expect(
-        screen.getByRole("link", { name: /Chưa có tài khoản\? Đăng ký/i }),
+        screen.getByPlaceholderText(/Hỏi AI hoặc gõ/i),
       ).toBeInTheDocument();
     });
 
-    // Không hiển thị input chat và không gọi API sessions
-    expect(
-      screen.queryByPlaceholderText(/Hỏi AI hoặc gõ/i),
-    ).not.toBeInTheDocument();
-    expect(shopAiApi.getSessions).not.toHaveBeenCalled();
+    // Khách vãng lai vẫn được đồng bộ phiên chat qua guest session token
+    expect(shopAiApi.getSessions).toHaveBeenCalled();
   });
 });

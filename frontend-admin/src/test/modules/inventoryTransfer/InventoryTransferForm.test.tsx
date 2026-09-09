@@ -74,7 +74,9 @@ describe('Module 10 - InventoryTransferForm Component', () => {
     { id: 1, name: 'Tổng Kho Hà Nội' },
     { id: 2, name: 'Kho Nam Sài Gòn' },
   ];
-  const mockVariants = [{ id: 1, name: 'Dâu Tây Đà Lạt Hộp 500g', code: 'SKU-DAUTAY-500G', baseUoMId: 1 }];
+  const mockVariants = [
+    { id: 1, name: 'Dâu Tây Đà Lạt Hộp 500g', code: 'SKU-DAUTAY-500G', baseUoMId: 1 },
+  ];
   const mockUoms = [{ id: 1, name: 'Hộp 500g' }];
   const mockBatches = [
     { batchId: 1, batchCode: 'BATCH-2026-001', expiryDate: '2026-12-31', quantityAvailable: 100 },

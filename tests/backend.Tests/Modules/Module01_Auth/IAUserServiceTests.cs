@@ -1,4 +1,4 @@
-﻿using backend.DTOs.AuthDTOs;
+using backend.DTOs.AuthDTOs;
 using backend.Models;
 using backend.Services;
 using backend.Tests.Common;
@@ -346,6 +346,52 @@ namespace backend.Tests.Modules.Module01_Auth
             var act = async () => await userService.ToggleActiveAsync(1);
             await act.Should().ThrowAsync<InvalidOperationException>()
                 .WithMessage("*Không thể tạm khóa tài khoản quản trị viên tối cao*");
+        }
+
+        [Fact(DisplayName = "TC10 - Khi cập nhật tài khoản admin, vai trò ADMIN luôn được bảo toàn trong RoleIds")]
+        public async Task UpdateAsync_AdminUser_ShouldAlwaysRetainAdminRole()
+        {
+            // Arrange
+            using var context = TestFactories.CreateInMemoryDbContext();
+            var mapper = TestFactories.CreateAutoMapper();
+
+            var adminRole = new IARole { Id = 1, Code = "ADMIN", Name = "Quản trị viên" };
+            var staffRole = new IARole { Id = 2, Code = "STAFF", Name = "Nhân viên" };
+            context.IARoles.AddRange(adminRole, staffRole);
+
+            var user = new IAUser
+            {
+                Id = 1,
+                Username = "admin",
+                FullName = "Quản trị viên tối cao",
+                Email = "admin@solaris.vn",
+                PhoneNumber = "0900000000",
+                CitizenId = "000000000001",
+                PasswordHash = "hash",
+                IsActive = true
+            };
+            context.IAUsers.Add(user);
+            await context.SaveChangesAsync();
+
+            var userService = new IAUserService(context, mapper);
+
+            // Act: Cố tình cập nhật chỉ gán vai trò STAFF (Id = 2), bỏ sót vai trò ADMIN (Id = 1)
+            var updateDto = new IAUserUpdateDto
+            {
+                FullName = "Quản trị viên hệ thống",
+                Email = "admin_updated@solaris.vn",
+                PhoneNumber = "0900000000",
+                CitizenId = "000000000001",
+                IsActive = true,
+                RoleIds = new List<int> { 2 }
+            };
+            var result = await userService.UpdateAsync(1, updateDto);
+
+            // Assert: Tài khoản admin vẫn phải có vai trò ADMIN (Id = 1) bên cạnh các vai trò khác
+            result.Should().BeTrue();
+            var updatedUser = await userService.GetByIdAsync(1);
+            updatedUser.RoleIds.Should().Contain(1);
+            updatedUser.RoleIds.Should().Contain(2);
         }
         #endregion
     }

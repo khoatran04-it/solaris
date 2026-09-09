@@ -1,4 +1,4 @@
-﻿import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
@@ -91,15 +91,12 @@ describe('Module 10 - InventoryTransferDetail Component', () => {
     expect(await screen.findByText('TRF-20260830-001')).toBeInTheDocument();
     expect(screen.getByText('Tổng Kho Hà Nội')).toBeInTheDocument();
     expect(screen.getByText('Kho Nam Sài Gòn')).toBeInTheDocument();
-    expect(
-      screen.getByRole('button', { name: /Xuất Hàng Đi \(In-Transit\)/i })
-    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Gửi Yêu Cầu Điều Phối Xe/i })).toBeInTheDocument();
   });
 
-  // TC02: BƯỚC 1 - XUẤT HÀNG ĐI (DISPATCH)
-  it('TC02 - Bấm nút Xuất hàng đi gọi API dispatch để chuyển sang trạng thái InTransit', async () => {
+  // TC02: BƯỚC 1 - GỬI YÊU CẦU ĐIỀU PHỐI XE SANG MODULE VẬN TẢI
+  it('TC02 - Bấm nút Gửi Yêu Cầu Điều Phối Xe hiển thị thông báo chuyển hướng sang Module Vận Tải', async () => {
     (inventoryTransferApi.getById as any).mockResolvedValue(mockDraftTransfer);
-    (inventoryTransferApi.dispatch as any).mockResolvedValue(undefined);
 
     render(
       <MemoryRouter initialEntries={['/inventory-transfers/1']}>
@@ -113,11 +110,11 @@ describe('Module 10 - InventoryTransferDetail Component', () => {
       expect(screen.getByText('TRF-20260830-001')).toBeInTheDocument();
     });
 
-    const dispatchBtn = screen.getByRole('button', { name: /Xuất Hàng Đi \(In-Transit\)/i });
+    const dispatchBtn = screen.getByRole('button', { name: /Gửi Yêu Cầu Điều Phối Xe/i });
     fireEvent.click(dispatchBtn);
 
     await waitFor(() => {
-      expect(inventoryTransferApi.dispatch).toHaveBeenCalledWith(1);
+      expect(screen.getByText(/Đã ghi nhận yêu cầu điều phối xe/i)).toBeInTheDocument();
     });
   });
 

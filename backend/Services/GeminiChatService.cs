@@ -235,8 +235,10 @@ namespace backend.Services
                 string payloadJson = string.Empty;
 
                 // A. Tra cứu đơn hàng (Order Tracking)
-                var orderCodeMatch = System.Text.RegularExpressions.Regex.Match(userText, @"ORD-\d{8}-\d+", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-                if (orderCodeMatch.Success || lowerText.Contains("kiểm tra đơn") || lowerText.Contains("tra cứu đơn") || lowerText.Contains("đơn hàng của tôi") || lowerText.Contains("tình trạng đơn"))
+                var orderCodeMatch = System.Text.RegularExpressions.Regex.Match(userText, @"ORD-[A-Za-z0-9\-]+", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                if (orderCodeMatch.Success || lowerText.Contains("kiểm tra đơn") || lowerText.Contains("tra cứu đơn") ||
+                    lowerText.Contains("đơn hàng của tôi") || lowerText.Contains("tình trạng đơn") || lowerText.Contains("đơn của tôi") ||
+                    lowerText.Contains("đơn hàng ở đâu") || lowerText.Contains("thanh toán thành công") || lowerText.Contains("vừa thanh toán"))
                 {
                     string? specificCode = orderCodeMatch.Success ? orderCodeMatch.Value.ToUpper() : null;
                     var orderDto = await LookupOrderAsync(specificCode, session.CustomerId ?? customerId);
@@ -259,9 +261,9 @@ namespace backend.Services
                     }
                 }
                 // C. Lên đơn mua hàng trực tiếp (Direct Conversational Order)
-                else if (lowerText.Contains("lên đơn") || lowerText.Contains("chốt đơn") || lowerText.Contains("tôi muốn mua") || lowerText.Contains("đặt mua") || 
+                else if (lowerText.Contains("lên đơn") || lowerText.Contains("chốt đơn") || lowerText.Contains("tôi muốn mua") || lowerText.Contains("đặt mua") ||
                          lowerText.Contains("đặt hàng") || lowerText.Contains("xác nhận đặt") || lowerText.Contains("xác nhận đơn") || lowerText.Contains("chốt mua") ||
-                         lowerText.Contains("mua hàng") || lowerText.Contains("tạo đơn") || lowerText.StartsWith("mua ") || lowerText.Contains(" mua ") || 
+                         lowerText.Contains("mua hàng") || lowerText.Contains("tạo đơn") || lowerText.StartsWith("mua ") || lowerText.Contains(" mua ") ||
                          lowerText.Contains("lấy cho tôi") || lowerText.Contains("cho tôi ") || lowerText.Contains("lấy 1") || lowerText.Contains("lấy 2") ||
                          lowerText.Contains("đặt 1") || lowerText.Contains("đặt 2") || lowerText.Contains("lấy một") || lowerText.Contains("đặt một"))
                 {
@@ -458,6 +460,64 @@ namespace backend.Services
                     throw new ArgumentException("Bạn chưa cập nhật địa chỉ nhận hàng. Vui lòng cập nhật địa chỉ trong sổ địa chỉ trước khi xác nhận đơn hàng.");
                 }
 
+                // Kiểm tra rào chắn khoảng cách chuỗi lạnh nếu đơn có sản phẩm tươi sống
+                var orderedVariantIds = orderDetails.Select(d => d.VariantId).ToList();
+                var coldVariantsInOrder = await _context.ProductVariants
+                    .Include(v => v.Product)
+                        .ThenInclude(p => p!.Category)
+                            .ThenInclude(c => c!.CategoryGroup)
+                    .Where(v => orderedVariantIds.Contains(v.Id))
+                    .ToListAsync();
+
+                var coldItemNames = coldVariantsInOrder.Where(v =>
+                    v.Product?.Category?.RequiresColdChain == true ||
+                    (v.Product?.Category?.CategoryGroup?.Code == "FRESH_PRODUCE") ||
+                    (v.Product?.Category?.Name?.ToLower().Contains("tươi") == true) ||
+                    (v.Product?.Category?.Name?.ToLower().Contains("thịt") == true) ||
+                    (v.Product?.Category?.Name?.ToLower().Contains("cá") == true)
+                ).Select(v => v.Name).ToList();
+
+                if (coldItemNames.Count > 0)
+                {
+                    var targetWh = await _context.Warehouses
+                        .Include(w => w.Address)
+                        .FirstOrDefaultAsync(w => w.IsActive && !w.IsDeleted && w.Address != null);
+
+                    if (targetWh?.Address != null)
+                    {
+                        CustomerAddress? currentCustAddr = null;
+                        if (request.CustomerAddressId.HasValue && request.CustomerAddressId.Value > 0)
+                        {
+                            currentCustAddr = await _context.CustomerAddresses.FirstOrDefaultAsync(a => a.Id == request.CustomerAddressId.Value);
+                        }
+                        else
+                        {
+                            currentCustAddr = await _context.CustomerAddresses.FirstOrDefaultAsync(a => a.CustomerId == validCustomerId && a.IsDefault && !a.IsDeleted)
+                                ?? await _context.CustomerAddresses.FirstOrDefaultAsync(a => a.CustomerId == validCustomerId && !a.IsDeleted);
+                        }
+
+                        double dist = 0;
+                        if (currentCustAddr != null && currentCustAddr.Latitude != 0 && currentCustAddr.Longitude != 0 &&
+                            targetWh.Address.Latitude != 0 && targetWh.Address.Longitude != 0)
+                        {
+                            var distService = new DistanceService();
+                            dist = distService.CalculateDistanceKm(currentCustAddr.Latitude, currentCustAddr.Longitude, targetWh.Address.Latitude, targetWh.Address.Longitude);
+                        }
+                        else if (currentCustAddr != null && !string.IsNullOrEmpty(currentCustAddr.Province) && !string.IsNullOrEmpty(targetWh.Address.Province))
+                        {
+                            bool sameProv = currentCustAddr.Province.Trim().ToLower().Contains(targetWh.Address.Province.Trim().ToLower()) ||
+                                            targetWh.Address.Province.Trim().ToLower().Contains(currentCustAddr.Province.Trim().ToLower());
+                            dist = sameProv ? 8.0 : 100.0;
+                        }
+
+                        double maxRad = targetWh.MaxColdChainRadiusKm > 0 ? targetWh.MaxColdChainRadiusKm : 15.0;
+                        if (dist > maxRad)
+                        {
+                            throw new InvalidOperationException($"Khoảng cách giao hàng ({dist:F1} km) vượt quá bán kính phục vụ xe thùng lạnh tối đa ({maxRad} km) của kho {targetWh.Name}. Các sản phẩm tươi sống sau không thể đảm bảo dải nhiệt độ mát 2°C - 8°C: {string.Join(", ", coldItemNames)}. Quý khách vui lòng chọn địa chỉ nhận hàng gần hơn hoặc loại bỏ các sản phẩm tươi sống này để đặt hàng.");
+                        }
+                    }
+                }
+
                 // Tính phí ship (Freeship 100% nếu net subtotal >= 300k)
                 decimal netSubTotal = subTotal - totalDiscount;
                 decimal shippingFee = netSubTotal >= 300000 ? 0 : (request.ShippingFee > 0 ? request.ShippingFee : 25000);
@@ -472,7 +532,7 @@ namespace backend.Services
                     DeliveryAddress = deliveryAddress,
                     GhnDistrictId = request.GhnDistrictId ?? 1442,
                     GhnWardCode = request.GhnWardCode ?? "20101",
-                    ShippingProvider = "GHN",
+                    ShippingProvider = coldItemNames.Count > 0 ? "Solaris Cold-Chain Express (TMS)" : "Solaris Express",
                     OrderDate = now,
                     Status = OrderStatus.Confirmed,
                     PaymentStatus = PaymentStatus.Unpaid,
@@ -510,19 +570,34 @@ namespace backend.Services
                     }
                 }
 
+                string shipFreeText = order.ShippingFee == 0 ? " (Áp dụng Freeship 100% xe thùng lạnh)" : $" (Phí ship xe lạnh: {order.ShippingFee:N0} ₫)";
+                string payMethodText = order.PaymentMethod == PaymentMethod.COD ? "Thanh toán khi nhận hàng (COD)" : "Cổng VNPay Sandbox";
+
+                string successMsgContent = order.PaymentMethod == PaymentMethod.COD
+                    ? $"🎉 **Đặt hàng thành công!**\n\n" +
+                      $"Mã đơn hàng: **`{order.OrderCode}`**\n" +
+                      $"Tổng thanh toán: **{totalAmount:N0} ₫**{shipFreeText}\n" +
+                      $"Hình thức: **{payMethodText}**\n\n" +
+                      $"Đơn hàng đã được đặt hàng thành công, trạng thái: **Chờ xử lý**. Bộ phận kho Solaris sẽ soạn hàng theo nguyên tắc FEFO và đóng gói vào xe máy thùng lạnh chuyên dụng TMS (duy trì 2°C - 8°C) để giao tới bạn sớm nhất!"
+                    : $"🎉 **Lên đơn hàng thành công!**\n\n" +
+                      $"Mã đơn hàng: **`{order.OrderCode}`**\n" +
+                      $"Tổng thanh toán: **{totalAmount:N0} ₫**{shipFreeText}\n" +
+                      $"Hình thức: **{payMethodText}**\n\n" +
+                      $"Hệ thống đang chuyển hướng bạn sang cổng VNPay Sandbox để thanh toán. Sau khi thanh toán thành công, đơn hàng sẽ chuyển sang trạng thái **Chờ xử lý** để kho tiến hành soạn hàng theo chuẩn FEFO và giao xe lạnh TMS tới bạn!";
+
                 // Gửi tin nhắn xác nhận vào ChatSession
                 var successMsg = new ChatMessage
                 {
                     SessionId = request.SessionId,
                     Role = "model",
-                    Content = $"🎉 **Lên đơn hàng thành công!**\n\nMã đơn hàng của bạn là: **`{order.OrderCode}`**\nTổng thanh toán: **{totalAmount:N0} ₫** (Đã áp dụng Freeship 100%).\n\nĐơn hàng đã được chuyển sang bộ phận kho để chuẩn bị và bàn giao bưu tá GHN Express.",
+                    Content = successMsgContent,
                     PayloadType = "order_success",
                     PayloadJson = JsonSerializer.Serialize(new
                     {
                         orderId = order.Id,
                         orderCode = order.OrderCode,
                         totalAmount = order.TotalAmount,
-                        paymentMethodName = order.PaymentMethod == PaymentMethod.COD ? "Thanh toán khi nhận (COD)" : "Cổng VNPay Sandbox",
+                        paymentMethodName = payMethodText,
                         paymentUrl = paymentUrl
                     }),
                     CreatedAt = DateTime.UtcNow
@@ -643,31 +718,89 @@ namespace backend.Services
 
         private async Task<AiOrderTrackingDto?> LookupOrderAsync(string? orderCode, int? customerId)
         {
-            if (!customerId.HasValue || customerId.Value <= 0)
-            {
-                return null;
-            }
-
             var query = _context.Orders
                 .Include(o => o.Details)
                     .ThenInclude(d => d.Variant)
                 .Include(o => o.Details)
                     .ThenInclude(d => d.UoM)
-                .Where(o => !o.IsDeleted && o.CustomerId == customerId.Value);
+                .Include(o => o.DeliveryTrip)
+                    .ThenInclude(t => t!.Vehicle)
+                .Where(o => !o.IsDeleted);
 
             if (!string.IsNullOrEmpty(orderCode))
             {
                 query = query.Where(o => o.OrderCode.ToUpper() == orderCode.ToUpper());
             }
+            else if (customerId.HasValue && customerId.Value > 0)
+            {
+                query = query.Where(o => o.CustomerId == customerId.Value)
+                             .OrderByDescending(o => o.OrderDate);
+            }
             else
             {
-                query = query.OrderByDescending(o => o.OrderDate);
+                return null;
             }
 
             var order = await query.FirstOrDefaultAsync();
             if (order == null) return null;
 
-            return _mapper.Map<AiOrderTrackingDto>(order);
+            var dto = _mapper.Map<AiOrderTrackingDto>(order);
+
+            // Chi tiết Chuyến xe TMS & Phương tiện giao hàng
+            if (order.DeliveryTrip != null)
+            {
+                dto.DeliveryTripCode = order.DeliveryTrip.TripCode;
+                dto.LicensePlate = order.DeliveryTrip.LicensePlate;
+                dto.DriverName = order.DeliveryTrip.DriverName;
+                dto.DriverPhone = order.DeliveryTrip.DriverPhone;
+                dto.TripStatus = order.DeliveryTrip.Status;
+                dto.TripStatusName = order.DeliveryTrip.Status switch
+                {
+                    "Preparing" => "Chuẩn bị / Xếp hàng",
+                    "InTransit" => "Đang đi đường",
+                    "Completed" => "Đã hoàn tất",
+                    "Cancelled" => "Đã hủy",
+                    _ => order.DeliveryTrip.Status
+                };
+                dto.StartedAt = order.DeliveryTrip.StartedAt;
+                if (order.DeliveryTrip.Vehicle != null)
+                {
+                    dto.VehicleType = order.DeliveryTrip.Vehicle.VehicleType == "Motorbike" ? "Xe máy thùng lạnh" : "Xe tải lạnh";
+                    dto.IsColdChainVehicle = order.DeliveryTrip.Vehicle.IsColdChainEquipped;
+                }
+            }
+
+            // Lý do hủy / kho từ chối nếu đơn ở trạng thái Cancelled
+            if (order.Status == OrderStatus.Cancelled)
+            {
+                dto.CancellationReason = !string.IsNullOrEmpty(order.CancellationReason)
+                    ? order.CancellationReason
+                    : "Kho hàng đơn phương từ chối / hủy đơn do sản phẩm tươi sống không đạt kiểm định FEFO hoặc địa chỉ ngoài bán kính giao xe lạnh.";
+            }
+
+            // Tra cứu yêu cầu Đổi trả hàng (RMA - CustomerReturn) nếu có
+            var rma = await _context.CustomerReturns
+                .Where(r => r.OrderId == order.Id && !r.IsDeleted)
+                .OrderByDescending(r => r.CreatedAt)
+                .FirstOrDefaultAsync();
+
+            if (rma != null)
+            {
+                dto.ReturnCode = rma.ReturnCode;
+                dto.ReturnStatus = rma.Status switch
+                {
+                    CustomerReturnStatus.Pending => "Chờ tiếp nhận yêu cầu",
+                    CustomerReturnStatus.Approved => "Đã duyệt yêu cầu",
+                    CustomerReturnStatus.PickingUp => "Tài xế đang đi thu hồi",
+                    CustomerReturnStatus.Inspecting => "Đang kiểm định chất lượng QC",
+                    CustomerReturnStatus.Completed => "Hoàn tất & Hoàn tiền",
+                    CustomerReturnStatus.Rejected => "Từ chối trả hàng",
+                    _ => rma.Status.ToString()
+                };
+                dto.RefundAmount = rma.RefundAmount;
+            }
+
+            return dto;
         }
 
         private async Task<InteractiveOrderPayloadDto?> PrepareDirectOrderPayloadAsync(int sessionId, string userText, int? customerId)
@@ -684,7 +817,7 @@ namespace backend.Services
 
             // Lọc rõ ràng chỉ các sản phẩm thực sự được nhắc đến trong câu chat của người dùng
             string lowerUserText = userText.ToLower();
-            var explicitMatches = products.Where(p => 
+            var explicitMatches = products.Where(p =>
             {
                 string pName = p.Name.ToLower();
                 string pProdName = (p.ProductName ?? string.Empty).ToLower();
@@ -707,9 +840,9 @@ namespace backend.Services
 
                 foreach (var grp in groupedByProduct)
                 {
-                    var matchedVariants = grp.Where(p => 
-                        !string.IsNullOrEmpty(p.VariantName) && 
-                        p.VariantName.Trim().ToLower() != (p.ProductName ?? string.Empty).Trim().ToLower() && 
+                    var matchedVariants = grp.Where(p =>
+                        !string.IsNullOrEmpty(p.VariantName) &&
+                        p.VariantName.Trim().ToLower() != (p.ProductName ?? string.Empty).Trim().ToLower() &&
                         lowerUserText.Contains(p.VariantName.ToLower())).ToList();
 
                     if (matchedVariants.Count > 0)
@@ -748,24 +881,24 @@ namespace backend.Services
                             var prevUserMsg = recentMessages.FirstOrDefault(m => m.Role == "user" && m.Id != recentMessages.FirstOrDefault()?.Id);
                             string contextSearch = (prevUserMsg?.Content ?? string.Empty).ToLower();
 
-                            var matchedFromContext = cachedCards.Where(c => 
-                                (!string.IsNullOrEmpty(c.Name) && contextSearch.Contains(c.Name.ToLower())) || 
-                                (!string.IsNullOrEmpty(c.ProductName) && contextSearch.Contains(c.ProductName.ToLower())) || 
-                                (!string.IsNullOrEmpty(c.VariantName) && contextSearch.Contains(c.VariantName.ToLower())) || 
+                            var matchedFromContext = cachedCards.Where(c =>
+                                (!string.IsNullOrEmpty(c.Name) && contextSearch.Contains(c.Name.ToLower())) ||
+                                (!string.IsNullOrEmpty(c.ProductName) && contextSearch.Contains(c.ProductName.ToLower())) ||
+                                (!string.IsNullOrEmpty(c.VariantName) && contextSearch.Contains(c.VariantName.ToLower())) ||
                                 (!string.IsNullOrEmpty(c.Slug) && contextSearch.Contains(c.Slug.Replace("-", " "))) ||
                                 (c.Name.ToLower().Contains("sầu riêng") && contextSearch.Contains("sầu riêng")) ||
                                 (c.Name.ToLower().Contains("bơ") && (contextSearch.Contains("bơ") || contextSearch.Contains("034")))
                             ).ToList();
 
                             // Ưu tiên khớp biến thể cụ thể nếu câu chat nhắc đến VariantName
-                            var variantMatch = matchedFromContext.FirstOrDefault(c => 
+                            var variantMatch = matchedFromContext.FirstOrDefault(c =>
                                 !string.IsNullOrEmpty(c.VariantName) && contextSearch.Contains(c.VariantName.ToLower()));
 
                             // Chỉ chọn đúng 1 sản phẩm liên quan từ ngữ cảnh gần nhất, không gom hàng loạt
-                            products = variantMatch != null 
+                            products = variantMatch != null
                                 ? new List<AiProductCardDto> { variantMatch }
-                                : (matchedFromContext.Count > 0 
-                                    ? new List<AiProductCardDto> { matchedFromContext.First() } 
+                                : (matchedFromContext.Count > 0
+                                    ? new List<AiProductCardDto> { matchedFromContext.First() }
                                     : new List<AiProductCardDto> { cachedCards.First() });
 
                             // Nếu chưa tìm thấy quantity ở userText hiện tại, tìm trong câu user trước đó
@@ -991,6 +1124,66 @@ namespace backend.Services
                 }
             }
 
+            // Kiểm tra rào chắn khoảng cách chuỗi lạnh (Cold-Chain Delivery Feasibility)
+            bool isColdChainFeasible = true;
+            var ineligibleColdItems = new List<string>();
+            string? coldChainWarning = null;
+
+            var targetVariantIds = items.Select(i => i.VariantId).ToList();
+            var coldVariants = await _context.ProductVariants
+                .Include(v => v.Product)
+                    .ThenInclude(p => p!.Category)
+                        .ThenInclude(c => c!.CategoryGroup)
+                .Where(v => targetVariantIds.Contains(v.Id))
+                .ToListAsync();
+
+            var itemsNeedingCold = coldVariants.Where(v =>
+                v.Product?.Category?.RequiresColdChain == true ||
+                (v.Product?.Category?.CategoryGroup?.Code == "FRESH_PRODUCE") ||
+                (v.Product?.Category?.Name?.ToLower().Contains("tươi") == true) ||
+                (v.Product?.Category?.Name?.ToLower().Contains("thịt") == true) ||
+                (v.Product?.Category?.Name?.ToLower().Contains("cá") == true)
+            ).Select(v => v.Name).Distinct().ToList();
+
+            if (itemsNeedingCold.Count > 0 && customerId.HasValue && customerId.Value > 0)
+            {
+                var custWithAddr = await _context.Customers
+                    .Include(c => c.Addresses.Where(a => !a.IsDeleted))
+                    .FirstOrDefaultAsync(c => c.Id == customerId.Value && !c.IsDeleted);
+
+                var targetAddr = custWithAddr?.Addresses.FirstOrDefault(a => a.IsDefault) ?? custWithAddr?.Addresses.FirstOrDefault();
+                if (targetAddr != null)
+                {
+                    var wh = await _context.Warehouses
+                        .Include(w => w.Address)
+                        .FirstOrDefaultAsync(w => w.IsActive && !w.IsDeleted && w.Address != null);
+
+                    if (wh?.Address != null)
+                    {
+                        double distKm = 0;
+                        if (targetAddr.Latitude != 0 && targetAddr.Longitude != 0 && wh.Address.Latitude != 0 && wh.Address.Longitude != 0)
+                        {
+                            var distanceService = new DistanceService();
+                            distKm = distanceService.CalculateDistanceKm(targetAddr.Latitude, targetAddr.Longitude, wh.Address.Latitude, wh.Address.Longitude);
+                        }
+                        else if (!string.IsNullOrEmpty(targetAddr.Province) && !string.IsNullOrEmpty(wh.Address.Province))
+                        {
+                            bool sameProv = targetAddr.Province.Trim().ToLower().Contains(wh.Address.Province.Trim().ToLower()) ||
+                                            wh.Address.Province.Trim().ToLower().Contains(targetAddr.Province.Trim().ToLower());
+                            distKm = sameProv ? 8.0 : 100.0;
+                        }
+
+                        double maxRadius = wh.MaxColdChainRadiusKm > 0 ? wh.MaxColdChainRadiusKm : 15.0;
+                        if (distKm > maxRadius)
+                        {
+                            isColdChainFeasible = false;
+                            ineligibleColdItems = itemsNeedingCold;
+                            coldChainWarning = $"Địa chỉ giao hàng ({targetAddr.FullAddress}) cách kho xe lạnh {wh.Name} khoảng {distKm:F1} km, vượt quá bán kính bảo quản tối đa ({maxRadius} km) của xe máy thùng lạnh chuyên dụng TMS. Các sản phẩm tươi sống sau không đảm bảo dải nhiệt độ mát 2°C - 8°C: {string.Join(", ", ineligibleColdItems)}. Vui lòng đổi địa chỉ nhận hàng gần hơn hoặc chỉ đặt các sản phẩm đồ khô/nhiệt độ thường.";
+                        }
+                    }
+                }
+            }
+
             return new InteractiveOrderPayloadDto
             {
                 Title = "Thẻ Đơn Hàng Tương Tác",
@@ -1003,7 +1196,10 @@ namespace backend.Services
                 IsFreeShipping = isFree,
                 SuggestedDeliveryAddress = address,
                 SuggestedReceiverName = name,
-                SuggestedReceiverPhone = phone
+                SuggestedReceiverPhone = phone,
+                IsColdChainFeasible = isColdChainFeasible,
+                IneligibleColdChainItems = ineligibleColdItems,
+                ColdChainWarning = coldChainWarning
             };
         }
 
@@ -1098,18 +1294,46 @@ namespace backend.Services
                         sb.AppendLine($"    - Dòng Sản Phẩm: {p.Name} (Mã: {p.Code})");
                         foreach (var v in activeVariants)
                         {
-                            var priceObj = v.Prices.FirstOrDefault(pr => pr.IsActive && !pr.IsDeleted) ?? v.Prices.FirstOrDefault();
-                            decimal price = priceObj?.Price ?? 0;
-                            string uom = priceObj?.UoM?.Name ?? p.BaseUoM?.Name ?? "Kg";
+                            var activePrices = v.Prices.Where(pr => pr.IsActive && !pr.IsDeleted).ToList();
+                            if (!activePrices.Any() && v.Prices.Any())
+                            {
+                                activePrices = v.Prices.ToList();
+                            }
+
+                            string baseUom = p.BaseUoM?.Name ?? "Kg";
                             decimal availableQty = inventories.TryGetValue(v.Id, out decimal s) ? s : 0;
                             bool inStock = availableQty > 0;
+
+                            // Phân loại Mô hình Quy cách bán:
+                            // Cách 2 (Một biến thể có nhiều quy cách bán / Quy đổi ĐVT): 1 SKU duy nhất nhưng có nhiều mức giá ĐVT
+                            // Cách 1 (Một biến thể = Một quy cách bán / Tách SKU riêng): Mỗi quy cách là 1 mã SKU độc lập
+                            string modelTag = activePrices.Count > 1
+                                ? "[Cách 2: Đa quy cách bán / Quy đổi ĐVT]"
+                                : "[Cách 1: Tách SKU riêng / 1 Quy cách bán]";
+
+                            var priceDetails = new List<string>();
+                            foreach (var pr in activePrices)
+                            {
+                                string prUom = pr.UoM?.Name ?? baseUom;
+                                string defTag = pr.IsDefault ? " [Mặc định]" : string.Empty;
+                                priceDetails.Add($"{pr.Price:N0} ₫/{prUom}{defTag}");
+                            }
+                            string pricingStr = priceDetails.Count > 0 ? string.Join(", ", priceDetails) : "Liên hệ";
+
+                            // Nhận diện bảo quản lạnh TMS (2-8°C)
+                            bool isCold = p.Category?.RequiresColdChain == true ||
+                                          (p.Category?.CategoryGroup?.Code == "FRESH_PRODUCE") ||
+                                          (p.Category?.Name?.ToLower().Contains("tươi") == true) ||
+                                          (p.Category?.Name?.ToLower().Contains("thịt") == true) ||
+                                          (p.Category?.Name?.ToLower().Contains("cá") == true);
+                            string coldTag = isCold ? " | ❄️ Bảo quản lạnh TMS (2-8°C)" : " | 📦 Giao thường";
 
                             string? origin = v.Attributes.FirstOrDefault(a => a.AttributeDefinition != null && a.AttributeDefinition.Name.ToLower().Contains("xuất xứ"))?.AttributeValue;
                             string? cert = v.Attributes.FirstOrDefault(a => a.AttributeDefinition != null && (a.AttributeDefinition.Name.ToLower().Contains("chứng nhận") || a.AttributeDefinition.Name.ToLower().Contains("tiêu chuẩn")))?.AttributeValue;
                             string? brix = v.Attributes.FirstOrDefault(a => a.AttributeDefinition != null && (a.AttributeDefinition.Name.ToLower().Contains("độ ngọt") || a.AttributeDefinition.Name.ToLower().Contains("brix")))?.AttributeValue;
 
                             string descSnippet = !string.IsNullOrEmpty(v.Description) ? $" | Đặc điểm: {v.Description.Trim()}" : string.Empty;
-                            sb.AppendLine($"       + SKU [ID:{v.Id}]: {v.Name} (Mã: {v.Code}) | Giá: {price:N0} ₫/{uom} | Tồn kho khả dụng: {(inStock ? $"{availableQty:G29} {uom} (Còn hàng)" : "0 (Tạm hết)")} | Xuất xứ: {origin ?? "Lâm Đồng"} | Tiêu chuẩn: {cert ?? "VietGAP"} | Độ ngọt: {(string.IsNullOrEmpty(brix) ? "Chuẩn vị" : $"{brix}°Bx")}{descSnippet}");
+                            sb.AppendLine($"       + SKU [ID:{v.Id}]: {v.Name} (Mã: {v.Code}) {modelTag} | Bảng giá: {pricingStr} | Tồn kho khả dụng: {(inStock ? $"{availableQty:G29} {baseUom} (Còn hàng)" : "0 (Tạm hết)")} | Xuất xứ: {origin ?? "Lâm Đồng"} | Tiêu chuẩn: {cert ?? "VietGAP"} | Độ ngọt: {(string.IsNullOrEmpty(brix) ? "Chuẩn vị" : $"{brix}°Bx")}{coldTag}{descSnippet}");
                         }
                     }
                 }
@@ -1157,11 +1381,11 @@ namespace backend.Services
             }
 
             // Tìm kiếm theo từ khóa thực tế: tách từ và lọc từ dừng
-            var stopWords = new HashSet<string>(new[] { 
-                "cho", "tôi", "hỏi", "có", "không", "giá", "bao", "nhiêu", "shop", "ơi", 
-                "tìm", "kiếm", "muốn", "xem", "tư", "vấn", "mua", "lấy", "đặt", "chốt", 
+            var stopWords = new HashSet<string>(new[] {
+                "cho", "tôi", "hỏi", "có", "không", "giá", "bao", "nhiêu", "shop", "ơi",
+                "tìm", "kiếm", "muốn", "xem", "tư", "vấn", "mua", "lấy", "đặt", "chốt",
                 "1", "2", "3", "4", "5", "6", "7", "8", "9", "10",
-                "kg", "kí", "ký", "quả", "trái", "hộp", "thùng", "bịch", "loại", "nào", "những", "đang", "ạ", "nhé" 
+                "kg", "kí", "ký", "quả", "trái", "hộp", "thùng", "bịch", "loại", "nào", "những", "đang", "ạ", "nhé"
             });
 
             var searchTerms = rawKw.Split(new[] { ' ', ',', '.', '?', '!', ';', ':' }, StringSplitOptions.RemoveEmptyEntries)
@@ -1333,6 +1557,20 @@ namespace backend.Services
                     ? v.Name
                     : $"{p.Name} - {v.Name}";
 
+                var availablePrices = v.Prices
+                    .Where(pr => pr.IsActive && !pr.IsDeleted)
+                    .Select(pr => new AiProductCardPriceDto
+                    {
+                        UoMId = pr.UoMId,
+                        UoMName = pr.UoM?.Name ?? p.BaseUoM?.Name ?? "Kg",
+                        Price = pr.Price,
+                        DiscountedPrice = promo != null
+                            ? (promo.IsPercentage ? Math.Max(0, Math.Round(pr.Price * (1 - promo.DiscountValue / 100m))) : Math.Max(0, pr.Price - promo.DiscountValue))
+                            : pr.Price,
+                        IsDefault = pr.IsDefault
+                    })
+                    .ToList();
+
                 dtoList.Add(new AiProductCardDto
                 {
                     Id = v.Id,
@@ -1351,7 +1589,8 @@ namespace backend.Services
                     Origin = origin,
                     Certification = cert,
                     BrixLevel = brix,
-                    IsInStock = stock > 0
+                    IsInStock = stock > 0,
+                    AvailablePrices = availablePrices
                 });
             }
 
@@ -1380,33 +1619,43 @@ QUY TẮC PHỤC VỤ VÀ TÍNH CÁCH BẮT BUỘC:
    - Khi khách yêu cầu mua số lượng vượt quá tồn kho khả dụng (ví dụ đòi 100 trái sầu riêng khi kho chỉ còn 5 trái), bạn PHẢI nói thật: kho hiện chỉ còn 5 trái, và hệ thống đã tự động điều chỉnh số lượng trên Thẻ Đơn Hàng tương tác xuống mức tối đa còn hàng. Tuyệt đối KHÔNG chúc mừng hay hứa hẹn số lượng vượt quá tồn kho.
    - Nếu sản phẩm hết hàng: Thông báo rõ sản phẩm tạm hết hàng và gợi ý khách chọn nông sản khác đang có sẵn.
 4. Đơn vị tính nông sản Việt Nam:
-   - Hiểu rõ quy chuẩn đơn vị: 'kg', 'kí', 'ký' = Kilogram; 'quả', 'trái' = Quả/Trái; 'hộp', 'thùng'.
-5. Chính sách bán hàng & Giao nhận:
-   - Đơn vị giao nhận: Giao Hàng Nhanh (GHN Express).
-   - Phí vận chuyển: Cước chuẩn 25.000 ₫; Đơn hàng có giá trị tiền hàng sau chiết khấu từ 300.000 ₫ trở lên được áp dụng MIỄN PHÍ VẬN CHUYỂN (FREESHIP).
+   - Hiểu rõ quy chuẩn đơn vị: 'kg', 'kí', 'ký' = Kilogram; 'quả', 'trái' = Quả/Trái; 'hộp', 'thùng', 'gói', 'khay', 'vỉ'.
+5. Vận chuyển Chuỗi Lạnh Chuyên Dụng (Solaris Cold-Chain Express - TMS 2°C - 8°C):
+   - Đơn vị vận chuyển: Đội xe máy & xe tải thùng lạnh chuyên dụng của Solaris (Solaris Cold-Chain Express - TMS), cam kết duy trì dải nhiệt độ mát kiểm soát nghiêm ngặt 2°C - 8°C từ kho lạnh đến tận tay khách hàng. Tuyệt đối không nhắc đến GHN hay các đơn vị giao hàng thông thường khác.
+   - Cước phí: Cước chuẩn 25.000 ₫; Đơn hàng có giá trị tiền hàng sau chiết khấu từ 300.000 ₫ trở lên được áp dụng MIỄN PHÍ VẬN CHUYỂN XE LẠNH (FREESHIP).
+   - Rào chắn khoảng cách chuỗi lạnh (Cold-Chain Feasibility): Sản phẩm bảo quản lạnh (thịt, cá, hải sản, rau củ quả tươi sống) chỉ được giao trong bán kính tối đa của kho xe lạnh (thường là 15 km). Nếu địa chỉ nhận hàng của khách vượt quá bán kính này, hệ thống sẽ cảnh báo không giao được. Bạn BẮT BUỘC PHẢI thông báo rõ cho khách biết đích danh sản phẩm nào không giao được và nêu rõ lý do: ""Không đảm bảo dải nhiệt độ mát 2°C - 8°C trong thời gian vận chuyển xe máy/xe tải thùng lạnh dẫn đến nguy cơ suy giảm độ tươi ngon, an toàn vệ sinh thực phẩm"". Hướng dẫn khách đổi địa chỉ gần kho hơn hoặc chỉ mua sản phẩm đồ khô/bình thường.
    - Đổi trả hàng: Hỗ trợ đổi trả hoặc hoàn tiền 100% trong vòng 48 giờ nếu sản phẩm bị dập úng, hư hỏng trong quá trình vận chuyển.
    - Thanh toán: Hỗ trợ Cổng VNPay Sandbox (VNPAY-QR, Thẻ ATM/Visa/Mastercard) và Thanh toán khi nhận hàng (COD).
 6. Khi khách muốn đặt mua hoặc lên đơn:
-   - Trả lời ngắn gọn số lượng, đơn giá, tổng tiền và thông báo rằng Thẻ Đơn Hàng Tương Tác đã xuất hiện ngay bên dưới.
-   - Hướng dẫn khách: Chọn địa chỉ nhận hàng từ Sổ địa chỉ (hoặc bấm cập nhật địa chỉ nếu chưa có), tùy chỉnh số lượng [-] [+], chọn hình thức thanh toán và bấm nút 'Xác nhận đặt hàng' trên thẻ.
-   - Tuyệt đối không tự nói rằng 'đơn hàng đã được đặt thành công' qua tin nhắn chữ khi khách chưa bấm nút trên thẻ.
-7. Cấu trúc danh mục 4 tầng của Solaris:
+   - Trả lời ngắn gọn số lượng, đơn giá, tổng tiền, phí vận chuyển xe thùng lạnh TMS và thông báo rằng Thẻ Đơn Hàng Tương Tác đã xuất hiện ngay bên dưới.
+   - Hướng dẫn khách: Chọn địa chỉ nhận hàng từ Sổ địa chỉ (hoặc bấm cập nhật địa chỉ nếu chưa có), tùy chỉnh số lượng [-] [+], chọn hình thức thanh toán (COD hoặc VNPay) và bấm nút 'Xác nhận đặt hàng' trên thẻ.
+   - Sau khi khách hàng đã đặt hàng thành công (qua COD) hoặc thanh toán VNPay Sandbox thành công, bạn PHẢI gửi tin nhắn xác nhận: Mã đơn hàng ORD-... đã được đặt hàng thành công, trạng thái hiện tại là 'Chờ xử lý'. Đội ngũ kho đang chuẩn bị soạn hàng theo chuẩn FEFO (First-Expired, First-Out) và đóng gói vào xe máy/xe tải thùng lạnh chuyên dụng TMS (2°C - 8°C).
+7. Cấu trúc danh mục 4 tầng & Luồng tư vấn 2 bước chuẩn:
    - Tầng 1: Nhóm Loại sản phẩm (Category Group) - ví dụ: Sản phẩm tươi sống, Thực phẩm chế biến,...
    - Tầng 2: Loại Sản phẩm (Category) - ví dụ: Sản phẩm từ động vật, Rau củ quả hữu cơ,...
-   - Tầng 3: Sản phẩm / Dòng sản phẩm (Product) - ví dụ: Thịt heo sạch, Cá hồi Na Uy, Bơ 034, Sầu riêng Ri6,...
-   - Tầng 4: Biến thể Sản phẩm / SKU bán lẻ (Product Variant) - ví dụ: Khay Đùi heo 500g, Vỉ Cá hồi 500g, Túi Cà chua 500g, Trái 1-2kg, Túi Gạo 5kg... (LƯU Ý: Toàn bộ thực phẩm tươi sống thịt, cá, rau củ đều được chuẩn hóa đóng gói sẵn theo Khay/Vỉ/Túi định lượng; đồ khô vẫn bán theo kg/túi bình thường).
-   - Khi khách hàng hỏi chung chung theo nhóm ngành hoặc loại (VD: 'Shop có bán thịt gì không?', 'Có sản phẩm tươi sống nào?'), hãy tư vấn các dòng sản phẩm và các biến thể cụ thể thuộc nhóm đó.
-   - Khi khách hàng hỏi hoặc mua một biến thể SKU cụ thể (VD: 'Khay Đùi heo 500g', 'Vỉ Cá hồi 500g'), hãy tập trung tư vấn đúng biến thể SKU đó, giá bán và tồn kho khả dụng của biến thể.
+   - Tầng 3: Sản phẩm khung (Product) - ví dụ: Thịt heo sạch, Cá hồi Na Uy, Bơ Sáp 034, Mì ăn liền,...
+   - Tầng 4: Biến thể SKU (Product Variant) & Bảng giá quy cách bán (Product Variant Price).
+   - LUỒNG TƯ VẤN 2 BƯỚC BẮT BUỘC:
+     * Bước 1: Khi khách hỏi về Dòng sản phẩm (Tầng 3), hãy đề xuất các Biến thể hiện có kèm đặc điểm.
+     * Bước 2: Khi khách chọn một Biến thể, hãy trình bày Quy cách bán và bảng giá theo 2 trường hợp cụ thể:
+       + Cách 1 (Một biến thể = Một quy cách bán / Tách SKU riêng): Mỗi quy cách đóng gói là một mã tồn kho (SKU) độc lập. Ví dụ: Mì Hảo Hảo - Thùng (tồn kho đếm theo Thùng) và Mì Hảo Hảo - Gói (tồn kho đếm theo Gói). Thùng ra thùng, gói ra gói.
+       + Cách 2 (Một biến thể có nhiều quy cách bán / Quy đổi ĐVT): Chỉ tạo một mã tồn kho (SKU) duy nhất lưu theo Đơn vị cơ sở (như Kg), nhưng thiết lập bảng giá cho phép bán theo nhiều đơn vị khác nhau (ví dụ: mua lẻ Kg giá gốc, mua Hộp 3kg hoặc Thùng 10kg có giá ưu đãi theo tỷ lệ quy đổi).
+8. Tra cứu & kiểm tra đơn hàng realtime (kèm Chuyến xe TMS & Lý do kho từ chối / hủy):
+   - Cho phép khách tra cứu bằng mã đơn hàng (ORD-...) công khai mà không bắt buộc đăng nhập.
+   - Báo cáo tiến trình đơn hàng: Chờ duyệt -> Soạn hàng FEFO -> Đang trên chuyến xe giao hàng TMS -> Đã giao.
+   - Nếu đơn hàng đang trên chuyến xe giao: Thông báo mã chuyến xe TMS, biển số xe, tên tài xế và số điện thoại liên hệ để khách tiện gọi nhận hàng.
+   - NẾU ĐƠN HÀNG BỊ TỪ CHỐI HOẶC BỊ HỦY BỞI KHO: Trích xuất và giải thích rõ ràng lý do hủy của kho (Cancellation Reason), thể hiện sự thông cảm, xin lỗi chân thành và hướng dẫn khách giải pháp thay thế.
+   - Nếu đơn hàng có yêu cầu đổi trả (RMA): Báo cáo mã đổi trả và số tiền hoàn (nếu có).
 
 KỊCH BẢN MẪU (FEW-SHOT EXAMPLES):
-- Khách: '1 trái sầu riêng giá bao nhiêu?'
-  -> AI: 'Dạ sầu riêng có giá 100.000 ₫/trái, hàng chuẩn VietGAP, tồn kho hiện còn X trái. Bạn có muốn lên đơn mua không ạ?'
-- Khách: 'Lên đơn cho tôi 100 trái sầu riêng'
-  -> AI: 'Dạ kho Solaris hiện chỉ còn X trái sầu riêng. Em đã tạo Thẻ Đơn Hàng Tương Tác bên dưới với số lượng tối đa là X trái (Tổng: ... ₫). Quý khách vui lòng chọn địa chỉ nhận hàng và bấm xác nhận trên thẻ giúp em nhé!'
-- Khách: 'Shop có bán thịt gì không?'
-  -> AI: 'Dạ Solaris thuộc nhóm Sản phẩm tươi sống có dòng Thịt heo sạch đóng khay tiện lợi với các biến thể: Khay Đùi heo 500g (65.000 ₫/khay), Khay Má heo 300g (45.000 ₫/khay), Khay Sườn non 500g (95.000 ₫/khay)... Bạn muốn tham khảo biến thể nào ạ?'
-- Khách: 'Solaris có bán nho Mỹ không?'
-  -> AI: 'Dạ hiện tại Solaris chưa có dữ liệu hoặc không kinh doanh sản phẩm nho Mỹ. Hệ thống hiện chỉ có: [liệt kê sản phẩm thực tế]. Bạn cần tư vấn sản phẩm nào ạ?'
+- Khách: 'Tư vấn bơ sáp cho tôi'
+  -> AI: 'Dạ Solaris có dòng Bơ Sáp 034 Đắk Lắk chuẩn VietGAP với các biến thể: Biến thể Bơ Sáp Loại 1 (Trái 300-500g). Về quy cách bán: Solaris áp dụng Bảng giá đa đơn vị (Cách 2): Bán lẻ 50.000 ₫/Kg, mua Hộp 3Kg giá ưu đãi 140.000 ₫/Hộp, mua Thùng 10Kg giá 450.000 ₫/Thùng. Tồn kho khả dụng hiện còn 50 Kg. Bạn muốn chọn quy cách nào ạ?'
+- Khách: 'Shop có bán mì gói không?'
+  -> AI: 'Dạ Solaris có dòng Mì Hảo Hảo với các biến thể tách SKU độc lập theo quy cách đóng gói (Cách 1): SKU Mì Hảo Hảo Gói 75g (4.500 ₫/gói, tồn kho: 120 gói) và SKU Mì Hảo Hảo Thùng 30 gói (130.000 ₫/thùng, tồn kho: 15 thùng). Bạn muốn lấy thùng hay gói lẻ ạ?'
+- Khách: 'Kiểm tra đơn ORD-20260908-001 giúp tôi'
+  -> AI: 'Dạ đơn hàng ORD-20260908-001 đang trên chuyến xe giao hàng lạnh TMS mã TRIP-001. Tài xế: Nguyễn Văn A (SĐT: 0912345678), xe thùng lạnh biển số 59A-12345. Nhiệt độ bảo quản xe duy trì 2-8°C. Quý khách vui lòng để ý điện thoại để nhận hàng nhé!'
+- Khách: 'Tại sao đơn hàng ORD-20260908-002 của tôi bị hủy?'
+  -> AI: 'Dạ đơn hàng ORD-20260908-002 đã bị kho từ chối/hủy với lý do: ""Địa chỉ giao hàng vượt quá bán kính bảo quản lạnh 15km của kho xe lạnh, không đảm bảo dải nhiệt độ 2-8°C"". Solaris rất xin lỗi quý khách về sự bất tiện này. Quý khách có thể đổi địa chỉ giao hàng gần kho hơn hoặc tham khảo các sản phẩm đồ khô không yêu cầu xe lạnh ạ.'
 
 {liveCatalogSummary}";
 
@@ -1437,19 +1686,35 @@ KỊCH BẢN MẪU (FEW-SHOT EXAMPLES):
             string extraContext = string.Empty;
             if (payloadType == "order_tracking" && payloadObject is AiOrderTrackingDto ord)
             {
-                extraContext = $"\n(Dữ liệu thực tế đơn hàng từ hệ thống: Mã đơn: {ord.OrderCode}, Ngày đặt: {ord.OrderDate:dd/MM/yyyy HH:mm}, Trạng thái đơn: {ord.StatusName}, Thanh toán: {ord.PaymentStatusName} qua {ord.PaymentMethodName}, Tổng tiền: {ord.TotalAmount:N0} ₫, Người nhận: {ord.ReceiverName}, SĐT: {ord.ReceiverPhone}, Địa chỉ: {ord.DeliveryAddress}, Danh sách sản phẩm: {string.Join(", ", ord.Items.Select(i => $"{i.VariantName} x {i.Quantity} {i.UoMName}"))}. Hãy trả lời ngắn gọn, thẳng thắn và chính xác dựa trên dữ liệu trên, không suy diễn).";
+                string tripInfo = !string.IsNullOrEmpty(ord.DeliveryTripCode)
+                    ? $" Chuyến xe TMS: {ord.DeliveryTripCode}, Xe: {ord.LicensePlate} ({(ord.IsColdChainVehicle == true ? "Thùng lạnh 2-8°C" : "Xe tiêu chuẩn")}), Tài xế: {ord.DriverName} (SĐT: {ord.DriverPhone}), Trạng thái chuyến: {ord.TripStatusName}."
+                    : string.Empty;
+
+                string cancelInfo = !string.IsNullOrEmpty(ord.CancellationReason)
+                    ? $" ĐƠN BỊ TỪ CHỐI/HỦY BỞI KHO VỚI LÝ DO: \"{ord.CancellationReason}\". BẠN BẮT BUỘC PHẢI GIẢI THÍCH RÕ LÝ DO NÀY VÀ XIN LỖI CHÂN THÀNH."
+                    : string.Empty;
+
+                string rmaInfo = !string.IsNullOrEmpty(ord.ReturnCode)
+                    ? $" Có yêu cầu đổi trả RMA: {ord.ReturnCode}, Hoàn tiền: {ord.RefundAmount:N0} ₫."
+                    : string.Empty;
+
+                extraContext = $"\n(Dữ liệu thực tế đơn hàng từ hệ thống: Mã đơn: {ord.OrderCode}, Ngày đặt: {ord.OrderDate:dd/MM/yyyy HH:mm}, Trạng thái đơn: {ord.StatusName}, Thanh toán: {ord.PaymentStatusName} qua {ord.PaymentMethodName}, Đơn vị vận chuyển: {ord.ShippingProvider}, Tổng tiền: {ord.TotalAmount:N0} ₫, Người nhận: {ord.ReceiverName}, SĐT: {ord.ReceiverPhone}, Địa chỉ: {ord.DeliveryAddress}, Danh sách sản phẩm: {string.Join(", ", ord.Items.Select(i => $"{i.VariantName} x {i.Quantity} {i.UoMName}"))}.{tripInfo}{cancelInfo}{rmaInfo} Hãy trả lời ngắn gọn, thẳng thắn và chính xác dựa trên dữ liệu trên, không suy diễn).";
             }
             else if (payloadType == "interactive_order" && payloadObject is InteractiveOrderPayloadDto orderPayload)
             {
                 string stockNotice = !string.IsNullOrEmpty(orderPayload.StockWarning)
-                    ? $"\nCẢNH BÁO TỒN KHO THỰC TẾ:\n{orderPayload.StockWarning}\nBẠN BẮT BUỘC PHẢI GIẢI THÍCH RÕ VỚI KHÁCH: Do kho hiện chỉ còn số lượng như trên nên hệ thống đã tự động điều chỉnh số lượng trên Thẻ Đơn Hàng xuống mức tồn kho tối đa. Nhắc khách chọn địa chỉ từ sổ địa chỉ và bấm nút xác nhận trên thẻ."
+                    ? $"\nCẢNH BÁO TỒN KHO THỰC TẾ:\n{orderPayload.StockWarning}\nBẠN BẮT BUỘC PHẢI GIẢI THÍCH RÕ VỚI KHÁCH: Do kho hiện chỉ còn số lượng như trên nên hệ thống đã tự động điều chỉnh số lượng trên Thẻ Đơn Hàng xuống mức tồn kho tối đa."
                     : string.Empty;
 
-                extraContext = $"\n(Hệ thống đã tự động tính giá và hiển thị Thẻ Đơn Hàng Tương Tác ngay bên dưới tin nhắn này với các món: {string.Join(", ", orderPayload.Items.Select(i => $"{i.VariantName} x {i.Quantity} {i.UoMName} ({i.TotalPrice:N0}đ)"))}. Tổng tiền thanh toán: {orderPayload.TotalAmount:N0} ₫ (Phí ship GHN: {(orderPayload.IsFreeShipping ? "Miễn phí 0đ" : $"{orderPayload.ShippingFee:N0}đ")}).{stockNotice} Hãy thông báo ngắn gọn cho khách biết Thẻ Đơn Hàng Tương Tác đã xuất hiện ngay bên dưới, khách có thể chọn địa chỉ từ sổ địa chỉ, bấm nút [-] [+] để chỉnh số lượng, chọn thanh toán VNPay Sandbox hoặc COD và bấm nút 'Xác nhận đặt hàng' trên thẻ).";
+                string coldChainNotice = !orderPayload.IsColdChainFeasible
+                    ? $"\nCẢNH BÁO KHOẢNG CÁCH XE LẠNH TMS:\n{orderPayload.ColdChainWarning}\nSản phẩm không đủ điều kiện giao: {string.Join(", ", orderPayload.IneligibleColdChainItems)}\nBẠN BẮT BUỘC PHẢI NÊU ĐÍCH DANH CÁC SẢN PHẨM NÀY VÀ GIẢI THÍCH RÕ LÝ DO: Khoảng cách giao hàng vượt quá bán kính xe lạnh của kho, không đảm bảo dải nhiệt độ 2-8°C gây nguy cơ hỏng nông sản. Hướng dẫn khách đổi địa chỉ gần kho hơn hoặc bỏ sản phẩm lạnh khỏi đơn."
+                    : string.Empty;
+
+                extraContext = $"\n(Hệ thống đã tự động tính giá và hiển thị Thẻ Đơn Hàng Tương Tác ngay bên dưới tin nhắn này với các món: {string.Join(", ", orderPayload.Items.Select(i => $"{i.VariantName} x {i.Quantity} {i.UoMName} ({i.TotalPrice:N0}đ)"))}. Tổng tiền thanh toán: {orderPayload.TotalAmount:N0} ₫ (Phí vận chuyển xe thùng lạnh TMS: {(orderPayload.IsFreeShipping ? "Miễn phí 0đ" : $"{orderPayload.ShippingFee:N0}đ")}).{stockNotice}{coldChainNotice} Hãy thông báo ngắn gọn cho khách biết Thẻ Đơn Hàng Tương Tác đã xuất hiện ngay bên dưới, khách có thể chọn địa chỉ từ sổ địa chỉ, bấm nút [-] [+] để chỉnh số lượng, chọn thanh toán VNPay Sandbox hoặc COD và bấm nút 'Xác nhận đặt hàng' trên thẻ).";
             }
             else if (payloadType == "product_cards" && payloadObject is List<AiProductCardDto> prods && prods.Count > 0)
             {
-                extraContext = "\n(Dữ liệu sản phẩm thực tế trong kho Solaris: " + string.Join("; ", prods.Select(p => $"{p.Name} (Mã biến thể {p.VariantId}): Giá {p.Price:N0}đ/{p.UoMName}, Khuyến mãi: {(p.DiscountedPrice < p.Price ? $"{p.DiscountedPrice:N0}đ" : "Không")}, Tồn kho: {(p.IsInStock ? "Còn hàng" : "Hết hàng")}, Xuất xứ: {p.Origin ?? "Lâm Đồng"}, Chứng nhận: {p.Certification ?? "VietGAP"}")) + ". Trả lời thẳng thắn, ngắn gọn dựa trên dữ liệu này. Tuyệt đối không tự bịa thêm thông tin).";
+                extraContext = "\n(Dữ liệu sản phẩm thực tế trong kho Solaris: " + string.Join("; ", prods.Select(p => $"{p.Name} (Mã biến thể {p.VariantId}): Giá {p.Price:N0}đ/{p.UoMName}, Khuyến mãi: {(p.DiscountedPrice < p.Price ? $"{p.DiscountedPrice:N0}đ" : "Không")}, Tồn kho: {(p.IsInStock ? "Còn hàng" : "Hết hàng")}, Xuất xứ: {p.Origin ?? "Lâm Đồng"}, Chứng nhận: {p.Certification ?? "VietGAP"}")) + ". Tuân thủ luồng tư vấn 2 bước: hỏi dòng SP -> đề xuất biến thể -> trình bày quy cách bán Cách 1 hoặc Cách 2 dựa trên dữ liệu. Trả lời thẳng thắn, ngắn gọn).";
             }
             else if (payloadType == "none")
             {

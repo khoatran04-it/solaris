@@ -56,8 +56,8 @@ namespace backend.Services
             if (!string.IsNullOrWhiteSpace(search))
             {
                 var lowerSearch = search.Trim().ToLower();
-                query = query.Where(x => 
-                    x.Code.ToLower().Contains(lowerSearch) || 
+                query = query.Where(x =>
+                    x.Code.ToLower().Contains(lowerSearch) ||
                     x.Name.ToLower().Contains(lowerSearch)
                 );
             }
@@ -216,7 +216,7 @@ namespace backend.Services
         public async Task<bool> ToggleActiveAsync(int id)
         {
             var entity = await _context.SupplierTypes.FindAsync(id);
-            if (entity == null) 
+            if (entity == null)
                 throw new KeyNotFoundException("Không tìm thấy loại nhà cung cấp.");
 
             return await _context.ExecuteInTransactionAsync(async () =>

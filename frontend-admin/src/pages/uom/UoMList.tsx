@@ -155,7 +155,7 @@ const UoMList: React.FC = () => {
 
       <ListHeader
         title="Đơn Vị Tính"
-        subtitle="Quản lý chi tiết các đơn vị tính và từ khóa hỗ trợ AI Chatbot"
+        subtitle="Quản lý chi tiết các đơn vị tính"
         searchTerm={searchTerm}
         onSearchChange={setSearchTerm}
         onAdd={() => navigate('/uoms/create')}
@@ -172,7 +172,7 @@ const UoMList: React.FC = () => {
                   Đơn vị tính
                 </th>
                 <th className="w-[20%] py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider text-left">
-                  Từ đồng nghĩa (AI)
+                  Từ đồng nghĩa
                 </th>
 
                 <th className="w-[15%] py-4 px-2 text-xs font-bold text-slate-500 uppercase tracking-wider">

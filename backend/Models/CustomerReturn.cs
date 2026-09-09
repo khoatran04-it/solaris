@@ -23,6 +23,11 @@ namespace backend.Models
         /// IInventoryService.ReceiveCustomerReturnAsync() để chính thức cộng lại số dư kho.
         /// </summary>
         public CustomerReturnStatus Status { get; set; } = CustomerReturnStatus.Pending;
+
+        /// <summary>
+        /// Hình thức hoàn trả: DoorstepRefusal (Thu hồi trực tiếp khi giao) hoặc PostDeliveryReturn (Thu hồi tại nhà khách).
+        /// </summary>
+        public CustomerReturnType ReturnType { get; set; } = CustomerReturnType.PostDeliveryReturn;
         #endregion
 
         #region Đối soát Chứng từ (Reference & Ownership)
@@ -56,6 +61,10 @@ namespace backend.Models
         /// hoặc "Trái cây đã bị dập nát, bốc mùi"). Quyết định trực tiếp đến việc hàng được bán lại hay đem hủy.
         /// </summary>
         public string? InspectionNotes { get; set; }
+
+        /// <summary>Chuyến xe nội bộ phụ trách thu hồi hàng từ khách về kho.</summary>
+        public int? DeliveryTripId { get; set; }
+        public virtual DeliveryTrip? DeliveryTrip { get; set; }
         #endregion
 
         #region Tài chính & Lý do (Finance & Justification)

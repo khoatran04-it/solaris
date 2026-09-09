@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import Link from "next/link";
 import {
   X,
   Send,
@@ -12,11 +11,6 @@ import {
   Loader2,
   ShoppingBag,
   Check,
-  Lock,
-  ShieldCheck,
-  ArrowRight,
-  UserCheck,
-  Sparkles,
 } from "lucide-react";
 import { ChatSession, ChatMessage } from "@/types/chat";
 import shopAiApi from "@/api/shopAiApi";
@@ -69,13 +63,13 @@ export default function ChatbotWidget() {
     }
   }, []);
 
-  // 2. Tải danh sách phiên chat khi mở widget (chỉ khi đã đăng nhập)
+  // 2. Tải danh sách phiên chat khi mở widget (hỗ trợ cả khách vãng lai và thành viên)
   useEffect(() => {
-    if (isOpen && sessionToken && isAuthenticated) {
+    if (isOpen && sessionToken) {
       loadSessions();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, sessionToken, isAuthenticated]);
+  }, [isOpen, sessionToken]);
 
   // 3. Tự động cuộn xuống tin nhắn mới nhất
   useEffect(() => {
@@ -128,7 +122,7 @@ export default function ChatbotWidget() {
           id: 0,
           role: "model",
           content:
-            "Dạ Solaris AI xin chào bạn!\nEm hỗ trợ thông tin **nông sản sạch VietGAP**, **tra cứu tiến độ giao hàng GHN**, **chương trình khuyến mãi**, hoặc **lên đơn đặt hàng trực tiếp** theo dữ liệu thực tế tại đây ạ!",
+            "Dạ Solaris AI xin chào bạn!\nEm hỗ trợ thông tin **nông sản sạch VietGAP**, **tra cứu tiến độ giao hàng xe lạnh TMS (2°C - 8°C)**, **chương trình khuyến mãi**, hoặc **lên đơn đặt hàng trực tiếp** theo dữ liệu thực tế tại đây ạ!",
           payloadType: "none",
           createdAt: new Date().toISOString(),
         },
@@ -310,25 +304,24 @@ export default function ChatbotWidget() {
           {/* Header */}
           <div className="bg-gradient-to-r from-emerald-600 to-teal-700 p-3.5 text-white flex items-center justify-between shadow-md">
             <div className="flex items-center gap-2.5">
-              {isAuthenticated &&
-                (showSessions ? (
-                  <button
-                    onClick={() => setShowSessions(false)}
-                    className="p-1 hover:bg-white/10 rounded-full transition-colors cursor-pointer"
-                    title="Quay lại khung chat"
-                  >
-                    <ChevronLeft className="w-5 h-5" />
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => setShowSessions(true)}
-                    className="p-1 hover:bg-white/10 rounded-lg transition-colors flex items-center gap-1 text-[11px] font-semibold bg-white/10 px-2 py-1 cursor-pointer"
-                    title="Lịch sử cuộc hội thoại"
-                  >
-                    <Clock className="w-3.5 h-3.5" />
-                    <span>Lịch sử</span>
-                  </button>
-                ))}
+              {showSessions ? (
+                <button
+                  onClick={() => setShowSessions(false)}
+                  className="p-1 hover:bg-white/10 rounded-full transition-colors cursor-pointer"
+                  title="Quay lại khung chat"
+                >
+                  <ChevronLeft className="w-5 h-5" />
+                </button>
+              ) : (
+                <button
+                  onClick={() => setShowSessions(true)}
+                  className="p-1 hover:bg-white/10 rounded-lg transition-colors flex items-center gap-1 text-[11px] font-semibold bg-white/10 px-2 py-1 cursor-pointer"
+                  title="Lịch sử cuộc hội thoại"
+                >
+                  <Clock className="w-3.5 h-3.5" />
+                  <span>Lịch sử</span>
+                </button>
+              )}
 
               <div>
                 <h3 className="font-bold text-xs leading-tight flex items-center gap-1.5">
@@ -345,15 +338,13 @@ export default function ChatbotWidget() {
             </div>
 
             <div className="flex items-center gap-1">
-              {isAuthenticated && (
-                <button
-                  onClick={handleNewSession}
-                  className="p-1.5 text-white/80 hover:text-white hover:bg-white/10 rounded-full transition-colors cursor-pointer"
-                  title="Bắt đầu đoạn chat mới"
-                >
-                  <Plus className="w-4 h-4" />
-                </button>
-              )}
+              <button
+                onClick={handleNewSession}
+                className="p-1.5 text-white/80 hover:text-white hover:bg-white/10 rounded-full transition-colors cursor-pointer"
+                title="Bắt đầu đoạn chat mới"
+              >
+                <Plus className="w-4 h-4" />
+              </button>
               <button
                 onClick={() => setIsOpen(false)}
                 className="p-1.5 text-white/80 hover:text-white hover:bg-white/10 rounded-full transition-colors cursor-pointer"
@@ -365,60 +356,7 @@ export default function ChatbotWidget() {
           </div>
 
           {/* Chat Body OR Sessions List */}
-          {!isAuthenticated ? (
-            <div className="flex-1 p-5 flex flex-col items-center justify-center text-center bg-gradient-to-b from-emerald-50/40 via-white to-slate-50 overflow-y-auto">
-              <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-500 text-white flex items-center justify-center shadow-lg shadow-emerald-600/20 mb-3">
-                <Lock className="w-7 h-7" />
-              </div>
-
-              <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold uppercase tracking-wider mb-1.5">
-                Dành Riêng Cho Thành Viên
-              </span>
-
-              <h4 className="font-extrabold text-slate-800 text-sm mb-1">
-                Đăng Nhập Để Trò Chuyện Với AI
-              </h4>
-
-              <p className="text-slate-500 text-xs leading-relaxed max-w-[280px] mb-4">
-                Vui lòng đăng nhập tài khoản để AI tự động lấy địa chỉ nhận
-                hàng, kiểm tra kho tồn và hỗ trợ lên đơn chính xác nhất.
-              </p>
-
-              <div className="w-full bg-white rounded-xl border border-slate-200/80 p-3 mb-4 text-left space-y-2 text-[11px] shadow-xs">
-                <div className="flex items-center gap-2 text-slate-700">
-                  <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
-                  <span>Tư vấn nông sản sạch chuẩn VietGAP & GlobalGAP</span>
-                </div>
-                <div className="flex items-center gap-2 text-slate-700">
-                  <Sparkles className="w-4 h-4 text-amber-500 shrink-0" />
-                  <span>Tự động áp dụng địa chỉ mặc định & Freeship</span>
-                </div>
-                <div className="flex items-center gap-2 text-slate-700">
-                  <UserCheck className="w-4 h-4 text-teal-600 shrink-0" />
-                  <span>Lên đơn an toàn, tra cứu lịch sử đơn của bạn</span>
-                </div>
-              </div>
-
-              <div className="w-full space-y-2">
-                <Link
-                  href="/dang-nhap"
-                  onClick={() => setIsOpen(false)}
-                  className="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.99] text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-md shadow-emerald-600/20 transition-all"
-                >
-                  <span>Đăng nhập ngay</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </Link>
-
-                <Link
-                  href="/dang-ky"
-                  onClick={() => setIsOpen(false)}
-                  className="w-full py-2 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl text-xs block text-center transition-colors"
-                >
-                  Chưa có tài khoản? Đăng ký
-                </Link>
-              </div>
-            </div>
-          ) : showSessions ? (
+          {showSessions ? (
             <div className="flex-1 p-3 overflow-y-auto bg-slate-50 space-y-2 text-xs">
               <div className="flex items-center justify-between pb-2 border-b border-slate-200">
                 <span className="font-bold text-slate-700 text-xs">
@@ -591,7 +529,7 @@ export default function ChatbotWidget() {
           )}
 
           {/* Dynamic Suggestion Chips */}
-          {isAuthenticated && !showSessions && (
+          {!showSessions && (
             <div className="px-3 py-1.5 bg-slate-50 border-t border-slate-100 flex items-center gap-1.5 overflow-x-auto no-scrollbar">
               {quickPrompts.map((prompt, i) => (
                 <button
@@ -606,7 +544,7 @@ export default function ChatbotWidget() {
           )}
 
           {/* Input Bar */}
-          {isAuthenticated && (
+          {!showSessions && (
             <div className="p-3 bg-white border-t border-slate-100">
               <form
                 onSubmit={(e) => {

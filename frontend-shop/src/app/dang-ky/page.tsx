@@ -67,8 +67,11 @@ function DangKyContent() {
         password: password.trim(),
       });
 
-      login(res.token, res.customerInfo);
+      if (typeof window !== "undefined") {
+        localStorage.setItem("solaris_shop_token", res.token);
+      }
       await syncGuestCartOnLogin();
+      login(res.token, res.customerInfo);
       router.push(redirectUrl);
     } catch (error: any) {
       const msg =
@@ -112,7 +115,7 @@ function DangKyContent() {
       <form onSubmit={handleRegister} className="space-y-3.5">
         <div className="space-y-1.5">
           <label className="font-extrabold text-xs text-slate-700 uppercase tracking-wide block">
-            Họ và tên *
+            Họ và tên
           </label>
           <div className="relative">
             <input
@@ -129,7 +132,7 @@ function DangKyContent() {
 
         <div className="space-y-1.5">
           <label className="font-extrabold text-xs text-slate-700 uppercase tracking-wide block">
-            Số điện thoại *
+            Số điện thoại
           </label>
           <div className="relative">
             <input
@@ -162,7 +165,7 @@ function DangKyContent() {
 
         <div className="space-y-1.5">
           <label className="font-extrabold text-xs text-slate-700 uppercase tracking-wide block">
-            Mật khẩu (tối thiểu 6 ký tự) *
+            Mật khẩu (tối thiểu 6 ký tự)
           </label>
           <div className="relative">
             <input
@@ -179,7 +182,7 @@ function DangKyContent() {
 
         <div className="space-y-1.5">
           <label className="font-extrabold text-xs text-slate-700 uppercase tracking-wide block">
-            Xác nhận mật khẩu *
+            Xác nhận mật khẩu
           </label>
           <div className="relative">
             <input

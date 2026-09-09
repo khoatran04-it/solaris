@@ -24,6 +24,12 @@ namespace backend.Services.Interfaces
 
     public interface IOrderRoutingService
     {
-        Task<RoutingResultDto> DetermineOptimalWarehouseAsync(int? customerAddressId, List<OrderDetailCreateDto> items);
+        Task<RoutingResultDto> DetermineOptimalWarehouseAsync(
+            int? customerAddressId,
+            List<OrderDetailCreateDto> items,
+            double directLat = 0,
+            double directLng = 0,
+            string? province = null,
+            string? district = null);
     }
 }

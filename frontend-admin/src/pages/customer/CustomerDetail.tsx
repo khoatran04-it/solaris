@@ -596,8 +596,9 @@ const CustomerDetail: React.FC = () => {
                             <span>{ord.orderCode}</span>
                           </button>
                           {ord.trackingCode && (
-                            <span className="text-[10px] text-slate-400 block mt-0.5">
-                              GHN: {ord.trackingCode}
+                            <span className="text-[10px] text-slate-400 block mt-0.5 font-mono">
+                              {ord.trackingCode.startsWith('SLR-EXP') ? 'Nội bộ:' : 'GHN:'}{' '}
+                              {ord.trackingCode}
                             </span>
                           )}
                         </td>

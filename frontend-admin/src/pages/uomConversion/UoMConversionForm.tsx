@@ -226,12 +226,11 @@ const UoMConversionForm: React.FC = () => {
           <div className="p-4 bg-amber-50/70 border border-amber-200/80 rounded-2xl flex items-start gap-3.5 text-sm text-slate-700">
             {isStandardMode ? (
               <>
-                <Sparkles className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
                 <div>
                   <h4 className="font-bold text-slate-800">Quy đổi tiêu chuẩn (Toàn cục)</h4>
                   <p className="text-xs text-slate-600 mt-0.5 leading-relaxed">
-                    Áp dụng chung cho tất cả sản phẩm dùng chung nhóm đo lường trong hệ thống (Ví dụ:
-                    1 Kg = 1.000 g, 1 Thùng = 24 Lon). Mọi sản phẩm có cặp đơn vị tính này đều tự
+                    Áp dụng chung cho tất cả sản phẩm dùng chung nhóm đo lường trong hệ thống (Ví
+                    dụ: 1 Kg = 1.000 g, 1 Tấn = 1000 Kg). Mọi sản phẩm có cặp đơn vị tính này đều tự
                     động thừa hưởng công thức mà không cần khai báo lại.
                   </p>
                 </div>
@@ -244,7 +243,7 @@ const UoMConversionForm: React.FC = () => {
                   <p className="text-xs text-slate-600 mt-0.5 leading-relaxed">
                     Dành cho các đơn vị bao bì đóng gói có số lượng quy cách khác nhau theo từng mặt
                     hàng (Ví dụ: 1 Thùng Mì Omachi = 30 Gói, nhưng 1 Thùng Bia Saigon = 24 Lon). Hệ
-                    số này chỉ áp dụng riêng cho sản phẩm bạn chỉ định.
+                    số này chỉ áp dụng riêng cho sản phẩm được chỉ định.
                   </p>
                 </div>
               </>

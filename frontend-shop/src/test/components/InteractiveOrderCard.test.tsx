@@ -4,6 +4,7 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import InteractiveOrderCard from "@/components/chat/InteractiveOrderCard";
 import shopAiApi from "@/api/shopAiApi";
 import shopCustomerApi from "@/api/shopCustomerApi";
+import { useAuthStore } from "@/stores/authStore";
 
 vi.mock("@/api/shopAiApi", () => ({
   default: {
@@ -50,6 +51,11 @@ describe("Module 15 - InteractiveOrderCard Component (UI Testing in RAM)", () =>
   beforeEach(() => {
     vi.clearAllMocks();
     (shopCustomerApi.getAddresses as any).mockResolvedValue(mockAddresses);
+    useAuthStore.setState({
+      isAuthenticated: true,
+      user: { id: 1, name: "Khoa Tran" } as any,
+      token: "mock-token",
+    });
   });
 
   const mockPayload = {
@@ -107,14 +113,14 @@ describe("Module 15 - InteractiveOrderCard Component (UI Testing in RAM)", () =>
     render(<InteractiveOrderCard sessionId={1} payload={mockPayload} />);
 
     // Ban đầu 2kg * 100k = 200k (< 300k -> có phí ship 25k)
-    expect(screen.getByText(/Thêm/i)).toBeInTheDocument();
+    expect(screen.getByText(/FREESHIP XE LẠNH/i)).toBeInTheDocument();
 
     // Bấm nút '+' để tăng lên 3kg (3kg * 100k = 300k -> Đạt Freeship)
     const plusButton = screen.getByTitle("Tăng số lượng");
     fireEvent.click(plusButton);
 
     expect(screen.getByText("3")).toBeInTheDocument();
-    expect(screen.getByText(/MIỄN PHÍ GIAO HÀNG/i)).toBeInTheDocument();
+    expect(screen.getByText(/MIỄN PHÍ VẬN CHUYỂN/i)).toBeInTheDocument();
   });
 
   it("TC03 - Xác nhận đặt hàng thành công qua COD", async () => {

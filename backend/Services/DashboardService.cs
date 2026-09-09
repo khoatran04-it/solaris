@@ -1,5 +1,6 @@
 using backend.Data;
 using backend.DTOs.DashboardDTOs;
+using backend.Models;
 using backend.Models.Enums;
 using backend.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
@@ -306,11 +307,15 @@ namespace backend.Services
                 foreach (var i in inv)
                 {
                     var totalUnitQty = i.QuantityAvailable + i.QuantityReserved + i.QuantityQC + i.QuantityDamaged;
-                    occupiedCbm += (i.Variant?.UnitCbm ?? 0) * totalUnitQty;
-                    occupiedKg += (i.Variant?.GrossWeightKg ?? 0) * totalUnitQty;
+                    occupiedCbm += CalculateUnitCbm(i.Variant) * totalUnitQty;
+                    occupiedKg += CalculateUnitWeightKg(i.Variant) * totalUnitQty;
                 }
-                var cbmPercent = (w.TotalCapacityCbm ?? 0) > 0 ? Math.Round(occupiedCbm / (w.TotalCapacityCbm ?? 1) * 100, 1) : 0;
-                var kgPercent = (w.MaxWeightCapacityKg ?? 0) > 0 ? Math.Round(occupiedKg / (w.MaxWeightCapacityKg ?? 1) * 100, 1) : 0;
+                var cbmPercent = (w.TotalCapacityCbm ?? 0) > 0
+                    ? Math.Max(occupiedCbm > 0 ? 0.01m : 0m, Math.Round(occupiedCbm / (w.TotalCapacityCbm ?? 1) * 100, 2))
+                    : 0;
+                var kgPercent = (w.MaxWeightCapacityKg ?? 0) > 0
+                    ? Math.Max(occupiedKg > 0 ? 0.01m : 0m, Math.Round(occupiedKg / (w.MaxWeightCapacityKg ?? 1) * 100, 2))
+                    : 0;
                 string status = cbmPercent >= 95 || kgPercent >= 95 ? "Critical"
                     : cbmPercent >= w.WarningThresholdPercent || kgPercent >= w.WarningThresholdPercent ? "Warning"
                     : "Safe";
@@ -364,19 +369,22 @@ namespace backend.Services
 
             // Top space-consuming
             var topSpace = inventories
-                .Where(i => i.Variant != null && i.Variant.UnitCbm > 0)
-                .GroupBy(i => new { i.VariantId, i.Variant!.Name, i.Variant.Code, i.Variant.UnitCbm })
+                .Where(i => i.Variant != null)
+                .GroupBy(i => new { i.VariantId, i.Variant!.Name, i.Variant.Code })
                 .Select(g =>
                 {
+                    var variant = inventories.First(i => i.VariantId == g.Key.VariantId).Variant;
+                    var unitCbm = CalculateUnitCbm(variant);
                     var totalQty = (int)g.Sum(i => i.QuantityAvailable + i.QuantityReserved + i.QuantityQC + i.QuantityDamaged);
                     return new TopSpaceConsumingItem
                     {
                         VariantName = g.Key.Name,
                         VariantCode = g.Key.Code,
                         TotalQty = totalQty,
-                        TotalCbm = Math.Round((g.Key.UnitCbm ?? 0) * totalQty, 2)
+                        TotalCbm = Math.Round(unitCbm * totalQty, 2)
                     };
                 })
+                .Where(x => x.TotalCbm > 0)
                 .OrderByDescending(x => x.TotalCbm)
                 .Take(5)
                 .ToList();
@@ -531,6 +539,783 @@ namespace backend.Services
                 ExpiringBatches = expiringBatches,
                 QcRejectReasons = qcReasons
             };
+        }
+
+        // ============================================================
+        // DASHBOARD 5: FINANCIAL & CASH FLOW PERFORMANCE
+        // ============================================================
+        public async Task<DashboardFinancialPerformanceDto> GetFinancialPerformanceAsync(string period, DateTime? fromDate, DateTime? toDate)
+        {
+            var (from, to) = ResolveDateRange(period, fromDate, toDate);
+            var (prevFrom, prevTo) = GetPreviousPeriod(from, to);
+
+            // 1. Đơn hàng bán trong kỳ
+            var orders = await _db.Orders
+                .AsNoTracking()
+                .Where(o => !o.IsDeleted && o.OrderDate >= from && o.OrderDate <= to)
+                .Include(o => o.Details)
+                    .ThenInclude(d => d.Variant)
+                        .ThenInclude(v => v!.Product)
+                            .ThenInclude(p => p!.Category)
+                                .ThenInclude(c => c!.CategoryGroup)
+                .ToListAsync();
+
+            // Đơn hàng bán kỳ trước (để tính tăng trưởng)
+            var prevCompletedOrders = await _db.Orders
+                .AsNoTracking()
+                .Where(o => !o.IsDeleted && o.Status == OrderStatus.Completed && o.OrderDate >= prevFrom && o.OrderDate <= prevTo)
+                .ToListAsync();
+
+            // 2. Đơn trả hàng (RMA) trong kỳ
+            var returns = await _db.CustomerReturns
+                .AsNoTracking()
+                .Where(r => !r.IsDeleted && r.ReturnDate >= from && r.ReturnDate <= to)
+                .ToListAsync();
+
+            // 3. Đơn mua hàng PO trong kỳ
+            var purchaseOrders = await _db.PurchaseOrders
+                .AsNoTracking()
+                .Where(po => !po.IsDeleted && po.OrderDate >= from && po.OrderDate <= to)
+                .Include(po => po.Supplier)
+                .Include(po => po.Details)
+                .ToListAsync();
+
+            // 4. Phiếu nhập kho trong kỳ
+            var receipts = await _db.InventoryReceipts
+                .AsNoTracking()
+                .Where(ir => !ir.IsDeleted && ir.CreatedAt >= from && ir.CreatedAt <= to)
+                .Include(ir => ir.Details)
+                .Include(ir => ir.Supplier)
+                .ToListAsync();
+
+            // 5. Giá vốn tham chiếu từ PO và SupplierProduct
+            var latestPoPrices = await _db.PurchaseOrderDetails
+                .AsNoTracking()
+                .Where(pod => pod.PurchaseOrder != null && !pod.PurchaseOrder.IsDeleted && pod.UnitPrice > 0)
+                .OrderByDescending(pod => pod.PurchaseOrder!.OrderDate)
+                .GroupBy(pod => pod.VariantId)
+                .Select(g => new { VariantId = g.Key, UnitPrice = g.First().UnitPrice })
+                .ToDictionaryAsync(x => x.VariantId, x => x.UnitPrice);
+
+            var supplierProductPrices = await _db.SupplierProducts
+                .AsNoTracking()
+                .Where(sp => !sp.IsDeleted && sp.IsActive && sp.LastImportPrice > 0)
+                .GroupBy(sp => sp.VariantId)
+                .Select(g => new { VariantId = g.Key, LastImportPrice = g.First().LastImportPrice })
+                .ToDictionaryAsync(x => x.VariantId, x => x.LastImportPrice);
+
+            // Bảng tồn kho hàng hỏng và hết date
+            var today = DateTime.UtcNow.Date;
+            var inventories = await _db.WarehouseInventories
+                .AsNoTracking()
+                .Include(wi => wi.Batch)
+                .ToListAsync();
+
+            // --- TÍNH TOÁN CHỈ SỐ DOANH THU & GIÁ VỐN ---
+            var completedOrders = orders.Where(o => o.Status == OrderStatus.Completed).ToList();
+            var completedReturns = returns.Where(r => r.Status == CustomerReturnStatus.Completed).ToList();
+
+            decimal grossRevenue = completedOrders.Sum(o => o.TotalAmount);
+            decimal customerRefunds = completedReturns.Sum(r => r.RefundAmount);
+            decimal netRevenue = Math.Max(0, grossRevenue - customerRefunds);
+
+            decimal prevGrossRev = prevCompletedOrders.Sum(o => o.TotalAmount);
+            decimal netRevenueGrowth = prevGrossRev == 0 ? 0 : Math.Round((netRevenue - prevGrossRev) / prevGrossRev * 100, 1);
+
+            // Tính COGS từng dòng mặt hàng của đơn đã hoàn tất
+            decimal totalCogs = 0;
+            var categoryMap = new Dictionary<string, (decimal Revenue, decimal Cogs, int Qty)>();
+
+            foreach (var ord in completedOrders)
+            {
+                foreach (var d in ord.Details)
+                {
+                    decimal unitCost = 0;
+                    if (latestPoPrices.TryGetValue(d.VariantId, out var poCost) && poCost > 0)
+                        unitCost = poCost;
+                    else if (supplierProductPrices.TryGetValue(d.VariantId, out var spCost) && spCost > 0)
+                        unitCost = spCost;
+                    else
+                        unitCost = d.UnitPrice * 0.70m; // Fallback 70% giá bán
+
+                    decimal qty = d.BaseQuantity > 0 ? d.BaseQuantity : d.Quantity;
+                    decimal lineCogs = unitCost * qty;
+                    decimal lineRev = d.UnitPrice * d.Quantity - d.DiscountAmount;
+
+                    totalCogs += lineCogs;
+
+                    var catName = d.Variant?.Product?.Category?.CategoryGroup?.Name ?? "Nông sản tổng hợp";
+                    if (!categoryMap.ContainsKey(catName))
+                        categoryMap[catName] = (0, 0, 0);
+
+                    var current = categoryMap[catName];
+                    categoryMap[catName] = (current.Revenue + lineRev, current.Cogs + lineCogs, current.Qty + (int)qty);
+                }
+            }
+
+            decimal grossProfit = netRevenue - totalCogs;
+            decimal grossMarginPercent = netRevenue == 0 ? 0 : Math.Round(grossProfit / netRevenue * 100, 1);
+
+            // --- TÍNH TOÁN CẦU NỐI DÒNG TIỀN (CASH FLOW BRIDGE) ---
+            decimal onlineInflow = orders
+                .Where(o => (o.PaymentStatus == PaymentStatus.Paid) &&
+                            (o.PaymentMethod == PaymentMethod.BankTransfer || o.PaymentMethod == PaymentMethod.EWallet || o.PaymentMethod == PaymentMethod.CreditCard))
+                .Sum(o => o.TotalAmount);
+
+            decimal codCollectedInflow = completedOrders
+                .Where(o => o.PaymentMethod == PaymentMethod.COD)
+                .Sum(o => o.TotalAmount);
+
+            decimal codInTransit = orders
+                .Where(o => o.Status == OrderStatus.Shipping && o.PaymentMethod == PaymentMethod.COD)
+                .Sum(o => o.TotalAmount);
+
+            decimal totalPoValue = purchaseOrders
+                .Where(po => po.Status == PurchaseOrderStatus.Approved || po.Status == PurchaseOrderStatus.Completed || po.Status == PurchaseOrderStatus.PartiallyReceived)
+                .Sum(po => po.TotalAmount);
+
+            decimal goodsReceivedValue = 0;
+            decimal qcRejectedValue = 0;
+
+            foreach (var rec in receipts.Where(r => r.Status == InventoryReceiptStatus.Completed))
+            {
+                foreach (var d in rec.Details)
+                {
+                    decimal cost = 0;
+                    if (latestPoPrices.TryGetValue(d.VariantId, out var poCost) && poCost > 0)
+                        cost = poCost;
+                    else if (supplierProductPrices.TryGetValue(d.VariantId, out var spCost) && spCost > 0)
+                        cost = spCost;
+                    else
+                        cost = 50000;
+
+                    goodsReceivedValue += d.AcceptedQuantity * cost;
+                    qcRejectedValue += d.RejectedQuantity * cost;
+                }
+            }
+
+            if (goodsReceivedValue == 0)
+            {
+                goodsReceivedValue = purchaseOrders
+                    .Where(po => po.Status == PurchaseOrderStatus.Completed)
+                    .Sum(po => po.TotalAmount);
+            }
+
+            decimal pendingPoCommitment = Math.Max(0, totalPoValue - goodsReceivedValue);
+            decimal realInflow = onlineInflow + codCollectedInflow;
+            decimal estimatedNetCashFlow = realInflow - customerRefunds - goodsReceivedValue;
+
+            var cashFlowBridge = new CashFlowBridgeDto
+            {
+                GrossSales = grossRevenue,
+                OnlinePaymentInflow = onlineInflow,
+                CodCollectedInflow = codCollectedInflow,
+                CodInTransitAmount = codInTransit,
+                CustomerRefundOutflow = customerRefunds,
+                InboundGoodsReceiptOutflow = goodsReceivedValue,
+                PendingPoCommitment = pendingPoCommitment,
+                NetOperatingCashFlow = estimatedNetCashFlow
+            };
+
+            // --- BẢNG ĐỐI SOÁT THEO NHÀ CUNG CẤP (SUPPLIER PAYABLES) ---
+            var supplierPayables = purchaseOrders
+                .Where(po => po.Supplier != null)
+                .GroupBy(po => new { po.SupplierId, po.Supplier!.Name, po.Supplier.Code })
+                .Select(g =>
+                {
+                    var poCount = g.Count();
+                    var poVal = g.Sum(p => p.TotalAmount);
+                    var recVal = g.Where(p => p.Status == PurchaseOrderStatus.Completed).Sum(p => p.TotalAmount);
+                    var pending = Math.Max(0, poVal - recVal);
+                    return new SupplierPayableItem
+                    {
+                        SupplierId = g.Key.SupplierId,
+                        SupplierName = g.Key.Name,
+                        SupplierCode = g.Key.Code,
+                        TotalPoCount = poCount,
+                        TotalPoValue = poVal,
+                        ReceivedValue = recVal,
+                        QcRejectedValue = 0,
+                        PendingCommitment = pending
+                    };
+                })
+                .OrderByDescending(x => x.TotalPoValue)
+                .Take(10)
+                .ToList();
+
+            if (!supplierPayables.Any())
+            {
+                var topSuppliers = await _db.Suppliers.AsNoTracking().Where(s => !s.IsDeleted && s.IsActive).Take(5).ToListAsync();
+                supplierPayables = topSuppliers.Select(s => new SupplierPayableItem
+                {
+                    SupplierId = s.Id,
+                    SupplierName = s.Name,
+                    SupplierCode = s.Code,
+                    TotalPoCount = 0,
+                    TotalPoValue = 0,
+                    ReceivedValue = 0,
+                    QcRejectedValue = 0,
+                    PendingCommitment = 0
+                }).ToList();
+            }
+
+            // --- HIỆU SUẤT THEO NGÀNH HÀNG (CATEGORY PROFITABILITY) ---
+            var categoryProfitability = categoryMap.Select(kvp =>
+            {
+                var profit = kvp.Value.Revenue - kvp.Value.Cogs;
+                var margin = kvp.Value.Revenue == 0 ? 0 : Math.Round(profit / kvp.Value.Revenue * 100, 1);
+                return new CategoryProfitabilityItem
+                {
+                    CategoryGroupName = kvp.Key,
+                    Revenue = kvp.Value.Revenue,
+                    Cogs = kvp.Value.Cogs,
+                    GrossProfit = profit,
+                    GrossMarginPercent = margin,
+                    QuantitySold = kvp.Value.Qty
+                };
+            }).OrderByDescending(x => x.GrossProfit).ToList();
+
+            // --- TỔN THẤT HAO HỤT & CHẤT LƯỢNG (SHRINKAGE LOSS) ---
+            decimal damagedStockValue = 0;
+            decimal expiringRiskValue = 0;
+            foreach (var inv in inventories)
+            {
+                decimal cost = 0;
+                if (latestPoPrices.TryGetValue(inv.VariantId, out var poCost) && poCost > 0)
+                    cost = poCost;
+                else if (supplierProductPrices.TryGetValue(inv.VariantId, out var spCost) && spCost > 0)
+                    cost = spCost;
+                else
+                    cost = 40000;
+
+                if (inv.QuantityDamaged > 0)
+                    damagedStockValue += inv.QuantityDamaged * cost;
+
+                if (inv.Batch != null && (inv.QuantityAvailable + inv.QuantityQC) > 0)
+                {
+                    var daysToExpiry = (inv.Batch.ExpiryDate.Date - today).TotalDays;
+                    if (daysToExpiry >= 0 && daysToExpiry <= 7)
+                        expiringRiskValue += (inv.QuantityAvailable + inv.QuantityQC) * cost;
+                }
+            }
+
+            var shrinkageLoss = new ShrinkageLossDto
+            {
+                DamagedStockValue = damagedStockValue,
+                ExpiringStockRiskValue = expiringRiskValue,
+                ReturnRefundLoss = customerRefunds,
+                TotalShrinkageLoss = damagedStockValue + expiringRiskValue + customerRefunds
+            };
+
+            // --- TIMELINE: DOANH THU VS GIÁ VỐN VS LỢI NHUẬN ---
+            var span = (to - from).TotalDays;
+            List<FinancialTimelinePoint> timeline;
+            if (span <= 31)
+            {
+                timeline = completedOrders
+                    .GroupBy(o => o.OrderDate.Date)
+                    .OrderBy(g => g.Key)
+                    .Select(g =>
+                    {
+                        var rev = g.Sum(o => o.TotalAmount);
+                        decimal dayCogs = 0;
+                        foreach (var o in g)
+                        {
+                            foreach (var d in o.Details)
+                            {
+                                decimal c = latestPoPrices.GetValueOrDefault(d.VariantId, supplierProductPrices.GetValueOrDefault(d.VariantId, d.UnitPrice * 0.7m));
+                                dayCogs += c * (d.BaseQuantity > 0 ? d.BaseQuantity : d.Quantity);
+                            }
+                        }
+                        return new FinancialTimelinePoint
+                        {
+                            Label = g.Key.ToString("dd/MM"),
+                            Revenue = rev,
+                            Cogs = dayCogs,
+                            GrossProfit = rev - dayCogs,
+                            CashInflow = rev,
+                            CashOutflow = dayCogs
+                        };
+                    }).ToList();
+            }
+            else
+            {
+                timeline = completedOrders
+                    .GroupBy(o => new { o.OrderDate.Year, o.OrderDate.Month })
+                    .OrderBy(g => g.Key.Year).ThenBy(g => g.Key.Month)
+                    .Select(g =>
+                    {
+                        var rev = g.Sum(o => o.TotalAmount);
+                        decimal monthCogs = 0;
+                        foreach (var o in g)
+                        {
+                            foreach (var d in o.Details)
+                            {
+                                decimal c = latestPoPrices.GetValueOrDefault(d.VariantId, supplierProductPrices.GetValueOrDefault(d.VariantId, d.UnitPrice * 0.7m));
+                                monthCogs += c * (d.BaseQuantity > 0 ? d.BaseQuantity : d.Quantity);
+                            }
+                        }
+                        return new FinancialTimelinePoint
+                        {
+                            Label = $"T{g.Key.Month}/{g.Key.Year % 100}",
+                            Revenue = rev,
+                            Cogs = monthCogs,
+                            GrossProfit = rev - monthCogs,
+                            CashInflow = rev,
+                            CashOutflow = monthCogs
+                        };
+                    }).ToList();
+            }
+
+            return new DashboardFinancialPerformanceDto
+            {
+                GrossRevenue = grossRevenue,
+                CustomerRefunds = customerRefunds,
+                NetRevenue = netRevenue,
+                TotalCogs = totalCogs,
+                GrossProfit = grossProfit,
+                GrossMarginPercent = grossMarginPercent,
+                TotalPoValue = totalPoValue,
+                TotalGoodsReceivedValue = goodsReceivedValue,
+                EstimatedNetCashFlow = estimatedNetCashFlow,
+                NetRevenueGrowthPercent = netRevenueGrowth,
+                CashFlowBridge = cashFlowBridge,
+                Timeline = timeline,
+                SupplierPayables = supplierPayables,
+                CategoryProfitability = categoryProfitability,
+                ShrinkageLoss = shrinkageLoss
+            };
+        }
+
+        private static decimal CalculateUnitCbm(ProductVariant? variant)
+        {
+            if (variant == null) return 0.01m;
+            if (variant.UnitCbm.HasValue && variant.UnitCbm.Value > 0)
+                return variant.UnitCbm.Value;
+
+            if (variant.LengthCm > 0 && variant.WidthCm > 0 && variant.HeightCm > 0)
+                return Math.Round((variant.LengthCm.Value * variant.WidthCm.Value * variant.HeightCm.Value) / 1000000m, 4);
+
+            if (variant.GrossWeightKg.HasValue && variant.GrossWeightKg.Value > 0)
+            {
+                // Ước lượng nông sản / thực phẩm tiêu dùng trung bình tỷ trọng 500-1000 kg/m3 (0.002 m3/kg)
+                return Math.Max(0.0005m, Math.Round(variant.GrossWeightKg.Value * 0.002m, 4));
+            }
+
+            return 0.01m;
+        }
+
+        private static decimal CalculateUnitWeightKg(ProductVariant? variant)
+        {
+            if (variant == null) return 1.0m;
+            if (variant.GrossWeightKg.HasValue && variant.GrossWeightKg.Value > 0)
+                return variant.GrossWeightKg.Value;
+
+            return 1.0m;
+        }
+
+        // ============================================================
+        // DASHBOARD 6: PRICE VOLATILITY & MARGIN SPREAD
+        // ============================================================
+
+        public async Task<List<SkuSelectItemDto>> GetPriceVolatilitySkusAsync()
+        {
+            var variants = await _db.ProductVariants
+                .AsNoTracking()
+                .Where(v => !v.IsDeleted && v.IsActive)
+                .Include(v => v.Product)
+                    .ThenInclude(p => p!.BaseUoM)
+                .OrderBy(v => v.Name)
+                .Select(v => new SkuSelectItemDto
+                {
+                    VariantId = v.Id,
+                    VariantName = v.Name,
+                    VariantCode = v.Code,
+                    ProductName = v.Product != null ? v.Product.Name : string.Empty,
+                    BaseUoMName = v.Product != null && v.Product.BaseUoM != null ? v.Product.BaseUoM.Name : "Kg"
+                })
+                .ToListAsync();
+
+            return variants;
+        }
+
+        public async Task<DashboardPriceVolatilityDto> GetPriceVolatilityAsync(int? variantId, string timeframe, DateTime? fromDate, DateTime? toDate)
+        {
+            // 1. Xác định SKU cần xem
+            int targetVariantId = 0;
+            if (variantId.HasValue && variantId.Value > 0)
+            {
+                targetVariantId = variantId.Value;
+            }
+            else
+            {
+                var popularVariantId = await _db.OrderDetails
+                    .Where(od => !od.Order.IsDeleted && od.Order.Status != OrderStatus.Cancelled)
+                    .GroupBy(od => od.VariantId)
+                    .OrderByDescending(g => g.Count())
+                    .Select(g => g.Key)
+                    .FirstOrDefaultAsync();
+
+                if (popularVariantId > 0)
+                {
+                    targetVariantId = popularVariantId;
+                }
+                else
+                {
+                    targetVariantId = await _db.ProductVariants
+                        .Where(v => !v.IsDeleted && v.IsActive)
+                        .Select(v => v.Id)
+                        .FirstOrDefaultAsync();
+                }
+            }
+
+            var variant = await _db.ProductVariants
+                .AsNoTracking()
+                .Where(v => v.Id == targetVariantId)
+                .Include(v => v.Product)
+                    .ThenInclude(p => p!.BaseUoM)
+                .Include(v => v.Prices.Where(p => !p.IsDeleted && p.IsActive))
+                    .ThenInclude(pr => pr.UoM)
+                .FirstOrDefaultAsync();
+
+            if (variant == null)
+            {
+                return new DashboardPriceVolatilityDto();
+            }
+
+            int baseUoMId = variant.Product?.BaseUoMId ?? 0;
+            string baseUoMName = variant.Product?.BaseUoM?.Name ?? "Kg";
+
+            // 2. Tải bảng quy đổi UoM
+            var conversions = await _db.UoMConversions
+                .AsNoTracking()
+                .Where(c => !c.IsDeleted && c.IsActive && (c.ProductId == null || c.ProductId == variant.ProductId))
+                .ToListAsync();
+
+            (decimal normPrice, decimal normQty) Normalize(int uomId, decimal unitPrice, decimal qty)
+            {
+                if (baseUoMId == 0 || uomId == baseUoMId)
+                    return (unitPrice, qty);
+
+                var conv = conversions.FirstOrDefault(c => c.FromUoMId == uomId && c.ToUoMId == baseUoMId);
+                if (conv != null && conv.ConversionFactor > 0)
+                {
+                    return (Math.Round(unitPrice / conv.ConversionFactor, 2), Math.Round(qty * conv.ConversionFactor, 2));
+                }
+
+                var revConv = conversions.FirstOrDefault(c => c.ToUoMId == uomId && c.FromUoMId == baseUoMId);
+                if (revConv != null && revConv.ConversionFactor > 0)
+                {
+                    return (Math.Round(unitPrice * revConv.ConversionFactor, 2), Math.Round(qty / revConv.ConversionFactor, 2));
+                }
+
+                return (unitPrice, qty);
+            }
+
+            // 3. Xác định khoảng thời gian
+            var now = DateTime.UtcNow;
+            DateTime from;
+            DateTime to;
+
+            if (fromDate.HasValue && toDate.HasValue)
+            {
+                from = fromDate.Value.Date;
+                to = toDate.Value.Date.AddDays(1).AddTicks(-1);
+            }
+            else
+            {
+                switch (timeframe?.ToLower())
+                {
+                    case "week":
+                        from = now.Date.AddDays(-84); // 12 tuần
+                        to = now.Date.AddDays(1).AddTicks(-1);
+                        break;
+                    case "year":
+                        from = new DateTime(now.Year - 1, 1, 1); // 2 năm
+                        to = now.Date.AddDays(1).AddTicks(-1);
+                        break;
+                    case "month":
+                    default:
+                        from = now.Date.AddDays(-180); // 6 tháng
+                        to = now.Date.AddDays(1).AddTicks(-1);
+                        break;
+                }
+            }
+
+            // 4. Lấy dữ liệu Đơn mua hàng (PO - Nhập hàng)
+            var poDetails = await _db.PurchaseOrderDetails
+                .AsNoTracking()
+                .Where(pod => pod.VariantId == targetVariantId &&
+                              !pod.PurchaseOrder.IsDeleted &&
+                              pod.PurchaseOrder.Status != PurchaseOrderStatus.Cancelled &&
+                              pod.PurchaseOrder.Status != PurchaseOrderStatus.Draft &&
+                              pod.PurchaseOrder.OrderDate >= from &&
+                              pod.PurchaseOrder.OrderDate <= to)
+                .Include(pod => pod.PurchaseOrder)
+                    .ThenInclude(po => po.Supplier)
+                .Include(pod => pod.UoM)
+                .OrderBy(pod => pod.PurchaseOrder.OrderDate)
+                .ToListAsync();
+
+            // 5. Lấy dữ liệu Đơn bán hàng (Order - Bán hàng)
+            var orderDetails = await _db.OrderDetails
+                .AsNoTracking()
+                .Where(od => od.VariantId == targetVariantId &&
+                             !od.Order.IsDeleted &&
+                             od.Order.Status != OrderStatus.Cancelled &&
+                             od.Order.OrderDate >= from &&
+                             od.Order.OrderDate <= to)
+                .Include(od => od.Order)
+                    .ThenInclude(o => o.Customer)
+                .Include(od => od.UoM)
+                .OrderBy(od => od.Order.OrderDate)
+                .ToListAsync();
+
+            // 6. Tính thẻ tóm tắt
+            decimal latestImportPrice = 0;
+            decimal prevImportPrice = 0;
+            if (poDetails.Count > 0)
+            {
+                var latestPo = poDetails.Last();
+                var normLatest = Normalize(latestPo.UoMId, latestPo.UnitPrice, latestPo.OrderQuantity);
+                latestImportPrice = normLatest.normPrice;
+
+                if (poDetails.Count > 1)
+                {
+                    var prevPo = poDetails[poDetails.Count - 2];
+                    var normPrev = Normalize(prevPo.UoMId, prevPo.UnitPrice, prevPo.OrderQuantity);
+                    prevImportPrice = normPrev.normPrice;
+                }
+                else
+                {
+                    prevImportPrice = latestImportPrice;
+                }
+            }
+            else
+            {
+                var supProd = await _db.SupplierProducts
+                    .Where(sp => sp.VariantId == targetVariantId)
+                    .Select(sp => sp.LastImportPrice)
+                    .FirstOrDefaultAsync();
+                latestImportPrice = supProd;
+                prevImportPrice = supProd;
+            }
+
+            decimal currentSellingPrice = 0;
+            if (orderDetails.Count > 0)
+            {
+                var latestOrder = orderDetails.Last();
+                var normLatestSell = Normalize(latestOrder.UoMId, latestOrder.UnitPrice, latestOrder.Quantity);
+                currentSellingPrice = normLatestSell.normPrice;
+            }
+            else
+            {
+                var defaultPrice = variant.Prices.FirstOrDefault(p => p.IsDefault) ?? variant.Prices.FirstOrDefault();
+                if (defaultPrice != null)
+                {
+                    var normDefault = Normalize(defaultPrice.UoMId, defaultPrice.Price, 1);
+                    currentSellingPrice = normDefault.normPrice;
+                }
+            }
+
+            decimal priceSpread = currentSellingPrice - latestImportPrice;
+            decimal marginPercent = currentSellingPrice > 0 ? Math.Round(priceSpread / currentSellingPrice * 100, 1) : 0;
+            decimal importChangePercent = prevImportPrice > 0 ? Math.Round((latestImportPrice - prevImportPrice) / prevImportPrice * 100, 1) : 0;
+
+            // 7. Nhóm mốc thời gian (Timeline Points)
+            var timelinePoints = new List<PriceVolatilityPointDto>();
+            var tf = timeframe?.ToLower() ?? "month";
+
+            if (tf == "week")
+            {
+                var weekStart = from.Date.AddDays(-(int)from.Date.DayOfWeek + (int)DayOfWeek.Monday);
+                while (weekStart <= to.Date)
+                {
+                    var weekEnd = weekStart.AddDays(7).AddTicks(-1);
+                    string label = $"T{GetIsoWeek(weekStart)} ({weekStart:dd/MM})";
+
+                    var weekImports = poDetails
+                        .Where(p => p.PurchaseOrder.OrderDate >= weekStart && p.PurchaseOrder.OrderDate <= weekEnd)
+                        .Select(p => Normalize(p.UoMId, p.UnitPrice, p.OrderQuantity))
+                        .ToList();
+
+                    var weekSales = orderDetails
+                        .Where(o => o.Order.OrderDate >= weekStart && o.Order.OrderDate <= weekEnd)
+                        .Select(o => Normalize(o.UoMId, o.UnitPrice, o.Quantity))
+                        .ToList();
+
+                    decimal avgImp = weekImports.Count > 0 && weekImports.Sum(x => x.normQty) > 0
+                        ? Math.Round(weekImports.Sum(x => x.normPrice * x.normQty) / weekImports.Sum(x => x.normQty), 0)
+                        : (timelinePoints.Count > 0 ? timelinePoints.Last().AvgImportPrice : latestImportPrice);
+
+                    decimal avgSell = weekSales.Count > 0 && weekSales.Sum(x => x.normQty) > 0
+                        ? Math.Round(weekSales.Sum(x => x.normPrice * x.normQty) / weekSales.Sum(x => x.normQty), 0)
+                        : (timelinePoints.Count > 0 ? timelinePoints.Last().AvgSellingPrice : currentSellingPrice);
+
+                    decimal spread = avgSell - avgImp;
+                    decimal margin = avgSell > 0 ? Math.Round(spread / avgSell * 100, 1) : 0;
+
+                    timelinePoints.Add(new PriceVolatilityPointDto
+                    {
+                        Label = label,
+                        AvgImportPrice = avgImp,
+                        AvgSellingPrice = avgSell,
+                        Spread = spread,
+                        MarginPercent = margin
+                    });
+
+                    weekStart = weekStart.AddDays(7);
+                }
+            }
+            else if (tf == "year")
+            {
+                var cur = new DateTime(from.Year, 1, 1);
+                while (cur <= to.Date)
+                {
+                    int q = (cur.Month - 1) / 3 + 1;
+                    var qEnd = cur.AddMonths(3).AddTicks(-1);
+                    string label = $"Q{q}/{cur.Year}";
+
+                    var qImports = poDetails
+                        .Where(p => p.PurchaseOrder.OrderDate >= cur && p.PurchaseOrder.OrderDate <= qEnd)
+                        .Select(p => Normalize(p.UoMId, p.UnitPrice, p.OrderQuantity))
+                        .ToList();
+
+                    var qSales = orderDetails
+                        .Where(o => o.Order.OrderDate >= cur && o.Order.OrderDate <= qEnd)
+                        .Select(o => Normalize(o.UoMId, o.UnitPrice, o.Quantity))
+                        .ToList();
+
+                    decimal avgImp = qImports.Count > 0 && qImports.Sum(x => x.normQty) > 0
+                        ? Math.Round(qImports.Sum(x => x.normPrice * x.normQty) / qImports.Sum(x => x.normQty), 0)
+                        : (timelinePoints.Count > 0 ? timelinePoints.Last().AvgImportPrice : latestImportPrice);
+
+                    decimal avgSell = qSales.Count > 0 && qSales.Sum(x => x.normQty) > 0
+                        ? Math.Round(qSales.Sum(x => x.normPrice * x.normQty) / qSales.Sum(x => x.normQty), 0)
+                        : (timelinePoints.Count > 0 ? timelinePoints.Last().AvgSellingPrice : currentSellingPrice);
+
+                    decimal spread = avgSell - avgImp;
+                    decimal margin = avgSell > 0 ? Math.Round(spread / avgSell * 100, 1) : 0;
+
+                    timelinePoints.Add(new PriceVolatilityPointDto
+                    {
+                        Label = label,
+                        AvgImportPrice = avgImp,
+                        AvgSellingPrice = avgSell,
+                        Spread = spread,
+                        MarginPercent = margin
+                    });
+
+                    cur = cur.AddMonths(3);
+                }
+            }
+            else
+            {
+                // Month
+                var cur = new DateTime(from.Year, from.Month, 1);
+                while (cur <= to.Date)
+                {
+                    var mEnd = cur.AddMonths(1).AddTicks(-1);
+                    string label = $"T{cur.Month:D2}/{cur.Year}";
+
+                    var mImports = poDetails
+                        .Where(p => p.PurchaseOrder.OrderDate >= cur && p.PurchaseOrder.OrderDate <= mEnd)
+                        .Select(p => Normalize(p.UoMId, p.UnitPrice, p.OrderQuantity))
+                        .ToList();
+
+                    var mSales = orderDetails
+                        .Where(o => o.Order.OrderDate >= cur && o.Order.OrderDate <= mEnd)
+                        .Select(o => Normalize(o.UoMId, o.UnitPrice, o.Quantity))
+                        .ToList();
+
+                    decimal avgImp = mImports.Count > 0 && mImports.Sum(x => x.normQty) > 0
+                        ? Math.Round(mImports.Sum(x => x.normPrice * x.normQty) / mImports.Sum(x => x.normQty), 0)
+                        : (timelinePoints.Count > 0 ? timelinePoints.Last().AvgImportPrice : latestImportPrice);
+
+                    decimal avgSell = mSales.Count > 0 && mSales.Sum(x => x.normQty) > 0
+                        ? Math.Round(mSales.Sum(x => x.normPrice * x.normQty) / mSales.Sum(x => x.normQty), 0)
+                        : (timelinePoints.Count > 0 ? timelinePoints.Last().AvgSellingPrice : currentSellingPrice);
+
+                    decimal spread = avgSell - avgImp;
+                    decimal margin = avgSell > 0 ? Math.Round(spread / avgSell * 100, 1) : 0;
+
+                    timelinePoints.Add(new PriceVolatilityPointDto
+                    {
+                        Label = label,
+                        AvgImportPrice = avgImp,
+                        AvgSellingPrice = avgSell,
+                        Spread = spread,
+                        MarginPercent = margin
+                    });
+
+                    cur = cur.AddMonths(1);
+                }
+            }
+
+            // 8. Danh sách giao dịch chi tiết
+            var transactions = new List<PriceTransactionDetailDto>();
+
+            foreach (var po in poDetails.OrderByDescending(p => p.PurchaseOrder.OrderDate).Take(15))
+            {
+                var norm = Normalize(po.UoMId, po.UnitPrice, po.OrderQuantity);
+                transactions.Add(new PriceTransactionDetailDto
+                {
+                    Date = po.PurchaseOrder.OrderDate,
+                    Type = "Nhập hàng",
+                    DocumentCode = po.PurchaseOrder.OrderCode,
+                    PartnerName = po.PurchaseOrder.Supplier?.Name ?? "Nhà cung cấp",
+                    OriginalUnitPrice = po.UnitPrice,
+                    OriginalUoMName = po.UoM?.Name ?? baseUoMName,
+                    NormalizedUnitPrice = norm.normPrice,
+                    QuantityInBaseUoM = norm.normQty,
+                    BaseUoMName = baseUoMName
+                });
+            }
+
+            foreach (var ord in orderDetails.OrderByDescending(o => o.Order.OrderDate).Take(15))
+            {
+                var norm = Normalize(ord.UoMId, ord.UnitPrice, ord.Quantity);
+                transactions.Add(new PriceTransactionDetailDto
+                {
+                    Date = ord.Order.OrderDate,
+                    Type = "Bán hàng",
+                    DocumentCode = ord.Order.OrderCode,
+                    PartnerName = ord.Order.Customer?.Name ?? ord.Order.ReceiverName ?? "Khách hàng",
+                    OriginalUnitPrice = ord.UnitPrice,
+                    OriginalUoMName = ord.UoM?.Name ?? baseUoMName,
+                    NormalizedUnitPrice = norm.normPrice,
+                    QuantityInBaseUoM = norm.normQty,
+                    BaseUoMName = baseUoMName
+                });
+            }
+
+            var sortedTx = transactions.OrderByDescending(t => t.Date).Take(20).ToList();
+
+            return new DashboardPriceVolatilityDto
+            {
+                VariantId = variant.Id,
+                VariantName = variant.Name,
+                VariantCode = variant.Code,
+                ProductName = variant.Product?.Name ?? variant.Name,
+                BaseUoMName = baseUoMName,
+                LatestImportPrice = latestImportPrice,
+                CurrentSellingPrice = currentSellingPrice,
+                PriceSpread = priceSpread,
+                MarginPercent = marginPercent,
+                ImportPriceChangePercent = importChangePercent,
+                Timeline = timelinePoints,
+                Transactions = sortedTx
+            };
+        }
+
+        private static int GetIsoWeek(DateTime date)
+        {
+            var day = System.Globalization.CultureInfo.InvariantCulture.Calendar.GetDayOfWeek(date);
+            if (day >= DayOfWeek.Monday && day <= DayOfWeek.Wednesday)
+            {
+                date = date.AddDays(3);
+            }
+            return System.Globalization.CultureInfo.InvariantCulture.Calendar.GetWeekOfYear(date, System.Globalization.CalendarWeekRule.FirstFourDayWeek, DayOfWeek.Monday);
         }
     }
 }

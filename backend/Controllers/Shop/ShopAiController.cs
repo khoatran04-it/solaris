@@ -45,6 +45,7 @@ namespace backend.Controllers.Shop
         /// <param name="sessionToken">Mã token định danh của khách vãng lai (nếu chưa đăng nhập).</param>
         /// <returns>Danh sách các phiên trò chuyện sắp xếp theo thời gian mới nhất.</returns>
         /// <response code="200">Truy vấn danh sách phiên hội thoại thành công.</response>
+        [AllowAnonymous]
         [HttpGet("sessions")]
         [ProducesResponseType(typeof(List<ChatSessionReadDto>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetSessions([FromQuery] string? sessionToken)
@@ -62,6 +63,7 @@ namespace backend.Controllers.Shop
         /// <returns>Danh sách tin nhắn (User prompts và AI replies kèm rich payloads).</returns>
         /// <response code="200">Truy vấn lịch sử tin nhắn thành công.</response>
         /// <response code="404">Không tìm thấy phiên hội thoại.</response>
+        [AllowAnonymous]
         [HttpGet("sessions/{sessionId}/messages")]
         [ProducesResponseType(typeof(List<ChatMessageReadDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -78,6 +80,7 @@ namespace backend.Controllers.Shop
         /// <param name="payload">Thông tin token và tiêu đề phiên (tùy chọn).</param>
         /// <returns>Thông tin phiên hội thoại mới tạo.</returns>
         /// <response code="200">Khởi tạo phiên hội thoại thành công.</response>
+        [AllowAnonymous]
         [HttpPost("sessions")]
         [ProducesResponseType(typeof(ChatSessionReadDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> CreateSession([FromBody] CreateSessionPayload? payload)
@@ -95,6 +98,7 @@ namespace backend.Controllers.Shop
         /// <returns>Trạng thái thành công của thao tác xóa.</returns>
         /// <response code="200">Xóa phiên hội thoại thành công.</response>
         /// <response code="404">Không tìm thấy phiên hội thoại để xóa.</response>
+        [AllowAnonymous]
         [HttpDelete("sessions/{sessionId}")]
         [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -116,6 +120,7 @@ namespace backend.Controllers.Shop
         /// <returns>Phản hồi từ AI (Văn bản + Rich UI Payload).</returns>
         /// <response code="200">Xử lý câu hỏi và phản hồi từ AI thành công.</response>
         /// <response code="400">Yêu cầu không hợp lệ hoặc lỗi trong quá trình phân tích ý định.</response>
+        [AllowAnonymous]
         [HttpPost("chat")]
         [ProducesResponseType(typeof(AiChatResponseDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]

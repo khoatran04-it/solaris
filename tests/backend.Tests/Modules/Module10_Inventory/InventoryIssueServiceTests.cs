@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+using AutoMapper;
 using backend.DTOs.InventoryIssueDTOs;
 using backend.Models;
 using backend.Models.Enums;
@@ -400,12 +400,12 @@ namespace backend.Tests.Modules.Module10_Inventory
             txn.Type.Should().Be(TransactionType.Issue);
             txn.Quantity.Should().Be(50);
 
-            // 4. Tiến độ đơn hàng và trạng thái chuyển Shipping
+            // 4. Tiến độ đơn hàng và trạng thái chuyển Processing (đã xuất kho/đóng gói chờ bàn giao vận chuyển)
             var od = await context.OrderDetails.FindAsync(1);
             od!.IssuedQuantity.Should().Be(50);
 
             var order = await context.Orders.FindAsync(1);
-            order!.Status.Should().Be(OrderStatus.Shipping);
+            order!.Status.Should().Be(OrderStatus.Processing);
         }
         #endregion
 

@@ -376,7 +376,7 @@ namespace backend.Tests.Modules.Module15_AiChatbot
             var uom = new UoM { Id = 1, Name = "Kg", Code = "KG" };
             var product = new Product { Id = 1, Code = "PRD-DUA", Name = "Dưa Lưới Huỳnh Long", Slug = "dua-luoi", BaseUoMId = 1, BaseUoM = uom };
             var variant = new ProductVariant { Id = 201, ProductId = 1, Product = product, Name = "Dưa Lưới Huỳnh Long Trái 1.5kg", Code = "VAR-DUA-01" };
-            
+
             var pastOrder = new Order
             {
                 Id = 1,
@@ -426,7 +426,7 @@ namespace backend.Tests.Modules.Module15_AiChatbot
             result.Should().NotBeNull();
             result.PayloadType.Should().Be("interactive_order");
             result.Payload.Should().BeOfType<InteractiveOrderPayloadDto>();
-            
+
             var payload = (InteractiveOrderPayloadDto)result.Payload!;
             payload.PreviousOrderCode.Should().Be("ORD-20260825-111");
             payload.Items.Should().HaveCount(1);
@@ -866,6 +866,490 @@ namespace backend.Tests.Modules.Module15_AiChatbot
             var srItem = order.Items.FirstOrDefault(i => i.VariantId == 4);
             srItem.Should().NotBeNull();
             srItem!.Quantity.Should().Be(1);
+        }
+        #endregion
+
+        #region TC16: RÀO CHẮN KHOẢNG CÁCH CHUỖI LẠNH KHI ĐẶT HÀNG QUA CHAT
+        [Fact]
+        public async Task SendMessageAsync_WhenColdChainProductExceedsRadius_ShouldMarkIsColdChainFeasibleFalse()
+        {
+            // Arrange
+            using var context = TestFactories.CreateInMemoryDbContext();
+
+            var catCold = new ProductCategory
+            {
+                Id = 1,
+                Name = "Thực Phẩm Tươi Sống",
+                Code = "FRESH_PRODUCE",
+                RequiresColdChain = true,
+                IsActive = true,
+                IsDeleted = false
+            };
+            var uomKg = new UoM { Id = 1, Name = "Kilogram", Code = "KG" };
+
+            var pork = new Product
+            {
+                Id = 1,
+                Name = "Thịt Heo Sạch Sinh Học",
+                Code = "SP-THIT-01",
+                Slug = "thit-heo-sach",
+                CategoryId = 1,
+                Category = catCold,
+                BaseUoMId = 1,
+                BaseUoM = uomKg,
+                IsActive = true,
+                IsDeleted = false
+            };
+            var varPork = new ProductVariant
+            {
+                Id = 10,
+                ProductId = 1,
+                Product = pork,
+                Name = "Thịt Heo Sạch Sinh Học",
+                Code = "SKU-PORK",
+                IsActive = true,
+                IsDeleted = false,
+                Prices = new List<ProductVariantPrice>
+                {
+                    new ProductVariantPrice { Id = 1, VariantId = 10, UoMId = 1, Price = 120000, IsActive = true, IsDeleted = false }
+                }
+            };
+            pork.Variants.Add(varPork);
+
+            // Kho tại Đà Lạt (Lat: 11.94, Lon: 108.45), bán kính xe lạnh 15km
+            var wh = new Warehouse
+            {
+                Id = 1,
+                Code = "WH-DL",
+                Name = "Kho Trung Tâm Đà Lạt",
+                IsActive = true,
+                IsDeleted = false,
+                MaxColdChainRadiusKm = 15.0,
+                Address = new WarehouseAddress
+                {
+                    Id = 1,
+                    StreetAddress = "123 Phù Đổng Thiên Vương",
+                    Ward = "Phường 8",
+                    District = "Thành phố Đà Lạt",
+                    Province = "Lâm Đồng",
+                    Latitude = 11.9404,
+                    Longitude = 108.4583
+                }
+            };
+
+            // Khách hàng tại TP.HCM (Lat: 10.77, Lon: 106.69) cách Đà Lạt > 200km
+            var customer = new Customer
+            {
+                Id = 100,
+                Code = "CUST-100",
+                Name = "Khách Hàng Ở Xa",
+                PhoneNumber = "0912345678",
+                IsActive = true,
+                IsDeleted = false,
+                Addresses = new List<CustomerAddress>
+                {
+                    new CustomerAddress
+                    {
+                        Id = 50,
+                        CustomerId = 100,
+                        ReceiverName = "Khách Hàng Ở Xa",
+                        Phone = "0912345678",
+                        StreetAddress = "1 Lê Duẩn",
+                        Ward = "Phường Bến Nghé",
+                        District = "Quận 1",
+                        Province = "Hồ Chí Minh",
+                        Latitude = 10.7769,
+                        Longitude = 106.6951,
+                        IsDefault = true,
+                        IsDeleted = false
+                    }
+                }
+            };
+
+            var batch = new ProductBatch { Id = 1, BatchCode = "BATCH-PORK-01", VariantId = 10, ExpiryDate = DateTime.UtcNow.AddMonths(1) };
+            var inv = new WarehouseInventory { Id = 1, WarehouseId = 1, VariantId = 10, BatchId = 1, QuantityAvailable = 50, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow };
+
+            context.ProductCategories.Add(catCold);
+            context.UoMs.Add(uomKg);
+            context.Products.Add(pork);
+            context.ProductVariants.Add(varPork);
+            context.Warehouses.Add(wh);
+            context.Customers.Add(customer);
+            context.ProductBatches.Add(batch);
+            context.WarehouseInventories.Add(inv);
+            await context.SaveChangesAsync();
+
+            var client = CreateMockHttpClient("Dạ đơn hàng thịt heo đã được chuẩn bị.");
+            var service = new GeminiChatService(client, _config, context, _mapper, _mockVnPayService, _mockHttpContextAccessor);
+
+            var request = new AiSendMessageRequestDto
+            {
+                Message = "Cho tôi 2kg thịt heo"
+            };
+
+            // Act
+            var result = await service.SendMessageAsync(request, 100, "127.0.0.1");
+
+            // Assert
+            result.Should().NotBeNull();
+            result.PayloadType.Should().Be("interactive_order");
+            var order = (InteractiveOrderPayloadDto)result.Payload!;
+            order.IsColdChainFeasible.Should().BeFalse();
+            order.IneligibleColdChainItems.Should().Contain("Thịt Heo Sạch Sinh Học");
+            order.ColdChainWarning.Should().NotBeNullOrEmpty();
+            order.ColdChainWarning.Should().Contain("2°C - 8°C");
+        }
+        #endregion
+
+        #region TC17: TRA CỨU ĐƠN HÀNG THỜI GIAN THỰC KÈM THÔNG TIN CHUYẾN XE LẠNH TMS (KHÁCH VÃNG LAI)
+        [Fact]
+        public async Task LookupOrderAsync_WhenGuestCustomerQueriesOrderCode_ShouldReturnTrackingWithTMSVehicleAndDriver()
+        {
+            // Arrange
+            using var context = TestFactories.CreateInMemoryDbContext();
+
+            var vehicle = new DeliveryVehicle
+            {
+                Id = 1,
+                Code = "VEH-BIKE-01",
+                LicensePlate = "49-B1 999.88",
+                VehicleType = "Motorbike",
+                IsColdChainEquipped = true,
+                MaxWeightKg = 80
+            };
+
+            var trip = new DeliveryTrip
+            {
+                Id = 10,
+                TripCode = "TRIP-20260909-001",
+                TripType = "B2C_Delivery",
+                Status = "InTransit",
+                VehicleId = 1,
+                Vehicle = vehicle,
+                LicensePlate = "49-B1 999.88",
+                DriverName = "Nguyễn Văn Shipper",
+                DriverPhone = "0909112233",
+                WarehouseId = 1,
+                StartedAt = DateTime.UtcNow.AddMinutes(-30)
+            };
+
+            var order = new Order
+            {
+                Id = 1,
+                OrderCode = "ORD-20260909-001",
+                CustomerId = 20,
+                OrderDate = DateTime.UtcNow.AddHours(-1),
+                Status = OrderStatus.Shipping,
+                PaymentStatus = PaymentStatus.Paid,
+                PaymentMethod = PaymentMethod.EWallet,
+                SubTotal = 350000,
+                DiscountAmount = 0,
+                ShippingFee = 0,
+                TotalAmount = 350000,
+                ReceiverName = "Trần Thị Khách",
+                ReceiverPhone = "0988776655",
+                DeliveryAddress = "123 Phường 1, Đà Lạt",
+                DeliveryTripId = 10,
+                DeliveryTrip = trip,
+                Details = new List<OrderDetail>
+                {
+                    new OrderDetail
+                    {
+                        Id = 1,
+                        OrderId = 1,
+                        VariantId = 1,
+                        Variant = new ProductVariant { Id = 1, Name = "Bơ Sáp 034", Code = "BO-034" },
+                        Quantity = 3,
+                        UnitPrice = 90000,
+                        TotalPrice = 270000,
+                        UoM = new UoM { Id = 1, Name = "Kg", Code = "KG" }
+                    }
+                }
+            };
+
+            context.DeliveryVehicles.Add(vehicle);
+            context.DeliveryTrips.Add(trip);
+            context.Orders.Add(order);
+            await context.SaveChangesAsync();
+
+            var client = CreateMockHttpClient("Dạ đơn hàng ORD-20260909-001 đang trên chuyến xe giao hàng lạnh TMS.");
+            var service = new GeminiChatService(client, _config, context, _mapper, _mockVnPayService, _mockHttpContextAccessor);
+
+            var request = new AiSendMessageRequestDto
+            {
+                Message = "Kiểm tra đơn ORD-20260909-001"
+            };
+
+            // Act: Khách vãng lai (customerId = null)
+            var result = await service.SendMessageAsync(request, null, "127.0.0.1");
+
+            // Assert
+            result.Should().NotBeNull();
+            result.PayloadType.Should().Be("order_tracking");
+            var tracking = (AiOrderTrackingDto)result.Payload!;
+            tracking.OrderCode.Should().Be("ORD-20260909-001");
+            tracking.DeliveryTripCode.Should().Be("TRIP-20260909-001");
+            tracking.LicensePlate.Should().Be("49-B1 999.88");
+            tracking.DriverName.Should().Be("Nguyễn Văn Shipper");
+            tracking.DriverPhone.Should().Be("0909112233");
+            tracking.IsColdChainVehicle.Should().BeTrue();
+            tracking.ShippingProvider.Should().Contain("Solaris Cold-Chain Express");
+        }
+        #endregion
+
+        #region TC18: TRA CỨU ĐƠN HÀNG BỊ TỪ CHỐI / HỦY BỞI KHO KÈM LÝ DO HỦY
+        [Fact]
+        public async Task LookupOrderAsync_WhenOrderCancelledWithReason_ShouldExtractCancellationReason()
+        {
+            // Arrange
+            using var context = TestFactories.CreateInMemoryDbContext();
+
+            var order = new Order
+            {
+                Id = 2,
+                OrderCode = "ORD-20260909-CANCEL",
+                CustomerId = 20,
+                OrderDate = DateTime.UtcNow.AddHours(-2),
+                Status = OrderStatus.Cancelled,
+                PaymentStatus = PaymentStatus.Refunded,
+                PaymentMethod = PaymentMethod.EWallet,
+                SubTotal = 200000,
+                DiscountAmount = 0,
+                ShippingFee = 25000,
+                TotalAmount = 225000,
+                ReceiverName = "Khách Bị Hủy",
+                ReceiverPhone = "0988000111",
+                DeliveryAddress = "Huyện Cát Tiên, Lâm Đồng",
+                CancellationReason = "Kho từ chối do địa chỉ vượt quá bán kính bảo quản lạnh 15km của kho xe lạnh"
+            };
+
+            context.Orders.Add(order);
+            await context.SaveChangesAsync();
+
+            var client = CreateMockHttpClient("Dạ đơn hàng đã bị hủy do vượt quá bán kính xe lạnh.");
+            var service = new GeminiChatService(client, _config, context, _mapper, _mockVnPayService, _mockHttpContextAccessor);
+
+            var request = new AiSendMessageRequestDto
+            {
+                Message = "Tra cứu đơn ORD-20260909-CANCEL"
+            };
+
+            // Act
+            var result = await service.SendMessageAsync(request, 20, "127.0.0.1");
+
+            // Assert
+            result.Should().NotBeNull();
+            result.PayloadType.Should().Be("order_tracking");
+            var tracking = (AiOrderTrackingDto)result.Payload!;
+            tracking.OrderCode.Should().Be("ORD-20260909-CANCEL");
+            tracking.Status.Should().Be(7); // Cancelled
+            tracking.CancellationReason.Should().Be("Kho từ chối do địa chỉ vượt quá bán kính bảo quản lạnh 15km của kho xe lạnh");
+        }
+        #endregion
+
+        #region TC19: XÁC NHẬN ĐẶT HÀNG VƯỢT BÁN KÍNH XE LẠNH NÉM INVALIDOPERATIONEXCEPTION
+        [Fact]
+        public async Task ConfirmInteractiveOrderAsync_WhenAddressExceedsColdChainRadius_ShouldThrowInvalidOperationException()
+        {
+            // Arrange
+            using var context = TestFactories.CreateInMemoryDbContext();
+
+            var catCold = new ProductCategory
+            {
+                Id = 2,
+                Name = "Hải Sản Tươi Sống",
+                Code = "SEAFOOD",
+                RequiresColdChain = true,
+                IsActive = true,
+                IsDeleted = false
+            };
+            var uomKg = new UoM { Id = 1, Name = "Kilogram", Code = "KG" };
+
+            var salmon = new Product
+            {
+                Id = 5,
+                Name = "Cá Hồi Tươi Na Uy",
+                Code = "SP-SALMON",
+                CategoryId = 2,
+                Category = catCold,
+                BaseUoMId = 1,
+                BaseUoM = uomKg,
+                IsActive = true,
+                IsDeleted = false
+            };
+            var varSalmon = new ProductVariant
+            {
+                Id = 50,
+                ProductId = 5,
+                Product = salmon,
+                Name = "Cá Hồi Tươi Na Uy (Fillet)",
+                Code = "SKU-SALMON",
+                IsActive = true,
+                IsDeleted = false
+            };
+            salmon.Variants.Add(varSalmon);
+
+            var wh = new Warehouse
+            {
+                Id = 1,
+                Code = "WH-HCM",
+                Name = "Kho Lạnh Quận 7",
+                IsActive = true,
+                IsDeleted = false,
+                MaxColdChainRadiusKm = 10.0,
+                Address = new WarehouseAddress
+                {
+                    Id = 1,
+                    StreetAddress = "456 Nguyễn Lương Bằng",
+                    Ward = "Phường Tân Phú",
+                    District = "Quận 7",
+                    Province = "Hồ Chí Minh",
+                    Latitude = 10.7327,
+                    Longitude = 106.7158
+                }
+            };
+
+            // Khách hàng có địa chỉ tại Bình Dương (cách Q7 ~35km > 10km)
+            var customer = new Customer
+            {
+                Id = 30,
+                Code = "CUST-30",
+                Name = "Khách Hàng Bình Dương",
+                PhoneNumber = "0933445566",
+                IsActive = true,
+                IsDeleted = false,
+                Addresses = new List<CustomerAddress>
+                {
+                    new CustomerAddress
+                    {
+                        Id = 88,
+                        CustomerId = 30,
+                        ReceiverName = "Khách Bình Dương",
+                        Phone = "0933445566",
+                        StreetAddress = "789 Đại Lộ Bình Dương",
+                        Ward = "Phường Phú Hòa",
+                        District = "TP. Thủ Dầu Một",
+                        Province = "Bình Dương",
+                        Latitude = 10.9805,
+                        Longitude = 106.6519,
+                        IsDefault = true,
+                        IsDeleted = false
+                    }
+                }
+            };
+
+            var batch = new ProductBatch { Id = 5, BatchCode = "BATCH-SALMON-01", VariantId = 50, ExpiryDate = DateTime.UtcNow.AddMonths(1) };
+            var inv = new WarehouseInventory { Id = 5, WarehouseId = 1, VariantId = 50, BatchId = 5, QuantityAvailable = 20, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow };
+
+            context.ProductCategories.Add(catCold);
+            context.UoMs.Add(uomKg);
+            context.Products.Add(salmon);
+            context.ProductVariants.Add(varSalmon);
+            context.Warehouses.Add(wh);
+            context.Customers.Add(customer);
+            context.ProductBatches.Add(batch);
+            context.WarehouseInventories.Add(inv);
+            await context.SaveChangesAsync();
+
+            var client = CreateMockHttpClient();
+            var service = new GeminiChatService(client, _config, context, _mapper, _mockVnPayService, _mockHttpContextAccessor);
+
+            var confirmRequest = new ConfirmInteractiveOrderRequestDto
+            {
+                SessionId = 1,
+                CustomerAddressId = 88,
+                PaymentMethod = 1, // COD
+                Items = new List<InteractiveOrderItemDto>
+                {
+                    new InteractiveOrderItemDto
+                    {
+                        VariantId = 50,
+                        Quantity = 2,
+                        UnitPrice = 250000,
+                        DiscountAmount = 0,
+                        TotalPrice = 500000
+                    }
+                }
+            };
+
+            // Act & Assert
+            var act = async () => await service.ConfirmInteractiveOrderAsync(confirmRequest, 30);
+            await act.Should().ThrowAsync<InvalidOperationException>()
+                .WithMessage("*vượt quá bán kính phục vụ xe thùng lạnh*");
+        }
+        #endregion
+
+        #region TC20: TƯ VẤN SẢN PHẨM KHUNG VÀ BIẾN THỂ VỚI GIÁ CÁCH 1 VÀ CÁCH 2
+        [Fact]
+        public async Task SendMessageAsync_WhenCustomerAsksForProductGuidance_ShouldReturnProductCardsWithAvailablePrices()
+        {
+            // Arrange
+            using var context = TestFactories.CreateInMemoryDbContext();
+
+            var catGroup = new ProductCategoryGroup { Id = 1, Name = "Nông Sản Tươi", Code = "FRESH_PRODUCE" };
+            var cat = new ProductCategory { Id = 1, Name = "Trái Cây Đặc Sản", Code = "FRUITS", CategoryGroupId = 1, CategoryGroup = catGroup, IsActive = true, IsDeleted = false };
+            var uomKg = new UoM { Id = 1, Name = "Kg", Code = "KG" };
+            var uomHop = new UoM { Id = 2, Name = "Hộp 3kg", Code = "BOX3" };
+
+            var boSap = new Product
+            {
+                Id = 1,
+                Name = "Bơ Sáp 034",
+                Code = "SP-BO-034",
+                Slug = "bo-sap-034",
+                CategoryId = 1,
+                Category = cat,
+                BaseUoMId = 1,
+                BaseUoM = uomKg,
+                IsActive = true,
+                IsDeleted = false
+            };
+
+            var varBo = new ProductVariant
+            {
+                Id = 1,
+                ProductId = 1,
+                Product = boSap,
+                Name = "Bơ Sáp 034 Loại 1",
+                Code = "SKU-BO034-L1",
+                IsActive = true,
+                IsDeleted = false,
+                Prices = new List<ProductVariantPrice>
+                {
+                    new ProductVariantPrice { Id = 1, VariantId = 1, UoMId = 1, Price = 50000, IsDefault = true, IsActive = true, IsDeleted = false },
+                    new ProductVariantPrice { Id = 2, VariantId = 1, UoMId = 2, Price = 140000, IsDefault = false, IsActive = true, IsDeleted = false }
+                }
+            };
+            boSap.Variants.Add(varBo);
+
+            context.ProductCategoryGroups.Add(catGroup);
+            context.ProductCategories.Add(cat);
+            context.UoMs.AddRange(uomKg, uomHop);
+            context.Products.Add(boSap);
+            context.ProductVariants.Add(varBo);
+            await context.SaveChangesAsync();
+
+            var client = CreateMockHttpClient("Dạ Solaris có Bơ Sáp 034 với bảng giá quy cách lẻ và hộp ưu đãi.");
+            var service = new GeminiChatService(client, _config, context, _mapper, _mockVnPayService, _mockHttpContextAccessor);
+
+            var request = new AiSendMessageRequestDto
+            {
+                Message = "Tư vấn bơ sáp cho tôi"
+            };
+
+            // Act
+            var result = await service.SendMessageAsync(request, null, "127.0.0.1");
+
+            // Assert
+            result.Should().NotBeNull();
+            result.PayloadType.Should().Be("product_cards");
+            var prods = (List<AiProductCardDto>)result.Payload!;
+            prods.Should().NotBeEmpty();
+            var card = prods.First();
+            card.AvailablePrices.Should().NotBeNull();
+            card.AvailablePrices.Should().HaveCount(2);
+            card.AvailablePrices!.Any(p => p.Price == 50000).Should().BeTrue();
+            card.AvailablePrices!.Any(p => p.Price == 140000).Should().BeTrue();
         }
         #endregion
     }

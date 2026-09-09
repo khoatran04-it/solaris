@@ -139,9 +139,9 @@ namespace backend.Tests.Modules.Module05_ProductPricing
             resGroup.TotalRecords.Should().Be(2);
             resOrigin.TotalRecords.Should().Be(1);
             resCert.TotalRecords.Should().Be(1);
-            resCert.Items.First().Code.Should().Be("SKU-CAM-1KG");
+            resCert.Items.First().Code.Should().Be("PROD-CAM");
 
-            resSortPrice.Items.First().Code.Should().Be("SKU-CAM-1KG"); // 40,000 < 90,000
+            resSortPrice.Items.First().Code.Should().Be("PROD-CAM"); // 40,000 < 90,000
 
             // Act 6: Lọc theo Dòng Sản phẩm (ProductSlug)
             var resProdSlug = await service.GetProductsAsync(new ShopProductFilterParams { ProductSlug = "tao-envy-new-zealand" });
@@ -373,7 +373,7 @@ namespace backend.Tests.Modules.Module05_ProductPricing
             promoDetail.Should().NotBeNull();
             promoDetail!.Name.Should().Be("Đại Tiệc Trái Cây");
             promoDetail.Products.Should().HaveCount(1);
-            promoDetail.Products.First().Code.Should().Be("V1");
+            promoDetail.Products.First().Code.Should().Be("P1");
 
             notFoundPromo.Should().BeNull();
         }

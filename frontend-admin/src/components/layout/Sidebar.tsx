@@ -37,10 +37,11 @@ const MENU_CONFIG: MenuItem[] = [
   // 1. BÀN LÀM VIỆC & TỔNG QUAN
   {
     id: 'dashboard',
-    label: 'Tổng quan Bàn làm việc',
+    label: 'Bàn làm việc',
     icon: LayoutDashboard,
     children: [
-      { label: 'Tổng quan kinh doanh', path: '/' },
+      { label: 'Bàn làm việc Điều hành', path: '/' },
+      { label: 'Dòng tiền & Công nợ', path: '/dashboards/finance' },
     ],
   },
   // 2. SẢN PHẨM & MASTER DATA
@@ -86,7 +87,11 @@ const MENU_CONFIG: MenuItem[] = [
     label: 'Mua hàng & Cung ứng',
     icon: ShoppingCart,
     children: [
-      { label: 'Đơn mua hàng (PO)', path: '/purchase-orders', permission: PERMISSIONS.PURCHASE.VIEW },
+      {
+        label: 'Đơn mua hàng (PO)',
+        path: '/purchase-orders',
+        permission: PERMISSIONS.PURCHASE.VIEW,
+      },
       {
         label: 'Sản phẩm Nhà cung cấp',
         path: '/supplier-products',
@@ -143,7 +148,7 @@ const MENU_CONFIG: MenuItem[] = [
       {
         label: 'Sổ cái & Chốt ca',
         path: '/inventory-reconciliation',
-        permission: PERMISSIONS.INVENTORY.RECEIPT_VIEW,
+        permission: PERMISSIONS.INVENTORY.RECONCILIATION_VIEW,
       },
       { label: 'Danh sách Kho bãi', path: '/warehouses', permission: PERMISSIONS.WAREHOUSE.VIEW },
     ],
@@ -169,8 +174,16 @@ const MENU_CONFIG: MenuItem[] = [
     label: 'Vận tải & Đội xe',
     icon: Truck,
     children: [
-      { label: 'Bảng điều khiển Vận tải', path: '/transportation/dashboard' },
-      { label: 'Danh sách Đội xe', path: '/transportation/vehicles' },
+      {
+        label: 'Bảng điều khiển Vận tải',
+        path: '/transportation/dashboard',
+        permission: PERMISSIONS.TRANSPORTATION.TRIP_VIEW,
+      },
+      {
+        label: 'Danh sách Đội xe',
+        path: '/transportation/vehicles',
+        permission: PERMISSIONS.TRANSPORTATION.VEHICLE_VIEW,
+      },
     ],
   },
   // 7. ĐỐI TÁC & KHÁCH HÀNG
@@ -197,15 +210,32 @@ const MENU_CONFIG: MenuItem[] = [
       },
     ],
   },
-  // 7. BÁO CÁO & THỐNG KÊ
+  // 8. BÁO CÁO & THỐNG KÊ
   {
     id: 'reports',
     label: 'Báo cáo & Thống kê',
     icon: BarChart3,
     children: [
-      { label: 'Doanh số & Địa lý', path: '/dashboards/sales' },
-      { label: 'Tồn kho & Sức chứa', path: '/dashboards/inventory' },
-      { label: 'Chất lượng & Hạn dùng', path: '/dashboards/quality' },
+      {
+        label: 'Biến động Giá & Biên lãi',
+        path: '/dashboards/price-volatility',
+        permission: PERMISSIONS.DASHBOARD.PRICE,
+      },
+      {
+        label: 'Doanh số & Khách hàng',
+        path: '/dashboards/sales',
+        permission: PERMISSIONS.DASHBOARD.SALES,
+      },
+      {
+        label: 'Tồn kho & Sức chứa',
+        path: '/dashboards/inventory',
+        permission: PERMISSIONS.DASHBOARD.INVENTORY,
+      },
+      {
+        label: 'Chất lượng & Hạn dùng',
+        path: '/dashboards/quality',
+        permission: PERMISSIONS.DASHBOARD.QUALITY,
+      },
     ],
   },
   // 8. QUẢN TRỊ HỆ THỐNG

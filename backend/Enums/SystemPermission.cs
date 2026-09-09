@@ -141,6 +141,10 @@ namespace backend.Enums
         TRANSFER_VIEW,
         [PermissionInfo("10. Vận hành Kho", "Lập & Chốt chuyển kho")]
         TRANSFER_MANAGE,
+        [PermissionInfo("10. Vận hành Kho", "Xem Sổ cái & Lịch sử biến động tồn kho")]
+        RECONCILIATION_VIEW,
+        [PermissionInfo("10. Vận hành Kho", "Chốt ca & Đối soát chênh lệch tồn kho")]
+        RECONCILIATION_MANAGE,
 
         // 11. Kiểm kê & Điều chỉnh (Inventory Audit & Adjustment)
         [PermissionInfo("11. Kiểm kê & Điều chỉnh", "Xem Phiếu kiểm kê kho")]
@@ -168,7 +172,39 @@ namespace backend.Enums
         [PermissionInfo("13. Đổi trả & QC", "Tiếp nhận Yêu cầu Đổi trả")]
         RETURN_CREATE,
         [PermissionInfo("13. Đổi trả & QC", "Kiểm định QC 2 xô & Hoàn tất Đổi trả")]
-        RETURN_INSPECT
+        RETURN_INSPECT,
+
+        // 14. Vận tải Chuỗi lạnh TMS & Đội xe (Transportation & Fleet Management)
+        [PermissionInfo("14. Vận tải & Đội xe", "Xem Bảng điều khiển Vận tải & Chuyến xe")]
+        TRIP_VIEW,
+        [PermissionInfo("14. Vận tải & Đội xe", "Khởi tạo Chuyến xe Giao hàng / Điều chuyển")]
+        TRIP_CREATE,
+        [PermissionInfo("14. Vận tải & Đội xe", "Điều phối, Khởi hành & Hoàn tất Chuyến xe TMS")]
+        TRIP_MANAGE,
+        [PermissionInfo("14. Vận tải & Đội xe", "Hủy Chuyến xe vận tải")]
+        TRIP_CANCEL,
+        [PermissionInfo("14. Vận tải & Đội xe", "Xem Danh sách Đội xe & Phương tiện")]
+        VEHICLE_VIEW,
+        [PermissionInfo("14. Vận tải & Đội xe", "Thêm mới Phương tiện vào Đội xe")]
+        VEHICLE_CREATE,
+        [PermissionInfo("14. Vận tải & Đội xe", "Cập nhật Phương tiện & Tài xế phụ trách")]
+        VEHICLE_UPDATE,
+        [PermissionInfo("14. Vận tải & Đội xe", "Xóa / Ngừng khai thác Phương tiện")]
+        VEHICLE_DELETE,
+
+        // 15. Báo cáo & Thống kê Quản trị (Dashboard & Analytics)
+        [PermissionInfo("15. Báo cáo & Thống kê", "Xem Bảng tổng quan Kinh doanh (Overview)")]
+        DASHBOARD_OVERVIEW,
+        [PermissionInfo("15. Báo cáo & Thống kê", "Xem Báo cáo Tài chính, Giá vốn & Dòng tiền")]
+        DASHBOARD_FINANCE,
+        [PermissionInfo("15. Báo cáo & Thống kê", "Xem Báo cáo Doanh số & Phân bổ Khách hàng")]
+        DASHBOARD_SALES,
+        [PermissionInfo("15. Báo cáo & Thống kê", "Xem Báo cáo Tồn kho & Sức chứa Kho hàng")]
+        DASHBOARD_INVENTORY,
+        [PermissionInfo("15. Báo cáo & Thống kê", "Xem Báo cáo Chất lượng & Hạn dùng Nông sản (FEFO)")]
+        DASHBOARD_QUALITY,
+        [PermissionInfo("15. Báo cáo & Thống kê", "Xem Báo cáo Biến động Giá & Biên lãi SKU")]
+        DASHBOARD_PRICE
     }
 
     /// <summary>

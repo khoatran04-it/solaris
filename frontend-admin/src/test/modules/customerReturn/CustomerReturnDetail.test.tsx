@@ -1,4 +1,4 @@
-﻿import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
@@ -135,11 +135,11 @@ describe('Module 13 - CustomerReturnDetail Component', () => {
     });
   });
 
-  // TC03b: Mở modal nghiệm thu QC khi ở trạng thái Approved và gọi API inspect
-  it('TC03b - Mở modal nghiệm thu QC khi ở trạng thái Approved, nhập phân loại số lượng và gọi API customerReturnApi.inspect', async () => {
+  // TC03b: Mở modal nghiệm thu QC khi ở trạng thái Inspecting và gọi API inspect
+  it('TC03b - Mở modal nghiệm thu QC khi ở trạng thái Inspecting, nhập phân loại số lượng và gọi API customerReturnApi.inspect', async () => {
     (customerReturnApi.getById as any).mockResolvedValue({
       ...mockReturn,
-      status: CustomerReturnStatus.Approved,
+      status: CustomerReturnStatus.Inspecting,
     });
     (customerReturnApi.inspect as any).mockResolvedValue({
       message: 'Nghiệm thu kiểm định QC thành công',
@@ -174,14 +174,19 @@ describe('Module 13 - CustomerReturnDetail Component', () => {
     });
   });
 
-  // TC03c: Hoàn tất phiếu trả hàng trực tiếp khi ở trạng thái Inspecting
-  it('TC03c - Hoàn tất trả hàng khi ở trạng thái Inspecting và gọi API customerReturnApi.complete', async () => {
+  // TC03c: Quy trình tuần tự - Khi chưa QC thì KHÔNG hiện nút Tạo Phiếu Nhập Kho hay Hoàn Tất
+  it('TC03c - Khi ở trạng thái Inspecting và chưa QC, chỉ hiện nút Kiểm Định QC, không có nút Tạo Phiếu Nhập Kho hay Hoàn Tất', async () => {
     (customerReturnApi.getById as any).mockResolvedValue({
       ...mockReturn,
       status: CustomerReturnStatus.Inspecting,
-    });
-    (customerReturnApi.complete as any).mockResolvedValue({
-      message: 'Hoàn tất phiếu trả hàng thành công',
+      inspectionNotes: '',
+      details: [
+        {
+          ...mockReturn.details[0],
+          acceptedQuantity: 0,
+          damagedQuantity: 0,
+        },
+      ],
     });
 
     renderComponent();
@@ -190,19 +195,32 @@ describe('Module 13 - CustomerReturnDetail Component', () => {
       expect(screen.getByText('RET-20260830-050')).toBeInTheDocument();
     });
 
-    const completeBtn = screen.getByRole('button', { name: /Hoàn Tất Trả Hàng/i });
-    fireEvent.click(completeBtn);
+    // Nút Kiểm Định QC phải có mặt
+    expect(screen.getByRole('button', { name: /Kiểm Định QC & Nghiệm Thu/i })).toBeInTheDocument();
 
-    await waitFor(() => {
-      expect(customerReturnApi.complete).toHaveBeenCalledWith(50);
-    });
+    // Nút Tạo Phiếu Nhập Kho Thu Hồi KHÔNG được hiển thị khi chưa QC
+    expect(
+      screen.queryByRole('button', { name: /Tạo Phiếu Nhập Kho Thu Hồi/i })
+    ).not.toBeInTheDocument();
+
+    // Nút Hoàn Tất Trả Hàng và Sửa Kết Quả QC đã bị loại bỏ hoàn toàn
+    expect(screen.queryByRole('button', { name: /Hoàn Tất Trả Hàng/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Sửa Kết Quả QC/i })).not.toBeInTheDocument();
   });
 
-  // TC03d: Điều hướng sang trang Tạo Phiếu Nhập Kho Thu Hồi khi ở trạng thái Inspecting
-  it('TC03d - Bấm nút Tạo Phiếu Nhập Kho Thu Hồi điều hướng sang /inventory-receipts/create?returnId=50', async () => {
+  // TC03d: Điều hướng sang trang Tạo Phiếu Nhập Kho Thu Hồi khi đã hoàn tất QC
+  it('TC03d - Khi đã hoàn tất QC, hiện nút Tạo Phiếu Nhập Kho Thu Hồi và điều hướng sang /inventory-receipts/create?returnId=50', async () => {
     (customerReturnApi.getById as any).mockResolvedValue({
       ...mockReturn,
       status: CustomerReturnStatus.Inspecting,
+      inspectionNotes: 'Đã hoàn tất kiểm định',
+      details: [
+        {
+          ...mockReturn.details[0],
+          acceptedQuantity: 2,
+          damagedQuantity: 0,
+        },
+      ],
     });
 
     renderComponent();
@@ -215,6 +233,9 @@ describe('Module 13 - CustomerReturnDetail Component', () => {
     fireEvent.click(createReceiptBtn);
 
     expect(mockNavigate).toHaveBeenCalledWith('/inventory-receipts/create?returnId=50');
+
+    // Nút Hoàn Tất Trả Hàng không được tồn tại
+    expect(screen.queryByRole('button', { name: /Hoàn Tất Trả Hàng/i })).not.toBeInTheDocument();
   });
 
   // TC04: Mở modal từ chối và gọi API reject

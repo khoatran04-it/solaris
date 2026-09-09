@@ -30,7 +30,7 @@ namespace backend.Data
 
         // --- Danh mục Product ---
         public DbSet<ProductCategoryGroup> ProductCategoryGroups { get; set; }
-        public DbSet<ProductCategory> ProductCategories {  get; set; }
+        public DbSet<ProductCategory> ProductCategories { get; set; }
         public DbSet<Product> Products { get; set; }
         public DbSet<ProductVariant> ProductVariants { get; set; }
         public DbSet<ProductVariantPrice> ProductVariantPrices { get; set; }

@@ -65,7 +65,7 @@ namespace backend.Services
         public async Task<int> CreateAsync(int supplierId, SupplierAddressCreateDto dto)
         {
             var supplierExists = await _context.Suppliers.AnyAsync(s => s.Id == supplierId);
-            if (!supplierExists) 
+            if (!supplierExists)
                 throw new KeyNotFoundException("Không tìm thấy thông tin nhà cung cấp.");
 
             return await _context.ExecuteInTransactionAsync(async () =>
@@ -105,7 +105,7 @@ namespace backend.Services
         public async Task<bool> UpdateAsync(int id, SupplierAddressUpdateDto dto)
         {
             var entity = await _context.SupplierAddresses.FindAsync(id);
-            if (entity == null) 
+            if (entity == null)
                 throw new KeyNotFoundException("Không tìm thấy địa chỉ.");
 
             return await _context.ExecuteInTransactionAsync(async () =>
@@ -154,7 +154,7 @@ namespace backend.Services
         public async Task<bool> DeleteAsync(int id)
         {
             var entity = await _context.SupplierAddresses.FindAsync(id);
-            if (entity == null) 
+            if (entity == null)
                 throw new KeyNotFoundException("Không tìm thấy địa chỉ.");
 
             return await _context.ExecuteInTransactionAsync(async () =>

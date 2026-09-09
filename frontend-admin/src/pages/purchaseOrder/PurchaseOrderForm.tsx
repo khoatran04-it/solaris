@@ -73,7 +73,9 @@ const PurchaseOrderForm: React.FC = () => {
   const [allVariants, setAllVariants] = useState<{ value: number; label: string }[]>([]);
   const [rawVariants, setRawVariants] = useState<any[]>([]);
   const [uoms, setUoms] = useState<{ value: number; label: string }[]>([]);
-  const [variantUoMsMap, setVariantUoMsMap] = useState<Record<number, { value: number; label: string }[]>>({});
+  const [variantUoMsMap, setVariantUoMsMap] = useState<
+    Record<number, { value: number; label: string }[]>
+  >({});
   const validUoMsCacheRef = useRef<Record<number, ValidUoMOption[]>>({});
 
   const fetchValidUoMs = useCallback(async (vId: number): Promise<ValidUoMOption[]> => {
@@ -252,7 +254,12 @@ const PurchaseOrderForm: React.FC = () => {
 
       setDetails((prev) => {
         const next = [...prev];
-        const currentRow = next[index] || { variantId: '', uoMId: '', orderQuantity: 1, unitPrice: 0 };
+        const currentRow = next[index] || {
+          variantId: '',
+          uoMId: '',
+          orderQuantity: 1,
+          unitPrice: 0,
+        };
         const updatedRow: DetailRow = { ...currentRow, variantId: vId };
 
         if (sp) {
@@ -269,7 +276,10 @@ const PurchaseOrderForm: React.FC = () => {
             updatedRow.unitPrice = Math.round(basePrice * curFactor);
           }
 
-          if (sp.minimumOrderQuantity && Number(updatedRow.orderQuantity || 0) < sp.minimumOrderQuantity) {
+          if (
+            sp.minimumOrderQuantity &&
+            Number(updatedRow.orderQuantity || 0) < sp.minimumOrderQuantity
+          ) {
             updatedRow.orderQuantity = sp.minimumOrderQuantity;
           }
         } else {
@@ -361,7 +371,7 @@ const PurchaseOrderForm: React.FC = () => {
         const sku = sp.variantCode || sp.variantSKU;
         return {
           value: sp.variantId,
-          label: sku ? `${sp.variantName} - ${sku}` : (sp.variantName || `Sản phẩm #${sp.variantId}`),
+          label: sku ? `${sp.variantName} - ${sku}` : sp.variantName || `Sản phẩm #${sp.variantId}`,
         };
       });
     }
@@ -628,9 +638,7 @@ const PurchaseOrderForm: React.FC = () => {
                       const spInfo = getSupplierProductInfo(row.variantId);
                       const moqCurrent = getMoqInCurrentUoM(row.variantId, row.uoMId);
                       const isBelowMoq =
-                        moqCurrent > 0 &&
-                        row.orderQuantity > 0 &&
-                        row.orderQuantity < moqCurrent;
+                        moqCurrent > 0 && row.orderQuantity > 0 && row.orderQuantity < moqCurrent;
 
                       return (
                         <tr
@@ -678,7 +686,11 @@ const PurchaseOrderForm: React.FC = () => {
                           <td className="p-3 align-top">
                             <FormSelect
                               label=""
-                              options={row.variantId && variantUoMsMap[Number(row.variantId)] ? variantUoMsMap[Number(row.variantId)] : uoms}
+                              options={
+                                row.variantId && variantUoMsMap[Number(row.variantId)]
+                                  ? variantUoMsMap[Number(row.variantId)]
+                                  : uoms
+                              }
                               value={row.uoMId}
                               showSearch
                               searchPlaceholder="Tìm ĐVT..."

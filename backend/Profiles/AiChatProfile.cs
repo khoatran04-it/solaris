@@ -17,13 +17,13 @@ namespace backend.Profiles
             #region ChatSession -> ChatSessionReadDto
             CreateMap<ChatSession, ChatSessionReadDto>()
                 .ForMember(dest => dest.TotalMessages, opt => opt.MapFrom(src => src.Messages.Count))
-                .ForMember(dest => dest.LastMessage, opt => opt.MapFrom(src => 
+                .ForMember(dest => dest.LastMessage, opt => opt.MapFrom(src =>
                     src.Messages.OrderByDescending(m => m.CreatedAt).Select(m => m.Content).FirstOrDefault()));
             #endregion
 
             #region ChatMessage -> ChatMessageReadDto
             CreateMap<ChatMessage, ChatMessageReadDto>()
-                .ForMember(dest => dest.Payload, opt => opt.MapFrom(src => 
+                .ForMember(dest => dest.Payload, opt => opt.MapFrom(src =>
                     string.IsNullOrEmpty(src.PayloadJson) ? null : JsonSerializer.Deserialize<object>(src.PayloadJson, (JsonSerializerOptions?)null)));
             #endregion
 
@@ -32,18 +32,18 @@ namespace backend.Profiles
                 .ForMember(dest => dest.VariantCode, opt => opt.MapFrom(src => src.Variant != null ? src.Variant.Code : "SP"))
                 .ForMember(dest => dest.VariantName, opt => opt.MapFrom(src => src.Variant != null ? src.Variant.Name : "Nông sản sạch Solaris"))
                 .ForMember(dest => dest.Slug, opt => opt.MapFrom(src => src.Variant != null && src.Variant.Product != null ? src.Variant.Product.Slug : "san-pham"))
-                .ForMember(dest => dest.ImagePath, opt => opt.MapFrom(src => 
+                .ForMember(dest => dest.ImagePath, opt => opt.MapFrom(src =>
                     src.Variant != null && src.Variant.ImagePath != null ? src.Variant.ImagePath : (src.Variant != null && src.Variant.Product != null ? src.Variant.Product.ImagePath : null)))
                 .ForMember(dest => dest.UoMName, opt => opt.MapFrom(src => src.UoM != null ? src.UoM.Name : "Kg"));
             #endregion
 
             #region Product / ProductVariant -> AiProductCardDto
             CreateMap<Product, AiProductCardDto>()
-                .ForMember(dest => dest.VariantId, opt => opt.MapFrom(src => 
-                    src.Variants.Where(v => !v.IsDeleted && v.IsActive).Select(v => v.Id).FirstOrDefault() != 0 
-                        ? src.Variants.Where(v => !v.IsDeleted && v.IsActive).Select(v => v.Id).FirstOrDefault() 
+                .ForMember(dest => dest.VariantId, opt => opt.MapFrom(src =>
+                    src.Variants.Where(v => !v.IsDeleted && v.IsActive).Select(v => v.Id).FirstOrDefault() != 0
+                        ? src.Variants.Where(v => !v.IsDeleted && v.IsActive).Select(v => v.Id).FirstOrDefault()
                         : src.Id))
-                .ForMember(dest => dest.UoMId, opt => opt.MapFrom(src => 
+                .ForMember(dest => dest.UoMId, opt => opt.MapFrom(src =>
                     src.Variants.Where(v => !v.IsDeleted && v.IsActive)
                         .SelectMany(v => v.Prices.Where(p => !p.IsDeleted && p.IsActive))
                         .Select(p => p.UoMId)
@@ -55,27 +55,27 @@ namespace backend.Profiles
                             : src.BaseUoMId))
                 .ForMember(dest => dest.Slug, opt => opt.MapFrom(src => src.Slug ?? "san-pham"))
                 .ForMember(dest => dest.UoMName, opt => opt.MapFrom(src => src.BaseUoM != null ? src.BaseUoM.Name : "Kg"))
-                .ForMember(dest => dest.Price, opt => opt.MapFrom(src => 
+                .ForMember(dest => dest.Price, opt => opt.MapFrom(src =>
                     src.Variants.Where(v => !v.IsDeleted && v.IsActive)
                         .SelectMany(v => v.Prices.Where(p => !p.IsDeleted))
                         .Select(p => p.Price)
                         .FirstOrDefault()))
-                .ForMember(dest => dest.DiscountedPrice, opt => opt.MapFrom(src => 
+                .ForMember(dest => dest.DiscountedPrice, opt => opt.MapFrom(src =>
                     src.Variants.Where(v => !v.IsDeleted && v.IsActive)
                         .SelectMany(v => v.Prices.Where(p => !p.IsDeleted))
                         .Select(p => p.Price)
                         .FirstOrDefault()))
-                .ForMember(dest => dest.Origin, opt => opt.MapFrom(src => 
+                .ForMember(dest => dest.Origin, opt => opt.MapFrom(src =>
                     src.Variants.SelectMany(v => v.Attributes)
                         .Where(a => a.AttributeDefinition != null && a.AttributeDefinition.Name.ToLower().Contains("xuất xứ"))
                         .Select(a => a.AttributeValue)
                         .FirstOrDefault()))
-                .ForMember(dest => dest.Certification, opt => opt.MapFrom(src => 
+                .ForMember(dest => dest.Certification, opt => opt.MapFrom(src =>
                     src.Variants.SelectMany(v => v.Attributes)
                         .Where(a => a.AttributeDefinition != null && (a.AttributeDefinition.Name.ToLower().Contains("chứng nhận") || a.AttributeDefinition.Name.ToLower().Contains("tiêu chuẩn")))
                         .Select(a => a.AttributeValue)
                         .FirstOrDefault()))
-                .ForMember(dest => dest.BrixLevel, opt => opt.MapFrom(src => 
+                .ForMember(dest => dest.BrixLevel, opt => opt.MapFrom(src =>
                     src.Variants.SelectMany(v => v.Attributes)
                         .Where(a => a.AttributeDefinition != null && (a.AttributeDefinition.Name.ToLower().Contains("độ ngọt") || a.AttributeDefinition.Name.ToLower().Contains("brix")))
                         .Select(a => a.AttributeValue)
@@ -99,6 +99,9 @@ namespace backend.Profiles
                 .ForMember(dest => dest.PaymentMethod, opt => opt.MapFrom(src => (int)src.PaymentMethod))
                 .ForMember(dest => dest.PaymentMethodName, opt => opt.MapFrom(src =>
                     src.PaymentMethod == backend.Models.Enums.PaymentMethod.COD ? "Thanh toán khi nhận (COD)" : "Cổng VNPay Sandbox"))
+                .ForMember(dest => dest.ShippingProvider, opt => opt.MapFrom(src =>
+                    src.DeliveryTripId != null ? "Solaris Cold-Chain Express (TMS)" : (!string.IsNullOrEmpty(src.ShippingProvider) ? src.ShippingProvider : "Solaris Cold-Chain Express (TMS)")))
+                .ForMember(dest => dest.CancellationReason, opt => opt.MapFrom(src => src.CancellationReason))
                 .ForMember(dest => dest.Items, opt => opt.MapFrom(src => src.Details));
 
             CreateMap<OrderDetail, AiOrderTrackingItemDto>()

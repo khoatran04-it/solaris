@@ -25,6 +25,7 @@ import {
   DateTimeCell,
   StatusBadge,
 } from '../../components/commons/ListUI';
+import { ExportCsvButton } from '../../utils/exportUtils';
 
 const ProductList: React.FC = () => {
   const navigate = useNavigate();
@@ -169,6 +170,82 @@ const ProductList: React.FC = () => {
         onAdd={() => navigate('/products/create')}
         icon={Package}
         searchPlaceholder="Tìm kiếm theo mã, tên sản phẩm..."
+        action={
+          <ExportCsvButton
+            filename={`Danh-sach-san-pham_${new Date().toISOString().slice(0, 10)}`}
+            label="Xuất CSV"
+            currentPageData={data}
+            totalItems={totalItems}
+            filterSnapshots={[
+              { label: 'Từ khóa', value: debouncedSearch },
+              {
+                label: 'Danh mục',
+                value: categoryFilter
+                  .map((id) => categoryOptions.find((o) => o.value === id)?.label)
+                  .filter(Boolean)
+                  .join(', '),
+              },
+              {
+                label: 'Đơn vị tính',
+                value: uomFilter
+                  .map((id) => uomOptions.find((o) => o.value === id)?.label)
+                  .filter(Boolean)
+                  .join(', '),
+              },
+              {
+                label: 'Trạng thái',
+                value:
+                  statusFilter.length === 1
+                    ? statusFilter[0] === 1
+                      ? 'Đang bán'
+                      : 'Ngừng bán'
+                    : '',
+              },
+              {
+                label: 'Ngày tạo',
+                value: createdAtFilter ? createdAtFilter.toLocaleDateString('vi-VN') : '',
+              },
+              {
+                label: 'Ngày sửa',
+                value: updatedAtFilter ? updatedAtFilter.toLocaleDateString('vi-VN') : '',
+              },
+            ]}
+            onFetchAll={async () => {
+              const response = await productApi.getAll({
+                search: debouncedSearch,
+                pageIndex: 1,
+                pageSize: totalItems || 1000,
+                categoryId: categoryFilter.length > 0 ? categoryFilter.join(',') : undefined,
+                baseUoMId: uomFilter.length > 0 ? uomFilter.join(',') : undefined,
+                isActive: statusFilter.length === 1 ? statusFilter[0] === 1 : undefined,
+                createdAt: createdAtFilter
+                  ? createdAtFilter.toLocaleDateString('en-CA')
+                  : undefined,
+                updatedAt: updatedAtFilter
+                  ? updatedAtFilter.toLocaleDateString('en-CA')
+                  : undefined,
+              });
+              return response.items || [];
+            }}
+            columns={[
+              { header: 'Mã Sản Phẩm', accessor: (p) => p.code },
+              { header: 'Tên Sản Phẩm', accessor: (p) => p.name },
+              { header: 'Danh Mục', accessor: (p) => p.categoryName || '' },
+              { header: 'ĐVT Cơ Sở', accessor: (p) => p.baseUoMName || '' },
+              { header: 'Trạng Thái', accessor: (p) => (p.isActive ? 'Đang bán' : 'Ngừng bán') },
+              {
+                header: 'Ngày Tạo',
+                accessor: (p) =>
+                  p.createdAt ? new Date(p.createdAt).toLocaleDateString('vi-VN') : '',
+              },
+              {
+                header: 'Ngày Cập Nhật',
+                accessor: (p) =>
+                  p.updatedAt ? new Date(p.updatedAt).toLocaleDateString('vi-VN') : '',
+              },
+            ]}
+          />
+        }
       />
 
       <ListCard>

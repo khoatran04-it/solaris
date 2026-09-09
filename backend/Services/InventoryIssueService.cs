@@ -280,8 +280,8 @@ namespace backend.Services
                 // 2. Cập nhật trạng thái Order liên quan
                 if (issue.Order != null)
                 {
-                    bool isFullyIssued = issue.Order.Details.All(d => d.IssuedQuantity >= d.Quantity);
-                    issue.Order.Status = isFullyIssued ? OrderStatus.Shipping : OrderStatus.Processing;
+                    // Đơn hàng ở trạng thái Đang xử lý / Đã đóng gói (Processing) để chờ bàn giao cho Đội xe hoặc GHN
+                    issue.Order.Status = OrderStatus.Processing;
                     issue.Order.UpdatedAt = DateTime.UtcNow;
                 }
 

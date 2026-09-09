@@ -22,6 +22,7 @@ import {
   ListPagination,
   StatusBadge,
 } from '../../components/commons/ListUI';
+import { ExportCsvButton } from '../../utils/exportUtils';
 
 const SupplierProductList: React.FC = () => {
   // --- STATE QUẢN LÝ DỮ LIỆU & PHÂN TRANG ---
@@ -181,6 +182,61 @@ const SupplierProductList: React.FC = () => {
         onAdd={handleOpenCreate}
         icon={Package}
         searchPlaceholder="Tìm kiếm theo mã SKU, tên sản phẩm, tên NCC..."
+        action={
+          <ExportCsvButton
+            filename={`Bang-gia-nha-cung-cap_${new Date().toISOString().slice(0, 10)}`}
+            label="Xuất CSV"
+            currentPageData={data}
+            totalItems={totalItems}
+            filterSnapshots={[
+              { label: 'Từ khóa', value: debouncedSearch },
+              {
+                label: 'Nhà cung cấp',
+                value: supplierFilter
+                  .map((id) => supplierOptions.find((o) => o.value === id)?.label)
+                  .filter(Boolean)
+                  .join(', '),
+              },
+              {
+                label: 'Trạng thái',
+                value:
+                  statusFilter.length === 1
+                    ? statusFilter[0] === 1
+                      ? 'Đang cung ứng'
+                      : 'Tạm ngưng'
+                    : '',
+              },
+            ]}
+            onFetchAll={async () => {
+              const response = await supplierProductApi.getAll({
+                pageIndex: 1,
+                pageSize: totalItems || 1000,
+                search: debouncedSearch || undefined,
+                supplierId: supplierFilter.length === 1 ? Number(supplierFilter[0]) : undefined,
+                isActive: statusFilter.length === 1 ? statusFilter[0] === 1 : undefined,
+              });
+              return response.items || [];
+            }}
+            columns={[
+              { header: 'Mã NCC', accessor: (sp) => sp.supplierCode },
+              { header: 'Tên Nhà Cung Cấp', accessor: (sp) => sp.supplierName },
+              { header: 'Mã SKU', accessor: (sp) => sp.variantCode },
+              { header: 'Tên Nông Sản', accessor: (sp) => sp.variantName },
+              { header: 'Đơn Giá Nhập (VNĐ)', accessor: (sp) => sp.purchasePrice },
+              { header: 'Lead Time (Ngày)', accessor: (sp) => sp.leadTimeDays },
+              { header: 'MOQ (Tối thiểu)', accessor: (sp) => sp.moq },
+              {
+                header: 'Trạng Thái',
+                accessor: (sp) => (sp.isActive ? 'Đang cung ứng' : 'Tạm ngưng'),
+              },
+              {
+                header: 'Cập Nhật Lần Cuối',
+                accessor: (sp) =>
+                  sp.updatedAt ? new Date(sp.updatedAt).toLocaleDateString('vi-VN') : '',
+              },
+            ]}
+          />
+        }
       />
 
       <ListCard>

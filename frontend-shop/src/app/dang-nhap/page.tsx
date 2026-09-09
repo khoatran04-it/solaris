@@ -42,8 +42,11 @@ function DangNhapContent() {
         password: password.trim(),
       });
 
-      login(res.token, res.customerInfo);
+      if (typeof window !== "undefined") {
+        localStorage.setItem("solaris_shop_token", res.token);
+      }
       await syncGuestCartOnLogin();
+      login(res.token, res.customerInfo);
       router.push(redirectUrl);
     } catch (error: any) {
       const msg =

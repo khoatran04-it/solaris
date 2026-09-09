@@ -1,4 +1,4 @@
-﻿namespace backend.DTOs.DashboardDTOs
+namespace backend.DTOs.DashboardDTOs
 {
     // ============================================================
     // DASHBOARD 1: OVERVIEW — Tổng quan Kinh doanh & Doanh thu
@@ -196,4 +196,133 @@
         public List<ExpiringBatchItem> ExpiringBatches { get; set; } = new();
         public List<QcRejectReasonItem> QcRejectReasons { get; set; } = new();
     }
+
+    // ============================================================
+    // DASHBOARD 5: FINANCIAL & CASH FLOW PERFORMANCE
+    // ============================================================
+
+    public class FinancialTimelinePoint
+    {
+        public string Label { get; set; } = string.Empty;
+        public decimal Revenue { get; set; }
+        public decimal Cogs { get; set; }
+        public decimal GrossProfit { get; set; }
+        public decimal CashInflow { get; set; }
+        public decimal CashOutflow { get; set; }
+    }
+
+    public class CashFlowBridgeDto
+    {
+        public decimal GrossSales { get; set; }
+        public decimal OnlinePaymentInflow { get; set; }
+        public decimal CodCollectedInflow { get; set; }
+        public decimal CodInTransitAmount { get; set; }
+        public decimal CustomerRefundOutflow { get; set; }
+        public decimal InboundGoodsReceiptOutflow { get; set; }
+        public decimal PendingPoCommitment { get; set; }
+        public decimal NetOperatingCashFlow { get; set; }
+    }
+
+    public class SupplierPayableItem
+    {
+        public int SupplierId { get; set; }
+        public string SupplierName { get; set; } = string.Empty;
+        public string SupplierCode { get; set; } = string.Empty;
+        public int TotalPoCount { get; set; }
+        public decimal TotalPoValue { get; set; }
+        public decimal ReceivedValue { get; set; }
+        public decimal QcRejectedValue { get; set; }
+        public decimal PendingCommitment { get; set; }
+    }
+
+    public class CategoryProfitabilityItem
+    {
+        public string CategoryGroupName { get; set; } = string.Empty;
+        public decimal Revenue { get; set; }
+        public decimal Cogs { get; set; }
+        public decimal GrossProfit { get; set; }
+        public decimal GrossMarginPercent { get; set; }
+        public int QuantitySold { get; set; }
+    }
+
+    public class ShrinkageLossDto
+    {
+        public decimal DamagedStockValue { get; set; }
+        public decimal ExpiringStockRiskValue { get; set; }
+        public decimal ReturnRefundLoss { get; set; }
+        public decimal TotalShrinkageLoss { get; set; }
+    }
+
+    public class DashboardFinancialPerformanceDto
+    {
+        public decimal GrossRevenue { get; set; }
+        public decimal CustomerRefunds { get; set; }
+        public decimal NetRevenue { get; set; }
+        public decimal TotalCogs { get; set; }
+        public decimal GrossProfit { get; set; }
+        public decimal GrossMarginPercent { get; set; }
+        public decimal TotalPoValue { get; set; }
+        public decimal TotalGoodsReceivedValue { get; set; }
+        public decimal EstimatedNetCashFlow { get; set; }
+        public decimal NetRevenueGrowthPercent { get; set; }
+        public CashFlowBridgeDto CashFlowBridge { get; set; } = new();
+        public List<FinancialTimelinePoint> Timeline { get; set; } = new();
+        public List<SupplierPayableItem> SupplierPayables { get; set; } = new();
+        public List<CategoryProfitabilityItem> CategoryProfitability { get; set; } = new();
+        public ShrinkageLossDto ShrinkageLoss { get; set; } = new();
+    }
+
+    // ============================================================
+    // DASHBOARD 6: PRICE VOLATILITY & MARGIN SPREAD
+    // ============================================================
+
+    public class SkuSelectItemDto
+    {
+        public int VariantId { get; set; }
+        public string VariantName { get; set; } = string.Empty;
+        public string VariantCode { get; set; } = string.Empty;
+        public string ProductName { get; set; } = string.Empty;
+        public string BaseUoMName { get; set; } = string.Empty;
+    }
+
+    public class PriceVolatilityPointDto
+    {
+        public string Label { get; set; } = string.Empty;
+        public decimal AvgImportPrice { get; set; }
+        public decimal AvgSellingPrice { get; set; }
+        public decimal Spread { get; set; }
+        public decimal MarginPercent { get; set; }
+        public bool IsProfit => Spread >= 0;
+    }
+
+    public class PriceTransactionDetailDto
+    {
+        public DateTime Date { get; set; }
+        public string Type { get; set; } = string.Empty; // "Nhập hàng" hoặc "Bán hàng"
+        public string DocumentCode { get; set; } = string.Empty;
+        public string PartnerName { get; set; } = string.Empty;
+        public decimal OriginalUnitPrice { get; set; }
+        public string OriginalUoMName { get; set; } = string.Empty;
+        public decimal NormalizedUnitPrice { get; set; }
+        public decimal QuantityInBaseUoM { get; set; }
+        public string BaseUoMName { get; set; } = string.Empty;
+    }
+
+    public class DashboardPriceVolatilityDto
+    {
+        public int VariantId { get; set; }
+        public string VariantName { get; set; } = string.Empty;
+        public string VariantCode { get; set; } = string.Empty;
+        public string ProductName { get; set; } = string.Empty;
+        public string BaseUoMName { get; set; } = string.Empty;
+        public decimal LatestImportPrice { get; set; }
+        public decimal CurrentSellingPrice { get; set; }
+        public decimal PriceSpread { get; set; }
+        public decimal MarginPercent { get; set; }
+        public decimal ImportPriceChangePercent { get; set; }
+        public bool IsLossMaking => PriceSpread < 0;
+        public List<PriceVolatilityPointDto> Timeline { get; set; } = new();
+        public List<PriceTransactionDetailDto> Transactions { get; set; } = new();
+    }
 }
+

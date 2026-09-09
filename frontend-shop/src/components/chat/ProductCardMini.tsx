@@ -77,10 +77,7 @@ export default function ProductCardMini({ product }: ProductCardMiniProps) {
         </div>
 
         <h4 className="font-bold text-xs text-slate-900 truncate">
-          <Link
-            href={productUrl}
-            className="hover:text-emerald-700"
-          >
+          <Link href={productUrl} className="hover:text-emerald-700">
             {product.name}
           </Link>
         </h4>

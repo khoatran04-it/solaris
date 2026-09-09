@@ -117,12 +117,17 @@ namespace backend.Services
 
             var filteredInventoriesQuery = await baseInventoriesQuery.FilterRetailOnlyAsync(_context);
 
+            if (filter.WarehouseId.HasValue && filter.WarehouseId.Value > 0)
+            {
+                filteredInventoriesQuery = filteredInventoriesQuery.Where(wi => wi.WarehouseId == filter.WarehouseId.Value);
+            }
+
             var inventories = await filteredInventoriesQuery
                 .GroupBy(wi => wi.VariantId)
                 .Select(g => new { VariantId = g.Key, TotalAvailable = g.Sum(x => x.QuantityAvailable) })
                 .ToDictionaryAsync(x => x.VariantId, x => x.TotalAvailable);
 
-            // Chuyển đổi sang Card DTO và tính giá theo từng Biến thể (Variant-First SKU Card)
+            // Chuyển đổi sang Card DTO và tính giá theo từng SẢN PHẨM CHA (Parent Product Grouping)
             var cardList = new List<ShopProductCardDto>();
 
             foreach (var p in productList)
@@ -131,119 +136,105 @@ namespace backend.Services
                 if (!activeVariants.Any())
                     continue;
 
-                foreach (var v in activeVariants)
+                // Lấy toàn bộ bảng giá hợp lệ của tất cả biến thể thuộc sản phẩm
+                var allVariantPrices = activeVariants
+                    .SelectMany(v => v.Prices.Where(pr => pr.IsActive && !pr.IsDeleted))
+                    .ToList();
+
+                if (!allVariantPrices.Any())
+                    continue;
+
+                // Tính khoảng giá
+                decimal minPrice = allVariantPrices.Min(pr => pr.Price);
+                decimal maxPrice = allVariantPrices.Max(pr => pr.Price);
+
+                // Tổng tồn kho của sản phẩm tại kho đang chọn
+                decimal productTotalStock = activeVariants
+                    .Sum(v => inventories.TryGetValue(v.Id, out decimal qty) ? qty : 0);
+
+                // Giá đại diện: Ưu tiên giá mặc định của biến thể đầu tiên hoặc giá min
+                var defaultPrice = allVariantPrices.FirstOrDefault(pr => pr.IsDefault)
+                    ?? allVariantPrices.OrderBy(pr => pr.Price).First();
+
+                decimal originalPrice = defaultPrice.Price;
+                decimal discountedPrice = originalPrice;
+                decimal discountPercent = 0;
+                bool hasPromotion = false;
+                string? promoName = null;
+
+                // Kiểm tra khuyến mãi tốt nhất áp dụng cho sản phẩm hoặc bất kỳ biến thể nào
+                var activePromo = activeVariants
+                    .SelectMany(v => v.PromotionVariants)
+                    .Select(pv => pv.PromotionCampaign)
+                    .Where(pc => pc != null && pc.IsActive && !pc.IsDeleted && pc.StartDate <= now && pc.EndDate >= now)
+                    .OrderByDescending(pc => pc!.DiscountValue)
+                    .FirstOrDefault();
+
+                if (activePromo != null)
                 {
-                    var variantPrices = v.Prices.Where(pr => pr.IsActive && !pr.IsDeleted).ToList();
-                    if (!variantPrices.Any())
-                        continue;
-
-                    decimal variantStock = inventories.TryGetValue(v.Id, out decimal qty) ? qty : 0;
-
-                    decimal minPrice = variantPrices.Min(pr => pr.Price);
-                    decimal maxPrice = variantPrices.Max(pr => pr.Price);
-
-                    // Giá đại diện cho biến thể (ưu tiên IsDefault hoặc giá thấp nhất)
-                    var defaultPrice = variantPrices.FirstOrDefault(pr => pr.IsDefault) ?? variantPrices.OrderBy(pr => pr.Price).First();
-                    decimal originalPrice = defaultPrice.Price;
-                    decimal discountedPrice = originalPrice;
-                    decimal discountPercent = 0;
-                    bool hasPromotion = false;
-                    string? promoName = null;
-
-                    // Kiểm tra khuyến mãi áp dụng cho biến thể
-                    var activePromo = v.PromotionVariants
-                        .Select(pv => pv.PromotionCampaign)
-                        .Where(pc => pc != null && pc.IsActive && !pc.IsDeleted && pc.StartDate <= now && pc.EndDate >= now)
-                        .OrderByDescending(pc => pc!.DiscountValue)
-                        .FirstOrDefault();
-
-                    if (activePromo != null)
+                    hasPromotion = true;
+                    promoName = activePromo.Name;
+                    if (activePromo.IsPercentage)
                     {
-                        hasPromotion = true;
-                        promoName = activePromo.Name;
-                        if (activePromo.IsPercentage)
-                        {
-                            discountPercent = activePromo.DiscountValue;
-                            discountedPrice = Math.Round(originalPrice * (1 - discountPercent / 100m));
-                        }
-                        else
-                        {
-                            discountedPrice = Math.Max(0, originalPrice - activePromo.DiscountValue);
-                            discountPercent = originalPrice > 0 ? Math.Round((originalPrice - discountedPrice) / originalPrice * 100m) : 0;
-                        }
+                        discountPercent = activePromo.DiscountValue;
+                        discountedPrice = Math.Round(originalPrice * (1 - discountPercent / 100m));
                     }
-
-                    // Trích xuất EAV của biến thể (có fallback sang sản phẩm)
-                    string? origin = null;
-                    string? certification = null;
-                    string? brix = null;
-
-                    var variantAttrs = v.Attributes.Where(a => a.AttributeDefinition != null).ToList();
-                    var originAttr = variantAttrs.FirstOrDefault(a => a.AttributeDefinition!.Name.ToLower().Contains("xuất xứ") || a.AttributeDefinition!.Name.ToLower().Contains("vùng trồng"));
-                    if (originAttr != null) origin = originAttr.AttributeValue;
                     else
                     {
-                        var prodOrigin = p.Variants.SelectMany(x => x.Attributes.Where(a => a.AttributeDefinition != null))
-                            .FirstOrDefault(a => a.AttributeDefinition!.Name.ToLower().Contains("xuất xứ") || a.AttributeDefinition!.Name.ToLower().Contains("vùng trồng"));
-                        if (prodOrigin != null) origin = prodOrigin.AttributeValue;
+                        discountedPrice = Math.Max(0, originalPrice - activePromo.DiscountValue);
+                        discountPercent = originalPrice > 0 ? Math.Round((originalPrice - discountedPrice) / originalPrice * 100m) : 0;
                     }
-
-                    var certAttr = variantAttrs.FirstOrDefault(a => a.AttributeDefinition!.Name.ToLower().Contains("chứng nhận") || a.AttributeDefinition!.Name.ToLower().Contains("tiêu chuẩn"));
-                    if (certAttr != null) certification = certAttr.AttributeValue;
-                    else
-                    {
-                        var prodCert = p.Variants.SelectMany(x => x.Attributes.Where(a => a.AttributeDefinition != null))
-                            .FirstOrDefault(a => a.AttributeDefinition!.Name.ToLower().Contains("chứng nhận") || a.AttributeDefinition!.Name.ToLower().Contains("tiêu chuẩn"));
-                        if (prodCert != null) certification = prodCert.AttributeValue;
-                    }
-
-                    var brixAttr = variantAttrs.FirstOrDefault(a => a.AttributeDefinition!.Name.ToLower().Contains("brix") || a.AttributeDefinition!.Name.ToLower().Contains("độ ngọt"));
-                    if (brixAttr != null) brix = brixAttr.AttributeValue;
-                    else
-                    {
-                        var prodBrix = p.Variants.SelectMany(x => x.Attributes.Where(a => a.AttributeDefinition != null))
-                            .FirstOrDefault(a => a.AttributeDefinition!.Name.ToLower().Contains("brix") || a.AttributeDefinition!.Name.ToLower().Contains("độ ngọt"));
-                        if (prodBrix != null) brix = prodBrix.AttributeValue;
-                    }
-
-                    // Tên hiển thị Thẻ: Nếu tên biến thể đã bao gồm tên sản phẩm thì giữ nguyên, ngược lại kết hợp "$p.Name - $v.Name"
-                    string displayName = v.Name.ToLower().Contains(p.Name.ToLower())
-                        ? v.Name
-                        : $"{p.Name} - {v.Name}";
-
-                    string productSlug = !string.IsNullOrEmpty(p.Slug) ? p.Slug : SlugHelper.GenerateSlug(p.Name);
-
-                    cardList.Add(new ShopProductCardDto
-                    {
-                        Id = v.Id,
-                        VariantId = v.Id,
-                        ProductId = p.Id,
-                        Code = v.Code,
-                        Name = displayName,
-                        ProductName = p.Name,
-                        VariantName = v.Name,
-                        Slug = productSlug,
-                        ImagePath = v.ImagePath ?? p.ImagePath,
-                        CategoryId = p.CategoryId,
-                        CategoryName = p.Category?.Name,
-                        CategorySlug = !string.IsNullOrEmpty(p.Category?.Slug) ? p.Category.Slug : (p.Category != null ? SlugHelper.GenerateSlug(p.Category.Name) : null),
-                        CategoryGroupName = p.Category?.CategoryGroup?.Name,
-                        CategoryGroupSlug = !string.IsNullOrEmpty(p.Category?.CategoryGroup?.Slug) ? p.Category.CategoryGroup.Slug : (p.Category?.CategoryGroup != null ? SlugHelper.GenerateSlug(p.Category.CategoryGroup.Name) : null),
-                        BaseUoMName = defaultPrice.UoM?.Name ?? p.BaseUoM?.Name ?? "Kg",
-                        MinPrice = minPrice,
-                        MaxPrice = maxPrice,
-                        OriginalPrice = originalPrice,
-                        DiscountedPrice = discountedPrice,
-                        DiscountPercent = discountPercent,
-                        HasPromotion = hasPromotion,
-                        PromotionName = promoName,
-                        Origin = origin,
-                        Certification = certification,
-                        BrixLevel = brix,
-                        IsInStock = variantStock > 0,
-                        TotalAvailableStock = variantStock
-                    });
                 }
+
+                // Trích xuất EAV (ưu tiên thuộc tính chung sản phẩm, fallback sang biến thể)
+                string? origin = null;
+                string? certification = null;
+                string? brix = null;
+
+                var allAttrs = activeVariants.SelectMany(x => x.Attributes.Where(a => a.AttributeDefinition != null)).ToList();
+
+                var originAttr = allAttrs.FirstOrDefault(a => a.AttributeDefinition!.Name.ToLower().Contains("xuất xứ") || a.AttributeDefinition!.Name.ToLower().Contains("vùng trồng"));
+                if (originAttr != null) origin = originAttr.AttributeValue;
+
+                var certAttr = allAttrs.FirstOrDefault(a => a.AttributeDefinition!.Name.ToLower().Contains("chứng nhận") || a.AttributeDefinition!.Name.ToLower().Contains("tiêu chuẩn"));
+                if (certAttr != null) certification = certAttr.AttributeValue;
+
+                var brixAttr = allAttrs.FirstOrDefault(a => a.AttributeDefinition!.Name.ToLower().Contains("brix") || a.AttributeDefinition!.Name.ToLower().Contains("độ ngọt"));
+                if (brixAttr != null) brix = brixAttr.AttributeValue;
+
+                string productSlug = !string.IsNullOrEmpty(p.Slug) ? p.Slug : SlugHelper.GenerateSlug(p.Name);
+
+                cardList.Add(new ShopProductCardDto
+                {
+                    Id = p.Id,
+                    ProductId = p.Id,
+                    VariantId = activeVariants.FirstOrDefault()?.Id,
+                    Code = p.Code,
+                    Name = p.Name,
+                    ProductName = p.Name,
+                    VariantName = activeVariants.Count == 1 ? activeVariants[0].Name : null,
+                    Slug = productSlug,
+                    ImagePath = p.ImagePath ?? activeVariants.FirstOrDefault(v => !string.IsNullOrEmpty(v.ImagePath))?.ImagePath,
+                    CategoryId = p.CategoryId,
+                    CategoryName = p.Category?.Name,
+                    CategorySlug = !string.IsNullOrEmpty(p.Category?.Slug) ? p.Category.Slug : (p.Category != null ? SlugHelper.GenerateSlug(p.Category.Name) : null),
+                    CategoryGroupName = p.Category?.CategoryGroup?.Name,
+                    CategoryGroupSlug = !string.IsNullOrEmpty(p.Category?.CategoryGroup?.Slug) ? p.Category.CategoryGroup.Slug : (p.Category?.CategoryGroup != null ? SlugHelper.GenerateSlug(p.Category.CategoryGroup.Name) : null),
+                    BaseUoMName = p.BaseUoM?.Name ?? defaultPrice.UoM?.Name ?? "Kg",
+                    VariantCount = activeVariants.Count,
+                    MinPrice = minPrice,
+                    MaxPrice = maxPrice,
+                    OriginalPrice = originalPrice,
+                    DiscountedPrice = discountedPrice,
+                    DiscountPercent = discountPercent,
+                    HasPromotion = hasPromotion,
+                    PromotionName = promoName,
+                    Origin = origin,
+                    Certification = certification,
+                    BrixLevel = brix,
+                    IsInStock = productTotalStock > 0,
+                    TotalAvailableStock = productTotalStock
+                });
             }
 
             // 7. Lọc theo khoảng giá
@@ -281,7 +272,7 @@ namespace backend.Services
         }
 
         /// <inheritdoc />
-        public async Task<ShopProductDetailDto?> GetProductBySlugAsync(string slug)
+        public async Task<ShopProductDetailDto?> GetProductBySlugAsync(string slug, int? warehouseId = null)
         {
             var now = DateTime.UtcNow;
 
@@ -342,6 +333,11 @@ namespace backend.Services
                              (wi.Batch == null || wi.Batch.ExpiryDate > now));
 
             var filteredSlugInventoriesQuery = await baseSlugInventoriesQuery.FilterRetailOnlyAsync(_context);
+
+            if (warehouseId.HasValue && warehouseId.Value > 0)
+            {
+                filteredSlugInventoriesQuery = filteredSlugInventoriesQuery.Where(wi => wi.WarehouseId == warehouseId.Value);
+            }
 
             var inventories = await filteredSlugInventoriesQuery
                 .GroupBy(wi => wi.VariantId)
@@ -493,23 +489,25 @@ namespace backend.Services
         }
 
         /// <inheritdoc />
-        public async Task<List<ShopProductCardDto>> GetFeaturedProductsAsync(int limit = 8)
+        public async Task<List<ShopProductCardDto>> GetFeaturedProductsAsync(int limit = 8, int? warehouseId = null)
         {
             var result = await GetProductsAsync(new ShopProductFilterParams
             {
                 PageSize = limit,
-                SortBy = "discount"
+                SortBy = "discount",
+                WarehouseId = warehouseId
             });
             return result.Items.Take(limit).ToList();
         }
 
         /// <inheritdoc />
-        public async Task<List<ShopProductCardDto>> GetNewArrivalsAsync(int limit = 8)
+        public async Task<List<ShopProductCardDto>> GetNewArrivalsAsync(int limit = 8, int? warehouseId = null)
         {
             var result = await GetProductsAsync(new ShopProductFilterParams
             {
                 PageSize = limit,
-                SortBy = "newest"
+                SortBy = "newest",
+                WarehouseId = warehouseId
             });
             return result.Items.Take(limit).ToList();
         }

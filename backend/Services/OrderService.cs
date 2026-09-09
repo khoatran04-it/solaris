@@ -55,6 +55,9 @@ namespace backend.Services
                 .Include(o => o.Customer)
                 .Include(o => o.Warehouse)
                 .Include(o => o.Details)
+                    .ThenInclude(d => d.Variant)
+                        .ThenInclude(v => v!.Product)
+                            .ThenInclude(p => p!.Category)
                 .AsQueryable();
 
             if (allowedWarehouseIds != null && allowedWarehouseIds.Any())
@@ -106,7 +109,10 @@ namespace backend.Services
                 .Include(o => o.Customer)
                 .Include(o => o.CustomerAddress)
                 .Include(o => o.Warehouse)
-                .Include(o => o.Details).ThenInclude(d => d.Variant)
+                .Include(o => o.Details)
+                    .ThenInclude(d => d.Variant)
+                        .ThenInclude(v => v!.Product)
+                            .ThenInclude(p => p!.Category)
                 .Include(o => o.Details).ThenInclude(d => d.UoM)
                 .Include(o => o.InventoryIssues)
                     .ThenInclude(i => i.Details).ThenInclude(d => d.Variant)
