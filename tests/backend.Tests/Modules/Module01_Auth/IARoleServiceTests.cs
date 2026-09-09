@@ -1,4 +1,4 @@
-﻿using backend.DTOs.AuthDTOs;
+using backend.DTOs.AuthDTOs;
 using backend.Models;
 using backend.Services;
 using backend.Tests.Common;
@@ -292,6 +292,40 @@ namespace backend.Tests.Modules.Module01_Auth
             var act = async () => await roleService.ToggleActiveAsync(1);
             await act.Should().ThrowAsync<InvalidOperationException>()
                 .WithMessage("*Không thể tạm khóa vai trò quản trị hệ thống mặc định*");
+        }
+
+        [Fact(DisplayName = "TC10 - Khi cập nhật vai trò ADMIN, vai trò luôn được bảo toàn toàn bộ quyền hạn hệ thống")]
+        public async Task UpdateAsync_AdminRole_ShouldRetainAllSystemPermissions()
+        {
+            // Arrange
+            using var context = TestFactories.CreateInMemoryDbContext();
+            var mapper = TestFactories.CreateAutoMapper();
+
+            var p1 = new IAPermission { Id = 1, Code = "ROLE_VIEW", Module = "Hệ thống", Name = "Xem vai trò" };
+            var p2 = new IAPermission { Id = 2, Code = "USER_VIEW", Module = "Hệ thống", Name = "Xem nhân viên" };
+            var p3 = new IAPermission { Id = 3, Code = "TRIP_VIEW", Module = "Vận tải", Name = "Xem chuyến xe" };
+            context.IAPermissions.AddRange(p1, p2, p3);
+
+            var adminRole = new IARole { Id = 1, Code = "ADMIN", Name = "Quản trị viên", IsActive = true };
+            context.IARoles.Add(adminRole);
+            await context.SaveChangesAsync();
+
+            var roleService = new IARoleService(context, mapper);
+
+            // Act: Cố tình cập nhật chỉ gán 1 quyền (Id = 1)
+            var updateDto = new IARoleUpdateDto
+            {
+                Name = "Quản trị viên tối cao",
+                Description = "Full Access",
+                IsActive = true,
+                PermissionIds = new List<int> { 1 }
+            };
+            var result = await roleService.UpdateAsync(1, updateDto);
+
+            // Assert: ADMIN role vẫn phải có đầy đủ cả 3 quyền
+            result.Should().BeTrue();
+            var roleInDb = await roleService.GetByIdAsync(1);
+            roleInDb.PermissionIds.Should().Contain(new[] { 1, 2, 3 });
         }
         #endregion
     }

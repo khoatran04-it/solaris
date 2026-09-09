@@ -143,14 +143,23 @@ namespace backend.Services
                     throw new KeyNotFoundException($"Không tìm thấy vai trò với ID = {id}.");
                 }
 
+                var isSuperAdminRole = entity.Code.Equals("ADMIN", StringComparison.OrdinalIgnoreCase) ||
+                                       entity.Code.Equals("SUPER_ADMIN", StringComparison.OrdinalIgnoreCase);
+
                 // Bảo vệ vai trò hệ thống không bị tạm khóa
-                if ((entity.Code.Equals("ADMIN", StringComparison.OrdinalIgnoreCase) ||
-                     entity.Code.Equals("SUPER_ADMIN", StringComparison.OrdinalIgnoreCase)) && !dto.IsActive)
+                if (isSuperAdminRole && !dto.IsActive)
                 {
                     throw new InvalidOperationException("Không thể tạm khóa vai trò quản trị hệ thống mặc định.");
                 }
 
                 _mapper.Map(dto, entity);
+
+                // Luôn giữ nguyên Code và trạng thái hoạt động cho vai trò quản trị tối cao
+                if (isSuperAdminRole)
+                {
+                    entity.Code = "ADMIN";
+                    entity.IsActive = true;
+                }
 
                 #region Đồng bộ lại danh sách Quyền hạn (RolePermissions)
                 // Xóa các quyền cũ của vai trò
@@ -159,10 +168,18 @@ namespace backend.Services
                     _context.IARolePermissions.RemoveRange(entity.RolePermissions);
                 }
 
-                // Gán lại danh sách quyền mới
-                if (dto.PermissionIds.Any())
+                // Với vai trò ADMIN tối cao, luôn luôn bảo đảm được cấp toàn bộ quyền hạn trong hệ thống
+                IEnumerable<int> targetPermissionIds = dto.PermissionIds;
+                if (isSuperAdminRole)
                 {
-                    var newPermissions = dto.PermissionIds.Distinct().Select(pId => new IARolePermission
+                    var allPermIds = await _context.IAPermissions.Select(p => p.Id).ToListAsync();
+                    targetPermissionIds = allPermIds.Union(dto.PermissionIds);
+                }
+
+                // Gán lại danh sách quyền mới
+                if (targetPermissionIds.Any())
+                {
+                    var newPermissions = targetPermissionIds.Distinct().Select(pId => new IARolePermission
                     {
                         RoleId = id,
                         PermissionId = pId
