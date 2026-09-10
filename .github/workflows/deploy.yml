@@ -121,11 +121,11 @@ jobs:
           acrUsername: ${{ secrets.ACR_USERNAME }}
           acrPassword: ${{ secrets.ACR_PASSWORD }}
 
-      - name: Configure Container Apps to run continuously (min-replicas = 1)
+      - name: Configure Container Apps to scale to zero when idle (min-replicas = 0)
         uses: azure/CLI@v2
         with:
           inlineScript: |
-            az containerapp update --name ${{ secrets.AZURE_BACKEND_APP_NAME || 'solaris-backend' }} --resource-group ${{ secrets.AZURE_RESOURCE_GROUP || 'rg-solaris-prod' }} --min-replicas 1
-            az containerapp update --name ${{ secrets.AZURE_ADMIN_APP_NAME || 'solaris-admin' }} --resource-group ${{ secrets.AZURE_RESOURCE_GROUP || 'rg-solaris-prod' }} --min-replicas 1
-            az containerapp update --name ${{ secrets.AZURE_SHOP_APP_NAME || 'solaris-shop' }} --resource-group ${{ secrets.AZURE_RESOURCE_GROUP || 'rg-solaris-prod' }} --min-replicas 1
+            az containerapp update --name ${{ secrets.AZURE_BACKEND_APP_NAME || 'solaris-backend' }} --resource-group ${{ secrets.AZURE_RESOURCE_GROUP || 'rg-solaris-prod' }} --min-replicas 0
+            az containerapp update --name ${{ secrets.AZURE_ADMIN_APP_NAME || 'solaris-admin' }} --resource-group ${{ secrets.AZURE_RESOURCE_GROUP || 'rg-solaris-prod' }} --min-replicas 0
+            az containerapp update --name ${{ secrets.AZURE_SHOP_APP_NAME || 'solaris-shop' }} --resource-group ${{ secrets.AZURE_RESOURCE_GROUP || 'rg-solaris-prod' }} --min-replicas 0
 
