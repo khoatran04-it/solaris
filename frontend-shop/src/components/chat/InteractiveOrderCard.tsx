@@ -216,7 +216,10 @@ export default function InteractiveOrderCard({
         }, 1200);
       }
     } catch (error: any) {
-      alert(error?.message || "Có lỗi xảy ra khi tạo đơn hàng.");
+      const errorMsg = error?.details
+        ? `${error.message || "Lỗi khi tạo đơn hàng từ AI Chatbot."}\nChi tiết: ${error.details}`
+        : (error?.message || "Có lỗi xảy ra khi tạo đơn hàng.");
+      alert(errorMsg);
     } finally {
       setIsSubmitting(false);
     }

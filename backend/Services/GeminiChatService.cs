@@ -36,6 +36,7 @@ namespace backend.Services
         private readonly IMapper _mapper;
         private readonly IVnPayService _vnPayService;
         private readonly IHttpContextAccessor _httpContextAccessor;
+        private readonly IUoMConversionService? _uomConversionService;
 
         public GeminiChatService(
             HttpClient httpClient,
@@ -43,7 +44,8 @@ namespace backend.Services
             SolarisDbContext context,
             IMapper mapper,
             IVnPayService vnPayService,
-            IHttpContextAccessor httpContextAccessor)
+            IHttpContextAccessor httpContextAccessor,
+            IUoMConversionService? uomConversionService = null)
         {
             _httpClient = httpClient;
             _config = config;
@@ -51,6 +53,7 @@ namespace backend.Services
             _mapper = mapper;
             _vnPayService = vnPayService;
             _httpContextAccessor = httpContextAccessor;
+            _uomConversionService = uomConversionService;
         }
 
         #region 1. Quản lý Phiên hội thoại (Session Management)
@@ -236,9 +239,17 @@ namespace backend.Services
 
                 // A. Tra cứu đơn hàng (Order Tracking)
                 var orderCodeMatch = System.Text.RegularExpressions.Regex.Match(userText, @"ORD-[A-Za-z0-9\-]+", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-                if (orderCodeMatch.Success || lowerText.Contains("kiểm tra đơn") || lowerText.Contains("tra cứu đơn") ||
-                    lowerText.Contains("đơn hàng của tôi") || lowerText.Contains("tình trạng đơn") || lowerText.Contains("đơn của tôi") ||
-                    lowerText.Contains("đơn hàng ở đâu") || lowerText.Contains("thanh toán thành công") || lowerText.Contains("vừa thanh toán"))
+                bool isOrderTrackingInquiry = orderCodeMatch.Success ||
+                    lowerText.Contains("kiểm tra đơn") || lowerText.Contains("tra cứu đơn") ||
+                    lowerText.Contains("đơn hàng của tôi") || lowerText.Contains("tình trạng đơn") ||
+                    lowerText.Contains("đơn của tôi") || lowerText.Contains("đơn hàng ở đâu") ||
+                    lowerText.Contains("thanh toán thành công") || lowerText.Contains("vừa thanh toán") ||
+                    lowerText.Contains("trạng thái đơn") || lowerText.Contains("kiểm tra trạng thái") ||
+                    lowerText.Contains("theo dõi đơn") || lowerText.Contains("xem đơn") ||
+                    lowerText.Contains("đơn đến đâu") || lowerText.Contains("vận chuyển đến đâu") ||
+                    ((lowerText.Contains("kiểm tra") || lowerText.Contains("tra cứu") || lowerText.Contains("theo dõi") || lowerText.Contains("trạng thái") || lowerText.Contains("tình trạng")) && (lowerText.Contains("đơn") || lowerText.Contains("order")));
+
+                if (isOrderTrackingInquiry)
                 {
                     string? specificCode = orderCodeMatch.Success ? orderCodeMatch.Value.ToUpper() : null;
                     var orderDto = await LookupOrderAsync(specificCode, session.CustomerId ?? customerId);
@@ -247,6 +258,11 @@ namespace backend.Services
                         payloadType = "order_tracking";
                         payloadObject = orderDto;
                         payloadJson = JsonSerializer.Serialize(orderDto);
+                    }
+                    else
+                    {
+                        payloadType = "none";
+                        payloadObject = "(HỆ THỐNG KHÔNG TÌM THẤY ĐƠN HÀNG NÀO: Khách hàng đang hỏi tra cứu hoặc kiểm tra trạng thái đơn hàng nhưng hệ thống chưa ghi nhận đơn hàng tương ứng. Bạn PHẢI giải thích lịch sự: Quý khách vui lòng cung cấp đúng Mã đơn hàng dạng ORD-... hoặc đăng nhập đúng tài khoản đã đặt hàng để hệ thống hỗ trợ tra cứu tiến trình giao xe lạnh TMS ngay).";
                     }
                 }
                 // B. Đặt lại đơn cũ (Re-order)
@@ -370,11 +386,18 @@ namespace backend.Services
 
                 int validCustomerId = customerId.Value;
                 var now = DateTime.UtcNow;
-                string orderCode = $"ORD-{now:yyyyMMdd}-{new Random().Next(1000, 9999)}";
+                string dateStr = DateTimeHelper.VietnamDateString;
+                string randStr = Guid.NewGuid().ToString("N").Substring(0, 6).ToUpperInvariant();
+                string orderCode = $"ORD-{dateStr}-{randStr}";
+
+                var systemUser = await _context.IAUsers.FirstOrDefaultAsync(u => u.IsActive && !u.IsDeleted)
+                                 ?? await _context.IAUsers.FirstOrDefaultAsync();
+                int systemUserId = systemUser?.Id ?? 2;
 
                 decimal subTotal = 0;
                 decimal totalDiscount = 0;
                 var orderDetails = new List<OrderDetail>();
+                int? assignedWarehouseId = null;
 
                 foreach (var item in request.Items)
                 {
@@ -384,6 +407,13 @@ namespace backend.Services
                         .FirstOrDefaultAsync(v => v.Id == item.VariantId && !v.IsDeleted);
 
                     if (variant == null) continue;
+
+                    int itemUoMId = item.UoMId > 0 ? item.UoMId : (variant.Product?.BaseUoMId ?? 1);
+                    decimal baseQty = item.Quantity;
+                    if (_uomConversionService != null)
+                    {
+                        baseQty = await _uomConversionService.ConvertToBaseQuantityAsync(variant.Id, itemUoMId, item.Quantity);
+                    }
 
                     // Kiểm tra tồn kho khả dụng thời gian thực từ Kho Bán Lẻ
                     var stockQuery = _context.WarehouseInventories
@@ -395,9 +425,52 @@ namespace backend.Services
                     var availableStock = await filteredStockQuery
                         .SumAsync(wi => (decimal?)wi.QuantityAvailable) ?? 0;
 
-                    if (availableStock < item.Quantity)
+                    if (availableStock < baseQty)
                     {
                         throw new InvalidOperationException($"Sản phẩm '{variant.Name}' hiện chỉ còn tồn kho {availableStock:G29} {variant.Product?.BaseUoM?.Name ?? "đơn vị"}. Vui lòng giảm bớt số lượng đặt mua.");
+                    }
+
+                    // Giữ chỗ tồn kho khả dụng (Reserve)
+                    var invQuery = _context.WarehouseInventories
+                        .Include(wi => wi.Batch)
+                        .Where(wi => wi.VariantId == variant.Id && wi.QuantityAvailable >= baseQty && (wi.Batch == null || wi.Batch.ExpiryDate > now));
+                    var filteredInv = await invQuery.FilterRetailOnlyAsync(_context);
+                    var inventory = await filteredInv
+                        .OrderBy(wi => wi.Batch != null ? wi.Batch.ExpiryDate : DateTime.MaxValue)
+                        .FirstOrDefaultAsync();
+
+                    if (inventory == null)
+                    {
+                        var anyStockQuery = _context.WarehouseInventories
+                            .Where(wi => wi.VariantId == variant.Id && wi.QuantityAvailable >= baseQty);
+                        var filteredAny = await anyStockQuery.FilterRetailOnlyAsync(_context);
+                        inventory = await filteredAny.FirstOrDefaultAsync();
+                    }
+
+                    if (inventory != null)
+                    {
+                        inventory.QuantityAvailable -= baseQty;
+                        inventory.QuantityReserved += baseQty;
+                        inventory.UpdatedAt = now;
+
+                        if (assignedWarehouseId == null)
+                        {
+                            assignedWarehouseId = inventory.WarehouseId;
+                        }
+
+                        _context.InventoryTransactions.Add(new InventoryTransaction
+                        {
+                            TransactionCode = $"TX-{now:yyyyMMdd}-{Guid.NewGuid():N}".Substring(0, 20).ToUpperInvariant(),
+                            Type = TransactionType.Reserve,
+                            WarehouseId = inventory.WarehouseId,
+                            VariantId = variant.Id,
+                            BatchId = inventory.BatchId,
+                            Quantity = baseQty,
+                            ReferenceCode = orderCode,
+                            Note = $"Khách hàng đặt hàng qua AI Chatbot ({item.Quantity} ĐVT -> {baseQty} Base UoM, Giữ hàng tại kho #{inventory.WarehouseId})",
+                            CreatedById = systemUserId,
+                            CreatedAt = now
+                        });
                     }
 
                     decimal itemTotal = (item.Quantity * item.UnitPrice) - item.DiscountAmount;
@@ -407,9 +480,9 @@ namespace backend.Services
                     orderDetails.Add(new OrderDetail
                     {
                         VariantId = variant.Id,
-                        UoMId = item.UoMId > 0 ? item.UoMId : (variant.Product?.BaseUoMId ?? 1),
+                        UoMId = itemUoMId,
                         Quantity = item.Quantity,
-                        BaseQuantity = item.Quantity,
+                        BaseQuantity = baseQty,
                         UnitPrice = item.UnitPrice,
                         DiscountAmount = item.DiscountAmount,
                         TotalPrice = Math.Max(0, itemTotal),
@@ -527,6 +600,7 @@ namespace backend.Services
                 {
                     OrderCode = orderCode,
                     CustomerId = validCustomerId,
+                    WarehouseId = assignedWarehouseId,
                     ReceiverName = receiverName,
                     ReceiverPhone = receiverPhone,
                     DeliveryAddress = deliveryAddress,
@@ -585,10 +659,41 @@ namespace backend.Services
                       $"Hình thức: **{payMethodText}**\n\n" +
                       $"Hệ thống đang chuyển hướng bạn sang cổng VNPay Sandbox để thanh toán. Sau khi thanh toán thành công, đơn hàng sẽ chuyển sang trạng thái **Chờ xử lý** để kho tiến hành soạn hàng theo chuẩn FEFO và giao xe lạnh TMS tới bạn!";
 
+                // Đảm bảo ChatSession tồn tại hợp lệ trước khi ghi ChatMessage (Tránh lỗi Foreign Key Constraint)
+                int targetSessionId = request.SessionId;
+                var session = targetSessionId > 0
+                    ? await _context.ChatSessions.FirstOrDefaultAsync(s => s.Id == targetSessionId)
+                    : null;
+
+                if (session == null)
+                {
+                    session = await _context.ChatSessions
+                        .Where(s => s.CustomerId == validCustomerId && s.IsActive)
+                        .OrderByDescending(s => s.UpdatedAt)
+                        .FirstOrDefaultAsync();
+
+                    if (session == null)
+                    {
+                        session = new ChatSession
+                        {
+                            CustomerId = validCustomerId,
+                            Title = "Đơn hàng AI Chatbot",
+                            CreatedAt = now,
+                            UpdatedAt = now,
+                            IsActive = true
+                        };
+                        _context.ChatSessions.Add(session);
+                        await _context.SaveChangesAsync();
+                    }
+                    targetSessionId = session.Id;
+                }
+
+                session.UpdatedAt = now;
+
                 // Gửi tin nhắn xác nhận vào ChatSession
                 var successMsg = new ChatMessage
                 {
-                    SessionId = request.SessionId,
+                    SessionId = targetSessionId,
                     Role = "model",
                     Content = successMsgContent,
                     PayloadType = "order_success",
@@ -645,19 +750,201 @@ namespace backend.Services
                 return await PrepareDefaultSuggestionOrderAsync();
             }
 
-            var items = _mapper.Map<List<InteractiveOrderItemDto>>(lastOrder.Details);
+            var now = DateTime.UtcNow;
+            var items = new List<InteractiveOrderItemDto>();
+            var stockWarnings = new List<string>();
+
+            foreach (var detail in lastOrder.Details)
+            {
+                var variant = await _context.ProductVariants
+                    .Include(v => v.Product)
+                        .ThenInclude(p => p!.Category)
+                            .ThenInclude(c => c!.CategoryGroup)
+                    .Include(v => v.Prices.Where(pr => pr.IsActive && !pr.IsDeleted))
+                        .ThenInclude(pr => pr.UoM)
+                    .Include(v => v.PromotionVariants)
+                        .ThenInclude(pv => pv.PromotionCampaign)
+                    .FirstOrDefaultAsync(v => v.Id == detail.VariantId && !v.IsDeleted && v.IsActive);
+
+                if (variant == null) continue;
+
+                // Kiểm tra tồn kho khả dụng thời gian thực từ các lô hàng còn hạn dùng tại Kho Bán Lẻ
+                var checkStockQuery = _context.WarehouseInventories
+                    .Include(wi => wi.Batch)
+                    .Where(wi => wi.VariantId == variant.Id && wi.QuantityAvailable > 0 && (wi.Batch == null || wi.Batch.ExpiryDate > now));
+
+                var filteredCheckStock = await checkStockQuery.FilterRetailOnlyAsync(_context);
+
+                var availableStock = await filteredCheckStock
+                    .SumAsync(wi => (decimal?)wi.QuantityAvailable) ?? 0;
+
+                bool hasStockTracking = await _context.WarehouseInventories.AnyAsync(wi => wi.VariantId == variant.Id);
+                if (hasStockTracking && availableStock <= 0)
+                {
+                    stockWarnings.Add($"Sản phẩm '{variant.Name}' trong đơn cũ hiện đã tạm hết hàng.");
+                    continue;
+                }
+
+                if (!hasStockTracking)
+                {
+                    availableStock = detail.Quantity;
+                }
+
+                // Lấy đơn giá hiện hành từ bảng giá hoặc chương trình khuyến mại đang chạy
+                var priceObj = variant.Prices.FirstOrDefault(p => p.UoMId == detail.UoMId)
+                               ?? variant.Prices.FirstOrDefault();
+                decimal basePrice = priceObj?.Price ?? detail.UnitPrice;
+                decimal unitPrice = basePrice;
+                decimal discount = 0;
+
+                var activePromo = variant.PromotionVariants
+                    .Select(pv => pv.PromotionCampaign)
+                    .Where(pc => pc != null && pc.IsActive && !pc.IsDeleted && pc.StartDate <= now && pc.EndDate >= now)
+                    .OrderByDescending(pc => pc!.DiscountValue)
+                    .FirstOrDefault();
+
+                if (activePromo != null)
+                {
+                    if (activePromo.IsPercentage)
+                    {
+                        discount = basePrice * (activePromo.DiscountValue / 100m);
+                    }
+                    else
+                    {
+                        discount = activePromo.DiscountValue;
+                    }
+                    unitPrice = Math.Max(0, basePrice - discount);
+                }
+                else
+                {
+                    unitPrice = basePrice;
+                    discount = 0;
+                }
+
+                decimal actualQty = detail.Quantity;
+                string? warningMsg = null;
+
+                if (detail.Quantity > availableStock)
+                {
+                    actualQty = availableStock;
+                    warningMsg = $"Kho chỉ còn {availableStock:G29} {detail.UoM?.Name ?? "ĐVT"}";
+                    stockWarnings.Add($"Sản phẩm '{variant.Name}' trong kho hiện chỉ còn {availableStock:G29} {detail.UoM?.Name ?? "ĐVT"} (đơn cũ: {detail.Quantity:G29}). Hệ thống đã tự động điều chỉnh số lượng.");
+                }
+
+                items.Add(new InteractiveOrderItemDto
+                {
+                    VariantId = variant.Id,
+                    VariantCode = variant.Code,
+                    VariantName = variant.Name,
+                    Slug = variant.Product?.Slug ?? "san-pham",
+                    ImagePath = variant.ImagePath ?? variant.Product?.ImagePath,
+                    UoMId = detail.UoMId,
+                    UoMName = detail.UoM?.Name ?? "Kg",
+                    Quantity = actualQty,
+                    UnitPrice = unitPrice,
+                    DiscountAmount = discount,
+                    TotalPrice = unitPrice * actualQty,
+                    AvailableStock = availableStock,
+                    WarningMessage = warningMsg
+                });
+            }
+
+            if (items.Count == 0 && lastOrder.Details.Count > 0)
+            {
+                return new InteractiveOrderPayloadDto
+                {
+                    Title = $"Đơn Hàng Đặt Lại (Theo Đơn {lastOrder.OrderCode})",
+                    PreviousOrderCode = lastOrder.OrderCode,
+                    Items = new List<InteractiveOrderItemDto>(),
+                    StockWarning = stockWarnings.Count > 0 ? string.Join("\n", stockWarnings) : "Các sản phẩm trong đơn hàng cũ hiện đã tạm hết hàng.",
+                    SubTotal = 0,
+                    TotalDiscount = 0,
+                    ShippingFee = 0,
+                    TotalAmount = 0,
+                    IsFreeShipping = false,
+                    SuggestedDeliveryAddress = lastOrder.DeliveryAddress,
+                    SuggestedReceiverName = lastOrder.ReceiverName,
+                    SuggestedReceiverPhone = lastOrder.ReceiverPhone
+                };
+            }
+
+            if (items.Count == 0)
+            {
+                return await PrepareDefaultSuggestionOrderAsync();
+            }
 
             decimal subTotal = items.Sum(i => i.Quantity * i.UnitPrice);
-            decimal totalDiscount = items.Sum(i => i.DiscountAmount);
-            decimal netSubTotal = subTotal - totalDiscount;
+            decimal totalDiscount = items.Sum(i => i.DiscountAmount * i.Quantity);
+            decimal netSubTotal = Math.Max(0, subTotal - totalDiscount);
             bool isFree = netSubTotal >= 300000;
             decimal shippingFee = isFree ? 0 : 25000;
+
+            // Kiểm tra rào chắn khoảng cách chuỗi lạnh (Cold-Chain Delivery Feasibility)
+            bool isColdChainFeasible = true;
+            var ineligibleColdItems = new List<string>();
+            string? coldChainWarning = null;
+
+            var targetVariantIds = items.Select(i => i.VariantId).ToList();
+            var coldVariants = await _context.ProductVariants
+                .Include(v => v.Product)
+                    .ThenInclude(p => p!.Category)
+                        .ThenInclude(c => c!.CategoryGroup)
+                .Where(v => targetVariantIds.Contains(v.Id))
+                .ToListAsync();
+
+            var itemsNeedingCold = coldVariants.Where(v =>
+                v.Product?.Category?.RequiresColdChain == true ||
+                (v.Product?.Category?.CategoryGroup?.Code == "FRESH_PRODUCE") ||
+                (v.Product?.Category?.Name?.ToLower().Contains("tươi") == true) ||
+                (v.Product?.Category?.Name?.ToLower().Contains("thịt") == true) ||
+                (v.Product?.Category?.Name?.ToLower().Contains("cá") == true)
+            ).Select(v => v.Name).Distinct().ToList();
+
+            if (itemsNeedingCold.Count > 0 && customerId.HasValue && customerId.Value > 0)
+            {
+                var custWithAddr = await _context.Customers
+                    .Include(c => c.Addresses.Where(a => !a.IsDeleted))
+                    .FirstOrDefaultAsync(c => c.Id == customerId.Value && !c.IsDeleted);
+
+                var targetAddr = custWithAddr?.Addresses.FirstOrDefault(a => a.IsDefault) ?? custWithAddr?.Addresses.FirstOrDefault();
+                if (targetAddr != null)
+                {
+                    var wh = await _context.Warehouses
+                        .Include(w => w.Address)
+                        .FirstOrDefaultAsync(w => w.IsActive && !w.IsDeleted && w.Address != null);
+
+                    if (wh?.Address != null)
+                    {
+                        double distKm = 0;
+                        if (targetAddr.Latitude != 0 && targetAddr.Longitude != 0 && wh.Address.Latitude != 0 && wh.Address.Longitude != 0)
+                        {
+                            var distanceService = new DistanceService();
+                            distKm = distanceService.CalculateDistanceKm(targetAddr.Latitude, targetAddr.Longitude, wh.Address.Latitude, wh.Address.Longitude);
+                        }
+                        else if (!string.IsNullOrEmpty(targetAddr.Province) && !string.IsNullOrEmpty(wh.Address.Province))
+                        {
+                            bool sameProv = targetAddr.Province.Trim().ToLower().Contains(wh.Address.Province.Trim().ToLower()) ||
+                                            wh.Address.Province.Trim().ToLower().Contains(targetAddr.Province.Trim().ToLower());
+                            distKm = sameProv ? 8.0 : 100.0;
+                        }
+
+                        double maxRadius = wh.MaxColdChainRadiusKm > 0 ? wh.MaxColdChainRadiusKm : 15.0;
+                        if (distKm > maxRadius)
+                        {
+                            isColdChainFeasible = false;
+                            ineligibleColdItems = itemsNeedingCold;
+                            coldChainWarning = $"Địa chỉ giao hàng ({targetAddr.FullAddress}) cách kho xe lạnh {wh.Name} khoảng {distKm:F1} km, vượt quá bán kính bảo quản tối đa ({maxRadius} km) của xe máy thùng lạnh chuyên dụng TMS. Các sản phẩm tươi sống sau không đảm bảo dải nhiệt độ mát 2°C - 8°C: {string.Join(", ", ineligibleColdItems)}. Vui lòng đổi địa chỉ nhận hàng gần hơn hoặc chỉ đặt các sản phẩm đồ khô/nhiệt độ thường.";
+                        }
+                    }
+                }
+            }
 
             return new InteractiveOrderPayloadDto
             {
                 Title = $"Đơn Hàng Đặt Lại (Theo Đơn {lastOrder.OrderCode})",
                 PreviousOrderCode = lastOrder.OrderCode,
                 Items = items,
+                StockWarning = stockWarnings.Count > 0 ? string.Join("\n", stockWarnings) : null,
                 SubTotal = subTotal,
                 TotalDiscount = totalDiscount,
                 ShippingFee = shippingFee,
@@ -665,7 +952,10 @@ namespace backend.Services
                 IsFreeShipping = isFree,
                 SuggestedDeliveryAddress = lastOrder.DeliveryAddress,
                 SuggestedReceiverName = lastOrder.ReceiverName,
-                SuggestedReceiverPhone = lastOrder.ReceiverPhone
+                SuggestedReceiverPhone = lastOrder.ReceiverPhone,
+                IsColdChainFeasible = isColdChainFeasible,
+                IneligibleColdChainItems = ineligibleColdItems,
+                ColdChainWarning = coldChainWarning
             };
         }
 
@@ -1347,10 +1637,13 @@ namespace backend.Services
             var now = DateTime.UtcNow;
             string rawKw = (keyword ?? string.Empty).Trim().ToLower();
 
-            // Nếu người dùng hỏi tổng quan: "đang có sản phẩm nào", "shop bán gì", "nông sản hôm nay", "có gì", "danh sách"...
+            // Nếu người dùng hỏi tổng quan: "đang có sản phẩm nào", "shop bán gì", "nông sản hôm nay", "có gì", "danh sách", "tư vấn", "gợi ý"...
             bool isGeneralInquiry = rawKw.Contains("sản phẩm") || rawKw.Contains("nông sản") || rawKw.Contains("trái cây") ||
                                     rawKw.Contains("bán gì") || rawKw.Contains("có gì") || rawKw.Contains("tươi hôm nay") ||
                                     rawKw.Contains("menu") || rawKw.Contains("danh mục") || rawKw.Contains("hoa quả") ||
+                                    rawKw.Contains("tư vấn") || rawKw.Contains("tu van") || rawKw.Contains("gợi ý") ||
+                                    rawKw.Contains("goi y") || rawKw.Contains("đề xuất") || rawKw.Contains("de xuat") ||
+                                    rawKw.Contains("recommend") ||
                                     string.IsNullOrWhiteSpace(rawKw);
 
             // Lấy toàn bộ sản phẩm đang kích hoạt kèm liên kết 4 tầng
@@ -1391,6 +1684,15 @@ namespace backend.Services
             var searchTerms = rawKw.Split(new[] { ' ', ',', '.', '?', '!', ';', ':' }, StringSplitOptions.RemoveEmptyEntries)
                                    .Where(w => !stopWords.Contains(w) && w.Length > 1)
                                    .ToList();
+
+            if (searchTerms.Count == 0)
+            {
+                var fallbackPairs = allActiveProducts
+                    .SelectMany(p => p.Variants.Where(v => v.IsActive && !v.IsDeleted).Select(v => (Product: p, Variant: v)))
+                    .Take(4)
+                    .ToList();
+                return await EnrichVariantCardDtosAsync(fallbackPairs);
+            }
 
             var tier1Matches = new List<(Product Product, ProductVariant Variant)>(); // Khớp đích danh Variant hoặc Product
             var tier2Matches = new List<(Product Product, ProductVariant Variant)>(); // Khớp từ khóa với Variant, Product, SKU
@@ -1720,7 +2022,9 @@ KỊCH BẢN MẪU (FEW-SHOT EXAMPLES):
             {
                 if (payloadObject is string customWarning && !string.IsNullOrEmpty(customWarning))
                 {
-                    extraContext = $"\n(LƯU Ý TỒN KHO: {customWarning}. Bạn PHẢI trả lời thông báo rõ ràng cho khách biết sản phẩm đã hết hàng trong kho và tư vấn khách chọn các nông sản khác đang có sẵn trong kho).";
+                    extraContext = customWarning.StartsWith("(HỆ THỐNG")
+                        ? $"\n{customWarning}"
+                        : $"\n(LƯU Ý TỒN KHO: {customWarning}. Bạn PHẢI trả lời thông báo rõ ràng cho khách biết sản phẩm đã hết hàng trong kho và tư vấn khách chọn các nông sản khác đang có sẵn trong kho).";
                 }
                 else
                 {
