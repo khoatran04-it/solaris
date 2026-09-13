@@ -60,7 +60,8 @@ namespace backend.Controllers.Shop
             }
             catch (Exception ex)
             {
-                return BadRequest(new { message = ex.Message });
+                string errorMsg = ex.InnerException?.Message ?? ex.Message;
+                return BadRequest(new { message = errorMsg });
             }
         }
 

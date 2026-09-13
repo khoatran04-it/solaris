@@ -141,7 +141,7 @@ export default function OrderDetailPage() {
     ? Date.now() - new Date(order.deliveredAt).getTime() <= 12 * 60 * 60 * 1000
     : true;
   const canReturn =
-    (order.statusName === "Giao thành công" || order.status === 4) &&
+    (order.statusName === "Giao thành công" || order.status === 6) &&
     isWithin12Hours &&
     !order.hasReturnRequest;
 
