@@ -379,6 +379,41 @@ namespace backend.Services
                     throw new ArgumentException("Danh sách sản phẩm trong đơn hàng không được để trống.");
                 }
 
+                // Multi-layer fallback: Tự động trích xuất danh tính khách hàng nếu tham số customerId bị khuyết hoặc chưa đồng bộ từ claim
+                if (!customerId.HasValue || customerId.Value <= 0)
+                {
+                    // Fallback 1: Trích xuất từ phiên hội thoại chat hiện tại (ChatSession)
+                    if (request.SessionId > 0)
+                    {
+                        var currentSession = await _context.ChatSessions.FirstOrDefaultAsync(s => s.Id == request.SessionId);
+                        if (currentSession != null && currentSession.CustomerId.HasValue && currentSession.CustomerId.Value > 0)
+                        {
+                            customerId = currentSession.CustomerId.Value;
+                        }
+                    }
+
+                    // Fallback 2: Trích xuất từ sổ địa chỉ khách hàng đã chọn (CustomerAddress)
+                    if ((!customerId.HasValue || customerId.Value <= 0) && request.CustomerAddressId.HasValue && request.CustomerAddressId.Value > 0)
+                    {
+                        var addr = await _context.CustomerAddresses.FirstOrDefaultAsync(a => a.Id == request.CustomerAddressId.Value && !a.IsDeleted);
+                        if (addr != null && addr.CustomerId > 0)
+                        {
+                            customerId = addr.CustomerId;
+                        }
+                    }
+
+                    // Fallback 3: Khớp số điện thoại người nhận với tài khoản khách hàng thực tế (Customers)
+                    if ((!customerId.HasValue || customerId.Value <= 0) && !string.IsNullOrWhiteSpace(request.ReceiverPhone))
+                    {
+                        string phone = request.ReceiverPhone.Trim();
+                        var customerByPhone = await _context.Customers.FirstOrDefaultAsync(c => c.PhoneNumber == phone && !c.IsDeleted);
+                        if (customerByPhone != null && customerByPhone.Id > 0)
+                        {
+                            customerId = customerByPhone.Id;
+                        }
+                    }
+                }
+
                 if (!customerId.HasValue || customerId.Value <= 0)
                 {
                     throw new UnauthorizedAccessException("Vui lòng đăng nhập tài khoản để xác nhận tạo đơn hàng.");
