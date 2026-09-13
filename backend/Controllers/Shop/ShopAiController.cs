@@ -19,19 +19,13 @@ namespace backend.Controllers.Shop
     [Route("api/shop/ai")]
     [ApiController]
     [Produces("application/json")]
-    public class ShopAiController : ControllerBase
+    public class ShopAiController : ShopBaseController
     {
         private readonly IGeminiChatService _aiService;
 
         public ShopAiController(IGeminiChatService aiService)
         {
             _aiService = aiService;
-        }
-
-        private int? GetCurrentCustomerId()
-        {
-            var idClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            return int.TryParse(idClaim, out int id) ? id : null;
         }
 
         private string GetClientIpAddress()
@@ -50,7 +44,7 @@ namespace backend.Controllers.Shop
         [ProducesResponseType(typeof(List<ChatSessionReadDto>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetSessions([FromQuery] string? sessionToken)
         {
-            int? customerId = GetCurrentCustomerId();
+            int? customerId = TryGetCurrentCustomerId();
             var sessions = await _aiService.GetCustomerSessionsAsync(customerId, sessionToken);
             return Ok(sessions);
         }
@@ -69,7 +63,7 @@ namespace backend.Controllers.Shop
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetSessionMessages(int sessionId, [FromQuery] string? sessionToken)
         {
-            int? customerId = GetCurrentCustomerId();
+            int? customerId = TryGetCurrentCustomerId();
             var messages = await _aiService.GetSessionMessagesAsync(sessionId, customerId, sessionToken);
             return Ok(messages);
         }
@@ -85,7 +79,7 @@ namespace backend.Controllers.Shop
         [ProducesResponseType(typeof(ChatSessionReadDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> CreateSession([FromBody] CreateSessionPayload? payload)
         {
-            int? customerId = GetCurrentCustomerId();
+            int? customerId = TryGetCurrentCustomerId();
             var session = await _aiService.CreateSessionAsync(customerId, payload?.SessionToken, payload?.Title);
             return Ok(session);
         }
@@ -104,7 +98,7 @@ namespace backend.Controllers.Shop
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> DeleteSession(int sessionId, [FromQuery] string? sessionToken)
         {
-            int? customerId = GetCurrentCustomerId();
+            int? customerId = TryGetCurrentCustomerId();
             var result = await _aiService.DeleteSessionAsync(sessionId, customerId, sessionToken);
             if (!result)
             {
@@ -133,7 +127,7 @@ namespace backend.Controllers.Shop
 
             try
             {
-                int? customerId = GetCurrentCustomerId();
+                int? customerId = TryGetCurrentCustomerId();
                 var response = await _aiService.SendMessageAsync(request, customerId, GetClientIpAddress());
                 return Ok(response);
             }
@@ -157,7 +151,7 @@ namespace backend.Controllers.Shop
         {
             try
             {
-                int? customerId = GetCurrentCustomerId();
+                int? customerId = TryGetCurrentCustomerId();
                 var result = await _aiService.ConfirmInteractiveOrderAsync(request, customerId);
                 return Ok(result);
             }
@@ -171,7 +165,7 @@ namespace backend.Controllers.Shop
             }
             catch (UnauthorizedAccessException ex)
             {
-                return Unauthorized(new { message = ex.Message });
+                return BadRequest(new { message = ex.Message });
             }
             catch (Exception ex)
             {

@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 
 namespace backend.Controllers.Shop
@@ -9,13 +9,10 @@ namespace backend.Controllers.Shop
     {
         protected int GetCurrentCustomerId()
         {
-            var customerIdClaim = User.FindFirst("CustomerId")?.Value
-                ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value
-                ?? User.FindFirst(ClaimTypes.Name)?.Value;
-
-            if (int.TryParse(customerIdClaim, out int customerId))
+            var customerId = TryGetCurrentCustomerId();
+            if (customerId.HasValue && customerId.Value > 0)
             {
-                return customerId;
+                return customerId.Value;
             }
 
             throw new UnauthorizedAccessException("Vui lòng đăng nhập để thực hiện thao tác này.");
@@ -24,9 +21,12 @@ namespace backend.Controllers.Shop
         protected int? TryGetCurrentCustomerId()
         {
             var customerIdClaim = User.FindFirst("CustomerId")?.Value
-                ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                ?? User.FindFirst("nameid")?.Value
+                ?? User.FindFirst("sub")?.Value
+                ?? User.FindFirst(ClaimTypes.Name)?.Value;
 
-            if (int.TryParse(customerIdClaim, out int customerId))
+            if (int.TryParse(customerIdClaim, out int customerId) && customerId > 0)
             {
                 return customerId;
             }

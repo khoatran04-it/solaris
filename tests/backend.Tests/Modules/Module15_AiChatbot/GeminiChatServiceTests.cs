@@ -1662,5 +1662,293 @@ namespace backend.Tests.Modules.Module15_AiChatbot
             orderPayload.StockWarning.Should().NotBeNull();
         }
         #endregion
+
+        #region TC25: XÁC THỰC VÀ MULTI-LAYER FALLBACK KHI XÁC NHẬN ĐƠN HÀNG (CUSTOMER ID RESOLUTION)
+        [Fact]
+        public async Task ConfirmInteractiveOrderAsync_WhenCustomerIdIsNull_ShouldResolveFromSessionId()
+        {
+            // Arrange
+            using var context = TestFactories.CreateInMemoryDbContext();
+
+            var uom = new UoM { Id = 1, Name = "Kg", Code = "KG" };
+            var product = new Product { Id = 1, Code = "PRD-SR", Name = "Sầu Riêng Ri6", Slug = "sau-rieng-ri6", BaseUoMId = 1 };
+            var variant = new ProductVariant { Id = 301, ProductId = 1, Product = product, Name = "Sầu Riêng Ri6 Trái 3kg", Code = "VAR-SR-01", IsActive = true, IsDeleted = false };
+
+            var customer = new Customer
+            {
+                Id = 10,
+                Code = "KH-0010",
+                Name = "Khách Hàng Session",
+                PhoneNumber = "0912345678"
+            };
+
+            var session = new ChatSession
+            {
+                Id = 99,
+                CustomerId = 10,
+                SessionToken = "sess-token-99",
+                Title = "Tư vấn hoa quả",
+                CreatedAt = DateTime.UtcNow
+            };
+
+            context.Customers.Add(customer);
+            context.UoMs.Add(uom);
+            context.Products.Add(product);
+            context.ProductVariants.Add(variant);
+            context.ChatSessions.Add(session);
+            var batch1 = new ProductBatch { Id = 1, BatchCode = "BATCH-SR-01", VariantId = 301, ExpiryDate = DateTime.UtcNow.AddMonths(1) };
+            context.ProductBatches.Add(batch1);
+            context.WarehouseInventories.Add(new WarehouseInventory
+            {
+                Id = 1,
+                WarehouseId = 1,
+                VariantId = 301,
+                BatchId = 1,
+                QuantityAvailable = 50,
+                QuantityReserved = 0,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            });
+            await context.SaveChangesAsync();
+
+            var service = new GeminiChatService(CreateMockHttpClient(), _config, context, _mapper, _mockVnPayService, _mockHttpContextAccessor);
+
+            var request = new ConfirmInteractiveOrderRequestDto
+            {
+                SessionId = 99,
+                ReceiverName = "Khách Hàng Session",
+                ReceiverPhone = "0912345678",
+                DeliveryAddress = "123 Đường Lê Lợi, Q1, TP.HCM",
+                PaymentMethod = 1,
+                Items = new List<InteractiveOrderItemDto>
+                {
+                    new InteractiveOrderItemDto
+                    {
+                        VariantId = 301,
+                        UoMId = 1,
+                        Quantity = 1,
+                        UnitPrice = 150000,
+                        TotalPrice = 150000
+                    }
+                }
+            };
+
+            // Act - customerId là null nhưng có SessionId gắn với Customer 10
+            var result = await service.ConfirmInteractiveOrderAsync(request, null);
+
+            // Assert
+            result.Should().NotBeNull();
+            result.OrderId.Should().BeGreaterThan(0);
+            var createdOrder = await context.Orders.FirstOrDefaultAsync(o => o.Id == result.OrderId);
+            createdOrder.Should().NotBeNull();
+            createdOrder!.CustomerId.Should().Be(10);
+        }
+
+        [Fact]
+        public async Task ConfirmInteractiveOrderAsync_WhenCustomerIdIsNull_ShouldResolveFromCustomerAddressId()
+        {
+            // Arrange
+            using var context = TestFactories.CreateInMemoryDbContext();
+
+            var uom = new UoM { Id = 1, Name = "Kg", Code = "KG" };
+            var product = new Product { Id = 1, Code = "PRD-SR", Name = "Sầu Riêng Ri6", Slug = "sau-rieng-ri6", BaseUoMId = 1 };
+            var variant = new ProductVariant { Id = 301, ProductId = 1, Product = product, Name = "Sầu Riêng Ri6 Trái 3kg", Code = "VAR-SR-01", IsActive = true, IsDeleted = false };
+
+            var customer = new Customer
+            {
+                Id = 25,
+                Code = "KH-0025",
+                Name = "Khách Hàng Địa Chỉ",
+                PhoneNumber = "0988776655"
+            };
+
+            var address = new CustomerAddress
+            {
+                Id = 77,
+                CustomerId = 25,
+                ReceiverName = "Khách Hàng Địa Chỉ",
+                Phone = "0988776655",
+                Province = "Hồ Chí Minh",
+                District = "Quận 5",
+                Ward = "Phường 2",
+                StreetAddress = "456 Đường Nguyễn Trãi",
+                IsDefault = true,
+                IsDeleted = false
+            };
+
+            context.Customers.Add(customer);
+            context.CustomerAddresses.Add(address);
+            context.UoMs.Add(uom);
+            context.Products.Add(product);
+            context.ProductVariants.Add(variant);
+            var batch2 = new ProductBatch { Id = 1, BatchCode = "BATCH-SR-01", VariantId = 301, ExpiryDate = DateTime.UtcNow.AddMonths(1) };
+            context.ProductBatches.Add(batch2);
+            context.WarehouseInventories.Add(new WarehouseInventory
+            {
+                Id = 1,
+                WarehouseId = 1,
+                VariantId = 301,
+                BatchId = 1,
+                QuantityAvailable = 50,
+                QuantityReserved = 0,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            });
+            await context.SaveChangesAsync();
+
+            var service = new GeminiChatService(CreateMockHttpClient(), _config, context, _mapper, _mockVnPayService, _mockHttpContextAccessor);
+
+            var request = new ConfirmInteractiveOrderRequestDto
+            {
+                SessionId = 0,
+                CustomerAddressId = 77,
+                PaymentMethod = 1,
+                Items = new List<InteractiveOrderItemDto>
+                {
+                    new InteractiveOrderItemDto
+                    {
+                        VariantId = 301,
+                        UoMId = 1,
+                        Quantity = 1,
+                        UnitPrice = 150000,
+                        TotalPrice = 150000
+                    }
+                }
+            };
+
+            // Act - customerId là null nhưng có CustomerAddressId thuộc Customer 25
+            var result = await service.ConfirmInteractiveOrderAsync(request, null);
+
+            // Assert
+            result.Should().NotBeNull();
+            result.OrderId.Should().BeGreaterThan(0);
+            var createdOrder = await context.Orders.FirstOrDefaultAsync(o => o.Id == result.OrderId);
+            createdOrder.Should().NotBeNull();
+            createdOrder!.CustomerId.Should().Be(25);
+        }
+
+        [Fact]
+        public async Task ConfirmInteractiveOrderAsync_WhenCustomerIdIsNull_ShouldResolveFromReceiverPhone()
+        {
+            // Arrange
+            using var context = TestFactories.CreateInMemoryDbContext();
+
+            var uom = new UoM { Id = 1, Name = "Kg", Code = "KG" };
+            var product = new Product { Id = 1, Code = "PRD-SR", Name = "Sầu Riêng Ri6", Slug = "sau-rieng-ri6", BaseUoMId = 1 };
+            var variant = new ProductVariant { Id = 301, ProductId = 1, Product = product, Name = "Sầu Riêng Ri6 Trái 3kg", Code = "VAR-SR-01", IsActive = true, IsDeleted = false };
+
+            var customer = new Customer
+            {
+                Id = 33,
+                Code = "KH-0033",
+                Name = "Khách Hàng SĐT",
+                PhoneNumber = "0933445566"
+            };
+
+            context.Customers.Add(customer);
+            context.UoMs.Add(uom);
+            context.Products.Add(product);
+            context.ProductVariants.Add(variant);
+            var batch3 = new ProductBatch { Id = 1, BatchCode = "BATCH-SR-01", VariantId = 301, ExpiryDate = DateTime.UtcNow.AddMonths(1) };
+            context.ProductBatches.Add(batch3);
+            context.WarehouseInventories.Add(new WarehouseInventory
+            {
+                Id = 1,
+                WarehouseId = 1,
+                VariantId = 301,
+                BatchId = 1,
+                QuantityAvailable = 50,
+                QuantityReserved = 0,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            });
+            await context.SaveChangesAsync();
+
+            var service = new GeminiChatService(CreateMockHttpClient(), _config, context, _mapper, _mockVnPayService, _mockHttpContextAccessor);
+
+            var request = new ConfirmInteractiveOrderRequestDto
+            {
+                SessionId = 0,
+                ReceiverName = "Khách Hàng SĐT",
+                ReceiverPhone = "0933445566",
+                DeliveryAddress = "789 Đường Nam Kỳ Khởi Nghĩa, Q3, TP.HCM",
+                PaymentMethod = 1,
+                Items = new List<InteractiveOrderItemDto>
+                {
+                    new InteractiveOrderItemDto
+                    {
+                        VariantId = 301,
+                        UoMId = 1,
+                        Quantity = 1,
+                        UnitPrice = 150000,
+                        TotalPrice = 150000
+                    }
+                }
+            };
+
+            // Act - customerId là null nhưng có ReceiverPhone khớp Customer 33
+            var result = await service.ConfirmInteractiveOrderAsync(request, null);
+
+            // Assert
+            result.Should().NotBeNull();
+            result.OrderId.Should().BeGreaterThan(0);
+            var createdOrder = await context.Orders.FirstOrDefaultAsync(o => o.Id == result.OrderId);
+            createdOrder.Should().NotBeNull();
+            createdOrder!.CustomerId.Should().Be(33);
+        }
+
+        [Fact]
+        public async Task ConfirmInteractiveOrderAsync_WhenCustomerIdIsNullAndNoFallbackMatches_ShouldThrowUnauthorizedAccessException()
+        {
+            // Arrange
+            using var context = TestFactories.CreateInMemoryDbContext();
+
+            var uom = new UoM { Id = 1, Name = "Kg", Code = "KG" };
+            var product = new Product { Id = 1, Code = "PRD-SR", Name = "Sầu Riêng Ri6", Slug = "sau-rieng-ri6", BaseUoMId = 1 };
+            var variant = new ProductVariant { Id = 301, ProductId = 1, Product = product, Name = "Sầu Riêng Ri6 Trái 3kg", Code = "VAR-SR-01", IsActive = true, IsDeleted = false };
+
+            context.UoMs.Add(uom);
+            context.Products.Add(product);
+            context.ProductVariants.Add(variant);
+            context.WarehouseInventories.Add(new WarehouseInventory
+            {
+                Id = 1,
+                WarehouseId = 1,
+                VariantId = 301,
+                QuantityAvailable = 50,
+                QuantityReserved = 0,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            });
+            await context.SaveChangesAsync();
+
+            var service = new GeminiChatService(CreateMockHttpClient(), _config, context, _mapper, _mockVnPayService, _mockHttpContextAccessor);
+
+            var request = new ConfirmInteractiveOrderRequestDto
+            {
+                SessionId = 0,
+                ReceiverName = "Khách Lạ Vãng Lai",
+                ReceiverPhone = "0999999999",
+                DeliveryAddress = "Vãng lai",
+                PaymentMethod = 1,
+                Items = new List<InteractiveOrderItemDto>
+                {
+                    new InteractiveOrderItemDto
+                    {
+                        VariantId = 301,
+                        UoMId = 1,
+                        Quantity = 1,
+                        UnitPrice = 150000,
+                        TotalPrice = 150000
+                    }
+                }
+            };
+
+            // Act & Assert
+            var act = async () => await service.ConfirmInteractiveOrderAsync(request, null);
+            await act.Should().ThrowAsync<UnauthorizedAccessException>()
+                .WithMessage("Vui lòng đăng nhập tài khoản để xác nhận tạo đơn hàng.");
+        }
+        #endregion
     }
 }
