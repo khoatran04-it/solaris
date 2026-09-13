@@ -75,6 +75,53 @@ const InventoryReconciliation: React.FC = () => {
     return `${year}-${month}-${day}`;
   };
 
+  const renderTransactionTypeBadge = (type: string) => {
+    switch (type) {
+      case 'CustomerReturn':
+        return (
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-purple-50 text-purple-700 border border-purple-200">
+            Khách trả (RMA)
+          </span>
+        );
+      case 'Receipt':
+        return (
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+            Nhập mua (PO)
+          </span>
+        );
+      case 'TransferIn':
+        return (
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200">
+            Chuyển đến
+          </span>
+        );
+      case 'Issue':
+        return (
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200">
+            Xuất bán
+          </span>
+        );
+      case 'TransferOut':
+        return (
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200">
+            Chuyển đi
+          </span>
+        );
+      case 'Adjustment':
+        return (
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-orange-50 text-orange-700 border border-orange-200">
+            Điều chỉnh
+          </span>
+        );
+      default:
+        return (
+          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-700 bg-slate-100 px-2 py-0.5 rounded">
+            {type}
+          </span>
+        );
+    }
+  };
+
   // --- EFFECT: LOAD WAREHOUSES ---
   useEffect(() => {
     const loadWarehouses = async () => {
@@ -530,9 +577,7 @@ const InventoryReconciliation: React.FC = () => {
                             </span>
                           </td>
                           <td className="px-4 py-3">
-                            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-700 bg-slate-100 px-2 py-0.5 rounded">
-                              {entry.transactionType}
-                            </span>
+                            {renderTransactionTypeBadge(entry.transactionType)}
                           </td>
                           <td className="px-4 py-3 font-mono font-bold text-indigo-600 text-xs">
                             {entry.referenceCode || '---'}
