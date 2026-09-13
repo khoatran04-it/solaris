@@ -1,4 +1,4 @@
-﻿import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import ThanhToanPage from "@/app/thanh-toan/page";
@@ -253,6 +253,56 @@ describe("Module 13 - ThanhToanPage Component", () => {
       expect(window.location.href).toBe(
         "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html?token=123",
       );
+    });
+  });
+
+  // TC06: ĐẶT HÀNG THÀNH CÔNG VỚI ĐỊA CHỈ CÓ ID = 0
+  it("TC06 - Cho phép checkout thành công khi địa chỉ nhận hàng có id = 0", async () => {
+    const zeroIdAddress = [
+      {
+        id: 0,
+        receiverName: "Nguyễn Văn A",
+        phone: "0773259367",
+        province: "TP. Hồ Chí Minh",
+        district: "Thành Phố Thủ Đức",
+        ward: "Phường Hiệp Phú",
+        streetAddress: "123 Xa Lộ Hà Nội",
+        fullAddress:
+          "123 Xa Lộ Hà Nội, Phường Hiệp Phú, Thành Phố Thủ Đức, TP. Hồ Chí Minh",
+        isDefault: true,
+        latitude: 10.8494,
+        longitude: 106.7537,
+      },
+    ];
+    (shopCustomerApi.getAddresses as any).mockResolvedValue(zeroIdAddress);
+    (shopOrderApi.checkout as any).mockResolvedValue({
+      id: 30,
+      orderCode: "ORD-20260913-030",
+      totalAmount: 185000,
+    });
+
+    render(<ThanhToanPage />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(/123 Xa Lộ Hà Nội, Phường Hiệp Phú/i),
+      ).toBeInTheDocument();
+    });
+
+    const submitBtn = screen.getByRole("button", {
+      name: /Thanh Toán Qua VNPay/i,
+    });
+    fireEvent.click(submitBtn);
+
+    await waitFor(() => {
+      expect(shopOrderApi.checkout).toHaveBeenCalledWith(
+        expect.objectContaining({
+          customerAddressId: 0,
+        }),
+      );
+      expect(
+        screen.queryByText("Vui lòng chọn hoặc thêm địa chỉ nhận hàng."),
+      ).not.toBeInTheDocument();
     });
   });
 });

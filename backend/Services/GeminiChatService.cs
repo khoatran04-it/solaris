@@ -428,7 +428,7 @@ namespace backend.Services
                 string deliveryAddress = request.DeliveryAddress ?? string.Empty;
 
                 // Nếu khách chọn địa chỉ từ sổ địa chỉ (CustomerAddressId)
-                if (request.CustomerAddressId.HasValue && request.CustomerAddressId.Value > 0)
+                if (request.CustomerAddressId.HasValue && request.CustomerAddressId.Value >= 0)
                 {
                     var savedAddress = await _context.CustomerAddresses
                         .FirstOrDefaultAsync(a => a.Id == request.CustomerAddressId.Value && a.CustomerId == validCustomerId && !a.IsDeleted);
@@ -486,7 +486,7 @@ namespace backend.Services
                     if (targetWh?.Address != null)
                     {
                         CustomerAddress? currentCustAddr = null;
-                        if (request.CustomerAddressId.HasValue && request.CustomerAddressId.Value > 0)
+                        if (request.CustomerAddressId.HasValue && request.CustomerAddressId.Value >= 0)
                         {
                             currentCustAddr = await _context.CustomerAddresses.FirstOrDefaultAsync(a => a.Id == request.CustomerAddressId.Value);
                         }
