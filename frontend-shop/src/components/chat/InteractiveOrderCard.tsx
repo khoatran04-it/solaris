@@ -194,7 +194,10 @@ export default function InteractiveOrderCard({
       const res = await shopAiApi.confirmOrder({
         sessionId,
         items,
-        customerAddressId: selectedAddressId || undefined,
+        customerAddressId:
+          selectedAddressId !== null && selectedAddressId !== undefined
+            ? selectedAddressId
+            : undefined,
         receiverName: receiverName.trim() || "Khách hàng",
         receiverPhone: receiverPhone.trim() || "0900000000",
         deliveryAddress: deliveryAddress.trim(),
@@ -452,7 +455,11 @@ export default function InteractiveOrderCard({
             </Link>
           </div>
           <select
-            value={selectedAddressId || ""}
+            value={
+              selectedAddressId !== null && selectedAddressId !== undefined
+                ? selectedAddressId
+                : ""
+            }
             onChange={(e) => handleSelectAddress(Number(e.target.value))}
             aria-label="Chọn địa chỉ nhận hàng"
             className="w-full bg-white border border-slate-200 rounded-lg p-1.5 text-xs text-slate-800 focus:outline-hidden focus:border-emerald-500 font-medium"

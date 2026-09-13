@@ -159,7 +159,11 @@ export default function ThanhToanPage() {
           setAddresses(addrs);
           const defaultAddr =
             addrs.find((a: ShopAddress) => a.isDefault) || addrs[0];
-          if (defaultAddr) {
+          if (
+            defaultAddr &&
+            defaultAddr.id !== undefined &&
+            defaultAddr.id !== null
+          ) {
             setSelectedAddressId(defaultAddr.id);
           } else {
             setUseNewAddress(true);
@@ -175,7 +179,8 @@ export default function ThanhToanPage() {
   useEffect(() => {
     if (
       !useNewAddress &&
-      selectedAddressId &&
+      selectedAddressId !== null &&
+      selectedAddressId !== undefined &&
       addresses.length > 0 &&
       provinces.length > 0
     ) {
@@ -236,7 +241,10 @@ export default function ThanhToanPage() {
       return;
     }
 
-    if (!useNewAddress && !selectedAddressId) {
+    if (
+      !useNewAddress &&
+      (selectedAddressId === null || selectedAddressId === undefined)
+    ) {
       setErrorMessage("Vui lòng chọn hoặc thêm địa chỉ nhận hàng.");
       return;
     }
@@ -269,7 +277,9 @@ export default function ThanhToanPage() {
       const payload: ShopCheckoutPayload = {
         customerAddressId: useNewAddress
           ? undefined
-          : (selectedAddressId ?? undefined),
+          : (selectedAddressId !== null && selectedAddressId !== undefined
+              ? selectedAddressId
+              : undefined),
         receiverName: useNewAddress ? receiverName.trim() : undefined,
         receiverPhone: useNewAddress ? receiverPhone.trim() : undefined,
         province: useNewAddress ? currentProvince : undefined,

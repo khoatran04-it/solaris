@@ -175,7 +175,7 @@ namespace backend.Services
 
             // 2. Xác thực an toàn CustomerAddressId
             int? validAddressId = null;
-            if (dto.CustomerAddressId.HasValue && dto.CustomerAddressId.Value > 0)
+            if (dto.CustomerAddressId.HasValue && dto.CustomerAddressId.Value >= 0)
             {
                 var addrExists = await _context.CustomerAddresses.AnyAsync(a => a.Id == dto.CustomerAddressId.Value && a.CustomerId == dto.CustomerId);
                 if (addrExists) validAddressId = dto.CustomerAddressId.Value;
