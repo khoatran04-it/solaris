@@ -30,14 +30,15 @@ namespace backend.Services.Interfaces
         #region 2. Phản hồi Giao diện Khách hàng (Return URL / Callback)
         /// <summary>
         /// Xử lý và xác thực dữ liệu trả về trên trình duyệt khi khách hàng hoàn tất giao dịch tại VNPay (Return URL).
-        /// NGUYÊN TẮC BẢO MẬT:
-        /// Hàm này kiểm tra chữ ký số (vnp_SecureHash) trên tập tham số [query].
-        /// Kết quả chỉ dùng để hiển thị giao diện UI kết quả (Thành công / Thất bại) cho người dùng cuối.
-        /// TUYỆT ĐỐI KHÔNG cập nhật trạng thái đơn hàng (Order.PaymentStatus = Paid) tại hàm này 
-        /// để phòng chống rủi ro giả mạo URL hoặc người dùng tắt trình duyệt đột ngột.
+        /// Kiểm tra tính hợp lệ của chữ ký điện tử (vnp_SecureHash), đối soát và cập nhật tức thời trạng thái đơn hàng (Paid/Failed).
         /// </summary>
         /// <param name="query">Tập hợp các tham số Query String mà VNPay đẩy về trên URL trình duyệt.</param>
         /// <returns>Kết quả đối soát giao diện (Thành công, Mã giao dịch, Số tiền, Thông báo lỗi nếu có).</returns>
+        Task<VnPayCallbackResultDto> ProcessCallbackAsync(IQueryCollection query);
+
+        /// <summary>
+        /// Phương thức đồng bộ (tương thích ngược).
+        /// </summary>
         VnPayCallbackResultDto ProcessCallback(IQueryCollection query);
         #endregion
 

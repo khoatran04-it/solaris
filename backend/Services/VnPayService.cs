@@ -73,7 +73,7 @@ namespace backend.Services
             };
         }
 
-        public VnPayCallbackResultDto ProcessCallback(IQueryCollection query)
+        public async Task<VnPayCallbackResultDto> ProcessCallbackAsync(IQueryCollection query)
         {
             var vnPaySection = _config.GetSection("VnPaySettings");
             string hashSecret = vnPaySection["HashSecret"] ?? "YCQMIXWYVEDZEKAJQPYIYOIXKQHVROPE";
@@ -101,6 +101,31 @@ namespace backend.Services
 
             bool isSuccess = isValidSignature && responseCode == "00";
 
+            // Cập nhật trạng thái đơn hàng nếu chữ ký hợp lệ và có mã đơn hàng
+            if (isValidSignature && !string.IsNullOrEmpty(orderCode))
+            {
+                var order = await _context.Orders
+                    .FirstOrDefaultAsync(o => o.OrderCode == orderCode && !o.IsDeleted);
+
+                if (order != null && order.PaymentStatus != PaymentStatus.Paid)
+                {
+                    if (responseCode == "00")
+                    {
+                        order.PaymentStatus = PaymentStatus.Paid;
+                        order.PaymentMethod = PaymentMethod.EWallet;
+                        order.PaymentTransactionNo = transactionNo;
+                        order.UpdatedAt = DateTime.UtcNow;
+                        await _context.SaveChangesAsync();
+                    }
+                    else
+                    {
+                        order.PaymentStatus = PaymentStatus.Failed;
+                        order.UpdatedAt = DateTime.UtcNow;
+                        await _context.SaveChangesAsync();
+                    }
+                }
+            }
+
             return new VnPayCallbackResultDto
             {
                 IsSuccess = isSuccess,
@@ -112,6 +137,11 @@ namespace backend.Services
                 OrderInfo = orderInfo,
                 Message = isSuccess ? "Giao dịch thanh toán VNPay thành công." : "Giao dịch không thành công hoặc bị hủy."
             };
+        }
+
+        public VnPayCallbackResultDto ProcessCallback(IQueryCollection query)
+        {
+            return ProcessCallbackAsync(query).GetAwaiter().GetResult();
         }
 
         public async Task<VnPayIpnResponseDto> ProcessIpnAsync(IQueryCollection query)

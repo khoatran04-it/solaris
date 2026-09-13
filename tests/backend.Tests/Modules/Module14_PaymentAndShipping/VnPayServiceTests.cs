@@ -1,4 +1,4 @@
-﻿using backend.Data;
+using backend.Data;
 using backend.DTOs.PaymentDTOs;
 using backend.Models;
 using backend.Models.Enums;
@@ -109,7 +109,77 @@ namespace backend.Tests.Modules.Module14_PaymentAndShipping
 
         #region TC03: XỬ LÝ RETURN URL CALLBACK VNPAY THÀNH CÔNG (MÃ 00)
         [Fact]
-        public void ProcessCallback_WithValidSignatureAndSuccessCode_ShouldReturnIsSuccessTrue()
+        public async Task ProcessCallbackAsync_WithValidSignatureAndSuccessCode_ShouldUpdateOrderAndReturnIsSuccessTrue()
+        {
+            // Arrange
+            using var context = TestFactories.CreateInMemoryDbContext();
+            var order = new Order
+            {
+                Id = 1,
+                OrderCode = "ORD-20260830-001",
+                TotalAmount = 250000,
+                PaymentStatus = PaymentStatus.Unpaid,
+                IsDeleted = false
+            };
+            context.Orders.Add(order);
+            await context.SaveChangesAsync();
+
+            var service = new VnPayService(_config, context);
+
+            var rawData = new SortedList<string, string>(new VnPayCompare())
+            {
+                { "vnp_Amount", "25000000" },
+                { "vnp_BankCode", "NCB" },
+                { "vnp_OrderInfo", "Thanh toan don hang" },
+                { "vnp_ResponseCode", "00" },
+                { "vnp_TmnCode", "VVRIW1BA" },
+                { "vnp_TransactionNo", "14567890" },
+                { "vnp_TxnRef", "ORD-20260830-001" }
+            };
+
+            var signData = new StringBuilder();
+            foreach (var (k, v) in rawData)
+            {
+                signData.Append(System.Net.WebUtility.UrlEncode(k) + "=" + System.Net.WebUtility.UrlEncode(v) + "&");
+            }
+            if (signData.Length > 0) signData.Remove(signData.Length - 1, 1);
+
+            string secureHash = ComputeHmacSha512(HashSecret, signData.ToString());
+
+            var queryDict = new Dictionary<string, StringValues>
+            {
+                { "vnp_Amount", "25000000" },
+                { "vnp_BankCode", "NCB" },
+                { "vnp_OrderInfo", "Thanh toan don hang" },
+                { "vnp_ResponseCode", "00" },
+                { "vnp_TmnCode", "VVRIW1BA" },
+                { "vnp_TransactionNo", "14567890" },
+                { "vnp_TxnRef", "ORD-20260830-001" },
+                { "vnp_SecureHash", secureHash }
+            };
+
+            var query = new QueryCollection(queryDict);
+
+            // Act
+            var result = await service.ProcessCallbackAsync(query);
+
+            // Assert
+            result.Should().NotBeNull();
+            result.IsSuccess.Should().BeTrue();
+            result.OrderCode.Should().Be("ORD-20260830-001");
+            result.Amount.Should().Be(250000);
+            result.TransactionNo.Should().Be("14567890");
+            result.BankCode.Should().Be("NCB");
+
+            // Xác minh đơn hàng đã được cập nhật sang trạng thái Paid
+            var updatedOrder = await context.Orders.FindAsync(1);
+            updatedOrder!.PaymentStatus.Should().Be(PaymentStatus.Paid);
+            updatedOrder.PaymentMethod.Should().Be(PaymentMethod.EWallet);
+            updatedOrder.PaymentTransactionNo.Should().Be("14567890");
+        }
+
+        [Fact]
+        public void ProcessCallback_SyncWrapper_WithValidSignature_ShouldReturnIsSuccessTrue()
         {
             // Arrange
             using var context = TestFactories.CreateInMemoryDbContext();
@@ -156,9 +226,6 @@ namespace backend.Tests.Modules.Module14_PaymentAndShipping
             result.Should().NotBeNull();
             result.IsSuccess.Should().BeTrue();
             result.OrderCode.Should().Be("ORD-20260830-001");
-            result.Amount.Should().Be(250000);
-            result.TransactionNo.Should().Be("14567890");
-            result.BankCode.Should().Be("NCB");
         }
         #endregion
 

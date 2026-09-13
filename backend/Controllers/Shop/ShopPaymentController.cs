@@ -40,11 +40,11 @@ namespace backend.Controllers.Shop
         /// Xử lý dữ liệu trả về từ VNPay khi người dùng hoàn tất thanh toán
         /// </summary>
         [HttpGet("vnpay/callback")]
-        public IActionResult VnPayCallback()
+        public async Task<IActionResult> VnPayCallback()
         {
             try
             {
-                var result = _vnPayService.ProcessCallback(Request.Query);
+                var result = await _vnPayService.ProcessCallbackAsync(Request.Query);
                 return Ok(result);
             }
             catch (Exception ex)
