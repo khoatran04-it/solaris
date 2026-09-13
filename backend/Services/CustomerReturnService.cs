@@ -236,8 +236,8 @@ namespace backend.Services
                     .FirstOrDefaultAsync(r => r.Id == id);
 
                 if (ret == null) throw new KeyNotFoundException("Không tìm thấy Phiếu trả hàng.");
-                if (ret.Status != CustomerReturnStatus.Pending && ret.Status != CustomerReturnStatus.Approved && ret.Status != CustomerReturnStatus.Inspecting)
-                    throw new InvalidOperationException("Phiếu trả hàng phải ở trạng thái Đã duyệt hoặc Đang kiểm định.");
+                if (ret.Status != CustomerReturnStatus.Pending && ret.Status != CustomerReturnStatus.Approved && ret.Status != CustomerReturnStatus.PickingUp && ret.Status != CustomerReturnStatus.Inspecting)
+                    throw new InvalidOperationException("Phiếu trả hàng phải ở trạng thái Đã duyệt, Đang thu hồi hoặc Đang kiểm định.");
 
                 int safeUserId = receivedById;
                 var userExists = await _context.IAUsers.AnyAsync(u => u.Id == safeUserId);

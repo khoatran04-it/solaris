@@ -167,6 +167,21 @@ const CustomerReturnDetail: React.FC = () => {
     }
   };
 
+  const handleComplete = async () => {
+    if (!ret) return;
+    if (!window.confirm(`Xác nhận hoàn tất phiếu đổi trả ${ret.returnCode} và cập nhật trạng thái đơn hàng sang Đã hoàn tiền?`)) return;
+    try {
+      setActionLoading(true);
+      await customerReturnApi.complete(ret.id);
+      showToast('success', 'ĐÃ HOÀN TẤT PHIẾU ĐỔI TRẢ VÀ CẬP NHẬT HOÀN TIỀN THÀNH CÔNG!');
+      fetchReturn();
+    } catch (err: any) {
+      showToast('error', err.response?.data?.message || 'Không thể hoàn tất phiếu đổi trả!');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(
       amount || 0
@@ -254,7 +269,7 @@ const CustomerReturnDetail: React.FC = () => {
               </button>
             )}
 
-            {/* 2. Trạng thái Approved: Nút Điều Phối Xe Thu Hồi (Chỉ áp dụng đơn thu hồi tại nhà khách) */}
+            {/* 2. Trạng thái Approved: Nút Điều Phối Xe Thu Hồi hoặc Tiếp Nhận Trực Tiếp Tại Kho */}
             {ret.status === CustomerReturnStatus.Approved && (
               <div className="flex items-center gap-2">
                 <button
@@ -264,6 +279,13 @@ const CustomerReturnDetail: React.FC = () => {
                   className="px-4 py-2 bg-amber-400 hover:bg-amber-500 text-slate-900 rounded-xl font-bold text-xs transition-all shadow-xs cursor-pointer"
                 >
                   Điều Phối Xe Thu Hồi
+                </button>
+                <button
+                  onClick={() => setQcModalOpen(true)}
+                  disabled={actionLoading}
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs transition-all shadow-xs disabled:opacity-50 cursor-pointer"
+                >
+                  Tiếp Nhận Tại Kho & Kiểm Định QC
                 </button>
               </div>
             )}
@@ -279,6 +301,13 @@ const CustomerReturnDetail: React.FC = () => {
                   className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-xs transition-all cursor-pointer"
                 >
                   Xem Bảng Điều Phối
+                </button>
+                <button
+                  onClick={() => setQcModalOpen(true)}
+                  disabled={actionLoading}
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs transition-all shadow-xs disabled:opacity-50 cursor-pointer"
+                >
+                  Tiếp Nhận Tại Kho & Kiểm Định QC
                 </button>
               </div>
             )}
@@ -296,6 +325,14 @@ const CustomerReturnDetail: React.FC = () => {
                   </button>
                 ) : (
                   <div className="flex items-center gap-2">
+                    <button
+                      onClick={handleComplete}
+                      disabled={actionLoading}
+                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs transition-all shadow-xs disabled:opacity-50 cursor-pointer"
+                      title="Hoàn tất quy trình đổi trả và cập nhật trạng thái đơn hàng sang Đã hoàn tiền"
+                    >
+                      {actionLoading ? 'Đang hoàn tất...' : 'Hoàn Tất & Hoàn Tiền'}
+                    </button>
                     <button
                       onClick={() => navigate(`/inventory-receipts/create?returnId=${ret.id}`)}
                       className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-xs transition-all shadow-xs cursor-pointer"

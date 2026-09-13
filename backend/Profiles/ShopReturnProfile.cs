@@ -45,6 +45,8 @@ namespace backend.Profiles
         private static string GetReturnStatusName(CustomerReturnStatus status) => status switch
         {
             CustomerReturnStatus.Pending => "Chờ tiếp nhận",
+            CustomerReturnStatus.Approved => "Đã duyệt — Chờ nhận hàng tại kho",
+            CustomerReturnStatus.PickingUp => "Đang thu hồi hàng",
             CustomerReturnStatus.Inspecting => "Đang kiểm định QC",
             CustomerReturnStatus.Completed => "Đã hoàn tất & hoàn tiền",
             CustomerReturnStatus.Rejected => "Từ chối trả hàng",

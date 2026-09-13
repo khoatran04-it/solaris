@@ -294,6 +294,11 @@ function TraHangContent() {
                       Đã duyệt — Chờ nhận hàng tại kho
                     </span>
                   )}
+                  {ret.status === 6 && (
+                    <span className="px-3 py-1 bg-indigo-50 text-indigo-800 border border-indigo-200 text-xs font-bold rounded-full">
+                      Đang thu hồi hàng
+                    </span>
+                  )}
                   {ret.status === 3 && (
                     <span className="px-3 py-1 bg-purple-50 text-purple-800 border border-purple-200 text-xs font-bold rounded-full">
                       Đang kiểm định & Xử lý
@@ -307,6 +312,11 @@ function TraHangContent() {
                   {ret.status === 5 && (
                     <span className="px-3 py-1 bg-rose-50 text-rose-800 border border-rose-200 text-xs font-bold rounded-full">
                       Từ chối trả hàng
+                    </span>
+                  )}
+                  {ret.statusName && ![1, 2, 3, 4, 5, 6].includes(ret.status) && (
+                    <span className="px-3 py-1 bg-slate-100 text-slate-800 border border-slate-200 text-xs font-bold rounded-full">
+                      {ret.statusName}
                     </span>
                   )}
                 </div>

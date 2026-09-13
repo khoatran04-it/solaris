@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+using AutoMapper;
 using backend.DTOs.ShopDTOs;
 using backend.Models;
 using backend.Models.Enums;
@@ -133,6 +133,80 @@ namespace backend.Tests.Modules.Module13_OrderAndReturn
             item.BatchCode.Should().Be("BATCH-DUA-08"); // Đã tự động phân giải từ phiếu xuất kho!
             item.ReturnedQuantity.Should().Be(1);
             item.RefundAmount.Should().Be(85000m);
+        }
+        #endregion
+
+        #region TC01B: KHÁCH HÀNG TỰ TẠO YÊU CẦU ĐỔI TRẢ KHI ĐƠN HÀNG CHƯA CÓ PHIẾU XUẤT KHO (FALLBACK BATCH)
+        /// <summary>
+        /// TC01B: Đơn hàng hoàn tất nhưng không có phiếu xuất kho liên kết (order.InventoryIssues rỗng).
+        /// Hệ thống phải tự động phân giải Lô hàng từ Lô của Biến thể hoặc tự sinh lô hệ thống, không bị lỗi khóa ngoại.
+        /// </summary>
+        [Fact]
+        public async Task CreateReturnRequestAsync_WhenNoInventoryIssuesExist_ShouldFallbackToVariantOrAutoBatch()
+        {
+            // Arrange
+            using var context = TestFactories.CreateInMemoryDbContext();
+            var now = DateTime.UtcNow;
+
+            var variant = new ProductVariant { Id = 20, Code = "SKU-HEO", Name = "Thịt Thăn Heo CP", IsActive = true };
+            var batch = new ProductBatch { Id = 15, BatchCode = "BATCH-HEO-15", VariantId = 20, ExpiryDate = now.AddDays(5) };
+            var uom = new UoM { Id = 2, Code = "VI", Name = "Vỉ", IsActive = true };
+
+            context.ProductVariants.Add(variant);
+            context.ProductBatches.Add(batch);
+            context.UoMs.Add(uom);
+
+            var order = new Order
+            {
+                Id = 2,
+                OrderCode = "ORD-STOREFRONT-DIRECT",
+                CustomerId = 10,
+                WarehouseId = 1,
+                Status = OrderStatus.Completed,
+                OrderDate = now,
+                CreatedAt = now,
+                UpdatedAt = now,
+                Details = new List<OrderDetail>
+                {
+                    new OrderDetail { Id = 2, VariantId = 20, UoMId = 2, Quantity = 2, UnitPrice = 65000m, TotalPrice = 130000m }
+                }
+            };
+
+            context.Orders.Add(order);
+            await context.SaveChangesAsync();
+
+            var service = new ShopReturnService(context, _mapper);
+
+            var request = new ShopReturnCreateRequestDto
+            {
+                OrderCode = "ORD-STOREFRONT-DIRECT",
+                Reason = "Thịt bị hôi",
+                Items = new List<ShopReturnItemRequestDto>
+                {
+                    new ShopReturnItemRequestDto
+                    {
+                        VariantId = 20,
+                        BatchId = 0,
+                        UoMId = 2,
+                        ReturnedQuantity = 2,
+                        Reason = "Thịt có mùi lạ"
+                    }
+                }
+            };
+
+            // Act
+            var result = await service.CreateReturnRequestAsync(10, request);
+
+            // Assert
+            result.Should().NotBeNull();
+            result.OrderCode.Should().Be("ORD-STOREFRONT-DIRECT");
+            result.Status.Should().Be(CustomerReturnStatus.Pending);
+            result.RefundAmount.Should().Be(130000m);
+            result.Details.Should().HaveCount(1);
+            var item = result.Details.First();
+            item.VariantName.Should().Be("Thịt Thăn Heo CP");
+            item.BatchCode.Should().Be("BATCH-HEO-15");
+            item.ReturnedQuantity.Should().Be(2);
         }
         #endregion
 
