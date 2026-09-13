@@ -1,11 +1,11 @@
-﻿using System.Text.RegularExpressions;
+using System.Text.RegularExpressions;
 
 namespace backend.Helpers
 {
     public static class GeoHelper
     {
         /// <summary>
-        /// Chuẩn hóa chuỗi địa giới hành chính tiếng Việt để so khớp (bỏ dấu, tiền tố tỉnh/tp/quận/huyện)
+        /// Chuẩn hóa chuỗi địa giới hành chính tiếng Việt để so khớp (bỏ dấu, tiền tố tỉnh/tp/quận/huyện/thị xã)
         /// </summary>
         public static string NormalizeLocation(string? text)
         {
@@ -15,25 +15,17 @@ namespace backend.Helpers
             // Loại bỏ tiền tố hành chính cấp tỉnh
             slug = Regex.Replace(slug, @"^(thanh-pho|tinh|tp)-", "");
 
-            // Chuẩn hóa tiền tố quận / huyện
-            if (slug.StartsWith("quan-") || slug.StartsWith("q-"))
-            {
-                slug = "q" + slug.Substring(slug.IndexOf('-') + 1);
-            }
-            else if (slug.StartsWith("huyen-") || slug.StartsWith("h-"))
-            {
-                slug = "h" + slug.Substring(slug.IndexOf('-') + 1);
-            }
-            else if (slug.StartsWith("phuong-") || slug.StartsWith("p-"))
-            {
-                slug = "p" + slug.Substring(slug.IndexOf('-') + 1);
-            }
+            // Loại bỏ tiền tố hành chính cấp quận / huyện / thị xã / phường
+            slug = Regex.Replace(slug, @"^(quan|q|huyen|h|thi-xa|tx|phuong|p)-", "");
+
+            // Chuẩn hóa q7, q1 -> 7, 1
+            slug = Regex.Replace(slug, @"^q(\d+)$", "$1");
 
             return slug;
         }
 
         /// <summary>
-        /// Kiểm tra xem 2 địa danh hành chính có tương đồng không (ví dụ "TP. Hồ Chí Minh" tương đồng với "Ho Chi Minh")
+        /// Kiểm tra xem 2 địa danh hành chính có tương đồng không (ví dụ "Thành Phố Thủ Đức" tương đồng với "Thủ Đức")
         /// </summary>
         public static bool IsSameLocation(string? loc1, string? loc2)
         {
@@ -41,7 +33,19 @@ namespace backend.Helpers
             string n1 = NormalizeLocation(loc1);
             string n2 = NormalizeLocation(loc2);
             if (string.IsNullOrEmpty(n1) || string.IsNullOrEmpty(n2)) return false;
-            return n1 == n2 || n1.Contains(n2) || n2.Contains(n1);
+
+            if (n1 == n2) return true;
+
+            // Nếu là quận số (ví dụ Quận 1 vs Quận 10), KHÔNG được so khớp Contains!
+            bool isN1Numeric = int.TryParse(n1, out _);
+            bool isN2Numeric = int.TryParse(n2, out _);
+            if (isN1Numeric || isN2Numeric)
+            {
+                return n1 == n2;
+            }
+
+            // Với chuỗi chữ (ví dụ "thu-duc" vs "tp-thu-duc"), cho phép so khớp hai chiều
+            return n1.Contains(n2) || n2.Contains(n1);
         }
     }
 }

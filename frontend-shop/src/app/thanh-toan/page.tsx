@@ -279,8 +279,8 @@ export default function ThanhToanPage() {
         ghnDistrictId: selectedDistrictId ?? undefined,
         ghnWardCode: selectedWardCode || undefined,
         shippingFee: shippingFee,
-        latitude: 10.7769,
-        longitude: 106.7009,
+        latitude: 0,
+        longitude: 0,
         paymentMethod: paymentMethod,
         note: note.trim(),
       };

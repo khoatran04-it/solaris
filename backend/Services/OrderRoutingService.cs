@@ -60,11 +60,38 @@ namespace backend.Services
                 }
             }
 
+            // Bỏ qua tọa độ nếu bị gán nhầm tọa độ mặc định Chợ Bến Thành Quận 1 (10.7769, 106.7009) khi quận của khách khác Quận 1
+            if (custLat != 0 && custLon != 0 &&
+                Math.Abs(custLat - 10.7769) < 0.001 && Math.Abs(custLon - 106.7009) < 0.001 &&
+                !string.IsNullOrEmpty(custDistrict) && !GeoHelper.IsSameLocation(custDistrict, "Quận 1"))
+            {
+                custLat = 0;
+                custLon = 0;
+            }
+
             // 1. Tính khoảng cách an toàn với Fallback theo cấp hành chính (tránh lỗi vô cực khi thiếu GPS)
             double CalculateSafeDistance(Warehouse wh)
             {
                 if (wh.Address == null) return 5.0;
 
+                // Ưu tiên 1: Cùng quận/huyện giữa khách hàng và kho hàng (Dynamic Same-District Match)
+                if (!string.IsNullOrEmpty(wh.Address.District) && !string.IsNullOrEmpty(custDistrict))
+                {
+                    if (GeoHelper.IsSameLocation(wh.Address.District, custDistrict))
+                    {
+                        bool hasCust = custLat != 0 && custLon != 0;
+                        bool hasWh = wh.Address.Latitude != 0 && wh.Address.Longitude != 0;
+                        if (hasCust && hasWh)
+                        {
+                            double d = _distanceService.CalculateDistanceKm(custLat, custLon, wh.Address.Latitude, wh.Address.Longitude);
+                            if (!double.IsInfinity(d) && !double.IsNaN(d) && d < 15.0)
+                                return d;
+                        }
+                        return 2.5; // Cùng quận: Kho nằm ngay tại quận của khách hàng!
+                    }
+                }
+
+                // Ưu tiên 2: Tính khoảng cách GPS thực tế nếu có
                 bool hasCustCoords = custLat != 0 && custLon != 0;
                 bool hasWhCoords = wh.Address.Latitude != 0 && wh.Address.Longitude != 0;
 
@@ -77,14 +104,11 @@ namespace backend.Services
                     }
                 }
 
-                // Fallback địa lý theo Tỉnh / Quận nếu thiếu GPS hoặc GPS không hợp lệ
+                // Ưu tiên 3: Fallback địa lý theo cấp Tỉnh/Thành phố
                 if (!string.IsNullOrEmpty(wh.Address.Province) && !string.IsNullOrEmpty(custProvince))
                 {
                     bool sameProvince = GeoHelper.IsSameLocation(wh.Address.Province, custProvince);
-                    bool sameDistrict = GeoHelper.IsSameLocation(wh.Address.District, custDistrict);
-
-                    if (sameDistrict) return 3.0; // Cùng quận: ước tính ~3km
-                    if (sameProvince) return 7.5; // Cùng tỉnh/TP (ví dụ cùng TP.HCM): ước tính ~7.5km
+                    if (sameProvince) return 7.5; // Cùng tỉnh/TP: ước tính ~7.5km
                     return 100.0; // Khác tỉnh thành
                 }
 
