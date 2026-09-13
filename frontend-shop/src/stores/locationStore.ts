@@ -149,6 +149,27 @@ export const useLocationStore = create<LocationState>((set, get) => ({
       const savedDistrict = localStorage.getItem("solaris_delivery_district");
       const savedWhRaw = localStorage.getItem("solaris_selected_warehouse");
 
+      if (savedDistrict) {
+        const remappedWh = mapLocationToWarehouse(
+          savedDistrict,
+          undefined,
+          undefined,
+          undefined,
+          whList,
+        );
+        set({
+          deliveryAddress: savedAddr || `${savedDistrict}, TP.HCM`,
+          deliveryDistrict: savedDistrict,
+          selectedWarehouse: remappedWh,
+          isInitialized: true,
+        });
+        localStorage.setItem(
+          "solaris_selected_warehouse",
+          JSON.stringify(remappedWh),
+        );
+        return;
+      }
+
       if (savedWhRaw) {
         try {
           const savedWh = JSON.parse(savedWhRaw) as ShopWarehouse;
@@ -156,9 +177,9 @@ export const useLocationStore = create<LocationState>((set, get) => ({
           if (stillExists) {
             set({
               deliveryAddress:
-                savedAddr || `${stillExists.district || "Quận 4"}, TP.HCM`,
+                savedAddr || `${stillExists.district || "TP.HCM"}`,
               deliveryDistrict:
-                savedDistrict || stillExists.district || "Quận 4",
+                savedDistrict || stillExists.district || "",
               selectedWarehouse: stillExists,
               isInitialized: true,
             });
@@ -384,8 +405,32 @@ export const useLocationStore = create<LocationState>((set, get) => ({
   },
 }));
 
-// Hàm điều phối ngầm kho bán lẻ gần nhất dựa trên Quận, Tỉnh hoặc Tọa độ GPS
-function mapLocationToWarehouse(
+// Chuẩn hóa tên quận/huyện để so khớp mềm dẻo (bỏ dấu tiếng Việt, bỏ tiền tố hành chính)
+export function normalizeDistrictName(text?: string | null): string {
+  if (!text) return "";
+  let s = text.toLowerCase().trim();
+  // Bỏ dấu tiếng Việt
+  s = s
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/Đ/g, "d");
+
+  // Xóa các ký tự phân cách
+  s = s.replace(/[\.,\-_/]/g, " ").trim();
+
+  // Loại bỏ tiền tố hành chính phổ biến: thành phố, tp, thị xã, tx, quận, q, huyện, h, phường, p
+  s = s.replace(/^(thanh\s+pho|tp|thi\s+xa|tx)\s+/g, "");
+  s = s.replace(/^(quan|q|huyen|h)\s+/g, "");
+  s = s.replace(/^q(\d+)$/g, "$1"); // q7 -> 7, q4 -> 4
+
+  // Chuẩn hóa khoảng trắng
+  s = s.replace(/\s+/g, " ").trim();
+  return s;
+}
+
+// Hàm điều phối ngầm kho bán lẻ gần nhất dựa trên dữ liệu kho động từ Database (Store-Locking & Smart Routing)
+export function mapLocationToWarehouse(
   district?: string,
   province?: string,
   lat?: number,
@@ -394,59 +439,82 @@ function mapLocationToWarehouse(
 ): ShopWarehouse {
   if (!warehouses.length) {
     return {
-      id: 3,
-      name: "Kho Bán Lẻ Quận 4",
-      code: "RETAIL-002",
+      id: 0,
+      name: "Kho Mặc Định",
+      code: "DEFAULT",
       warehouseType: "Kho Bán Lẻ",
-      district: "Quận 4",
-      fullAddress: "300A Nguyễn Tất Thành, Phường 18, Quận 4, Hồ Chí Minh",
-      latitude: 10.7584,
-      longitude: 106.7118,
+      district: district || "",
+      fullAddress: "",
+      latitude: 0,
+      longitude: 0,
       isActive: true,
     };
   }
 
-  // 1. Nếu có tọa độ GPS chính xác -> Haversine
-  if (lat != null && lon != null && lat !== 0 && lon !== 0) {
+  // 1. So khớp động theo Quận/Huyện từ danh sách kho của DB
+  if (district) {
+    const targetNorm = normalizeDistrictName(district);
+
+    if (targetNorm) {
+      // 1.1 Khớp chính xác tên quận đã chuẩn hóa giữa địa chỉ khách và địa chỉ kho trong DB
+      const exactMatch = warehouses.find(
+        (w) => w.district && normalizeDistrictName(w.district) === targetNorm,
+      );
+      if (exactMatch) return exactMatch;
+
+      // 1.2 Khớp với tên kho (ví dụ kho tên "Kho Bán Lẻ Thủ Đức" hoặc "Kho Bán Lẻ Q7")
+      const nameMatch = warehouses.find(
+        (w) => w.name && normalizeDistrictName(w.name).includes(targetNorm),
+      );
+      if (nameMatch) return nameMatch;
+
+      // 1.3 Khớp bao hàm hai chiều (chỉ áp dụng cho quận có tên chữ, không áp dụng cho số)
+      const isNumeric = /^\d+$/.test(targetNorm);
+      if (!isNumeric && targetNorm.length >= 3) {
+        const subMatch = warehouses.find((w) => {
+          if (!w.district) return false;
+          const wNorm = normalizeDistrictName(w.district);
+          return wNorm.includes(targetNorm) || targetNorm.includes(wNorm);
+        });
+        if (subMatch) return subMatch;
+      }
+    }
+  }
+
+  // 2. Nếu khách có tọa độ GPS thực tế từ thiết bị (khác 0 và không phải tọa độ giả Q1 10.7769, 106.7009)
+  const isBogusQ1Coords =
+    lat != null &&
+    lon != null &&
+    Math.abs(lat - 10.7769) < 0.001 &&
+    Math.abs(lon - 106.7009) < 0.001 &&
+    normalizeDistrictName(district) !== "1";
+
+  if (
+    lat != null &&
+    lon != null &&
+    lat !== 0 &&
+    lon !== 0 &&
+    !isBogusQ1Coords
+  ) {
     return findNearestWarehouse(lat, lon, warehouses);
   }
 
-  // 2. Khớp theo Quận/Huyện phục vụ tại TP.HCM
-  if (district) {
-    const dLower = district.toLowerCase();
-
-    // Cụm Nam Sài Gòn (Quận 7, Nhà Bè, Bình Chánh, Cần Giờ, Thủ Đức) -> Map Kho Q7
-    if (
-      dLower.includes("7") ||
-      dLower.includes("nhà bè") ||
-      dLower.includes("bình chánh") ||
-      dLower.includes("cần giờ")
-    ) {
-      const wh7 = warehouses.find(
-        (w) => w.district?.includes("7") || w.name.includes("Quận 7"),
+  // 3. Khớp theo Tỉnh / Thành phố
+  if (province) {
+    const provNorm = normalizeDistrictName(province);
+    if (provNorm) {
+      const provMatch = warehouses.find(
+        (w) =>
+          w.province &&
+          (normalizeDistrictName(w.province).includes(provNorm) ||
+            provNorm.includes(normalizeDistrictName(w.province))),
       );
-      if (wh7) return wh7;
+      if (provMatch) return provMatch;
     }
-
-    // Cụm Trung tâm & Bắc Sài Gòn (Quận 4, Quận 1, Quận 3, Quận 5, Quận 8, Bình Thạnh, Phú Nhuận...) -> Map Kho Q4
-    const wh4 = warehouses.find(
-      (w) => w.district?.includes("4") || w.name.includes("Quận 4"),
-    );
-    if (wh4) return wh4;
-
-    // Tìm trực tiếp theo tên quận trong danh sách kho
-    const directMatch = warehouses.find(
-      (w) => w.district && dLower.includes(w.district.toLowerCase()),
-    );
-    if (directMatch) return directMatch;
   }
 
-  // 3. Fallback mặc định về Kho Quận 4
-  return (
-    warehouses.find(
-      (w) => w.district?.includes("4") || w.name.includes("Quận 4"),
-    ) || warehouses[0]
-  );
+  // 4. Fallback: Kho bán lẻ đang hoạt động đầu tiên
+  return warehouses.find((w) => w.isActive) || warehouses[0];
 }
 
 function findNearestWarehouse(

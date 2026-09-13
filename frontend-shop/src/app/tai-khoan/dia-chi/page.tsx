@@ -58,8 +58,8 @@ export default function DiaChiPage() {
         ward: ward.trim(),
         streetAddress: streetAddress.trim(),
         isDefault,
-        latitude: 10.7769,
-        longitude: 106.7009,
+        latitude: 0,
+        longitude: 0,
       } as ShopAddressPayload);
 
       setShowAddForm(false);
