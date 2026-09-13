@@ -30,6 +30,56 @@ namespace backend.Services
                 .Where(t => t.WarehouseId == warehouseId && t.CreatedAt >= fromUtc && t.CreatedAt < toUtc)
                 .ToListAsync();
 
+            // Tự động kiểm tra và chuẩn hóa các giao dịch Khách trả (RMA) nếu trước đó bị ghi nhầm thành Receipt (Nhập mua)
+            bool hasHealed = false;
+            var receiptCodes = transactions
+                .Where(t => t.Type == TransactionType.Receipt && !string.IsNullOrEmpty(t.ReferenceCode) && t.ReferenceCode.StartsWith("IR-"))
+                .Select(t => t.ReferenceCode!)
+                .Distinct()
+                .ToList();
+
+            if (receiptCodes.Any())
+            {
+                var rmaReceiptCodes = await _context.InventoryReceipts
+                    .Where(r => receiptCodes.Contains(r.ReceiptCode) && r.Note != null &&
+                               (r.Note.Contains("RET-") || r.Note.Contains("thu hồi") || r.Note.Contains("trả hàng")))
+                    .Select(r => r.ReceiptCode)
+                    .ToListAsync();
+
+                if (rmaReceiptCodes.Any())
+                {
+                    var txnsToHeal = transactions
+                        .Where(t => t.Type == TransactionType.Receipt && t.ReferenceCode != null && rmaReceiptCodes.Contains(t.ReferenceCode))
+                        .ToList();
+
+                    foreach (var txn in txnsToHeal)
+                    {
+                        txn.Type = TransactionType.CustomerReturn;
+                        hasHealed = true;
+                    }
+                }
+            }
+
+            var directRmaTxns = transactions
+                .Where(t => t.Type == TransactionType.Receipt &&
+                           ((t.ReferenceCode != null && t.ReferenceCode.StartsWith("RET-")) ||
+                            (t.Note != null && (t.Note.Contains("RET-") || t.Note.Contains("thu hồi") || t.Note.Contains("trả hàng")))))
+                .ToList();
+
+            if (directRmaTxns.Any())
+            {
+                foreach (var txn in directRmaTxns)
+                {
+                    txn.Type = TransactionType.CustomerReturn;
+                    hasHealed = true;
+                }
+            }
+
+            if (hasHealed)
+            {
+                await _context.SaveChangesAsync();
+            }
+
             // 2. Lấy số dư hiện tại trong kho
             var currentInventories = await _context.WarehouseInventories
                 .Include(i => i.Variant!).ThenInclude(v => v.Product!).ThenInclude(p => p.BaseUoM)
@@ -132,17 +182,28 @@ namespace backend.Services
                 .AsNoTracking()
                 .ToListAsync();
 
-            var mappedItems = items.Select(t => new StockLedgerEntryDto
+            var mappedItems = items.Select(t =>
             {
-                TransactionDate = t.CreatedAt,
-                TransactionCode = t.TransactionCode,
-                TransactionType = t.Type.ToString(),
-                ReferenceCode = t.ReferenceCode ?? string.Empty,
-                VariantName = t.Variant?.Name ?? string.Empty,
-                BatchCode = t.Batch?.BatchCode ?? string.Empty,
-                Quantity = t.Quantity,
-                Note = t.Note ?? string.Empty,
-                PerformedBy = t.CreatedBy?.FullName ?? "Hệ thống"
+                var txnType = t.Type;
+                if (txnType == TransactionType.Receipt &&
+                    ((t.ReferenceCode != null && t.ReferenceCode.StartsWith("RET-")) ||
+                     (t.Note != null && (t.Note.Contains("RET-") || t.Note.Contains("thu hồi") || t.Note.Contains("trả hàng")))))
+                {
+                    txnType = TransactionType.CustomerReturn;
+                }
+
+                return new StockLedgerEntryDto
+                {
+                    TransactionDate = t.CreatedAt,
+                    TransactionCode = t.TransactionCode,
+                    TransactionType = txnType.ToString(),
+                    ReferenceCode = t.ReferenceCode ?? string.Empty,
+                    VariantName = t.Variant?.Name ?? string.Empty,
+                    BatchCode = t.Batch?.BatchCode ?? string.Empty,
+                    Quantity = t.Quantity,
+                    Note = t.Note ?? string.Empty,
+                    PerformedBy = t.CreatedBy?.FullName ?? "Hệ thống"
+                };
             }).ToList();
 
             return new PagedResult<StockLedgerEntryDto>

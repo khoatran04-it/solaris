@@ -298,6 +298,22 @@ namespace backend.Services
                     }
                 }
 
+                // Kiểm tra xem phiếu nhập kho này có phải xuất phát từ Phiếu Trả Hàng (Customer Return / RMA) hay không
+                CustomerReturn? customerReturn = null;
+                if (!string.IsNullOrWhiteSpace(receipt.Note))
+                {
+                    var retMatch = System.Text.RegularExpressions.Regex.Match(receipt.Note, @"RET-[A-Za-z0-9-]+", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                    if (retMatch.Success)
+                    {
+                        var retCode = retMatch.Value;
+                        customerReturn = await _context.CustomerReturns
+                            .FirstOrDefaultAsync(r => r.ReturnCode == retCode && !r.IsDeleted);
+                    }
+                }
+
+                bool isCustomerReturn = customerReturn != null ||
+                    (!string.IsNullOrWhiteSpace(receipt.Note) && (receipt.Note.Contains("RET-", StringComparison.OrdinalIgnoreCase) || receipt.Note.Contains("thu hồi", StringComparison.OrdinalIgnoreCase) || receipt.Note.Contains("trả hàng", StringComparison.OrdinalIgnoreCase)));
+
                 var poIdsToUpdate = new HashSet<int>();
 
                 foreach (var detail in receipt.Details)
@@ -336,18 +352,25 @@ namespace backend.Services
                     }
 
                     // 2. Ghi sổ cái bất biến (InventoryTransaction) theo Base UoM
-                    if (baseAcceptedQty > 0)
+                    decimal baseTotalIncoming = isCustomerReturn ? (baseAcceptedQty + baseDamagedQty) : baseAcceptedQty;
+                    if (baseTotalIncoming > 0)
                     {
+                        var txnType = isCustomerReturn ? TransactionType.CustomerReturn : TransactionType.Receipt;
+                        string refCode = customerReturn != null ? customerReturn.ReturnCode : receipt.ReceiptCode;
+                        string note = isCustomerReturn
+                            ? $"Nhập kho thu hồi đổi trả theo phiếu {receipt.ReceiptCode} (RMA: {refCode}) - Đạt: {baseAcceptedQty}, Hỏng: {baseDamagedQty} Base UoM"
+                            : $"Nhập kho hoàn tất theo phiếu {receipt.ReceiptCode} ({detail.AcceptedQuantity} ĐVT gốc -> {baseAcceptedQty} Base UoM)";
+
                         var invTransaction = new InventoryTransaction
                         {
                             TransactionCode = $"TXN-{DateTimeHelper.VietnamNow:yyyyMMddHHmmss}-{Guid.NewGuid().ToString()[..4].ToUpper()}",
                             WarehouseId = receipt.WarehouseId,
                             VariantId = detail.VariantId,
                             BatchId = detail.BatchId,
-                            Type = TransactionType.Receipt,
-                            Quantity = baseAcceptedQty,
-                            ReferenceCode = receipt.ReceiptCode,
-                            Note = $"Nhập kho hoàn tất theo phiếu {receipt.ReceiptCode} ({detail.AcceptedQuantity} ĐVT gốc -> {baseAcceptedQty} Base UoM)",
+                            Type = txnType,
+                            Quantity = baseTotalIncoming,
+                            ReferenceCode = refCode,
+                            Note = note,
                             CreatedById = receivedById,
                             CreatedAt = DateTime.UtcNow
                         };
@@ -369,18 +392,32 @@ namespace backend.Services
                     }
                 }
 
-                // 4. Nếu phiếu nhập kho thu hồi theo Phiếu Trả Hàng (RMA) -> Cập nhật CustomerReturn sang Completed
-                if (!string.IsNullOrEmpty(receipt.Note))
+                // 4. Nếu phiếu nhập kho thu hồi theo Phiếu Trả Hàng (RMA) -> Cập nhật CustomerReturn sang Completed & Hoàn tiền đơn hàng
+                if (customerReturn == null && !string.IsNullOrEmpty(receipt.Note))
                 {
-                    var retMatch = System.Text.RegularExpressions.Regex.Match(receipt.Note, @"RET-\d+-[A-Za-z0-9]+");
+                    var retMatch = System.Text.RegularExpressions.Regex.Match(receipt.Note, @"RET-[A-Za-z0-9-]+", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
                     if (retMatch.Success)
                     {
                         var retCode = retMatch.Value;
-                        var ret = await _context.CustomerReturns.FirstOrDefaultAsync(r => r.ReturnCode == retCode);
-                        if (ret != null && ret.Status != CustomerReturnStatus.Completed)
+                        customerReturn = await _context.CustomerReturns
+                            .FirstOrDefaultAsync(r => r.ReturnCode == retCode && !r.IsDeleted);
+                    }
+                }
+
+                if (customerReturn != null)
+                {
+                    if (customerReturn.Status != CustomerReturnStatus.Completed)
+                    {
+                        customerReturn.Status = CustomerReturnStatus.Completed;
+                        customerReturn.UpdatedAt = DateTime.UtcNow;
+                    }
+                    if (customerReturn.OrderId > 0)
+                    {
+                        var order = await _context.Orders.FirstOrDefaultAsync(o => o.Id == customerReturn.OrderId);
+                        if (order != null && order.PaymentStatus != PaymentStatus.Refunded)
                         {
-                            ret.Status = CustomerReturnStatus.Completed;
-                            ret.UpdatedAt = DateTime.UtcNow;
+                            order.PaymentStatus = PaymentStatus.Refunded;
+                            order.UpdatedAt = DateTime.UtcNow;
                         }
                     }
                 }
