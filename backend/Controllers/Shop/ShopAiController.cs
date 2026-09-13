@@ -165,6 +165,14 @@ namespace backend.Controllers.Shop
             {
                 return BadRequest(new { message = ex.Message });
             }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(new { message = ex.Message });
+            }
             catch (Exception ex)
             {
                 return BadRequest(new { message = "Lỗi khi tạo đơn hàng từ AI Chatbot.", details = ex.Message });
