@@ -37,6 +37,7 @@ namespace backend.Services
         private readonly IVnPayService _vnPayService;
         private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly IUoMConversionService? _uomConversionService;
+        private readonly IOrderRoutingService? _routingService;
 
         public GeminiChatService(
             HttpClient httpClient,
@@ -45,7 +46,8 @@ namespace backend.Services
             IMapper mapper,
             IVnPayService vnPayService,
             IHttpContextAccessor httpContextAccessor,
-            IUoMConversionService? uomConversionService = null)
+            IUoMConversionService? uomConversionService = null,
+            IOrderRoutingService? routingService = null)
         {
             _httpClient = httpClient;
             _config = config;
@@ -54,6 +56,7 @@ namespace backend.Services
             _vnPayService = vnPayService;
             _httpContextAccessor = httpContextAccessor;
             _uomConversionService = uomConversionService;
+            _routingService = routingService;
         }
 
         #region 1. Quản lý Phiên hội thoại (Session Management)
@@ -568,7 +571,46 @@ namespace backend.Services
                     throw new ArgumentException("Bạn chưa cập nhật địa chỉ nhận hàng. Vui lòng cập nhật địa chỉ trong sổ địa chỉ trước khi xác nhận đơn hàng.");
                 }
 
-                // Kiểm tra rào chắn khoảng cách chuỗi lạnh nếu đơn có sản phẩm tươi sống
+                CustomerAddress? currentCustAddr = null;
+                if (request.CustomerAddressId.HasValue && request.CustomerAddressId.Value >= 0)
+                {
+                    currentCustAddr = await _context.CustomerAddresses.FirstOrDefaultAsync(a => a.Id == request.CustomerAddressId.Value);
+                }
+                else
+                {
+                    currentCustAddr = await _context.CustomerAddresses.FirstOrDefaultAsync(a => a.CustomerId == validCustomerId && a.IsDefault && !a.IsDeleted)
+                        ?? await _context.CustomerAddresses.FirstOrDefaultAsync(a => a.CustomerId == validCustomerId && !a.IsDeleted);
+                }
+
+                // 2. Chạy Smart Order Routing (Thuật toán Haversine) để tự động định vị Kho đích tối ưu gần khách hàng nhất
+                double deliveryDistanceKm = 0;
+                string selectedWarehouseName = string.Empty;
+
+                if (_routingService != null)
+                {
+                    var routingItems = orderDetails.Select(d => new backend.DTOs.OrderDTOs.OrderDetailCreateDto
+                    {
+                        VariantId = d.VariantId,
+                        Quantity = d.Quantity
+                    }).ToList();
+
+                    var routing = await _routingService.DetermineOptimalWarehouseAsync(
+                        request.CustomerAddressId,
+                        routingItems,
+                        currentCustAddr?.Latitude ?? 0,
+                        currentCustAddr?.Longitude ?? 0,
+                        currentCustAddr?.Province,
+                        currentCustAddr?.District);
+
+                    if (routing.OptimalWarehouseId > 0)
+                    {
+                        assignedWarehouseId = routing.OptimalWarehouseId;
+                        deliveryDistanceKm = routing.DistanceKm;
+                        selectedWarehouseName = routing.WarehouseName;
+                    }
+                }
+
+                // 3. Kiểm tra rào chắn khoảng cách chuỗi lạnh nếu đơn có sản phẩm tươi sống
                 var orderedVariantIds = orderDetails.Select(d => d.VariantId).ToList();
                 var coldVariantsInOrder = await _context.ProductVariants
                     .Include(v => v.Product)
@@ -589,29 +631,18 @@ namespace backend.Services
                 {
                     var targetWh = await _context.Warehouses
                         .Include(w => w.Address)
-                        .FirstOrDefaultAsync(w => w.IsActive && !w.IsDeleted && w.Address != null);
+                        .FirstOrDefaultAsync(w => w.Id == (assignedWarehouseId ?? 1) && w.IsActive && !w.IsDeleted);
 
                     if (targetWh?.Address != null)
                     {
-                        CustomerAddress? currentCustAddr = null;
-                        if (request.CustomerAddressId.HasValue && request.CustomerAddressId.Value >= 0)
-                        {
-                            currentCustAddr = await _context.CustomerAddresses.FirstOrDefaultAsync(a => a.Id == request.CustomerAddressId.Value);
-                        }
-                        else
-                        {
-                            currentCustAddr = await _context.CustomerAddresses.FirstOrDefaultAsync(a => a.CustomerId == validCustomerId && a.IsDefault && !a.IsDeleted)
-                                ?? await _context.CustomerAddresses.FirstOrDefaultAsync(a => a.CustomerId == validCustomerId && !a.IsDeleted);
-                        }
-
-                        double dist = 0;
-                        if (currentCustAddr != null && currentCustAddr.Latitude != 0 && currentCustAddr.Longitude != 0 &&
+                        double dist = deliveryDistanceKm > 0 ? deliveryDistanceKm : 0;
+                        if (dist <= 0 && currentCustAddr != null && currentCustAddr.Latitude != 0 && currentCustAddr.Longitude != 0 &&
                             targetWh.Address.Latitude != 0 && targetWh.Address.Longitude != 0)
                         {
                             var distService = new DistanceService();
                             dist = distService.CalculateDistanceKm(currentCustAddr.Latitude, currentCustAddr.Longitude, targetWh.Address.Latitude, targetWh.Address.Longitude);
                         }
-                        else if (currentCustAddr != null && !string.IsNullOrEmpty(currentCustAddr.Province) && !string.IsNullOrEmpty(targetWh.Address.Province))
+                        else if (dist <= 0 && currentCustAddr != null && !string.IsNullOrEmpty(currentCustAddr.Province) && !string.IsNullOrEmpty(targetWh.Address.Province))
                         {
                             bool sameProv = currentCustAddr.Province.Trim().ToLower().Contains(targetWh.Address.Province.Trim().ToLower()) ||
                                             targetWh.Address.Province.Trim().ToLower().Contains(currentCustAddr.Province.Trim().ToLower());
@@ -944,32 +975,66 @@ namespace backend.Services
                 var targetAddr = custWithAddr?.Addresses.FirstOrDefault(a => a.IsDefault) ?? custWithAddr?.Addresses.FirstOrDefault();
                 if (targetAddr != null)
                 {
-                    var wh = await _context.Warehouses
-                        .Include(w => w.Address)
-                        .FirstOrDefaultAsync(w => w.IsActive && !w.IsDeleted && w.Address != null);
+                    double distKm = 0;
+                    double maxRadius = 15.0;
+                    string whName = "Solaris Cold Storage";
 
-                    if (wh?.Address != null)
+                    if (_routingService != null)
                     {
-                        double distKm = 0;
-                        if (targetAddr.Latitude != 0 && targetAddr.Longitude != 0 && wh.Address.Latitude != 0 && wh.Address.Longitude != 0)
+                        var routingItems = items.Select(i => new backend.DTOs.OrderDTOs.OrderDetailCreateDto
                         {
-                            var distanceService = new DistanceService();
-                            distKm = distanceService.CalculateDistanceKm(targetAddr.Latitude, targetAddr.Longitude, wh.Address.Latitude, wh.Address.Longitude);
-                        }
-                        else if (!string.IsNullOrEmpty(targetAddr.Province) && !string.IsNullOrEmpty(wh.Address.Province))
-                        {
-                            bool sameProv = targetAddr.Province.Trim().ToLower().Contains(wh.Address.Province.Trim().ToLower()) ||
-                                            wh.Address.Province.Trim().ToLower().Contains(targetAddr.Province.Trim().ToLower());
-                            distKm = sameProv ? 8.0 : 100.0;
-                        }
+                            VariantId = i.VariantId,
+                            Quantity = i.Quantity
+                        }).ToList();
 
-                        double maxRadius = wh.MaxColdChainRadiusKm > 0 ? wh.MaxColdChainRadiusKm : 15.0;
-                        if (distKm > maxRadius)
+                        var routing = await _routingService.DetermineOptimalWarehouseAsync(
+                            targetAddr.Id,
+                            routingItems,
+                            targetAddr.Latitude,
+                            targetAddr.Longitude,
+                            targetAddr.Province,
+                            targetAddr.District);
+
+                        distKm = routing.DistanceKm;
+                        whName = routing.WarehouseName;
+
+                        var wh = await _context.Warehouses
+                            .FirstOrDefaultAsync(w => w.Id == routing.OptimalWarehouseId);
+                        if (wh != null && wh.MaxColdChainRadiusKm > 0)
                         {
-                            isColdChainFeasible = false;
-                            ineligibleColdItems = itemsNeedingCold;
-                            coldChainWarning = $"Địa chỉ giao hàng ({targetAddr.FullAddress}) cách kho xe lạnh {wh.Name} khoảng {distKm:F1} km, vượt quá bán kính bảo quản tối đa ({maxRadius} km) của xe máy thùng lạnh chuyên dụng TMS. Các sản phẩm tươi sống sau không đảm bảo dải nhiệt độ mát 2°C - 8°C: {string.Join(", ", ineligibleColdItems)}. Vui lòng đổi địa chỉ nhận hàng gần hơn hoặc chỉ đặt các sản phẩm đồ khô/nhiệt độ thường.";
+                            maxRadius = wh.MaxColdChainRadiusKm;
                         }
+                    }
+                    else
+                    {
+                        var wh = await _context.Warehouses
+                            .Include(w => w.Address)
+                            .FirstOrDefaultAsync(w => w.IsActive && !w.IsDeleted && w.Address != null);
+
+                        if (wh?.Address != null)
+                        {
+                            whName = wh.Name;
+                            if (targetAddr.Latitude != 0 && targetAddr.Longitude != 0 && wh.Address.Latitude != 0 && wh.Address.Longitude != 0)
+                            {
+                                var distanceService = new DistanceService();
+                                distKm = distanceService.CalculateDistanceKm(targetAddr.Latitude, targetAddr.Longitude, wh.Address.Latitude, wh.Address.Longitude);
+                            }
+                            else if (!string.IsNullOrEmpty(targetAddr.Province) && !string.IsNullOrEmpty(wh.Address.Province))
+                            {
+                                bool sameProv = targetAddr.Province.Trim().ToLower().Contains(wh.Address.Province.Trim().ToLower()) ||
+                                                wh.Address.Province.Trim().ToLower().Contains(targetAddr.Province.Trim().ToLower());
+                                distKm = sameProv ? 8.0 : 100.0;
+                            }
+
+                            maxRadius = wh.MaxColdChainRadiusKm > 0 ? wh.MaxColdChainRadiusKm : 15.0;
+                        }
+                    }
+
+                    if (distKm > maxRadius)
+                    {
+                        isColdChainFeasible = false;
+                        ineligibleColdItems = itemsNeedingCold;
+                        coldChainWarning = $"Địa chỉ giao hàng ({targetAddr.FullAddress}) cách kho xe lạnh {whName} khoảng {distKm:F1} km, vượt quá bán kính bảo quản tối đa ({maxRadius} km) của xe máy thùng lạnh chuyên dụng TMS. Các sản phẩm tươi sống sau không đảm bảo dải nhiệt độ mát 2°C - 8°C: {string.Join(", ", ineligibleColdItems)}. Vui lòng đổi địa chỉ nhận hàng gần hơn hoặc chỉ đặt các sản phẩm đồ khô/nhiệt độ thường.";
                     }
                 }
             }
@@ -1479,32 +1544,66 @@ namespace backend.Services
                 var targetAddr = custWithAddr?.Addresses.FirstOrDefault(a => a.IsDefault) ?? custWithAddr?.Addresses.FirstOrDefault();
                 if (targetAddr != null)
                 {
-                    var wh = await _context.Warehouses
-                        .Include(w => w.Address)
-                        .FirstOrDefaultAsync(w => w.IsActive && !w.IsDeleted && w.Address != null);
+                    double distKm = 0;
+                    double maxRadius = 15.0;
+                    string whName = "Solaris Cold Storage";
 
-                    if (wh?.Address != null)
+                    if (_routingService != null)
                     {
-                        double distKm = 0;
-                        if (targetAddr.Latitude != 0 && targetAddr.Longitude != 0 && wh.Address.Latitude != 0 && wh.Address.Longitude != 0)
+                        var routingItems = items.Select(i => new backend.DTOs.OrderDTOs.OrderDetailCreateDto
                         {
-                            var distanceService = new DistanceService();
-                            distKm = distanceService.CalculateDistanceKm(targetAddr.Latitude, targetAddr.Longitude, wh.Address.Latitude, wh.Address.Longitude);
-                        }
-                        else if (!string.IsNullOrEmpty(targetAddr.Province) && !string.IsNullOrEmpty(wh.Address.Province))
-                        {
-                            bool sameProv = targetAddr.Province.Trim().ToLower().Contains(wh.Address.Province.Trim().ToLower()) ||
-                                            wh.Address.Province.Trim().ToLower().Contains(targetAddr.Province.Trim().ToLower());
-                            distKm = sameProv ? 8.0 : 100.0;
-                        }
+                            VariantId = i.VariantId,
+                            Quantity = i.Quantity
+                        }).ToList();
 
-                        double maxRadius = wh.MaxColdChainRadiusKm > 0 ? wh.MaxColdChainRadiusKm : 15.0;
-                        if (distKm > maxRadius)
+                        var routing = await _routingService.DetermineOptimalWarehouseAsync(
+                            targetAddr.Id,
+                            routingItems,
+                            targetAddr.Latitude,
+                            targetAddr.Longitude,
+                            targetAddr.Province,
+                            targetAddr.District);
+
+                        distKm = routing.DistanceKm;
+                        whName = routing.WarehouseName;
+
+                        var wh = await _context.Warehouses
+                            .FirstOrDefaultAsync(w => w.Id == routing.OptimalWarehouseId);
+                        if (wh != null && wh.MaxColdChainRadiusKm > 0)
                         {
-                            isColdChainFeasible = false;
-                            ineligibleColdItems = itemsNeedingCold;
-                            coldChainWarning = $"Địa chỉ giao hàng ({targetAddr.FullAddress}) cách kho xe lạnh {wh.Name} khoảng {distKm:F1} km, vượt quá bán kính bảo quản tối đa ({maxRadius} km) của xe máy thùng lạnh chuyên dụng TMS. Các sản phẩm tươi sống sau không đảm bảo dải nhiệt độ mát 2°C - 8°C: {string.Join(", ", ineligibleColdItems)}. Vui lòng đổi địa chỉ nhận hàng gần hơn hoặc chỉ đặt các sản phẩm đồ khô/nhiệt độ thường.";
+                            maxRadius = wh.MaxColdChainRadiusKm;
                         }
+                    }
+                    else
+                    {
+                        var wh = await _context.Warehouses
+                            .Include(w => w.Address)
+                            .FirstOrDefaultAsync(w => w.IsActive && !w.IsDeleted && w.Address != null);
+
+                        if (wh?.Address != null)
+                        {
+                            whName = wh.Name;
+                            if (targetAddr.Latitude != 0 && targetAddr.Longitude != 0 && wh.Address.Latitude != 0 && wh.Address.Longitude != 0)
+                            {
+                                var distanceService = new DistanceService();
+                                distKm = distanceService.CalculateDistanceKm(targetAddr.Latitude, targetAddr.Longitude, wh.Address.Latitude, wh.Address.Longitude);
+                            }
+                            else if (!string.IsNullOrEmpty(targetAddr.Province) && !string.IsNullOrEmpty(wh.Address.Province))
+                            {
+                                bool sameProv = targetAddr.Province.Trim().ToLower().Contains(wh.Address.Province.Trim().ToLower()) ||
+                                                wh.Address.Province.Trim().ToLower().Contains(targetAddr.Province.Trim().ToLower());
+                                distKm = sameProv ? 8.0 : 100.0;
+                            }
+
+                            maxRadius = wh.MaxColdChainRadiusKm > 0 ? wh.MaxColdChainRadiusKm : 15.0;
+                        }
+                    }
+
+                    if (distKm > maxRadius)
+                    {
+                        isColdChainFeasible = false;
+                        ineligibleColdItems = itemsNeedingCold;
+                        coldChainWarning = $"Địa chỉ giao hàng ({targetAddr.FullAddress}) cách kho xe lạnh {whName} khoảng {distKm:F1} km, vượt quá bán kính bảo quản tối đa ({maxRadius} km) của xe máy thùng lạnh chuyên dụng TMS. Các sản phẩm tươi sống sau không đảm bảo dải nhiệt độ mát 2°C - 8°C: {string.Join(", ", ineligibleColdItems)}. Vui lòng đổi địa chỉ nhận hàng gần hơn hoặc chỉ đặt các sản phẩm đồ khô/nhiệt độ thường.";
                     }
                 }
             }
