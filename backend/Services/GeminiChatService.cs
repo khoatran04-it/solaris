@@ -280,11 +280,14 @@ namespace backend.Services
                     }
                 }
                 // C. Lên đơn mua hàng trực tiếp (Direct Conversational Order)
-                else if (lowerText.Contains("lên đơn") || lowerText.Contains("chốt đơn") || lowerText.Contains("tôi muốn mua") || lowerText.Contains("đặt mua") ||
-                         lowerText.Contains("đặt hàng") || lowerText.Contains("xác nhận đặt") || lowerText.Contains("xác nhận đơn") || lowerText.Contains("chốt mua") ||
-                         lowerText.Contains("mua hàng") || lowerText.Contains("tạo đơn") || lowerText.StartsWith("mua ") || lowerText.Contains(" mua ") ||
-                         lowerText.Contains("lấy cho tôi") || lowerText.Contains("cho tôi ") || lowerText.Contains("lấy 1") || lowerText.Contains("lấy 2") ||
-                         lowerText.Contains("đặt 1") || lowerText.Contains("đặt 2") || lowerText.Contains("lấy một") || lowerText.Contains("đặt một"))
+                else if (!((lowerText.Contains("tư vấn") || lowerText.Contains("hướng dẫn") || lowerText.Contains("giải thích") || lowerText.Contains("giới thiệu") || lowerText.Contains("cho tôi xem") || lowerText.Contains("cho mình xem")) && !lowerText.Contains("lên đơn") && !lowerText.Contains("chốt đơn") && !lowerText.Contains("đặt mua") && !lowerText.Contains("tạo đơn")) &&
+                         (lowerText.Contains("lên đơn") || lowerText.Contains("chốt đơn") || lowerText.Contains("tôi muốn mua") || lowerText.Contains("đặt mua") ||
+                          lowerText.Contains("đặt hàng") || lowerText.Contains("xác nhận đặt") || lowerText.Contains("xác nhận đơn") || lowerText.Contains("chốt mua") ||
+                          lowerText.Contains("mua hàng") || lowerText.Contains("tạo đơn") || lowerText.StartsWith("mua ") || lowerText.Contains(" mua ") ||
+                          lowerText.Contains("lấy cho tôi") || lowerText.Contains("cho tôi") || lowerText.Contains("cho mình") || lowerText.Contains("lấy giúp") ||
+                          lowerText.Contains("bán cho tôi") || lowerText.Contains("bán tôi") || lowerText.Contains("bán cho") ||
+                          System.Text.RegularExpressions.Regex.IsMatch(lowerText, @"\b(cho|lấy|đặt|mua|bán|giao|ship)\s+(\d+|một|hai|ba|bốn|năm|sáu|bảy|tám|chín|mười)\b") ||
+                          System.Text.RegularExpressions.Regex.IsMatch(lowerText, @"\b(cho|lấy|đặt|mua|bán|giao|ship)\s+(\d+)\s*(kg|kí|ký|kilo|kí\s*lô|kí\s*lô\s*gam|kilogram|gói|hộp|thùng|quả|trái|bịch|túi|vỉ|chai|lon)\b")))
                 {
                     var directOrderPayload = await PrepareDirectOrderPayloadAsync(session.Id, userText, session.CustomerId ?? customerId);
                     if (directOrderPayload != null && directOrderPayload.Items.Count > 0)
@@ -1197,9 +1200,9 @@ namespace backend.Services
         {
             var products = await SearchProductsAsync(userText);
 
-            // Trích xuất số lượng chung từ câu chat nếu có (VD: "2kg", "3 hộp", "số lượng 2")
+            // Trích xuất số lượng chung từ câu chat nếu có (VD: "2kg", "3 hộp", "số lượng 2", "5 kí lô gam")
             decimal defaultQty = 1;
-            var matchQty = System.Text.RegularExpressions.Regex.Match(userText, @"(\d+)\s*(kg|kí|ký|quả|trái|hộp|thùng)?", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            var matchQty = System.Text.RegularExpressions.Regex.Match(userText, @"(\d+)\s*(kg|kí|ký|kilo|kí\s*lô\s*gam|kí\s*lô|kilogram|gói|hộp|thùng|quả|trái|bịch|túi|vỉ|chai|lon)?", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
             if (matchQty.Success && decimal.TryParse(matchQty.Groups[1].Value, out decimal parsedQty) && parsedQty > 0 && parsedQty <= 100)
             {
                 defaultQty = parsedQty;
@@ -1218,7 +1221,16 @@ namespace backend.Services
                        (!string.IsNullOrEmpty(pVarName) && lowerUserText.Contains(pVarName)) ||
                        (!string.IsNullOrEmpty(pSlug) && lowerUserText.Contains(pSlug)) ||
                        (pName.Contains("sầu riêng") && lowerUserText.Contains("sầu riêng")) ||
-                       (pName.Contains("bơ") && (lowerUserText.Contains("bơ") || lowerUserText.Contains("034")));
+                       (pName.Contains("bơ") && (lowerUserText.Contains("bơ") || lowerUserText.Contains("034"))) ||
+                       (pName.Contains("xoài cát chu") && lowerUserText.Contains("xoài cát chu")) ||
+                       (pName.Contains("hòa lộc") && (lowerUserText.Contains("hòa lộc") || lowerUserText.Contains("xoài cát hòa lộc"))) ||
+                       (pName.Contains("bó xôi") && (lowerUserText.Contains("bó xôi") || lowerUserText.Contains("cải bó xôi"))) ||
+                       (pName.Contains("ba chỉ") && (lowerUserText.Contains("ba chỉ") || lowerUserText.Contains("thịt ba chỉ"))) ||
+                       (pName.Contains("đùi heo") && (lowerUserText.Contains("đùi heo") || lowerUserText.Contains("thịt đùi"))) ||
+                       (pName.Contains("cà chua") && (lowerUserText.Contains("cà chua") || lowerUserText.Contains("beef đà lạt"))) ||
+                       (pName.Contains("cá hồi") && (lowerUserText.Contains("cá hồi") || lowerUserText.Contains("na uy"))) ||
+                       (pName.Contains("hảo hảo") && (lowerUserText.Contains("hảo hảo") || lowerUserText.Contains("mì tôm") || lowerUserText.Contains("mì"))) ||
+                       (pName.Contains("st25") && (lowerUserText.Contains("st25") || lowerUserText.Contains("gạo")));
             }).ToList();
 
             if (explicitMatches.Count > 0)
@@ -1245,7 +1257,11 @@ namespace backend.Services
                     }
                 }
 
-                products = selectedVariants;
+                // Sắp xếp ưu tiên: biến thể nào có tên khớp sâu hơn với userText hoặc có tồn kho trước
+                products = selectedVariants.OrderByDescending(p =>
+                    (!string.IsNullOrEmpty(p.VariantName) && lowerUserText.Contains(p.VariantName.ToLower())) ||
+                    (!string.IsNullOrEmpty(p.Name) && lowerUserText.Contains(p.Name.ToLower()))
+                ).ThenByDescending(p => p.IsInStock).ToList();
             }
 
             // Nếu câu chat của user không chứa tên sản phẩm trực tiếp (VD: "OK lên đơn cho tôi", "Lên đơn giúp mình", "Xác nhận đặt hàng")
@@ -1381,8 +1397,25 @@ namespace backend.Services
             var items = new List<InteractiveOrderItemDto>();
             var stockWarnings = new List<string>();
 
-            // Chỉ đưa nhiều sản phẩm vào thẻ nếu người dùng thực sự nhắc đến từ 2 sản phẩm trở lên trong câu chat
-            var targetProducts = explicitMatches.Count > 1 ? products.Take(2).ToList() : products.Take(1).ToList();
+            // Xác định xem người dùng có thực sự yêu cầu nhiều nhóm sản phẩm khác nhau trong câu chat không
+            // (Ví dụ: "2kg bơ và 1 quả sầu riêng" -> 2 nhóm SP khác nhau; nhưng "2 gói mì hảo hảo" -> chỉ 1 nhóm SP)
+            var detectedConcepts = new HashSet<string>();
+            if (lowerUserText.Contains("sầu riêng")) detectedConcepts.Add("sau_rieng");
+            if (lowerUserText.Contains("bơ") || lowerUserText.Contains("034")) detectedConcepts.Add("bo");
+            if (lowerUserText.Contains("xoài cát chu") || lowerUserText.Contains("cát chu")) detectedConcepts.Add("xoai_cat_chu");
+            if (lowerUserText.Contains("hòa lộc") || lowerUserText.Contains("xoài cát hòa lộc")) detectedConcepts.Add("xoai_hoa_loc");
+            if (lowerUserText.Contains("bó xôi") || lowerUserText.Contains("cải")) detectedConcepts.Add("bo_xoi");
+            if (lowerUserText.Contains("ba chỉ")) detectedConcepts.Add("ba_chi");
+            if (lowerUserText.Contains("đùi heo") || lowerUserText.Contains("thịt đùi")) detectedConcepts.Add("dui_heo");
+            if (lowerUserText.Contains("cà chua") || lowerUserText.Contains("beef")) detectedConcepts.Add("ca_chua");
+            if (lowerUserText.Contains("cá hồi") || lowerUserText.Contains("na uy")) detectedConcepts.Add("ca_hoi");
+            if (lowerUserText.Contains("hảo hảo") || lowerUserText.Contains("mì")) detectedConcepts.Add("mi");
+            if (lowerUserText.Contains("st25") || lowerUserText.Contains("gạo")) detectedConcepts.Add("gao");
+
+            bool isMultiProductRequest = detectedConcepts.Count > 1;
+
+            // Chỉ đưa nhiều sản phẩm vào thẻ nếu người dùng thực sự nhắc đến từ 2 nhóm sản phẩm khác nhau trong câu chat
+            var targetProducts = isMultiProductRequest ? products.Take(detectedConcepts.Count).ToList() : products.Take(1).ToList();
 
             foreach (var p in targetProducts)
             {
@@ -1427,8 +1460,25 @@ namespace backend.Services
                     continue;
                 }
 
+                int targetUoMId = p.UoMId;
+                string targetUoMName = p.UoMName;
                 decimal unitPrice = p.DiscountedPrice > 0 ? p.DiscountedPrice : p.Price;
                 decimal discount = (p.Price - p.DiscountedPrice) > 0 ? (p.Price - p.DiscountedPrice) : 0;
+
+                // Khớp quy cách bán (UoM) cụ thể nếu khách yêu cầu (Ví dụ: "hộp", "thùng", "gói", "kg")
+                if (p.AvailablePrices != null && p.AvailablePrices.Count > 0)
+                {
+                    var matchingPrice = p.AvailablePrices.FirstOrDefault(ap =>
+                        !string.IsNullOrEmpty(ap.UoMName) && lowerUserText.Contains(ap.UoMName.ToLower()));
+                    if (matchingPrice != null)
+                    {
+                        targetUoMId = matchingPrice.UoMId;
+                        targetUoMName = matchingPrice.UoMName;
+                        unitPrice = matchingPrice.DiscountedPrice > 0 ? matchingPrice.DiscountedPrice : matchingPrice.Price;
+                        discount = (matchingPrice.Price - matchingPrice.DiscountedPrice) > 0 ? (matchingPrice.Price - matchingPrice.DiscountedPrice) : 0;
+                    }
+                }
+
                 decimal actualQty = requestedQty;
                 string? warningMsg = null;
 
@@ -1436,8 +1486,8 @@ namespace backend.Services
                 if (requestedQty > availableStock)
                 {
                     actualQty = availableStock;
-                    warningMsg = $"Kho chỉ còn {availableStock:G29} {p.UoMName}";
-                    stockWarnings.Add($"Sản phẩm '{p.Name}' trong kho hiện chỉ còn {availableStock:G29} {p.UoMName} (khách yêu cầu {requestedQty:G29} {p.UoMName}). Hệ thống đã tự động điều chỉnh số lượng trên Thẻ Đơn Hàng xuống mức tối đa là {availableStock:G29} {p.UoMName}.");
+                    warningMsg = $"Kho chỉ còn {availableStock:G29} {targetUoMName}";
+                    stockWarnings.Add($"Sản phẩm '{p.Name}' trong kho hiện chỉ còn {availableStock:G29} {targetUoMName} (khách yêu cầu {requestedQty:G29} {targetUoMName}). Hệ thống đã tự động điều chỉnh số lượng trên Thẻ Đơn Hàng xuống mức tối đa là {availableStock:G29} {targetUoMName}.");
                 }
 
                 items.Add(new InteractiveOrderItemDto
@@ -1447,8 +1497,8 @@ namespace backend.Services
                     VariantName = p.Name,
                     Slug = p.Slug,
                     ImagePath = p.ImagePath,
-                    UoMId = p.UoMId,
-                    UoMName = p.UoMName,
+                    UoMId = targetUoMId,
+                    UoMName = targetUoMName,
                     Quantity = actualQty,
                     UnitPrice = unitPrice,
                     DiscountAmount = discount,
@@ -1810,7 +1860,7 @@ namespace backend.Services
             // Tìm kiếm theo từ khóa thực tế: tách từ và lọc từ dừng
             var stopWords = new HashSet<string>(new[] {
                 "cho", "tôi", "hỏi", "có", "không", "giá", "bao", "nhiêu", "shop", "ơi",
-                "tìm", "kiếm", "muốn", "xem", "tư", "vấn", "mua", "lấy", "đặt", "chốt",
+                "tìm", "kiếm", "muốn", "xem", "tư", "vấn", "mua", "lấy", "đặt", "chốt", "bán", "solaris", "hàng", "cửa",
                 "1", "2", "3", "4", "5", "6", "7", "8", "9", "10",
                 "kg", "kí", "ký", "quả", "trái", "hộp", "thùng", "bịch", "loại", "nào", "những", "đang", "ạ", "nhé"
             });
@@ -2082,6 +2132,9 @@ QUY TẮC PHỤC VỤ VÀ TÍNH CÁCH BẮT BUỘC:
    - Nếu đơn hàng đang trên chuyến xe giao: Thông báo mã chuyến xe TMS, biển số xe, tên tài xế và số điện thoại liên hệ để khách tiện gọi nhận hàng.
    - NẾU ĐƠN HÀNG BỊ TỪ CHỐI HOẶC BỊ HỦY BỞI KHO: Trích xuất và giải thích rõ ràng lý do hủy của kho (Cancellation Reason), thể hiện sự thông cảm, xin lỗi chân thành và hướng dẫn khách giải pháp thay thế.
    - Nếu đơn hàng có yêu cầu đổi trả (RMA): Báo cáo mã đổi trả và số tiền hoàn (nếu có).
+9. TẬP TRUNG TRẢ LỜI LƯỢT CHAT HIỆN TẠI (SINGLE-TURN FOCUS):
+   - Bạn CHỈ ĐƯỢC PHÉP trả lời đúng yêu cầu mới nhất trong lượt chat hiện tại của khách hàng.
+   - TUYỆT ĐỐI KHÔNG lặp lại câu từ chối, giải thích hoặc liệt kê danh mục cho các sản phẩm không kinh doanh (như xi măng, gạch đá, vật liệu xây dựng...) đã từng xuất hiện ở các lượt chat trước trong lịch sử hội thoại. Lượt trước đã giải thích xong là kết thúc; trong lượt hiện tại, nếu khách hỏi mua nông sản thực tế thì chỉ phục vụ và trả lời đúng món nông sản đó.
 
 KỊCH BẢN MẪU (FEW-SHOT EXAMPLES):
 - Khách: 'Tư vấn bơ sáp cho tôi'
@@ -2150,7 +2203,7 @@ KỊCH BẢN MẪU (FEW-SHOT EXAMPLES):
             }
             else if (payloadType == "product_cards" && payloadObject is List<AiProductCardDto> prods && prods.Count > 0)
             {
-                extraContext = "\n(Dữ liệu sản phẩm thực tế trong kho Solaris: " + string.Join("; ", prods.Select(p => $"{p.Name} (Mã biến thể {p.VariantId}): Giá {p.Price:N0}đ/{p.UoMName}, Khuyến mãi: {(p.DiscountedPrice < p.Price ? $"{p.DiscountedPrice:N0}đ" : "Không")}, Tồn kho: {(p.IsInStock ? "Còn hàng" : "Hết hàng")}, Xuất xứ: {p.Origin ?? "Lâm Đồng"}, Chứng nhận: {p.Certification ?? "VietGAP"}")) + ". Tuân thủ luồng tư vấn 2 bước: hỏi dòng SP -> đề xuất biến thể -> trình bày quy cách bán Cách 1 hoặc Cách 2 dựa trên dữ liệu. Trả lời thẳng thắn, ngắn gọn).";
+                extraContext = "\n(Dữ liệu sản phẩm thực tế trong kho Solaris: " + string.Join("; ", prods.Select(p => $"{p.Name} (Mã biến thể {p.VariantId}): Giá {p.Price:N0}đ/{p.UoMName}, Khuyến mãi: {(p.DiscountedPrice < p.Price ? $"{p.DiscountedPrice:N0}đ" : "Không")}, Tồn kho: {(p.IsInStock ? "Còn hàng" : "Hết hàng")}, Xuất xứ: {p.Origin ?? "Lâm Đồng"}, Chứng nhận: {p.Certification ?? "VietGAP"}")) + ". Tuân thủ luồng tư vấn 2 bước: hỏi dòng SP -> đề xuất biến thể -> trình bày quy cách bán Cách 1 hoặc Cách 2 dựa trên dữ liệu. Trả lời thẳng thắn, ngắn gọn. LƯU Ý: Đây là giao diện Thẻ Sản Phẩm (product_cards) để khách xem thông tin, KHÔNG PHẢI Thẻ Đơn Hàng Tương Tác. Tuyệt đối KHÔNG nói câu 'Thẻ Đơn Hàng Tương Tác đã xuất hiện' ở đây).";
             }
             else if (payloadType == "none")
             {
@@ -2259,8 +2312,6 @@ KỊCH BẢN MẪU (FEW-SHOT EXAMPLES):
             if (string.IsNullOrWhiteSpace(content)) return false;
             string lower = content.ToLower();
             return lower.Contains("bơ booth") ||
-                   lower.Contains("xoài cát") ||
-                   lower.Contains("hòa lộc") ||
                    lower.Contains("cải kale") ||
                    lower.Contains("cải xoăn") ||
                    lower.Contains("táo đỏ") ||

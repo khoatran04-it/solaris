@@ -42,16 +42,8 @@ axiosInstance.interceptors.response.use(
   (response) => response.data,
   (error) => {
     if (error.response?.status === 401 && typeof window !== "undefined") {
-      const requestUrl = error.config?.url || "";
-      // Chỉ tự động hủy phiên đăng nhập khi 401 trả về từ endpoint xác thực/kiểm tra tài khoản (/auth/me, /auth/refresh)
-      // Không tự động xóa token khi đang gọi các API nghiệp vụ (như AI chat, tạo đơn, giỏ hàng) để tránh văng phiên đột ngột
-      if (
-        requestUrl.includes("/auth/me") ||
-        requestUrl.includes("/auth/refresh")
-      ) {
-        localStorage.removeItem("solaris_shop_token");
-        localStorage.removeItem("solaris_shop_user");
-      }
+      localStorage.removeItem("solaris_shop_token");
+      localStorage.removeItem("solaris_shop_user");
     }
     return Promise.reject(error.response?.data || error);
   },

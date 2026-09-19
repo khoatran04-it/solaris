@@ -34,7 +34,17 @@ export default function DiaChiPage() {
     shopCustomerApi
       .getAddresses()
       .then(setAddresses)
-      .catch(() => {});
+      .catch((err: any) => {
+        if (
+          err?.status === 401 ||
+          err?.response?.status === 401 ||
+          err?.message?.includes("401") ||
+          (typeof err === "string" && err.includes("401"))
+        ) {
+          alert("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
+          router.push("/dang-nhap?redirect=/tai-khoan/dia-chi");
+        }
+      });
   };
 
   useEffect(() => {
@@ -43,6 +53,7 @@ export default function DiaChiPage() {
       return;
     }
     loadAddresses();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated, router]);
 
   const handleAddAddress = async (e: React.FormEvent) => {
@@ -71,6 +82,16 @@ export default function DiaChiPage() {
       setIsDefault(false);
       loadAddresses();
     } catch (error: any) {
+      if (
+        error?.status === 401 ||
+        error?.response?.status === 401 ||
+        error?.message?.includes("401") ||
+        (typeof error === "string" && error.includes("401"))
+      ) {
+        alert("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
+        router.push("/dang-nhap?redirect=/tai-khoan/dia-chi");
+        return;
+      }
       alert(error?.message || "Không thể thêm địa chỉ.");
     } finally {
       setIsSaving(false);

@@ -23,7 +23,7 @@ import OrderSuccessCard from "./OrderSuccessCard";
 import OrderTrackingCard from "./OrderTrackingCard";
 
 export default function ChatbotWidget() {
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, initAuth } = useAuthStore();
   const { addMultipleItems } = useCartStore();
 
   const [isOpen, setIsOpen] = useState(false);
@@ -50,6 +50,11 @@ export default function ChatbotWidget() {
     }
     return payload;
   };
+
+  // 0. Khởi tạo xác thực nếu chưa chạy
+  useEffect(() => {
+    initAuth();
+  }, [initAuth]);
 
   // 1. Khởi tạo SessionToken từ localStorage
   useEffect(() => {
@@ -153,7 +158,6 @@ export default function ChatbotWidget() {
 
   // 4. Gửi tin nhắn
   const handleSendMessage = async (textToSend?: string) => {
-    if (!isAuthenticated) return;
     const message = (textToSend || inputMessage).trim();
     if (!message || isLoading) return;
 
@@ -339,6 +343,7 @@ export default function ChatbotWidget() {
 
             <div className="flex items-center gap-1">
               <button
+                data-testid="ai-new-session-btn"
                 onClick={handleNewSession}
                 className="p-1.5 text-white/80 hover:text-white hover:bg-white/10 rounded-full transition-colors cursor-pointer"
                 title="Bắt đầu đoạn chat mới"
@@ -556,6 +561,7 @@ export default function ChatbotWidget() {
                 className="flex items-center gap-2"
               >
                 <input
+                  data-testid="ai-chat-input"
                   type="text"
                   placeholder="Hỏi AI hoặc gõ 'Mua 2kg bơ 034'..."
                   value={inputMessage}
@@ -564,6 +570,7 @@ export default function ChatbotWidget() {
                   className="flex-1 px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-full text-xs focus:outline-hidden focus:ring-2 focus:ring-emerald-500 focus:bg-white disabled:opacity-50"
                 />
                 <button
+                  data-testid="ai-chat-send-btn"
                   type="submit"
                   disabled={isLoading || !inputMessage.trim()}
                   className="p-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-full transition-colors shadow-xs disabled:opacity-40 cursor-pointer"

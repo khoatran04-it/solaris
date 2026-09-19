@@ -37,17 +37,32 @@ export default function InteractiveOrderCard({
   onOrderSuccess,
 }: InteractiveOrderCardProps) {
   const { isAuthenticated } = useAuthStore();
-  const [items, setItems] = useState<InteractiveOrderItem[]>(
-    payload.items || [],
-  );
+  const rawItems = (payload as any)?.items || (payload as any)?.Items || [];
+  const normalizedItems: InteractiveOrderItem[] = rawItems.map((it: any) => ({
+    variantId: it.variantId ?? it.VariantId ?? 0,
+    variantCode: it.variantCode ?? it.VariantCode ?? "",
+    variantName: it.variantName ?? it.VariantName ?? "",
+    slug: it.slug ?? it.Slug,
+    imagePath: it.imagePath ?? it.ImagePath,
+    uoMId: it.uoMId ?? it.UoMId ?? 1,
+    uoMName: it.uoMName ?? it.UoMName ?? "Gói",
+    quantity: it.quantity ?? it.Quantity ?? 1,
+    unitPrice: it.unitPrice ?? it.UnitPrice ?? 0,
+    discountAmount: it.discountAmount ?? it.DiscountAmount ?? 0,
+    totalPrice: it.totalPrice ?? it.TotalPrice ?? 0,
+    availableStock: it.availableStock ?? it.AvailableStock ?? 0,
+    warningMessage: it.warningMessage ?? it.WarningMessage,
+  }));
+
+  const [items, setItems] = useState<InteractiveOrderItem[]>(normalizedItems);
   const [receiverName, setReceiverName] = useState(
-    payload.suggestedReceiverName || "",
+    (payload as any)?.suggestedReceiverName || (payload as any)?.SuggestedReceiverName || "",
   );
   const [receiverPhone, setReceiverPhone] = useState(
-    payload.suggestedReceiverPhone || "",
+    (payload as any)?.suggestedReceiverPhone || (payload as any)?.SuggestedReceiverPhone || "",
   );
   const [deliveryAddress, setDeliveryAddress] = useState(
-    payload.suggestedDeliveryAddress || "",
+    (payload as any)?.suggestedDeliveryAddress || (payload as any)?.SuggestedDeliveryAddress || "",
   );
   const [addresses, setAddresses] = useState<ShopAddress[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState<number | null>(
@@ -59,6 +74,14 @@ export default function InteractiveOrderCard({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [orderCode, setOrderCode] = useState<string>("");
+  const isColdChainFeasible =
+    (payload as any)?.isColdChainFeasible ??
+    (payload as any)?.IsColdChainFeasible ??
+    true;
+  const coldChainWarning =
+    (payload as any)?.coldChainWarning ||
+    (payload as any)?.ColdChainWarning ||
+    null;
 
   // Tải danh sách địa chỉ từ sổ địa chỉ của khách hàng
   useEffect(() => {
@@ -175,9 +198,9 @@ export default function InteractiveOrderCard({
       return;
     }
 
-    if (payload.isColdChainFeasible === false) {
+    if (isColdChainFeasible === false) {
       alert(
-        `Không thể đặt hàng: ${payload.coldChainWarning || "Địa chỉ nhận hàng vượt quá bán kính bảo quản lạnh 2-8°C của kho xe lạnh."}\nVui lòng chọn địa chỉ giao hàng gần kho hơn hoặc bỏ các sản phẩm lạnh khỏi đơn hàng.`,
+        `Không thể đặt hàng: ${coldChainWarning || "Địa chỉ nhận hàng vượt quá bán kính bảo quản lạnh 2-8°C của kho xe lạnh."}\nVui lòng chọn địa chỉ giao hàng gần kho hơn hoặc bỏ các sản phẩm lạnh khỏi đơn hàng.`,
       );
       return;
     }
@@ -216,6 +239,17 @@ export default function InteractiveOrderCard({
         }, 1200);
       }
     } catch (error: any) {
+      if (
+        error?.status === 401 ||
+        error?.response?.status === 401 ||
+        error?.message?.includes("401") ||
+        (typeof error === "string" && error.includes("401"))
+      ) {
+        alert("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại để tiếp tục đặt hàng.");
+        // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+        window.location.href = "/dang-nhap";
+        return;
+      }
       const errorMsg = error?.details
         ? `${error.message || "Lỗi khi tạo đơn hàng từ AI Chatbot."}\nChi tiết: ${error.details}`
         : (error?.message || "Có lỗi xảy ra khi tạo đơn hàng.");
@@ -271,7 +305,7 @@ export default function InteractiveOrderCard({
       </div>
 
       {/* Cold-Chain Radius Feasibility Warning */}
-      {payload.isColdChainFeasible === false && (
+      {isColdChainFeasible === false && (
         <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-900 text-[11px] flex items-start gap-2.5">
           <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
           <div className="space-y-1">
@@ -279,7 +313,7 @@ export default function InteractiveOrderCard({
               Cảnh báo khoảng cách chuỗi lạnh (TMS 2°C - 8°C)
             </span>
             <p className="text-[10px] leading-relaxed text-rose-700">
-              {payload.coldChainWarning ||
+              {coldChainWarning ||
                 "Địa chỉ nhận hàng vượt quá bán kính bảo quản lạnh tối đa của kho xe lạnh."}
             </p>
             {payload.ineligibleColdChainItems &&
@@ -555,7 +589,7 @@ export default function InteractiveOrderCard({
           </p>
         )}
 
-        {payload.isColdChainFeasible === false && (
+        {isColdChainFeasible === false && (
           <p className="text-[10px] text-rose-700 text-center font-semibold">
             🚫 Không thể đặt hàng do vượt bán kính vận chuyển xe lạnh 2-8°C.
           </p>
@@ -568,7 +602,7 @@ export default function InteractiveOrderCard({
             isSubmitting ||
             items.length === 0 ||
             hasNoAddress ||
-            payload.isColdChainFeasible === false
+            isColdChainFeasible === false
           }
           className="w-full py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl font-bold text-xs transition-all shadow-md shadow-emerald-600/20 flex items-center justify-center gap-1.5 active:scale-98 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
         >

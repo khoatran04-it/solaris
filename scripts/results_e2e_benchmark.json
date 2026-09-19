@@ -1,0 +1,210 @@
+{
+  "executedAt": "2026-09-18T10:51:43.757Z",
+  "totalRuns": 10,
+  "statsA": {
+    "n": 10,
+    "mean": 4.48,
+    "stdDev": 0.77,
+    "min": 3.6,
+    "max": 5.71,
+    "p95": 5.71,
+    "meanClicks": 8,
+    "meanRequests": 84,
+    "successRate": 100
+  },
+  "statsB": {
+    "n": 10,
+    "mean": 3.63,
+    "stdDev": 0.44,
+    "min": 3.17,
+    "max": 4.66,
+    "p95": 4.66,
+    "meanClicks": 3,
+    "meanRequests": 36,
+    "successRate": 100
+  },
+  "runsA": [
+    {
+      "flow": "A_Manual",
+      "runIndex": 1,
+      "success": true,
+      "durationSec": 3.6006603000000004,
+      "clickCount": 8,
+      "requestCount": 76,
+      "orderCode": "ORD-20260918-5ABACC"
+    },
+    {
+      "flow": "A_Manual",
+      "runIndex": 2,
+      "success": true,
+      "durationSec": 5.399090600000001,
+      "clickCount": 8,
+      "requestCount": 84,
+      "orderCode": "ORD-20260918-72A115"
+    },
+    {
+      "flow": "A_Manual",
+      "runIndex": 3,
+      "success": true,
+      "durationSec": 4.258481099999997,
+      "clickCount": 8,
+      "requestCount": 87,
+      "orderCode": "ORD-20260918-905EBC"
+    },
+    {
+      "flow": "A_Manual",
+      "runIndex": 4,
+      "success": true,
+      "durationSec": 4.163657299999999,
+      "clickCount": 8,
+      "requestCount": 85,
+      "orderCode": "ORD-20260918-A7157A"
+    },
+    {
+      "flow": "A_Manual",
+      "runIndex": 5,
+      "success": true,
+      "durationSec": 4.110038,
+      "clickCount": 8,
+      "requestCount": 87,
+      "orderCode": "ORD-20260918-B8D04A"
+    },
+    {
+      "flow": "A_Manual",
+      "runIndex": 6,
+      "success": true,
+      "durationSec": 3.981557399999998,
+      "clickCount": 8,
+      "requestCount": 83,
+      "orderCode": "ORD-20260918-E4D0FD"
+    },
+    {
+      "flow": "A_Manual",
+      "runIndex": 7,
+      "success": true,
+      "durationSec": 3.801770000000004,
+      "clickCount": 8,
+      "requestCount": 81,
+      "orderCode": "ORD-20260918-F60B74"
+    },
+    {
+      "flow": "A_Manual",
+      "runIndex": 8,
+      "success": true,
+      "durationSec": 4.243787599999996,
+      "clickCount": 8,
+      "requestCount": 83,
+      "orderCode": "ORD-20260918-413C70"
+    },
+    {
+      "flow": "A_Manual",
+      "runIndex": 9,
+      "success": true,
+      "durationSec": 5.7102084000000035,
+      "clickCount": 8,
+      "requestCount": 85,
+      "orderCode": "ORD-20260918-53DE72"
+    },
+    {
+      "flow": "A_Manual",
+      "runIndex": 10,
+      "success": true,
+      "durationSec": 5.577186900000001,
+      "clickCount": 8,
+      "requestCount": 85,
+      "orderCode": "ORD-20260918-73212F"
+    }
+  ],
+  "runsB": [
+    {
+      "flow": "B_AI",
+      "runIndex": 1,
+      "success": true,
+      "durationSec": 4.6648723,
+      "clickCount": 3,
+      "requestCount": 36,
+      "orderCode": "ORD-20260918-16F6E0"
+    },
+    {
+      "flow": "B_AI",
+      "runIndex": 2,
+      "success": true,
+      "durationSec": 3.8643457000000017,
+      "clickCount": 3,
+      "requestCount": 36,
+      "orderCode": "ORD-20260918-09376A"
+    },
+    {
+      "flow": "B_AI",
+      "runIndex": 3,
+      "success": true,
+      "durationSec": 3.5945946,
+      "clickCount": 3,
+      "requestCount": 36,
+      "orderCode": "ORD-20260918-426656"
+    },
+    {
+      "flow": "B_AI",
+      "runIndex": 4,
+      "success": true,
+      "durationSec": 3.496599900000001,
+      "clickCount": 3,
+      "requestCount": 36,
+      "orderCode": "ORD-20260918-11AA50"
+    },
+    {
+      "flow": "B_AI",
+      "runIndex": 5,
+      "success": true,
+      "durationSec": 3.166431599999996,
+      "clickCount": 3,
+      "requestCount": 36,
+      "orderCode": "ORD-20260918-6B82CA"
+    },
+    {
+      "flow": "B_AI",
+      "runIndex": 6,
+      "success": true,
+      "durationSec": 3.2267268000000042,
+      "clickCount": 3,
+      "requestCount": 36,
+      "orderCode": "ORD-20260918-D7B2D6"
+    },
+    {
+      "flow": "B_AI",
+      "runIndex": 7,
+      "success": true,
+      "durationSec": 3.728795100000003,
+      "clickCount": 3,
+      "requestCount": 36,
+      "orderCode": "ORD-20260918-8C8653"
+    },
+    {
+      "flow": "B_AI",
+      "runIndex": 8,
+      "success": true,
+      "durationSec": 3.249739100000006,
+      "clickCount": 3,
+      "requestCount": 36,
+      "orderCode": "ORD-20260918-E57E00"
+    },
+    {
+      "flow": "B_AI",
+      "runIndex": 9,
+      "success": true,
+      "durationSec": 3.429409799999994,
+      "clickCount": 3,
+      "requestCount": 36,
+      "orderCode": "ORD-20260918-C009BE"
+    },
+    {
+      "flow": "B_AI",
+      "runIndex": 10,
+      "success": true,
+      "durationSec": 3.8823122999999904,
+      "clickCount": 3,
+      "requestCount": 36,
+      "orderCode": "ORD-20260918-DE7164"
+    }
+  ]
+}

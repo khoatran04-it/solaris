@@ -207,11 +207,21 @@ using (var scope = app.Services.CreateScope())
 
         // Khởi tạo dữ liệu mầm (Roles, Permissions, Super Admin, EAV Attributes, Slugs)
         await DbInitializer.SeedAsync(db);
+
+        // Hỗ trợ tham số dòng lệnh kích hoạt sinh dữ liệu mở rộng Option A
+        if (args.Contains("--seed-extended"))
+        {
+            logger.LogInformation("Đang kích hoạt nạp dữ liệu mầm mở rộng (ExtendedCatalogSeeder)...");
+            var summary = await ExtendedCatalogSeeder.SeedAsync(db);
+            logger.LogInformation($"[SEED_EXTENDED_SUCCESS] Products: {summary.TotalProducts}, Variants: {summary.TotalVariants}, Inventories: {summary.TotalInventories}, Customers: {summary.TotalCustomers}, Orders: {summary.TotalOrders}, Revenue: {summary.TotalRevenue:N0} VND");
+            return;
+        }
     }
     catch (Exception ex)
     {
         logger.LogError(ex, "Đã xảy ra lỗi trong quá trình tự động cập nhật Database hoặc Seed data.");
     }
 }
+
 
 app.Run();
