@@ -134,7 +134,9 @@ function App() {
         <Route element={<ProtectedRoute />}>
           <Route path="/" element={<Layout />}>
             {/* 📊 DASHBOARDS & EXECUTIVE REPORTING */}
-            <Route index element={<OverviewDashboard />} />
+            <Route element={<ProtectedRoute requiredPermission={PERMISSIONS.DASHBOARD.OVERVIEW} />}>
+              <Route index element={<OverviewDashboard />} />
+            </Route>
             <Route element={<ProtectedRoute requiredPermission={PERMISSIONS.DASHBOARD.FINANCE} />}>
               <Route path="dashboards/finance" element={<FinancialPerformanceDashboard />} />
             </Route>

@@ -26,20 +26,27 @@ namespace backend.Services.Interfaces
         Task<PagedResult<ShopProductCardDto>> GetProductsAsync(ShopProductFilterParams filter);
 
         /// <summary>
-        /// Lấy danh sách các sản phẩm Nổi bật (Featured).
-        /// Thường là các sản phẩm có lượt mua cao hoặc được admin đánh dấu nổi bật để hiển thị trên Trang chủ.
+        /// Lấy danh sách các sản phẩm Nổi bật (Featured - Mua nhiều nhất / Bán chạy nhất).
+        /// Lọc dựa trên tổng số lượng bán thực tế từ bảng OrderDetails.
         /// </summary>
-        /// <param name="limit">Số lượng sản phẩm tối đa cần lấy (mặc định 8).</param>
+        /// <param name="limit">Số lượng sản phẩm tối đa cần lấy (mặc định 20).</param>
         /// <param name="warehouseId">Mã kho bán lẻ được chọn (Store-Locking).</param>
-        Task<List<ShopProductCardDto>> GetFeaturedProductsAsync(int limit = 8, int? warehouseId = null);
+        Task<List<ShopProductCardDto>> GetFeaturedProductsAsync(int limit = 20, int? warehouseId = null);
 
         /// <summary>
         /// Lấy danh sách Hàng mới về (New Arrivals).
         /// Dựa trên ngày tạo sản phẩm gần nhất.
         /// </summary>
-        /// <param name="limit">Số lượng sản phẩm tối đa cần lấy (mặc định 8).</param>
+        /// <param name="limit">Số lượng sản phẩm tối đa cần lấy (mặc định 20).</param>
         /// <param name="warehouseId">Mã kho bán lẻ được chọn (Store-Locking).</param>
-        Task<List<ShopProductCardDto>> GetNewArrivalsAsync(int limit = 8, int? warehouseId = null);
+        Task<List<ShopProductCardDto>> GetNewArrivalsAsync(int limit = 20, int? warehouseId = null);
+
+        /// <summary>
+        /// Lấy danh sách sản phẩm Ưu đãi hôm nay (thật sự có trong chiến dịch khuyến mãi đang hoạt động).
+        /// </summary>
+        /// <param name="limit">Số lượng sản phẩm tối đa cần lấy (mặc định 20).</param>
+        /// <param name="warehouseId">Mã kho bán lẻ được chọn (Store-Locking).</param>
+        Task<List<ShopProductCardDto>> GetDiscountedProductsAsync(int limit = 20, int? warehouseId = null);
         #endregion
 
         #region Chi tiết Sản phẩm (Product Details)

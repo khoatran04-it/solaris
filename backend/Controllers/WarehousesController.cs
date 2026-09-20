@@ -23,6 +23,27 @@ namespace backend.Controllers
             _warehouseService = warehouseService;
         }
 
+        #region Helper: Kho được phép truy cập
+        private List<int>? GetAllowedWarehouseIds()
+        {
+            if (User.IsInRole("SUPER_ADMIN") || User.IsInRole("ADMIN"))
+            {
+                return null;
+            }
+
+            var claim = User.Claims.FirstOrDefault(c => c.Type == "WarehouseIds");
+            if (claim != null && !string.IsNullOrWhiteSpace(claim.Value))
+            {
+                return claim.Value.Split(',')
+                    .Select(s => int.TryParse(s.Trim(), out int id) ? id : 0)
+                    .Where(id => id > 0)
+                    .ToList();
+            }
+
+            return null;
+        }
+        #endregion
+
         // ==========================================
         // SECTION: READ OPERATIONS (GET)
         // ==========================================
@@ -38,7 +59,8 @@ namespace backend.Controllers
         [ProducesResponseType(typeof(IEnumerable<WarehouseReadDto>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetAllList([FromQuery] bool? isActive = null, [FromQuery] string? warehouseType = null)
         {
-            var result = await _warehouseService.GetAllListAsync(isActive ?? false, warehouseType);
+            var allowedWarehouseIds = GetAllowedWarehouseIds();
+            var result = await _warehouseService.GetAllListAsync(isActive ?? false, warehouseType, allowedWarehouseIds);
             return Ok(result);
         }
 
@@ -59,7 +81,8 @@ namespace backend.Controllers
             [FromQuery] int pageIndex = 1,
             [FromQuery] int pageSize = 10)
         {
-            var result = await _warehouseService.GetPagedAsync(search, isActive, province, pageIndex, pageSize);
+            var allowedWarehouseIds = GetAllowedWarehouseIds();
+            var result = await _warehouseService.GetPagedAsync(search, isActive, province, pageIndex, pageSize, allowedWarehouseIds);
             return Ok(result);
         }
 
@@ -70,8 +93,15 @@ namespace backend.Controllers
         [HttpGet("{id}")]
         [ProducesResponseType(typeof(WarehouseReadDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
         public async Task<IActionResult> GetById(int id)
         {
+            var allowedWarehouseIds = GetAllowedWarehouseIds();
+            if (allowedWarehouseIds != null && !allowedWarehouseIds.Contains(id))
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, new { message = "Bạn không có quyền truy cập kho hàng này." });
+            }
+
             var result = await _warehouseService.GetByIdAsync(id);
             if (result == null)
                 return NotFound(new { message = "Không tìm thấy dữ liệu kho hàng." });
@@ -86,8 +116,15 @@ namespace backend.Controllers
         [HttpGet("{id}/capacity")]
         [ProducesResponseType(typeof(WarehouseCapacityStatusDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
         public async Task<IActionResult> GetCapacity(int id)
         {
+            var allowedWarehouseIds = GetAllowedWarehouseIds();
+            if (allowedWarehouseIds != null && !allowedWarehouseIds.Contains(id))
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, new { message = "Bạn không có quyền truy cập sức chứa kho hàng này." });
+            }
+
             try
             {
                 var result = await _warehouseService.GetCapacityStatusAsync(id);

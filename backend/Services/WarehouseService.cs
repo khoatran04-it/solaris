@@ -44,13 +44,18 @@ namespace backend.Services
         /// <param name="isActiveOnly">Nếu true, chỉ lấy các kho đang hoạt động. Nếu false, lấy tất cả.</param>
         /// <param name="warehouseType">Tùy chọn lọc theo loại kho cụ thể.</param>
         /// <returns>Danh sách kho hàng kèm thông tin địa chỉ và trưởng kho.</returns>
-        public async Task<IEnumerable<WarehouseReadDto>> GetAllListAsync(bool isActiveOnly = false, string? warehouseType = null)
+        public async Task<IEnumerable<WarehouseReadDto>> GetAllListAsync(bool isActiveOnly = false, string? warehouseType = null, List<int>? allowedWarehouseIds = null)
         {
             var query = _context.Warehouses
                 .Include(x => x.Address)
                 .Include(x => x.Manager)
                 .AsNoTracking()
                 .AsQueryable();
+
+            if (allowedWarehouseIds != null && allowedWarehouseIds.Any())
+            {
+                query = query.Where(x => allowedWarehouseIds.Contains(x.Id));
+            }
 
             if (isActiveOnly)
             {
@@ -77,18 +82,26 @@ namespace backend.Services
         /// <param name="province">Lọc kho hàng theo Khu vực / Tỉnh thành.</param>
         /// <param name="pageIndex">Chỉ số trang hiện tại (bắt đầu từ 1).</param>
         /// <param name="pageSize">Số lượng bản ghi trên mỗi trang.</param>
+        /// <param name="allowedWarehouseIds">Danh sách các kho được phép truy cập theo quyền người dùng.</param>
         /// <returns>Kết quả phân trang chứa danh sách kho hàng và metadata.</returns>
         public async Task<PagedResult<WarehouseReadDto>> GetPagedAsync(
             string? search,
             bool? isActive,
             string? province,
             int pageIndex,
-            int pageSize)
+            int pageSize,
+            List<int>? allowedWarehouseIds = null)
         {
             var query = _context.Warehouses
                 .Include(x => x.Address)
                 .Include(x => x.Manager)
                 .AsQueryable();
+
+            // 0. Phân quyền kho được phép truy cập
+            if (allowedWarehouseIds != null && allowedWarehouseIds.Any())
+            {
+                query = query.Where(x => allowedWarehouseIds.Contains(x.Id));
+            }
 
             // 1. Lọc theo Search (Mã kho, Tên kho)
             if (!string.IsNullOrWhiteSpace(search))

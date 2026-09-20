@@ -21,13 +21,18 @@ const shopProductApi = {
   getCategories: () =>
     axiosClient.get<ShopCategoryTree[]>("/products/categories"),
 
-  getFeatured: (limit: number = 8, warehouseId?: number) =>
+  getFeatured: (limit: number = 20, warehouseId?: number) =>
     axiosClient.get<ShopProductCard[]>("/products/featured", {
       params: { limit, ...(warehouseId ? { warehouseId } : {}) },
     }),
 
-  getNewArrivals: (limit: number = 8, warehouseId?: number) =>
+  getNewArrivals: (limit: number = 20, warehouseId?: number) =>
     axiosClient.get<ShopProductCard[]>("/products/new-arrivals", {
+      params: { limit, ...(warehouseId ? { warehouseId } : {}) },
+    }),
+
+  getDeals: (limit: number = 20, warehouseId?: number) =>
+    axiosClient.get<ShopProductCard[]>("/products/deals", {
       params: { limit, ...(warehouseId ? { warehouseId } : {}) },
     }),
 

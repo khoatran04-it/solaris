@@ -46,30 +46,51 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   return <Outlet />;
 };
 
-const AccessDeniedPage: React.FC<{ requiredPermission?: string }> = ({ requiredPermission }) => (
-  <div className="min-h-[60vh] flex flex-col items-center justify-center p-8 text-center animate-in fade-in zoom-in-95 duration-200">
-    <div className="w-16 h-16 bg-rose-50 text-rose-500 rounded-2xl flex items-center justify-center mb-4 shadow-xs border border-rose-100">
-      <ShieldAlert size={36} />
+const AccessDeniedPage: React.FC<{ requiredPermission?: string }> = ({ requiredPermission }) => {
+  const location = useLocation();
+  const isRoot = location.pathname === '/';
+
+  return (
+    <div className="min-h-[60vh] flex flex-col items-center justify-center p-8 text-center animate-in fade-in zoom-in-95 duration-200">
+      <div className="w-16 h-16 bg-rose-50 text-rose-500 rounded-2xl flex items-center justify-center mb-4 shadow-xs border border-rose-100">
+        <ShieldAlert size={36} />
+      </div>
+      <h2 className="text-2xl font-black text-slate-800 tracking-tight mb-2 uppercase">
+        Truy Cập Bị Từ Chối (403 Forbidden)
+      </h2>
+      <p className="text-slate-500 max-w-md text-sm mb-6 leading-relaxed">
+        {isRoot ? (
+          <>
+            Tài khoản của bạn không được cấp quyền hạn{' '}
+            {requiredPermission && (
+              <code className="bg-rose-50 text-rose-600 px-2 py-0.5 rounded-md font-mono text-xs font-bold border border-rose-200">
+                {requiredPermission}
+              </code>
+            )}{' '}
+            để xem Bàn làm việc Điều hành. Vui lòng chọn phân hệ được phân quyền từ menu điều hướng bên trái.
+          </>
+        ) : (
+          <>
+            Tài khoản của bạn không được cấp quyền hạn{' '}
+            {requiredPermission && (
+              <code className="bg-rose-50 text-rose-600 px-2 py-0.5 rounded-md font-mono text-xs font-bold border border-rose-200">
+                {requiredPermission}
+              </code>
+            )}{' '}
+            để thao tác hoặc xem dữ liệu tại phân hệ này.
+          </>
+        )}
+      </p>
+      {!isRoot && (
+        <a
+          href="/"
+          className="bg-yellow-400 hover:bg-yellow-500 text-slate-900 font-bold px-6 py-2.5 rounded-xl transition-all shadow-xs hover:shadow-md"
+        >
+          Quay Về Trang Chủ
+        </a>
+      )}
     </div>
-    <h2 className="text-2xl font-black text-slate-800 tracking-tight mb-2 uppercase">
-      Truy Cập Bị Từ Chối (403 Forbidden)
-    </h2>
-    <p className="text-slate-500 max-w-md text-sm mb-6 leading-relaxed">
-      Tài khoản của bạn không được cấp quyền hạn{' '}
-      {requiredPermission && (
-        <code className="bg-rose-50 text-rose-600 px-2 py-0.5 rounded-md font-mono text-xs font-bold border border-rose-200">
-          {requiredPermission}
-        </code>
-      )}{' '}
-      để thao tác hoặc xem dữ liệu tại phân hệ này.
-    </p>
-    <a
-      href="/"
-      className="bg-yellow-400 hover:bg-yellow-500 text-slate-900 font-bold px-6 py-2.5 rounded-xl transition-all shadow-xs hover:shadow-md"
-    >
-      Quay Về Trang Chủ
-    </a>
-  </div>
-);
+  );
+};
 
 export default ProtectedRoute;

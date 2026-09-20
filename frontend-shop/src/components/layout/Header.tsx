@@ -59,55 +59,7 @@ export default function Header() {
 
   return (
     <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.03)] transition-all">
-      {/* 1. Top Notification Bar */}
-      <div className="bg-gradient-to-r from-emerald-700 via-emerald-600 to-teal-700 text-white text-[11px] py-1.5 px-4 font-semibold tracking-wide">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="flex items-center gap-1 bg-white/15 px-2 py-0.5 rounded-full text-[10px] font-bold">
-              <Sparkles className="w-3 h-3 text-amber-300 animate-pulse" />
-              VIETGAP / GLOBALGAP
-            </span>
-            <span className="hidden sm:inline-block">
-              Nông sản sạch từ nông trại đến bàn ăn — Cam kết hoàn tiền / đổi
-              trả trong 24h
-            </span>
-            <span className="sm:hidden">Nông sản sạch — Giao nhanh 2h</span>
-          </div>
-
-          <div className="flex items-center gap-3 text-emerald-100">
-            {/* Top Bar Location Selector (NO ICON - Pure Text & Badges) */}
-            <button
-              type="button"
-              onClick={openModal}
-              className="flex items-center gap-1.5 bg-white/20 hover:bg-white/30 text-white px-2.5 py-0.5 rounded-full text-[10px] font-bold transition-all cursor-pointer"
-            >
-              <span className="opacity-80">GIAO ĐẾN:</span>
-              <span className="underline decoration-emerald-300 underline-offset-2">
-                {deliveryDistrict
-                  ? `${deliveryDistrict}, TP.HCM`
-                  : "Chọn địa chỉ..."}
-              </span>
-              <span className="text-[9px] bg-white/30 px-1 rounded font-black">
-                [ĐỔI]
-              </span>
-            </button>
-
-            <span className="hidden md:flex items-center gap-1">
-              <Clock className="w-3 h-3 text-emerald-200" />
-              <span>Giao hàng: 7:00 - 21:00</span>
-            </span>
-            <a
-              href="tel:19008888"
-              className="flex items-center gap-1 text-white hover:text-amber-200 transition-colors font-bold"
-            >
-              <PhoneCall className="w-3 h-3" />
-              <span>1900 8888</span>
-            </a>
-          </div>
-        </div>
-      </div>
-
-      {/* 2. Main Navigation Bar */}
+      {/* Main Navigation Bar */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-20 gap-4 lg:gap-8">
           {/* Brand Logo */}
@@ -349,13 +301,6 @@ export default function Header() {
             className="px-3.5 py-2 rounded-xl text-slate-800 hover:text-emerald-700 hover:bg-emerald-50/70 transition-all flex items-center gap-1.5"
           >
             <span>Tất Cả Sản Phẩm</span>
-          </Link>
-
-          <Link
-            href="/danh-muc"
-            className="px-3.5 py-2 rounded-xl text-slate-800 hover:text-emerald-700 hover:bg-emerald-50/70 transition-all flex items-center gap-1.5"
-          >
-            <span>Danh Mục Nông Sản</span>
           </Link>
 
           {categories.map((group) => (

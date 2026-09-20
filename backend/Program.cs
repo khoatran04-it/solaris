@@ -13,6 +13,11 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Nạp file cấu hình bảo mật cục bộ (Local Secrets - Đã được chặn bởi .gitignore, không bao giờ bị push lên GitHub)
+builder.Configuration
+    .AddJsonFile("appsettings.Local.json", optional: true, reloadOnChange: true)
+    .AddEnvironmentVariables();
+
 // 1. CORS Setting
 builder.Services.AddCors(options =>
 {

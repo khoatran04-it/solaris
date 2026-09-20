@@ -40,8 +40,8 @@ const MENU_CONFIG: MenuItem[] = [
     label: 'Bàn làm việc',
     icon: LayoutDashboard,
     children: [
-      { label: 'Bàn làm việc Điều hành', path: '/' },
-      { label: 'Dòng tiền & Công nợ', path: '/dashboards/finance' },
+      { label: 'Bàn làm việc Điều hành', path: '/', permission: PERMISSIONS.DASHBOARD.OVERVIEW },
+      { label: 'Dòng tiền & Công nợ', path: '/dashboards/finance', permission: PERMISSIONS.DASHBOARD.FINANCE },
     ],
   },
   // 2. SẢN PHẨM & MASTER DATA

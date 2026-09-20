@@ -59,24 +59,35 @@ namespace backend.Controllers.Shop
         }
 
         /// <summary>
-        /// Sản phẩm nổi bật / Khuyến mãi nhiều nhất.
+        /// Sản phẩm nổi bật (Mua nhiều nhất / Bán chạy nhất từ database).
         /// </summary>
         [HttpGet("featured")]
         [ProducesResponseType(typeof(List<ShopProductCardDto>), StatusCodes.Status200OK)]
-        public async Task<ActionResult<List<ShopProductCardDto>>> GetFeatured([FromQuery] int limit = 8, [FromQuery] int? warehouseId = null)
+        public async Task<ActionResult<List<ShopProductCardDto>>> GetFeatured([FromQuery] int limit = 20, [FromQuery] int? warehouseId = null)
         {
             var items = await _productService.GetFeaturedProductsAsync(limit, warehouseId);
             return Ok(items);
         }
 
         /// <summary>
-        /// Sản phẩm tươi mới vừa về.
+        /// Sản phẩm tươi mới vừa về (20 sản phẩm mới nhất).
         /// </summary>
         [HttpGet("new-arrivals")]
         [ProducesResponseType(typeof(List<ShopProductCardDto>), StatusCodes.Status200OK)]
-        public async Task<ActionResult<List<ShopProductCardDto>>> GetNewArrivals([FromQuery] int limit = 8, [FromQuery] int? warehouseId = null)
+        public async Task<ActionResult<List<ShopProductCardDto>>> GetNewArrivals([FromQuery] int limit = 20, [FromQuery] int? warehouseId = null)
         {
             var items = await _productService.GetNewArrivalsAsync(limit, warehouseId);
+            return Ok(items);
+        }
+
+        /// <summary>
+        /// Sản phẩm ưu đãi hôm nay (thật sự có trong chiến dịch khuyến mãi đang diễn ra).
+        /// </summary>
+        [HttpGet("deals")]
+        [ProducesResponseType(typeof(List<ShopProductCardDto>), StatusCodes.Status200OK)]
+        public async Task<ActionResult<List<ShopProductCardDto>>> GetDeals([FromQuery] int limit = 20, [FromQuery] int? warehouseId = null)
+        {
+            var items = await _productService.GetDiscountedProductsAsync(limit, warehouseId);
             return Ok(items);
         }
 

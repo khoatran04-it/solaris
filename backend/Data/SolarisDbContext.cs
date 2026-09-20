@@ -14,6 +14,7 @@ namespace backend.Data
         public DbSet<Supplier> Suppliers { get; set; }
         public DbSet<SupplierAddress> SupplierAddresses { get; set; }
         public DbSet<SupplierProduct> SupplierProducts { get; set; }
+        public DbSet<SupplierProductPriceHistory> SupplierProductPriceHistories { get; set; }
 
         // --- Danh mục Customer ---
         public DbSet<CustomerType> CustomerTypes { get; set; }

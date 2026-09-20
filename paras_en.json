@@ -1,0 +1,4280 @@
+[
+  {
+    "idx": 0,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": true
+  },
+  {
+    "idx": 1,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 2,
+    "style": "Normal",
+    "text": "Ministry of Education and Training ",
+    "has_drawing": false
+  },
+  {
+    "idx": 3,
+    "style": "Normal",
+    "text": "Nguyen Tat Thanh University",
+    "has_drawing": false
+  },
+  {
+    "idx": 4,
+    "style": "Normal",
+    "text": "NTT Institute of International Education",
+    "has_drawing": false
+  },
+  {
+    "idx": 5,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": true
+  },
+  {
+    "idx": 6,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 7,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": true
+  },
+  {
+    "idx": 8,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 9,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 10,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 11,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 12,
+    "style": "Normal",
+    "text": "GRADUATION PROJECT",
+    "has_drawing": false
+  },
+  {
+    "idx": 13,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 14,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 15,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 16,
+    "style": "Normal",
+    "text": "TITLE:",
+    "has_drawing": false
+  },
+  {
+    "idx": 17,
+    "style": "Normal",
+    "text": "Development of an Agricultural E-Commerce System Integrating ERP and an AI Chatbot for Automated Order Placement",
+    "has_drawing": false
+  },
+  {
+    "idx": 18,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 19,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 20,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 21,
+    "style": "Normal",
+    "text": "PROJECT SUPERVISOR: MSC. NGUYỄN ĐỖ THÁI NGUYÊN",
+    "has_drawing": false
+  },
+  {
+    "idx": 22,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 23,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 24,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 25,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 26,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 27,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 28,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 29,
+    "style": "Normal",
+    "text": "Ho Chi Minh City, Month 09 Year 2026",
+    "has_drawing": false
+  },
+  {
+    "idx": 30,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 31,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": true
+  },
+  {
+    "idx": 32,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 33,
+    "style": "Normal",
+    "text": "Ministry of Education and Training",
+    "has_drawing": false
+  },
+  {
+    "idx": 34,
+    "style": "Normal",
+    "text": "Nguyen Tat Thanh University",
+    "has_drawing": false
+  },
+  {
+    "idx": 35,
+    "style": "Normal",
+    "text": "NTT Institute of International Education",
+    "has_drawing": false
+  },
+  {
+    "idx": 36,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": true
+  },
+  {
+    "idx": 37,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 38,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": true
+  },
+  {
+    "idx": 39,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 40,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 41,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 42,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 43,
+    "style": "Normal",
+    "text": "GRADUATION PROJECT ",
+    "has_drawing": false
+  },
+  {
+    "idx": 44,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 45,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 46,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 47,
+    "style": "Normal",
+    "text": "TITLE:",
+    "has_drawing": false
+  },
+  {
+    "idx": 48,
+    "style": "Normal",
+    "text": "Development of an Agricultural E-Commerce System Integrating ERP and an AI Chatbot for Automated Order Placement",
+    "has_drawing": false
+  },
+  {
+    "idx": 49,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 50,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 51,
+    "style": "Normal",
+    "text": "\t\t\t\t",
+    "has_drawing": false
+  },
+  {
+    "idx": 52,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 53,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 54,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 55,
+    "style": "Normal",
+    "text": "PROJECT SUPERVISOR: MSC. NGUYỄN ĐỖ THÁI NGUYÊN",
+    "has_drawing": false
+  },
+  {
+    "idx": 56,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 57,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 58,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 59,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 60,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 61,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 62,
+    "style": "Normal",
+    "text": "Ho Chi Minh City, Month 09 Year 2026",
+    "has_drawing": false
+  },
+  {
+    "idx": 63,
+    "style": "Title",
+    "text": "STUDENT DECLARATION",
+    "has_drawing": false
+  },
+  {
+    "idx": 64,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 65,
+    "style": "Normal",
+    "text": "\t",
+    "has_drawing": false
+  },
+  {
+    "idx": 66,
+    "style": "Normal",
+    "text": "Student Name and Student ID: Trần Đăng Khoa – 2200008421",
+    "has_drawing": false
+  },
+  {
+    "idx": 67,
+    "style": "Normal",
+    "text": "Supervisor Name: MSc. Nguyễn Đỗ Thái Nguyên",
+    "has_drawing": false
+  },
+  {
+    "idx": 68,
+    "style": "Normal",
+    "text": "STUDENT DECLARATION",
+    "has_drawing": false
+  },
+  {
+    "idx": 69,
+    "style": "Normal",
+    "text": "I affirm that this project, Development of an Agricultural E-Commerce System Integrating ERP and an AI Chatbot for Automated Order Placement\t is the result of my own independent research efforts and has been entirely produced by me. ",
+    "has_drawing": false
+  },
+  {
+    "idx": 70,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 71,
+    "style": "Normal",
+    "text": "Ho Chi Minh City, Date ...... Month ...... Year ......",
+    "has_drawing": false
+  },
+  {
+    "idx": 72,
+    "style": "Normal",
+    "text": "\t\t\t\t\t\t\t\t\t",
+    "has_drawing": false
+  },
+  {
+    "idx": 73,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 74,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 75,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 76,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 77,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 78,
+    "style": "Title",
+    "text": "ACKNOWLEDGMENTS",
+    "has_drawing": false
+  },
+  {
+    "idx": 79,
+    "style": "Normal",
+    "text": "\tFirst of all, I would like to give my sincere thanks to all the teachers of NTT Institute of International Education (NIIE) and the Faculty of Information Technology. You have always taught me with great dedication, giving me strong knowledge, scientific thinking methods, and a solid foundation for my future career.",
+    "has_drawing": false
+  },
+  {
+    "idx": 80,
+    "style": "Normal",
+    "text": "\tEspecially, I would like to express my deepest gratitude and respect to MSc. Nguyễn Đỗ Thái Nguyên – the lecturer who guided my graduation thesis. He spent valuable time to carefully guide the topic, suggest important software architecture solutions, and share ideas and methods for building the thesis.",
+    "has_drawing": false
+  },
+  {
+    "idx": 81,
+    "style": "Normal",
+    "text": "\tAlthough I tried my best to study and complete the thesis, because of limited time and knowledge, there are surely some mistakes. I sincerely hope to receive comments and valuable suggestions from the teachers in the Thesis Defense Committee so that my research can be improved further.",
+    "has_drawing": false
+  },
+  {
+    "idx": 82,
+    "style": "Normal",
+    "text": "Thank you very much !",
+    "has_drawing": false
+  },
+  {
+    "idx": 83,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 84,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 85,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 86,
+    "style": "Title",
+    "text": "TABLE OF CONTENTS",
+    "has_drawing": false
+  },
+  {
+    "idx": 87,
+    "style": "Normal",
+    "text": "\t\t",
+    "has_drawing": false
+  },
+  {
+    "idx": 88,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 89,
+    "style": "Title",
+    "text": "LIST OF TABLES, FIGURES",
+    "has_drawing": false
+  },
+  {
+    "idx": 90,
+    "style": "Normal",
+    "text": "TABLE\t\t\t\t\t\t\t\t\t\t\t   Page",
+    "has_drawing": false
+  },
+  {
+    "idx": 91,
+    "style": "table of figures",
+    "text": "Table 1.1: Thesis structure table\t7",
+    "has_drawing": false
+  },
+  {
+    "idx": 92,
+    "style": "table of figures",
+    "text": "Table 2.1: Matrix of Research Gaps and Research Questions\t12",
+    "has_drawing": false
+  },
+  {
+    "idx": 93,
+    "style": "table of figures",
+    "text": "Table 3.1: Attribute Definitions Specification\t20",
+    "has_drawing": false
+  },
+  {
+    "idx": 94,
+    "style": "table of figures",
+    "text": "Table 3.2: Concrete EAV Attribute Value Mapping\t20",
+    "has_drawing": false
+  },
+  {
+    "idx": 95,
+    "style": "table of figures",
+    "text": "Table 3.3: Four-Phase State Transitions Across the Order Lifecycle\t24",
+    "has_drawing": false
+  },
+  {
+    "idx": 96,
+    "style": "table of figures",
+    "text": "Table 4.1: Testbed Hardware and Software Configuration\t34",
+    "has_drawing": false
+  },
+  {
+    "idx": 97,
+    "style": "table of figures",
+    "text": "Table 4.2: Scaled Experimental Dataset in the SolarisDb Database\t35",
+    "has_drawing": false
+  },
+  {
+    "idx": 98,
+    "style": "table of figures",
+    "text": "Table 4.3:  Evaluation Tools and Selection Rationale\t37",
+    "has_drawing": false
+  },
+  {
+    "idx": 99,
+    "style": "table of figures",
+    "text": "Table 4.4: Comparison of Dynamic Attribute Extension\t39",
+    "has_drawing": false
+  },
+  {
+    "idx": 100,
+    "style": "table of figures",
+    "text": "Table 4.5: Multi-UoM Inventory Deduction and Pricing Lookup Latency\t41",
+    "has_drawing": false
+  },
+  {
+    "idx": 101,
+    "style": "table of figures",
+    "text": "Table 4.6: Outbound Batch Allocation under Single-Batch and Greedy Multi-Batch FEFO\t43",
+    "has_drawing": false
+  },
+  {
+    "idx": 102,
+    "style": "table of figures",
+    "text": "Table 4.7: Empirical Concurrency Stress-Testing Metrics under 500 Concurrent Checkout Users (500 CCU)\t46",
+    "has_drawing": false
+  },
+  {
+    "idx": 103,
+    "style": "table of figures",
+    "text": "Table 4.8: Warehouse Routing and Cold-Chain Geofencing Evaluation Matrix\t48",
+    "has_drawing": false
+  },
+  {
+    "idx": 104,
+    "style": "table of figures",
+    "text": "Table 4.9: Results of the Conversational AI Benchmark\t52",
+    "has_drawing": false
+  },
+  {
+    "idx": 105,
+    "style": "table of figures",
+    "text": "Table 4.10: Representative Out-of-Catalog Test Cases\t52",
+    "has_drawing": false
+  },
+  {
+    "idx": 106,
+    "style": "table of figures",
+    "text": "Table 4.11: E2E Benchmark Comparative Results\t55",
+    "has_drawing": false
+  },
+  {
+    "idx": 107,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 108,
+    "style": "List Paragraph",
+    "text": "FIGURE\t\t\t\t\t\t\t\t\t\t\t   Page",
+    "has_drawing": false
+  },
+  {
+    "idx": 109,
+    "style": "table of figures",
+    "text": "Figure 1.1: Process of Design Science Research Methodology\t6",
+    "has_drawing": false
+  },
+  {
+    "idx": 110,
+    "style": "table of figures",
+    "text": "Figure 3.1: Entity-Relationship Diagram (ERD) of the EAV and Multi-Tier UoM Data Model\t19",
+    "has_drawing": false
+  },
+  {
+    "idx": 111,
+    "style": "table of figures",
+    "text": "Figure 3.2: Multi-Batch FEFO Allocation Activity Diagram.\t23",
+    "has_drawing": false
+  },
+  {
+    "idx": 112,
+    "style": "table of figures",
+    "text": "Figure 3.3: Activity Diagram of the Atomic Conditional Inventory Reservation Algorithm.\t26",
+    "has_drawing": false
+  },
+  {
+    "idx": 113,
+    "style": "table of figures",
+    "text": "Figure 3.4: Concurrency Control and Atomic Reservation Sequence Diagram.\t27",
+    "has_drawing": false
+  },
+  {
+    "idx": 114,
+    "style": "table of figures",
+    "text": "Figure 3.5: Haversine Distance Calculation and Coordinate Resolution Pipeline.\t29",
+    "has_drawing": false
+  },
+  {
+    "idx": 115,
+    "style": "table of figures",
+    "text": "Figure 3.6: Single-Hub Warehouse Selection & Cold-Chain Routing Activity Diagram.\t31",
+    "has_drawing": false
+  },
+  {
+    "idx": 116,
+    "style": "table of figures",
+    "text": "Figure 3.7: Conversational AI Tool Calling and Data Grounding Sequence Diagram.\t32",
+    "has_drawing": false
+  },
+  {
+    "idx": 117,
+    "style": "table of figures",
+    "text": "Figure 3.8: Interactive Order Card Component Architecture and Purchase Workflow\t33",
+    "has_drawing": false
+  },
+  {
+    "idx": 118,
+    "style": "table of figures",
+    "text": "Figure 4.1: Query blocking caused by table-level Sch-M lock during ALTER TABLE execution.\t39",
+    "has_drawing": false
+  },
+  {
+    "idx": 119,
+    "style": "table of figures",
+    "text": "Figure 4.2: Instantaneous query response under the Solaris EAV dynamic attribute model.\t40",
+    "has_drawing": false
+  },
+  {
+    "idx": 120,
+    "style": "table of figures",
+    "text": "Figure 4.3: Execution log in SQL Server verifying Multi-UoM inventory depletion and tiered pricing.\t42",
+    "has_drawing": false
+  },
+  {
+    "idx": 121,
+    "style": "table of figures",
+    "text": "Figure 4.4: Verification of FEFO prioritization and multi-batch allocation in SQL Server.\t45",
+    "has_drawing": false
+  },
+  {
+    "idx": 122,
+    "style": "table of figures",
+    "text": "Figure 4.5: Terminal execution log of high-concurrency stress testing with 500 CCU, confirming zero transaction errors and a 0.00% overselling rate.\t47",
+    "has_drawing": false
+  },
+  {
+    "idx": 123,
+    "style": "table of figures",
+    "text": "Figure 4.6: Execution log of the automated routing test suite verifying cold-chain geofencing and single-hub fulfillment.\t50",
+    "has_drawing": false
+  },
+  {
+    "idx": 124,
+    "style": "table of figures",
+    "text": "Figure 4.7: AI assistant interface demonstrating polite rejection of an out-of-catalog purchase request, verifying anti-hallucination guardrails.\t53",
+    "has_drawing": false
+  },
+  {
+    "idx": 125,
+    "style": "table of figures",
+    "text": "Figure 4.8: In-chat Interactive Order Card rendering real-time inventory, cold-chain shipping calculation, and single-click checkout confirmation.\t54",
+    "has_drawing": false
+  },
+  {
+    "idx": 126,
+    "style": "table of figures",
+    "text": "Figure 4.9: Terminal summary report of the automated E2E benchmark (N = 10 runs, headless Chromium), validating reductions in checkout time, user interactions, and HTTP requests.\t55",
+    "has_drawing": false
+  },
+  {
+    "idx": 127,
+    "style": "List Paragraph",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 128,
+    "style": "Title",
+    "text": "ABBREVIATIONS LIST",
+    "has_drawing": false
+  },
+  {
+    "idx": 129,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 130,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 131,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 132,
+    "style": "Normal",
+    "text": "\t",
+    "has_drawing": false
+  },
+  {
+    "idx": 133,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 134,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 135,
+    "style": "Title",
+    "text": "ABSTRACT",
+    "has_drawing": false
+  },
+  {
+    "idx": 136,
+    "style": "Normal",
+    "text": "Agriculture plays a significant role in Vietnam’s economic development; however, its distribution chain has many challenges in selling fresh products via e-commerce, including product data management, expiry-based inventory control, multi-warehouse fulfillment, customer care during purchase, and others.",
+    "has_drawing": false
+  },
+  {
+    "idx": 137,
+    "style": "Normal",
+    "text": "This paper reports the findings of a study “Building an Agricultural E-Commerce System Integrated with ERP and AI Chatbot for Automatic Ordering” that was conducted using Design Science Research methodology. The research introduces the Solaris system, which was prototyped as a Direct-to-Consumer e-commerce marketplace integrated with ERP for product, warehouse, inventory, and order management, as well as a conversational AI chatbot for answering questions and helping with ordering.",
+    "has_drawing": false
+  },
+  {
+    "idx": 138,
+    "style": "Normal",
+    "text": "The evaluation included functional tests, concurrency checks, and end-to-end checkout benchmarking. The results show that the system can manage dynamic product attributes and multiple selling units, allocate inventory based on expiration dates, and maintain inventory consistency under concurrent checkout. In the 500-user concurrency test, no overselling was detected. The warehouse selection process also considered product availability and delivery distance when assigning complete orders. For AI-assisted checkout, user interactions were reduced by 62.5%, HTTP requests by 57.1%, and average checkout time from 4.48 to 3.63 seconds compared with the conventional checkout process.",
+    "has_drawing": false
+  },
+  {
+    "idx": 139,
+    "style": "Normal",
+    "text": "Thus, the findings contribute to the body of knowledge by providing a working example of a system that integrates multiple aspects of selling agricultural products via e-commerce with AI assistance.",
+    "has_drawing": false
+  },
+  {
+    "idx": 140,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 141,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 142,
+    "style": "Heading 1",
+    "text": "INTRODUCTION",
+    "has_drawing": false
+  },
+  {
+    "idx": 143,
+    "style": "Heading 2",
+    "text": " Research Background ",
+    "has_drawing": false
+  },
+  {
+    "idx": 144,
+    "style": "Normal",
+    "text": "\tVietnam’s agriculture sector plays a significant role in the national economy and is directly involved in the country’s food security. In 2025, the agriculture, forestry, and fishery sector contributed around 11.64% to Vietnam’s gross domestic product (GDP). Moreover, the Vietnamese agricultural producers are increasingly interested in not only quantity but also quality, product brands, and standards such as VietGAP and GlobalGAP. ",
+    "has_drawing": false
+  },
+  {
+    "idx": 145,
+    "style": "Normal",
+    "text": "\tOn the other hand, a rapid rise of digitalization, online shopping, and cashless payment has created a new avenue for agricultural producers to sell their products through e-commerce platforms. In other words, the emergence of D2C (Direct-to-Consumer) platforms enables farms and agricultural cooperatives to sell their products directly to the final customer without going through traditional distribution channels. However, agricultural products, especially fresh products, are different from the traditional D2C products in many ways. For instance, agricultural products have a limited shelf life; they may come from different batches and require specific storage conditions during the supply chain, among others. Therefore, agricultural producers need to ensure a systematic flow of goods to meet consumer demands. In other words, a lack of effective management of product information, inventory, and orders fulfills challenges, including problems with inventory management, product expiry, and fulfillment of deliveries of perishable products.",
+    "has_drawing": false
+  },
+  {
+    "idx": 146,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 147,
+    "style": "Heading 2",
+    "text": "Problem Statement",
+    "has_drawing": false
+  },
+  {
+    "idx": 148,
+    "style": "Normal",
+    "text": "\tWhile online sales channels for agricultural products are expanding, selling and managing fresh produce through e-commerce presents several operational challenges.",
+    "has_drawing": false
+  },
+  {
+    "idx": 149,
+    "style": "Normal",
+    "text": "Product Data Variability and Multiple Selling Units: Agricultural products may require a wide range of product attributes, including biological characteristics, certifications, and harvest information. These attributes can vary across product categories and may change as product requirements evolve. The same product may also be sold in different packaging specifications and units of measure, such as kilograms, boxes, or crates. Treating these formats as separate items can make product and inventory management more difficult and may result in inaccurate stock availability.",
+    "has_drawing": false
+  },
+  {
+    "idx": 150,
+    "style": "Normal",
+    "text": "Perishable Inventory Management and Concurrent Checkout: Fresh agricultural products have limited shelf life, and different inventory batches may have different expiration dates. FIFO does not necessarily select the batch with the earliest expiration date. At the same time, concurrent checkout requests may occur when multiple customers attempt to purchase the same limited inventory, creating a risk of inconsistent stock quantities and overselling.",
+    "has_drawing": false
+  },
+  {
+    "idx": 151,
+    "style": "Normal",
+    "text": "Fulfillment Constraints and Order Splitting: Fresh products are sensitive to transportation time and environmental conditions, making delivery distance an important consideration in fulfillment. In a multi-warehouse environment, items in the same customer order may be assigned to different warehouses. This can result in split deliveries, additional handling, and potentially higher shipping costs.",
+    "has_drawing": false
+  },
+  {
+    "idx": 152,
+    "style": "Normal",
+    "text": "Conversational AI and Order Completion: Conversational AI can provide a natural-language interface for product search, recommendation, and customer assistance. Existing studies have examined conversational product recommendation and pre-sales dialogue in e-commerce. However, moving from product consultation to actual order completion within the same conversation introduces additional system requirements. In addition, generative AI may provide inaccurate product or inventory information when responses are not based on current system data.",
+    "has_drawing": false
+  },
+  {
+    "idx": 153,
+    "style": "Normal",
+    "text": "\tBased on these challenges, this study develops and evaluates Solaris, an agricultural e-commerce platform that integrates back-office enterprise resource planning (ERP) functions with an online storefront and an AI-assisted ordering interface. The study focuses on four areas: flexible product data management, expiry-aware inventory processing, distance-constrained fulfillment, and database-grounded conversational ordering.",
+    "has_drawing": false
+  },
+  {
+    "idx": 154,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 155,
+    "style": "Heading 2",
+    "text": " Research Objectives",
+    "has_drawing": false
+  },
+  {
+    "idx": 156,
+    "style": "Normal",
+    "text": "\tThe general objective of the research is to develop and evaluate the Solaris agricultural e-commerce system. The said system is expected to integrate online sales, product and inventory management, fresh-food delivery, and an AI assistant for ordering. The project’s main aim is to improve the management of fresh agricultural products and provide a more convenient experience for the customers. ",
+    "has_drawing": false
+  },
+  {
+    "idx": 157,
+    "style": "Normal",
+    "text": "\tThe specific objectives of the research are as follows: In order to meet the general objective, the research will address four specific technical objectives: ",
+    "has_drawing": false
+  },
+  {
+    "idx": 158,
+    "style": "List Paragraph",
+    "text": "Objective 1 (Dynamic Product Modeling): Develop a dynamic product modeling solution that employs an Entity-Attribute-Value database model combined with a multiple-unit management mechanism to capture product attributes, sellable units, and price tiers in a relational database. ",
+    "has_drawing": false
+  },
+  {
+    "idx": 159,
+    "style": "List Paragraph",
+    "text": "Objective 2 (Expiry-Aware Inventory Control): Design an expiry-aware inventory mechanism that implements First-Expired, First-Out batch allocation with transactional inventory reservations and assess its performance with a concurrency workload of up to 500 users. ",
+    "has_drawing": false
+  },
+  {
+    "idx": 160,
+    "style": "List Paragraph",
+    "text": "Objective 3 (Fulfillment and Warehouse Selection): Implement a distance-constrained warehouse selection mechanism that utilizes distance band batching to allocate entire orders to a single fulfillment hub to minimize order splitting for fresh products. ",
+    "has_drawing": false
+  },
+  {
+    "idx": 161,
+    "style": "List Paragraph",
+    "text": "Objective 4 (Conversational AI and Order Completion): Design a database-grounded conversational AI shopping assistant that enables dynamic product information retrieval and supports order completion through tool calling in chat.",
+    "has_drawing": false
+  },
+  {
+    "idx": 162,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 163,
+    "style": "Heading 2",
+    "text": " Research Object and Scope",
+    "has_drawing": false
+  },
+  {
+    "idx": 164,
+    "style": "Heading 3",
+    "text": "Research Object",
+    "has_drawing": false
+  },
+  {
+    "idx": 165,
+    "style": "Normal",
+    "text": "\tThis study focuses on the Solaris agricultural e-commerce system and the software features used to manage fresh agricultural products. The main areas covered by the study are product data management, expiry-based inventory management, warehouse selection and fulfillment, and AI-assisted ordering.",
+    "has_drawing": false
+  },
+  {
+    "idx": 166,
+    "style": "Normal",
+    "text": "The system is designed for an agricultural supply chain that connects farms and cooperatives with consumers in urban areas of Vietnam.",
+    "has_drawing": false
+  },
+  {
+    "idx": 167,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 168,
+    "style": "Heading 3",
+    "text": "Business Scope",
+    "has_drawing": false
+  },
+  {
+    "idx": 169,
+    "style": "List Paragraph",
+    "text": "Product and Catalog Management: Product categorization, dynamic product attributes, multiple selling units, and tiered pricing.",
+    "has_drawing": false
+  },
+  {
+    "idx": 170,
+    "style": "List Paragraph",
+    "text": "Supplier and Purchasing Management: Supplier and cooperative information, purchase order processing, goods receipt, and initial inspection records.",
+    "has_drawing": false
+  },
+  {
+    "idx": 171,
+    "style": "List Paragraph",
+    "text": "Warehouse and Inventory Management: Inventory batch tracking, expiry dates, stock availability, FEFO (First-Expired, First-Out) picking, and temporary inventory reservation during checkout.",
+    "has_drawing": false
+  },
+  {
+    "idx": 172,
+    "style": "List Paragraph",
+    "text": "Online Retail and Order Management: Product search, shopping cart management, customer address management, and order checkout.",
+    "has_drawing": false
+  },
+  {
+    "idx": 173,
+    "style": "List Paragraph",
+    "text": "Fresh-Product Fulfillment: Delivery-distance constraints and assignment of a complete order to a suitable fulfillment warehouse.",
+    "has_drawing": false
+  },
+  {
+    "idx": 174,
+    "style": "List Paragraph",
+    "text": "Conversational AI Assistant: Natural-language product inquiries, inventory availability checks, and order card generation within the chat interface.",
+    "has_drawing": false
+  },
+  {
+    "idx": 175,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 176,
+    "style": "Heading 3",
+    "text": "Technology Scope",
+    "has_drawing": false
+  },
+  {
+    "idx": 177,
+    "style": "List Paragraph",
+    "text": "Backend: .NET 8.0 and ASP.NET Core Web API.",
+    "has_drawing": false
+  },
+  {
+    "idx": 178,
+    "style": "List Paragraph",
+    "text": "Database: Microsoft SQL Server 2022 Developer Edition.",
+    "has_drawing": false
+  },
+  {
+    "idx": 179,
+    "style": "List Paragraph",
+    "text": "Frontend: Next.js 14 with Server-Side Rendering for the B2C storefront, and React 18 as a Single-Page Application for the ERP portal.",
+    "has_drawing": false
+  },
+  {
+    "idx": 180,
+    "style": "List Paragraph",
+    "text": "Artificial Intelligence: Google Gemini API with Function Calling (Tool Calling)[22].",
+    "has_drawing": false
+  },
+  {
+    "idx": 181,
+    "style": "List Paragraph",
+    "text": "Testing and Supporting Tools: Apache JMeter 5.6.3 for concurrency testing[23], Playwright Core v1.48 for end-to-end testing[24], and VNPAY Sandbox for payment API testing[25].",
+    "has_drawing": false
+  },
+  {
+    "idx": 182,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 183,
+    "style": "Heading 2",
+    "text": "Research Methodology",
+    "has_drawing": false
+  },
+  {
+    "idx": 184,
+    "style": "Normal",
+    "text": "\tThis study adopts the Design Science Research Methodology (DSRM) proposed by Peffers et al. (2007)[1]. DSRM is appropriate for this study because it involves developing and evaluating a software artifact to address practical problems in agricultural e-commerce. The research follows six activities of the DSRM process:",
+    "has_drawing": false
+  },
+  {
+    "idx": 185,
+    "style": "Normal",
+    "text": "Problem Identification and Motivation: Identify the main operational challenges in fresh agricultural e-commerce, including product attribute variability, perishable inventory, concurrent checkout, order splitting, and limitations in conversational ordering.",
+    "has_drawing": false
+  },
+  {
+    "idx": 186,
+    "style": "Normal",
+    "text": "Definition of Objectives for a Solution: Translate the identified problems into system requirements and evaluation criteria. These include flexible product data management, concurrent inventory consistency, warehouse-distance constraints, AI grounding, and checkout efficiency.",
+    "has_drawing": false
+  },
+  {
+    "idx": 187,
+    "style": "Normal",
+    "text": "Design and Development: Design and implement the Solaris system based on the identified requirements. This includes the product data model, inventory management mechanisms, warehouse selection, and conversational AI functions.",
+    "has_drawing": false
+  },
+  {
+    "idx": 188,
+    "style": "Normal",
+    "text": "Demonstration: Demonstrate the implemented system through representative agricultural e-commerce scenarios, covering workflows from product and inventory management to online ordering and delivery assignment.",
+    "has_drawing": false
+  },
+  {
+    "idx": 189,
+    "style": "Normal",
+    "text": "Evaluation: Evaluate the system using quantitative tests based on the defined criteria. The evaluation covers schema modification impact, inventory consistency under concurrent checkout, warehouse selection behavior, conversational AI",
+    "has_drawing": false
+  },
+  {
+    "idx": 190,
+    "style": "Normal",
+    "text": "Communication: Present the system design, implementation, evaluation results, and research findings in this thesis.",
+    "has_drawing": false
+  },
+  {
+    "idx": 191,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 192,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": true
+  },
+  {
+    "idx": 193,
+    "style": "Caption",
+    "text": "Figure 1.1: Process of Design Science Research Methodology",
+    "has_drawing": false
+  },
+  {
+    "idx": 194,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 195,
+    "style": "Heading 2",
+    "text": " Scientific Meaning and Practical Value of the Study.",
+    "has_drawing": false
+  },
+  {
+    "idx": 196,
+    "style": "Heading 3",
+    "text": "Scientific Significance",
+    "has_drawing": false
+  },
+  {
+    "idx": 197,
+    "style": "isselectedend",
+    "text": "\tFrom an engineering perspective, this study demonstrates the integration of established methods, including EAV-based data modeling, FEFO inventory management, spatial distance constraints, transactional inventory control, and tool-enabled conversational AI, within an agricultural e-commerce system.",
+    "has_drawing": false
+  },
+  {
+    "idx": 198,
+    "style": "Normal (Web)",
+    "text": "\tThe study also provides empirical evaluation of these mechanisms in the Solaris system. In particular, it examines the use of a flexible product data model for changing agricultural attributes, expiry-aware inventory allocation combined with transactional reservation during concurrent checkout, distance-constrained warehouse selection, and the use of conversational AI with backend functions for product and inventory information retrieval and in-chat order completion.",
+    "has_drawing": false
+  },
+  {
+    "idx": 199,
+    "style": "Normal (Web)",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 200,
+    "style": "Heading 3",
+    "text": "Practical Value",
+    "has_drawing": false
+  },
+  {
+    "idx": 201,
+    "style": "Normal",
+    "text": "\tFrom a practical perspective, this study provides a prototype implementation that can be used to demonstrate the feasibility of integrating e-commerce and operational management functions for fresh agricultural products:",
+    "has_drawing": false
+  },
+  {
+    "idx": 202,
+    "style": "Normal",
+    "text": "For Agricultural Cooperatives and SMEs: The system provides a software foundation that connects online sales with product, purchasing, warehouse, and inventory management within a single platform.",
+    "has_drawing": false
+  },
+  {
+    "idx": 203,
+    "style": "Normal",
+    "text": "For Fresh Food Retailers: The system provides FEFO-based inventory allocation and temporary inventory reservation to support expiry-aware stock management and reduce the risk of overselling during concurrent order processing.",
+    "has_drawing": false
+  },
+  {
+    "idx": 204,
+    "style": "Normal",
+    "text": "For Consumers: The system provides delivery-distance constraints for fresh products and an AI-assisted ordering interface that allows customers to check product and inventory information and place orders through conversation.",
+    "has_drawing": false
+  },
+  {
+    "idx": 205,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 206,
+    "style": "Heading 2",
+    "text": "Thesis structure",
+    "has_drawing": false
+  },
+  {
+    "idx": 207,
+    "style": "Caption",
+    "text": "Table 1.1: Thesis structure table",
+    "has_drawing": false
+  },
+  {
+    "idx": 208,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 209,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 210,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 211,
+    "style": "Heading 1",
+    "text": "LITERATURE REVIEW",
+    "has_drawing": false
+  },
+  {
+    "idx": 212,
+    "style": "Heading 2",
+    "text": "Overview of Related Studies and Research Gaps",
+    "has_drawing": false
+  },
+  {
+    "idx": 213,
+    "style": "Heading 3",
+    "text": "Product Data and Multiple Selling Units",
+    "has_drawing": false
+  },
+  {
+    "idx": 214,
+    "style": "Normal",
+    "text": "\tFresh agricultural products can have many different attributes and may be sold in different units or package sizes. This makes product data more difficult to manage in an e-commerce system.",
+    "has_drawing": false
+  },
+  {
+    "idx": 215,
+    "style": "Normal",
+    "text": "\tNiemir and Mrugalska (2021)[2] examined basic product data in e-commerce and found problems with the representation and standardization of product attributes. They also discussed difficulties in exchanging and managing product information across platforms.",
+    "has_drawing": false
+  },
+  {
+    "idx": 216,
+    "style": "Normal",
+    "text": "\tArici et al. (2021)[3] studied the Price Per Unit (PPU) problem. Their work focused on identifying product quantities and units of measurement from product listings so that PPU could be calculated correctly. The required information may appear in the title, description, attributes, or images.",
+    "has_drawing": false
+  },
+  {
+    "idx": 217,
+    "style": "Normal",
+    "text": "\tTogether, these studies point to two related requirements: product attributes need to be flexible, and quantity and unit information needs to be clearly represented. However, the reviewed studies do not specifically address these requirements together for fresh agricultural products, particularly when products are sold in different units with different prices.",
+    "has_drawing": false
+  },
+  {
+    "idx": 218,
+    "style": "Normal",
+    "text": "\tResearch Gap (GAP-01): A product data model is needed to support dynamic attributes and multiple selling units with associated prices in an agricultural e-commerce system.",
+    "has_drawing": false
+  },
+  {
+    "idx": 219,
+    "style": "Normal",
+    "text": "\tTo address this gap, this study uses the Entity-Attribute-Value (EAV) model for dynamic product attributes and a multi-Unit-of-Measurement (UoM) mechanism for different selling units and prices.",
+    "has_drawing": false
+  },
+  {
+    "idx": 220,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 221,
+    "style": "Heading 3",
+    "text": "Perishable Inventory and Online Inventory Commitment",
+    "has_drawing": false
+  },
+  {
+    "idx": 222,
+    "style": "Normal",
+    "text": "\tFresh agricultural products have limited shelf life, and different batches of the same product may have different expiration dates. Inventory management therefore needs to consider both expiry dates and when stock is assigned to customer orders.\tHertog et al. (2014)[4] studied shelf-life modelling for First-Expired, First-Out (FEFO) warehouse management of perishable products. Their work used remaining shelf life to guide inventory rotation and cold-chain decisions.\t",
+    "has_drawing": false
+  },
+  {
+    "idx": 223,
+    "style": "Normal",
+    "text": "\tFigueira et al. (2023)[5] studied inventory commitment in online retail. They proposed allocation policies that commit inventory to customer orders when the orders arrive, rather than waiting until the scheduled delivery time. The policies were also evaluated using real data from a large food retailer.",
+    "has_drawing": false
+  },
+  {
+    "idx": 224,
+    "style": "Normal",
+    "text": "\tThese studies cover two related aspects of fresh-product e-commerce. Hertog et al. focus on which stock should be used first, based on shelf life, while Figueira et al. focus on when inventory should be committed to an online order. However, the reviewed studies do not specifically examine expiry-aware inventory commitment at the transaction level when several customers are checking out at the same time.",
+    "has_drawing": false
+  },
+  {
+    "idx": 225,
+    "style": "Normal",
+    "text": "\tResearch Gap (GAP-02): The reviewed studies leave a gap in managing online orders with inventory that is differentiated by batch and expiration date under concurrent checkout.",
+    "has_drawing": false
+  },
+  {
+    "idx": 226,
+    "style": "Normal",
+    "text": "\tIn this study, FEFO is used to prioritize batches with earlier expiration dates, while inventory reservation is used to hold the required quantity during checkout. The mechanism is evaluated under concurrent order processing to assess inventory consistency and the risk of overselling.",
+    "has_drawing": false
+  },
+  {
+    "idx": 227,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 228,
+    "style": "Heading 3",
+    "text": "Fresh-Product Fulfillment and Warehouse Selection",
+    "has_drawing": false
+  },
+  {
+    "idx": 229,
+    "style": "Normal",
+    "text": "\tFresh agricultural products may be stored in different warehouses. When a customer buys several products, these products may not be available at the same location. The order can then be split into several shipments.",
+    "has_drawing": false
+  },
+  {
+    "idx": 230,
+    "style": "Normal",
+    "text": "\tZhang et al. (2021)[6] studied split-order fulfillment in multi-warehouse online retailing. Their work focused on package consolidation and considered decisions such as the choice of consolidation warehouse and transshipment. The model aims to reduce the number of packages, shipping cost, and delivery time.",
+    "has_drawing": false
+  },
+  {
+    "idx": 231,
+    "style": "Normal",
+    "text": "\tZhan and Jiang (2022)[7] studied order allocation and last-mile distribution for fresh agriproduct retail. Their model considers order splitting, package consolidation, picking, vehicle scheduling, and multi-temperature delivery. They used an optimization approach to determine order allocation and delivery routes.",
+    "has_drawing": false
+  },
+  {
+    "idx": 232,
+    "style": "Normal",
+    "text": "\tBoth studies treat multi-warehouse fulfillment as a larger logistics problem with several decisions. This is useful for complex distribution networks, but it is different from the simpler problem considered in this study: selecting one warehouse that can fulfill the whole order and is close enough to the customer.",
+    "has_drawing": false
+  },
+  {
+    "idx": 233,
+    "style": "Normal",
+    "text": "\tResearch Gap (GAP-03): The reviewed studies do not specifically focus on a simple warehouse-selection rule based on two conditions: sufficient stock for the complete order and acceptable delivery distance.",
+    "has_drawing": false
+  },
+  {
+    "idx": 234,
+    "style": "Normal",
+    "text": "\tIn this study, a rule-based warehouse-selection mechanism is used. A warehouse is selected when it has enough stock for the complete order and is within a predefined 15 km delivery range. When such a warehouse is available, the order is assigned to that warehouse instead of being split.",
+    "has_drawing": false
+  },
+  {
+    "idx": 235,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 236,
+    "style": "Heading 3",
+    "text": "Conversational AI and E-Commerce Order Completion",
+    "has_drawing": false
+  },
+  {
+    "idx": 237,
+    "style": "Normal",
+    "text": "\tConversational AI is being used in e-commerce for product recommendation and customer interaction. For an agricultural e-commerce system, it can also be used to provide product information and assist customers during the ordering process.",
+    "has_drawing": false
+  },
+  {
+    "idx": 238,
+    "style": "Normal",
+    "text": "\tRhee and Choi (2020)[8] studied product recommendation through a conversational voice agent in a voice-shopping context. They examined the effects of personalized recommendations and the social role of the agent on customer attitudes toward recommended products. Their experiment showed that both factors affected product attitudes.",
+    "has_drawing": false
+  },
+  {
+    "idx": 239,
+    "style": "Normal",
+    "text": "\tLiu et al. (2023)[9] combined a conversational recommender system with a large language model for e-commerce pre-sales dialogue. Their work focused on understanding customer needs and providing product recommendations through conversation. The authors also noted that LLMs may lack the domain-specific knowledge needed for accurate recommendations.",
+    "has_drawing": false
+  },
+  {
+    "idx": 240,
+    "style": "Normal",
+    "text": "\tJiang et al. (2024)[10] studied hallucinations in LLM-enriched product listings. They examined cases where generated information was not faithful to the original product data, showing a reliability issue when LLMs are used to generate product information.",
+    "has_drawing": false
+  },
+  {
+    "idx": 241,
+    "style": "Normal",
+    "text": "\tThese studies cover product recommendation, pre-sales dialogue, and the reliability of LLM-generated product information. The reviewed work does not specifically focus on a conversational interface that can access current product and inventory data and also complete an order within the same conversation.",
+    "has_drawing": false
+  },
+  {
+    "idx": 242,
+    "style": "Normal",
+    "text": "\tResearch Gap (GAP-04): The reviewed studies do not specifically address the use of conversational AI for both current e-commerce information and actual order processing in the same conversation.",
+    "has_drawing": false
+  },
+  {
+    "idx": 243,
+    "style": "Normal",
+    "text": "\tIn this study, the AI assistant uses Function Calling (Tool Calling) to retrieve product, price, and inventory information from backend services and to call order-related functions. An interactive order card is also used to support order completion within the chat interface.",
+    "has_drawing": false
+  },
+  {
+    "idx": 244,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 245,
+    "style": "Heading 3",
+    "text": "Research Questions",
+    "has_drawing": false
+  },
+  {
+    "idx": 246,
+    "style": "Normal",
+    "text": "Based on the four research gaps (GAP-01 to GAP-04), this study develops four research questions:",
+    "has_drawing": false
+  },
+  {
+    "idx": 247,
+    "style": "isselectedend",
+    "text": "Research Question (RQ1): How can a relational database using the EAV model be designed to support dynamic product attributes, multiple selling units, and multiple price levels for fresh agricultural products?",
+    "has_drawing": false
+  },
+  {
+    "idx": 248,
+    "style": "Normal",
+    "text": "Research Question (RQ2): How can FEFO and an inventory reservation mechanism be implemented to manage fresh agricultural products according to expiry dates and reduce the risk of overselling when multiple orders are processed concurrently?",
+    "has_drawing": false
+  },
+  {
+    "idx": 249,
+    "style": "Normal",
+    "text": "Research Question (RQ3): How can warehouse selection and delivery-distance constraints be integrated into a multi-warehouse order process to consider product availability and customer distance while reducing unnecessary order splitting for fresh agricultural products?",
+    "has_drawing": false
+  },
+  {
+    "idx": 250,
+    "style": "Normal",
+    "text": "Research Question (RQ4): How can Generative AI be integrated with product, inventory, and ordering functions to support customers during shopping and enable order completion within the conversation?",
+    "has_drawing": false
+  },
+  {
+    "idx": 251,
+    "style": "Caption",
+    "text": "Table 2.1: Matrix of Research Gaps and Research Questions",
+    "has_drawing": false
+  },
+  {
+    "idx": 252,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 253,
+    "style": "Heading 2",
+    "text": "Theoretical and Technical Foundation",
+    "has_drawing": false
+  },
+  {
+    "idx": 254,
+    "style": "Heading 3",
+    "text": "Clean Architecture and SOLID Principles",
+    "has_drawing": false
+  },
+  {
+    "idx": 255,
+    "style": "Normal",
+    "text": "\tClean Architecture, introduced by Martin (2017)[11], is applied in the project to isolate the core business logic of the system. This concept adheres to the dependency rule, according to which the dependence between the system’s layers should be directed from the outside inwards. Martin (2017)[11] also offers a list of practices, referred to as SOLID principles, which highlight the basic rules of object-oriented programming.",
+    "has_drawing": false
+  },
+  {
+    "idx": 256,
+    "style": "Normal",
+    "text": "\tSpecifically, the dependency inversion principle (DIP) is used in the application to invert the dependencies between high-level and low-level modules. According to DIP, a high-level module should not depend on low-level modules; instead, both should depend on abstraction (Martin, 2000)[12]. The application uses DIP to separate business logic from the implementation details of external systems, such as the database, payment system, API, and AI services. Thus, the app’s logic layer depends on the interfaces for these systems, not their particular realizations.",
+    "has_drawing": false
+  },
+  {
+    "idx": 257,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 258,
+    "style": "Heading 3",
+    "text": "Dynamic Product Data Management and EAV Model",
+    "has_drawing": false
+  },
+  {
+    "idx": 259,
+    "style": "pdq2pg_selectionanchorcontainer",
+    "text": "\tAgricultural products can have different attributes depending on the product type, such as origin, quality, cultivation method, and certification. Some attributes may also change as product requirements evolve. A product database therefore needs to handle attributes that are not the same for every product.",
+    "has_drawing": false
+  },
+  {
+    "idx": 260,
+    "style": "pdq2pg_selectionanchorcontainer",
+    "text": "\tThe Entity-Attribute-Value (EAV) model is one way to represent this type of data. Dinu and Nadkarni (2007)[13] discussed EAV as an alternative to conventional relational modeling when entities have a large and variable set of attributes. Their study also pointed out implementation issues and limitations, so EAV is more suitable for selected parts of a system rather than as a replacement for the whole relational schema.",
+    "has_drawing": false
+  },
+  {
+    "idx": 261,
+    "style": "pdq2pg_selectionanchorcontainer",
+    "text": "\tIn Solaris, EAV is used for product attributes that vary between product categories. Core product fields remain in regular relational columns, while variable attributes are stored using the EAV structure. This allows new product attributes to be added without modifying the main product table.",
+    "has_drawing": false
+  },
+  {
+    "idx": 262,
+    "style": "pdq2pg_selectionanchorcontainer",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 263,
+    "style": "Heading 3",
+    "text": "FEFO Principle and Inventory Management for Fresh Agricultural Products",
+    "has_drawing": false
+  },
+  {
+    "idx": 264,
+    "style": "Normal",
+    "text": "\tFresh agricultural products have limited shelf life, and different batches of the same product may have different expiration dates. Inventory management therefore needs to consider the expiry date of each batch, not only the total stock quantity.",
+    "has_drawing": false
+  },
+  {
+    "idx": 265,
+    "style": "Normal",
+    "text": "\tFirst-Expired, First-Out (FEFO) is an inventory rotation policy in which the batch with the earliest expiration date is used first. Hertog et al. (2014)[4] studied shelf-life modelling for FEFO warehouse management of perishable products. Their work used remaining shelf life as a factor in warehouse and cold-chain management decisions.",
+    "has_drawing": false
+  },
+  {
+    "idx": 266,
+    "style": "Normal",
+    "text": "\tTromp et al. (2012)[14] studied dynamic expiry dates in fresh-food retail. Their work examined how changes in expiry dates can affect product loss, discount decisions, and out-of-stock situations. This supports the importance of expiry information in managing fresh-food inventory.",
+    "has_drawing": false
+  },
+  {
+    "idx": 267,
+    "style": "Normal",
+    "text": "\tIn Solaris, FEFO is applied at the inventory-batch level. When stock is needed for an order, batches are considered by expiration date and the earlier-expiring batches are selected first.",
+    "has_drawing": false
+  },
+  {
+    "idx": 268,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 269,
+    "style": "Heading 3",
+    "text": "Geographic Distance and Cold-Chain Considerations",
+    "has_drawing": false
+  },
+  {
+    "idx": 270,
+    "style": "pdq2pg_selectionanchorcontainer",
+    "text": "\tFresh agricultural products are sensitive to time and temperature during storage and transportation. Mercier et al. (2017)[15] reviewed time–temperature management in the food cold chain and discussed its role in maintaining product quality and reducing food waste.",
+    "has_drawing": false
+  },
+  {
+    "idx": 271,
+    "style": "pdq2pg_selectionanchorcontainer",
+    "text": "\tWhen the latitude and longitude of two locations are known, the Haversine formula can be used to estimate the great-circle distance between them. It is commonly used for geographic distance calculations based on spherical coordinates.",
+    "has_drawing": false
+  },
+  {
+    "idx": 272,
+    "style": "pdq2pg_selectionanchorcontainer",
+    "text": "\tIn a multi-warehouse e-commerce system, this distance can be used as a constraint when selecting a warehouse for an order. However, Haversine gives geographic distance rather than actual road distance. In Solaris, it is used to check whether a warehouse is within the predefined delivery range before the order is assigned.",
+    "has_drawing": false
+  },
+  {
+    "idx": 273,
+    "style": "pdq2pg_selectionanchorcontainer",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 274,
+    "style": "Heading 3",
+    "text": "Multi-UoM Pricing and Order Calculation",
+    "has_drawing": false
+  },
+  {
+    "idx": 275,
+    "style": "pdq2pg_selectionanchorcontainer",
+    "text": "\tE-commerce products can be sold using different units of measurement, such as weight, volume, and count. This is common for agricultural products, where the same product may be offered in different package sizes or selling units.",
+    "has_drawing": false
+  },
+  {
+    "idx": 276,
+    "style": "pdq2pg_selectionanchorcontainer",
+    "text": "\tArici et al. (2021)[3] studied the Price Per Unit (PPU) problem in e-commerce. Their work showed that product quantity and unit information are important for calculating and comparing prices. The study focused on identifying quantities and their corresponding units from product listings.",
+    "has_drawing": false
+  },
+  {
+    "idx": 277,
+    "style": "pdq2pg_selectionanchorcontainer",
+    "text": "\tFor a system that supports multiple selling units, the units need to be represented explicitly so that prices and quantities can be calculated consistently. A conversion factor can be used to relate each selling unit to a common inventory unit.",
+    "has_drawing": false
+  },
+  {
+    "idx": 278,
+    "style": "pdq2pg_selectionanchorcontainer",
+    "text": "\tIn Solaris, each selling unit is stored with its conversion factor and price. When an order is placed, the selected quantity is converted to the common inventory unit before stock is deducted and the order total is calculated.",
+    "has_drawing": false
+  },
+  {
+    "idx": 279,
+    "style": "pdq2pg_selectionanchorcontainer",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 280,
+    "style": "Heading 3",
+    "text": "Concurrency Control and Transaction Integrity",
+    "has_drawing": false
+  },
+  {
+    "idx": 281,
+    "style": "isselectedend",
+    "text": "\tProducts in e-commerce can be sold in various units of measurement, for example, kilograms, boxes, or pieces. This is particularly relevant in relation to agricultural products, as they involve the use of multiple package sizes.",
+    "has_drawing": false
+  },
+  {
+    "idx": 282,
+    "style": "isselectedend",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 283,
+    "style": "isselectedend",
+    "text": "\tIn this regard, Arici et al. (2021)[3] address the Price Per Unit (PPU) problem in e-commerce through a study aiming at finding a solution to extract quantity and unit of measurement from product listings, which are required to calculate the PPU. Thus, the research highlights the significance of specifying quantity and unit of measurement when providing product prices.",
+    "has_drawing": false
+  },
+  {
+    "idx": 284,
+    "style": "isselectedend",
+    "text": "\tIn a multi-unit system, each unit of sale can be related to a common inventory unit by defining a conversion factor. It allows for calculating the quantity of inventory units sold for a particular order in different selling units.",
+    "has_drawing": false
+  },
+  {
+    "idx": 285,
+    "style": "isselectedend",
+    "text": "\tIn Solaris, there is a set of selling units for each item, each with a specified conversion factor and price. During the order processing, the selected quantity is converted to the main inventory unit to ensure that the ordered quantity and the converted quantity are consistent. In turn, the converted quantity is used for order processing and inventory management.",
+    "has_drawing": false
+  },
+  {
+    "idx": 286,
+    "style": "isselectedend",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 287,
+    "style": "Heading 3",
+    "text": "Security: Message Authentication and Password Storage",
+    "has_drawing": false
+  },
+  {
+    "idx": 288,
+    "style": "Normal",
+    "text": "\tUser authentication is an essential aspect of an e-commerce system; thus, passwords should not be stored in plaintext. Instead, a password hashing scheme should be used to store a value that cannot be directly converted into the original password. Current security practices also recommend using dedicated password-hashing algorithms instead of a fast general-purpose hash function. (cheatsheetseries.owasp.org)",
+    "has_drawing": false
+  },
+  {
+    "idx": 289,
+    "style": "Normal",
+    "text": "\tProvos and Mazières (1999)[16] proposed bcrypt, which is an adaptive password hashing scheme and provides the cost parameter which can be gradually increased in order to match the rise of computation power and make all password-guessing attempts more expensive. The algorithm also incorporates salt to ensure that the same password with different users will not create the same hash value. (usenix.org)",
+    "has_drawing": false
+  },
+  {
+    "idx": 290,
+    "style": "Normal",
+    "text": "\tSolaris uses bcrypt to store user passwords instead of the original value. When a user enters a password, it will be compared to the stored hash value for authentication purposes.",
+    "has_drawing": false
+  },
+  {
+    "idx": 291,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 292,
+    "style": "Heading 3",
+    "text": "Conversational AI and Tool Calling in Retail",
+    "has_drawing": false
+  },
+  {
+    "idx": 293,
+    "style": "isselectedend",
+    "text": "\tConversational AI can be applied in various ways within the e-commerce industry. It can be used for search, recommendation, and customer assistance. Rhee and Choi (2020)[8] conducted a study on a conversational voice agent for product recommendations. They analyzed the impact of personalization and social role of the agent on customer’s attitudes toward recommended products.",
+    "has_drawing": false
+  },
+  {
+    "idx": 294,
+    "style": "isselectedend",
+    "text": "\tLiu et al. (2023)[9] created a conversational recommender system based on a large language model (LLM) for e-commerce pre-sales dialogues. They tried to elicit customer requirements and recommendations during conversations and highlighted the limitations of LLMs in terms of domain-specific product recommendation.",
+    "has_drawing": false
+  },
+  {
+    "idx": 295,
+    "style": "isselectedend",
+    "text": "\tLLMs were also found to generate hallucinated information that may differ from the source data. Jiang et al. (2024)[10] investigated the problem of hallucination in product listings enriched with LLMs and tested methods for detecting such data.",
+    "has_drawing": false
+  },
+  {
+    "idx": 296,
+    "style": "isselectedend",
+    "text": "\tAnother approach to connecting an LLM with an external database is tool use. Schick et al. (2023)[17] introduced Toolformer and demonstrated how language models could leverage external tools by learning to call APIs and using the obtained responses as inputs for following utterances",
+    "has_drawing": false
+  },
+  {
+    "idx": 297,
+    "style": "isselectedend",
+    "text": "\tIn Solaris, the Function Calling (Tool Calling) is utilized to connect the AI assistant with functions in the backend. It allows the assistant to request product, pricing, inventory, and order-related data instead of being limited to text-based interactions. The retrieved information is used within the conversation to fulfill the order.",
+    "has_drawing": false
+  },
+  {
+    "idx": 298,
+    "style": "isselectedend",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 299,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 300,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 301,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 302,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 303,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 304,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 305,
+    "style": "Heading 1",
+    "text": "SYSTEM DESIGN",
+    "has_drawing": false
+  },
+  {
+    "idx": 306,
+    "style": "Heading 2",
+    "text": "Overall Architecture",
+    "has_drawing": false
+  },
+  {
+    "idx": 307,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": true
+  },
+  {
+    "idx": 308,
+    "style": "Normal",
+    "text": "\tThe Solaris platform is implemented as a multi-tier e-commerce system deployed on cloud infrastructure (Figure 3.1). The architecture separates frontend applications, backend business logic, security components, and external services into four main tiers:",
+    "has_drawing": false
+  },
+  {
+    "idx": 309,
+    "style": "List Paragraph",
+    "text": "Client Presentation Tier: Includes two frontend applications:",
+    "has_drawing": false
+  },
+  {
+    "idx": 310,
+    "style": "Normal",
+    "text": "Web Shop D2C:   Developed with Next.js 14 using Server-Side Rendering (SSR) for consumer shopping functions. ",
+    "has_drawing": false
+  },
+  {
+    "idx": 311,
+    "style": "Normal",
+    "text": "ERP Admin Portal: Developed with React 18 SPA for warehouse staff, dispatchers, and catalog management.",
+    "has_drawing": false
+  },
+  {
+    "idx": 312,
+    "style": "Normal",
+    "text": "Gateway & Security Tier: Nginx operates as the entry point for HTTPS requests, managing SSL/TLS termination, CORS configuration, and request forwarding to backend services.",
+    "has_drawing": false
+  },
+  {
+    "idx": 313,
+    "style": "Normal",
+    "text": "Backend Application Tier (ASP.NET Core .NET 8): Implements business operations based on Clean Architecture principles. The main modules include:",
+    "has_drawing": false
+  },
+  {
+    "idx": 314,
+    "style": "Normal",
+    "text": "Catalog & Dynamic EAV Module (RQ1): Handles agricultural product attributes and UoM conversion without schema modification.",
+    "has_drawing": false
+  },
+  {
+    "idx": 315,
+    "style": "Normal",
+    "text": "FEFO Batch & Vault Reservation Module (RQ2): Manages expiry-based inventory selection, stock reservation, and transaction logging.",
+    "has_drawing": false
+  },
+  {
+    "idx": 316,
+    "style": "Normal",
+    "text": "Single-Hub Logistics Router (RQ3): Calculates delivery distance using the Haversine formula and applies cold-chain delivery constraints.",
+    "has_drawing": false
+  },
+  {
+    "idx": 317,
+    "style": "List Paragraph",
+    "text": "Conversational AI Sales Assistant (RQ4): Integrates Google Gemini through Tool Calling to retrieve data from SQL Server during conversations.",
+    "has_drawing": false
+  },
+  {
+    "idx": 318,
+    "style": "Normal",
+    "text": "Persistence & External Cloud Tier:",
+    "has_drawing": false
+  },
+  {
+    "idx": 319,
+    "style": "List Paragraph",
+    "text": "Microsoft SQL Server stores transactional data, EAV attributes, and inventory transaction records. External integrations include VNPay Sandbox for payment verification and Google Gemini REST API for AI-based customer assistance.",
+    "has_drawing": false
+  },
+  {
+    "idx": 320,
+    "style": "Heading 2",
+    "text": "Dynamic EAV Database Modeling and Multi-Tier UoM Pricing ",
+    "has_drawing": false
+  },
+  {
+    "idx": 321,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": true
+  },
+  {
+    "idx": 322,
+    "style": "Caption",
+    "text": "Figure 3.1: Entity-Relationship Diagram (ERD) of the EAV and Multi-Tier UoM Data Model",
+    "has_drawing": false
+  },
+  {
+    "idx": 323,
+    "style": "Heading 3",
+    "text": "Dynamic Agricultural Attribute Management Using the EAV Model",
+    "has_drawing": false
+  },
+  {
+    "idx": 324,
+    "style": "pdq2pg_selectionanchorcontainer",
+    "text": "\tIn traditional relational databases, adding new product attributes usually requires modifying the table schema through ALTER TABLE statements. These changes may acquire Schema Modification locks (Sch-M)[21], which can block database operations and affect system availability. To improve schema flexibility, Solaris adopts a normalized Entity-Attribute-Value (EAV) model with three main components:",
+    "has_drawing": false
+  },
+  {
+    "idx": 325,
+    "style": "pdq2pg_selectionanchorcontainer",
+    "text": "Entity: Represented by the ProductVariants entity, identifying a specific commercial variant of an agricultural product (e.g., Grade-1 Hoa Loc Mango).",
+    "has_drawing": false
+  },
+  {
+    "idx": 326,
+    "style": "pdq2pg_selectionanchorcontainer",
+    "text": "Attribute: Managed within the AttributeDefinitions table, defining catalog-wide technical and biological specifications:",
+    "has_drawing": false
+  },
+  {
+    "idx": 327,
+    "style": "Caption",
+    "text": "Table 3.1: Attribute Definitions Specification",
+    "has_drawing": false
+  },
+  {
+    "idx": 328,
+    "style": "pdq2pg_selectionanchorcontainer",
+    "text": "Value: Stored in the ProductVariantAttributeValues table, recording the physical or certified values measured for each variant:",
+    "has_drawing": false
+  },
+  {
+    "idx": 329,
+    "style": "Caption",
+    "text": "Table 3.2: Concrete EAV Attribute Value Mapping",
+    "has_drawing": false
+  },
+  {
+    "idx": 330,
+    "style": "pdq2pg_selectionanchorcontainer",
+    "text": "\tThis architecture enables catalog administrators to introduce new biological specifications via the ERP Admin dashboard instantly, requiring zero structural changes to the production database schema.",
+    "has_drawing": false
+  },
+  {
+    "idx": 331,
+    "style": "pdq2pg_selectionanchorcontainer",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 332,
+    "style": "Heading 3",
+    "text": "Multi-tier Unit of Measure (UoM) and Flexible Packaging Pricing",
+    "has_drawing": false
+  },
+  {
+    "idx": 333,
+    "style": "Normal",
+    "text": "\tAgricultural supply chains are frequently characterized by a plethora of measurement units between producers and customers. For instance, cooperatives may be shipping products in bulk (crates, hampers) while customers buy by kilograms or in packages (boxes, pouches). ",
+    "has_drawing": false
+  },
+  {
+    "idx": 334,
+    "style": "Normal",
+    "text": "\tOne approach common in e-commerce is to create different SKUs for different packaging variants. However, this can fragment inventory management, for instance, a warehouse may still have enough inventory in bulk, but a particular package variant is shown as unavailable on an e-commerce website. ",
+    "has_drawing": false
+  },
+  {
+    "idx": 335,
+    "style": "Normal",
+    "text": "\tSolaris solves this problem by having one ProductVariant and tracking inventory with a standard BaseUoM (e.g., Kilogram), while using two relational tables:UoM Conversion Rules (UoMConversions): Defines mathematical conversion factors between commercial packaging units (FromUoM) and the internal base storage unit (ToUoM):",
+    "has_drawing": false
+  },
+  {
+    "idx": 336,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 337,
+    "style": "Normal",
+    "text": "(For example: a 3kg Box has a )",
+    "has_drawing": false
+  },
+  {
+    "idx": 338,
+    "style": "Normal",
+    "text": "Packaging Pricing Matrix (ProductVariantPrices): Configures independent commercial price points for each selling unit associated with the variant.",
+    "has_drawing": false
+  },
+  {
+    "idx": 339,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 340,
+    "style": "Heading 2",
+    "text": "FEFO Dispatching and Inventory Concurrency Control",
+    "has_drawing": false
+  },
+  {
+    "idx": 341,
+    "style": "Heading 3",
+    "text": "Perishable Expiry Problem and 4-State Inventory Vault Model",
+    "has_drawing": false
+  },
+  {
+    "idx": 342,
+    "style": "pdq2pg_selectionanchorcontainer",
+    "text": "\tThe traditional First-In, First-Out (FIFO) method dispatches goods based strictly on chronological receipt dates. However, fresh agricultural produce harvested across different farms often arrives with varying remaining shelf lives due to microclimatic differences and harvesting ripeness. Under FIFO, earlier-received batches with longer shelf lives are dispatched first, leaving newly received but rapidly expiring produce to rot on warehouse shelves, causing substantial shrinkage losses (Ferguson & Ketzenberg, 2006). To eliminate premature spoilage, Solaris enforces the First-Expired, First-Out (FEFO) principle, giving absolute priority to batches with the shortest remaining shelf life.",
+    "has_drawing": false
+  },
+  {
+    "idx": 343,
+    "style": "pdq2pg_selectionanchorcontainer",
+    "text": "\tSingle-Batch Selection Rule: Let product variant  at the selected warehouse maintain a finite set of available batches:  Each batch  encapsulates an expiration date  and an available quantity . The priority dispatch batch  is selected using a minimization objective function:\n",
+    "has_drawing": false
+  },
+  {
+    "idx": 344,
+    "style": "Normal",
+    "text": "\tGreedy Multi-Batch Allocation Algorithm: When customer order demand  exceeds the available stock of a single batch (), Solaris initiates an automated greedy allocation algorithm that traverses through  successive nearest-expiry batches ():",
+    "has_drawing": false
+  },
+  {
+    "idx": 345,
+    "style": "Normal",
+    "text": " Where:",
+    "has_drawing": false
+  },
+  {
+    "idx": 346,
+    "style": "Normal",
+    "text": " represents the remaining unfulfilled order demand (initialized to  and decremented incrementally).",
+    "has_drawing": false
+  },
+  {
+    "idx": 347,
+    "style": "Normal",
+    "text": " denotes the real-time available stock of batch .",
+    "has_drawing": false
+  },
+  {
+    "idx": 348,
+    "style": "Normal",
+    "text": " is the exact quantity allocated from batch .",
+    "has_drawing": false
+  },
+  {
+    "idx": 349,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": true
+  },
+  {
+    "idx": 350,
+    "style": "Caption",
+    "text": "Figure 3.2: Multi-Batch FEFO Allocation Activity Diagram.",
+    "has_drawing": false
+  },
+  {
+    "idx": 351,
+    "style": "Heading 3",
+    "text": "Four-State Inventory Vault Model and Immutable Audit Ledger",
+    "has_drawing": false
+  },
+  {
+    "idx": 352,
+    "style": "Normal",
+    "text": "\tIn high-volume e-commerce systems, physical warehouse stock and online sellable stock should be managed separately. Reducing physical inventory immediately after a customer places an order may cause inconsistencies between warehouse records and actual fulfillment status. On the other hand, without stock reservation, multiple customers may purchase the same available units, resulting in overselling.",
+    "has_drawing": false
+  },
+  {
+    "idx": 353,
+    "style": "Normal",
+    "text": "\tSolaris addresses this problem by implementing a four-state inventory model that separates physical stock from commercial availability and maintains transaction history.",
+    "has_drawing": false
+  },
+  {
+    "idx": 354,
+    "style": "List Paragraph",
+    "text": "Inventory Balance Invariant Equation:",
+    "has_drawing": false
+  },
+  {
+    "idx": 355,
+    "style": "Normal",
+    "text": "\n Where:",
+    "has_drawing": false
+  },
+  {
+    "idx": 356,
+    "style": "Normal",
+    "text": " Total physical produce currently stored on warehouse shelving.",
+    "has_drawing": false
+  },
+  {
+    "idx": 357,
+    "style": "Normal",
+    "text": ": Commercial stock available for online purchasing.",
+    "has_drawing": false
+  },
+  {
+    "idx": 358,
+    "style": "Normal",
+    "text": ": Stock temporarily locked for confirmed, unfulfilled customer orders.",
+    "has_drawing": false
+  },
+  {
+    "idx": 359,
+    "style": "Normal",
+    "text": ": Quarantine stock isolated due to quality defects, spoilage, or expiration.",
+    "has_drawing": false
+  },
+  {
+    "idx": 360,
+    "style": "List Paragraph",
+    "text": "Inventory State Transition Matrix:",
+    "has_drawing": false
+  },
+  {
+    "idx": 361,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 362,
+    "style": "Caption",
+    "text": "Table 3.3: Four-Phase State Transitions Across the Order Lifecycle",
+    "has_drawing": false
+  },
+  {
+    "idx": 363,
+    "style": "Normal",
+    "text": "\tImmutable Append-Only Audit Ledger: Inventory state changes are recorded through transaction logs instead of untracked direct updates. Each inventory movement creates a new record in InventoryTransactions, including TransactionCode, TransactionType, quantity changes, and UTC timestamp. This approach improves traceability and supports inventory auditing.",
+    "has_drawing": false
+  },
+  {
+    "idx": 364,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 365,
+    "style": "Heading 3",
+    "text": "Concurrency Control and Row-Level Atomic Reservation",
+    "has_drawing": false
+  },
+  {
+    "idx": 366,
+    "style": "Normal",
+    "text": "\tDuring flash sales or when near-expiry inventory becomes limited, multiple customers may attempt checkout simultaneously. Without proper concurrency control, different transactions may read the same available quantity and update inventory at the same time, resulting in negative stock values (overselling anomaly).",
+    "has_drawing": false
+  },
+  {
+    "idx": 367,
+    "style": "Normal",
+    "text": "\tTechnical Solution: Row-Level Atomic Conditional Update: Solaris handles concurrency control at the database level by using SQL Server row-level exclusive locks (ROWLOCK) within an explicit ACID transaction.",
+    "has_drawing": false
+  },
+  {
+    "idx": 368,
+    "style": "Normal",
+    "text": "\tArchitectural Impact: Condition evaluation (AND QuantityAvailable >= allocQty) executes atomically with the update operation. The winning transaction updates the row (rowsAffected = 1) and writes to the audit ledger. Any subsequent concurrent transaction targeting the same depleted stock evaluates the predicate as false, resulting in rowsAffected = 0, which immediately triggers an automatic transaction rollback (ROLLBACK) and returns an OutOfStockException (HTTP 400).",
+    "has_drawing": false
+  },
+  {
+    "idx": 369,
+    "style": "Normal",
+    "text": "\tMathematical Safety Invariant:  This mechanism mathematically eliminates negative inventory balances, maintaining a verified 0.00% overselling rate without requiring coarse-grained table locks that degrade throughput.",
+    "has_drawing": false
+  },
+  {
+    "idx": 370,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": true
+  },
+  {
+    "idx": 371,
+    "style": "Caption",
+    "text": "Figure 3.3: Activity Diagram of the Atomic Conditional Inventory Reservation Algorithm.",
+    "has_drawing": false
+  },
+  {
+    "idx": 372,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 373,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": true
+  },
+  {
+    "idx": 374,
+    "style": "Caption",
+    "text": "Figure 3.4: Concurrency Control and Atomic Reservation Sequence Diagram.",
+    "has_drawing": false
+  },
+  {
+    "idx": 375,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 376,
+    "style": "Heading 2",
+    "text": "Single-Hub Routing and Cold-Chain Geofencing",
+    "has_drawing": false
+  },
+  {
+    "idx": 377,
+    "style": "Heading 3",
+    "text": "Haversine Distance Calculation and Dual-Mode Location Resolution",
+    "has_drawing": false
+  },
+  {
+    "idx": 378,
+    "style": "Normal",
+    "text": "\tDuring the online checkout process, the backend routing service must evaluate customer delivery distances against dozens of retail fulfillment hubs across the multi-warehouse network:",
+    "has_drawing": false
+  },
+  {
+    "idx": 379,
+    "style": "List Paragraph",
+    "text": "Limitations of Third-Party Web APIs (e.g., Google Distance Matrix API): Invoking external HTTP-based routing APIs for each candidate warehouse introduces significant network latency ( per checkout evaluation), creates hard dependencies on external network stability, and incurs cumulative operational costs on every customer cart interaction.",
+    "has_drawing": false
+  },
+  {
+    "idx": 380,
+    "style": "List Paragraph",
+    "text": "The Haversine Approach (Sinnott, 1984)[18]: Computes the great-circle geodesic distance directly on the backend CPU with sub-millisecond execution latency (). This internal calculation is entirely cost-free, resilient to external outages, and provides sufficient geometric precision for intra-urban logistics within a  radius.",
+    "has_drawing": false
+  },
+  {
+    "idx": 381,
+    "style": "Normal",
+    "text": "\tModeling the Earth as an approximating sphere with a volumetric mean radius of , the geodesic distance between warehouse coordinates  and customer coordinates  is computed through three trigonometric steps:",
+    "has_drawing": false
+  },
+  {
+    "idx": 382,
+    "style": "Normal",
+    "text": "Step 1: Coordinate Conversion from Degrees to Radians: \n The latitudinal and longitudinal coordinate differentials are defined as: \n",
+    "has_drawing": false
+  },
+  {
+    "idx": 383,
+    "style": "Normal",
+    "text": "Step 2: Half-Chord Length Squared Computation (): \n (The parameter  represents the square of half the chord length between the two surface points through the spherical chord).",
+    "has_drawing": false
+  },
+  {
+    "idx": 384,
+    "style": "Normal",
+    "text": "Step 3: Central Angular Distance () and Surface Geodesic Distance (): \n \n",
+    "has_drawing": false
+  },
+  {
+    "idx": 385,
+    "style": "Normal",
+    "text": "Where:",
+    "has_drawing": false
+  },
+  {
+    "idx": 386,
+    "style": "Normal",
+    "text": " denotes the angular distance subtended at the Earth's center in radians.",
+    "has_drawing": false
+  },
+  {
+    "idx": 387,
+    "style": "Normal",
+    "text": " is the standard mean Earth radius (Sinnott, 1984).",
+    "has_drawing": false
+  },
+  {
+    "idx": 388,
+    "style": "Normal",
+    "text": " represents the resulting great-circle surface distance in kilometers ().",
+    "has_drawing": false
+  },
+  {
+    "idx": 389,
+    "style": "Normal",
+    "text": "\tAccurate distance calculation depends on valid geographic coordinates for the delivery location. Solaris uses a two-tier location resolution approach:",
+    "has_drawing": false
+  },
+  {
+    "idx": 390,
+    "style": "Normal",
+    "text": "Primary Mode — Direct GPS Acquisition: When users allow location access, the client retrieves coordinates through the HTML5 Geolocation API (navigator.geolocation) to obtain precise location data.",
+    "has_drawing": false
+  },
+  {
+    "idx": 391,
+    "style": "Normal",
+    "text": "Secondary Mode — Administrative Centroid Fallback: When GPS data is unavailable, the system uses the selected administrative address hierarchy (Ward, District, City) and retrieves the corresponding centroid coordinates from the database. This fallback mechanism allows checkout requests to continue processing without requiring direct GPS access.",
+    "has_drawing": false
+  },
+  {
+    "idx": 392,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": true
+  },
+  {
+    "idx": 393,
+    "style": "Caption",
+    "text": "Figure 3.5: Haversine Distance Calculation and Coordinate Resolution Pipeline.",
+    "has_drawing": false
+  },
+  {
+    "idx": 394,
+    "style": "Heading 3",
+    "text": "Single-Hub Warehouse Selection Algorithm and Cold-Chain Geofencing",
+    "has_drawing": false
+  },
+  {
+    "idx": 395,
+    "style": "Normal",
+    "text": "\tIn fresh produce e-commerce, dispatching a single customer order from multiple dispersed warehouses (Split Delivery) leads to duplicated shipping costs, packaging waste, customer dissatisfaction, and extended transit exposure for perishable items. To address this problem, Solaris enforces a strict Single-Hub Fulfillment Strategy, ensuring that an entire order is fulfilled exclusively from a single warehouse.",
+    "has_drawing": false
+  },
+  {
+    "idx": 396,
+    "style": "Normal",
+    "text": "\tThe optimal fulfillment hub  is determined through a constrained distance minimization objective function: ",
+    "has_drawing": false
+  },
+  {
+    "idx": 397,
+    "style": "Normal",
+    "text": "\tWhere the candidate set of eligible warehouses  must simultaneously satisfy two prerequisite constraints:",
+    "has_drawing": false
+  },
+  {
+    "idx": 398,
+    "style": "Normal",
+    "text": "Complete Cart Inventory Availability (100% Stock Rule): Warehouse  must hold sufficient available stock for all distinct items and requested quantities within shopping cart :  (If a warehouse lacks sufficient stock for even one SKU, it is disqualified immediately, completely eliminating order splitting).",
+    "has_drawing": false
+  },
+  {
+    "idx": 399,
+    "style": "Normal",
+    "text": "Cold-Chain Geofencing Boundary (): If the shopping cart contains at least one temperature-sensitive produce item requiring cold-chain preservation (), the geodesic distance between warehouse  and destination  cannot exceed the designated safety threshold:  (A  urban delivery radius corresponds to an estimated motorcycle transit time under 45 minutes, ensuring that insulated packaging maintains optimal produce firmness without cold-chain disruption).",
+    "has_drawing": false
+  },
+  {
+    "idx": 400,
+    "style": "Normal",
+    "text": "\tIf no warehouse satisfies both constraints, the system terminates the checkout workflow and returns an actionable FulfillmentException, advising the customer to adjust quantities or remove out-of-boundary items.",
+    "has_drawing": false
+  },
+  {
+    "idx": 401,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": true
+  },
+  {
+    "idx": 402,
+    "style": "Caption",
+    "text": "Figure 3.6: Single-Hub Warehouse Selection & Cold-Chain Routing Activity Diagram.",
+    "has_drawing": false
+  },
+  {
+    "idx": 403,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 404,
+    "style": "Heading 2",
+    "text": "AI Conversational Assistant Design",
+    "has_drawing": false
+  },
+  {
+    "idx": 405,
+    "style": "Heading 3",
+    "text": "Tool Calling Architecture and Real-Time Data Grounding",
+    "has_drawing": false
+  },
+  {
+    "idx": 406,
+    "style": "Normal",
+    "text": "\tLarge language models (LLMs) are based on patterns learned from the training data, and consequently, an LLM can be inaccurate when the training data is not present. In the case of agricultural e-commerce, the LLM can provide incorrect information about the price of products, available stock, and delivery options. ",
+    "has_drawing": false
+  },
+  {
+    "idx": 407,
+    "style": "Normal",
+    "text": "\tTool calling (function calling): Instead of using only the knowledge stored in the model, the LLM can make function calls to external services such as a search tool, inventory lookup, and delivery cost calculator. ",
+    "has_drawing": false
+  },
+  {
+    "idx": 408,
+    "style": "Normal",
+    "text": "\tData grounding: The Solaris backend is able to run the tools that received the function calls, query the Microsoft SQL Server, and reply with the appropriate information. The information is then used by the LLM to determine the response to the user, which makes it more accurate compared to using only the knowledge stored in the model.",
+    "has_drawing": false
+  },
+  {
+    "idx": 409,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": true
+  },
+  {
+    "idx": 410,
+    "style": "Caption",
+    "text": "Figure 3.7: Conversational AI Tool Calling and Data Grounding Sequence Diagram.",
+    "has_drawing": false
+  },
+  {
+    "idx": 411,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 412,
+    "style": "Heading 3",
+    "text": "In-Chat Interactive Order Card Component Design",
+    "has_drawing": false
+  },
+  {
+    "idx": 413,
+    "style": "Normal",
+    "text": "\tTraditional e-commerce chatbots usually provide product information but require customers to complete purchasing steps through separate pages. This additional navigation increases user effort because customers need to search products again, select packaging units, and provide delivery information manually. ",
+    "has_drawing": false
+  },
+  {
+    "idx": 414,
+    "style": "Normal",
+    "text": "\tSolaris solves this problem by embedding ordering functionality into the chatbot using Interactive Order Card. The component is implemented as a React component (InteractiveOrderCard) and rendered directly in the chat interface. ",
+    "has_drawing": false
+  },
+  {
+    "idx": 415,
+    "style": "Normal",
+    "text": "\tInteractive Order Card provides product information, including images, origin certifications, and pricing in Base UoM. Customers can adjust purchase quantities inside the chat interface, while item costs and delivery fees are updated based on the selected quantity and distance calculation. ",
+    "has_drawing": false
+  },
+  {
+    "idx": 416,
+    "style": "Normal",
+    "text": "\tAfter confirmation, the request is sent to ConfirmInteractiveOrderAsync , where the backend processes inventory reservation, delivery validation, and payment URL generation.",
+    "has_drawing": false
+  },
+  {
+    "idx": 417,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": true
+  },
+  {
+    "idx": 418,
+    "style": "Caption",
+    "text": "Figure 3.8: Interactive Order Card Component Architecture and Purchase Workflow",
+    "has_drawing": false
+  },
+  {
+    "idx": 419,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 420,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 421,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 422,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 423,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 424,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 425,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 426,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 427,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 428,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 429,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 430,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 431,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 432,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 433,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 434,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 435,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 436,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 437,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 438,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 439,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 440,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 441,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 442,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 443,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 444,
+    "style": "Heading 1",
+    "text": "RESULTS AND DISCUSSION",
+    "has_drawing": false
+  },
+  {
+    "idx": 445,
+    "style": "Heading 2",
+    "text": "Experimental Setup and Measurement Methods",
+    "has_drawing": false
+  },
+  {
+    "idx": 446,
+    "style": "Heading 3",
+    "text": "Testbed Hardware and Software Configuration",
+    "has_drawing": false
+  },
+  {
+    "idx": 447,
+    "style": "Caption",
+    "text": "Table 4.1: Testbed Hardware and Software Configuration",
+    "has_drawing": false
+  },
+  {
+    "idx": 448,
+    "style": "Normal (Web)",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 449,
+    "style": "Heading 3",
+    "text": "Test Dataset Scale in SolarisDb",
+    "has_drawing": false
+  },
+  {
+    "idx": 450,
+    "style": "Normal",
+    "text": "\tTesting agricultural software requires realistic data. We populated the SolarisDb database using an automated seed script (BogusDataSeeder) and verified the row counts directly in SQL Server. ",
+    "has_drawing": false
+  },
+  {
+    "idx": 451,
+    "style": "Caption",
+    "text": "Table 4.2: Scaled Experimental Dataset in the SolarisDb Database",
+    "has_drawing": false
+  },
+  {
+    "idx": 452,
+    "style": "Normal (Web)",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 453,
+    "style": "Normal (Web)",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 454,
+    "style": "Normal (Web)",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 455,
+    "style": "Normal (Web)",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 456,
+    "style": "Normal (Web)",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 457,
+    "style": "Normal (Web)",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 458,
+    "style": "Heading 3",
+    "text": "Measurement Tools and Test Procedures",
+    "has_drawing": false
+  },
+  {
+    "idx": 459,
+    "style": "Caption",
+    "text": "Table 4.3:  Evaluation Tools and Selection Rationale",
+    "has_drawing": false
+  },
+  {
+    "idx": 460,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 461,
+    "style": "Heading 2",
+    "text": "Evaluation of Dynamic Product Modeling and Multi-UoM Pricing (RQ1)",
+    "has_drawing": false
+  },
+  {
+    "idx": 462,
+    "style": "Heading 3",
+    "text": "Experiment 1: Dynamic Attribute Extension Using the EAV Model",
+    "has_drawing": false
+  },
+  {
+    "idx": 463,
+    "style": "Normal",
+    "text": "\tThis experiment compares dynamic attribute addition using a conventional relational table and the Solaris EAV model. The test was conducted under the same transaction duration of 20 seconds.",
+    "has_drawing": false
+  },
+  {
+    "idx": 464,
+    "style": "Normal",
+    "text": "Test Procedure:",
+    "has_drawing": false
+  },
+  {
+    "idx": 465,
+    "style": "Normal",
+    "text": "Traditional approach: Add a new column to the Products table using ALTER TABLE.",
+    "has_drawing": false
+  },
+  {
+    "idx": 466,
+    "style": "Normal",
+    "text": "Solaris Approach: Add a new attribute definition using INSERT into AttributeDefinitions",
+    "has_drawing": false
+  },
+  {
+    "idx": 467,
+    "style": "Normal",
+    "text": "Results:",
+    "has_drawing": false
+  },
+  {
+    "idx": 468,
+    "style": "Caption",
+    "text": "Table 4.4: Comparison of Dynamic Attribute Extension",
+    "has_drawing": false
+  },
+  {
+    "idx": 469,
+    "style": "Normal",
+    "text": "Figure 4.1 shows the blocking observed during the ALTER TABLE operation. Figure 4.2 shows the query response when a new attribute is added through the EAV model.",
+    "has_drawing": false
+  },
+  {
+    "idx": 470,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 471,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": true
+  },
+  {
+    "idx": 472,
+    "style": "Caption",
+    "text": "Figure 4.1: Query blocking caused by table-level Sch-M lock during ALTER TABLE execution.",
+    "has_drawing": false
+  },
+  {
+    "idx": 473,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 474,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": true
+  },
+  {
+    "idx": 475,
+    "style": "Caption",
+    "text": "Figure 4.2: Instantaneous query response under the Solaris EAV dynamic attribute model.",
+    "has_drawing": false
+  },
+  {
+    "idx": 476,
+    "style": "Normal",
+    "text": "Discussion of Results:",
+    "has_drawing": false
+  },
+  {
+    "idx": 477,
+    "style": "Normal",
+    "text": "\tThe ALTER TABLE test caused the concurrent read query to wait for approximately 19 seconds, with an LCK_M_SCH_S wait observed in SQL Server. In the Solaris test, adding the attribute required only an insert into the attribute-definition table, so the Products table was not modified and no blocking was observed in the test.",
+    "has_drawing": false
+  },
+  {
+    "idx": 478,
+    "style": "Normal",
+    "text": "\tThe result indicates that, under the tested conditions, the EAV approach allows new product attributes to be added without modifying the main product table and avoids the blocking observed in the conventional approach.",
+    "has_drawing": false
+  },
+  {
+    "idx": 479,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 480,
+    "style": "Heading 3",
+    "text": "Experiment 2: Multi-UoM Stock Depletion and Tiered Pricing Management",
+    "has_drawing": false
+  },
+  {
+    "idx": 481,
+    "style": "Normal",
+    "text": "\tThis experiment evaluates whether different selling units can use the same inventory pool and whether the correct price is applied to each selling unit during order processing.",
+    "has_drawing": false
+  },
+  {
+    "idx": 482,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 483,
+    "style": "Normal",
+    "text": "Test Procedure: ",
+    "has_drawing": false
+  },
+  {
+    "idx": 484,
+    "style": "Normal",
+    "text": "\tA 100 kg inventory lot of Hoa Loc Mangoes is initialized at the Binh Thanh warehouse. Three selling units are configured:",
+    "has_drawing": false
+  },
+  {
+    "idx": 485,
+    "style": "Normal",
+    "text": "1 kg: retail unit",
+    "has_drawing": false
+  },
+  {
+    "idx": 486,
+    "style": "Normal",
+    "text": "3 kg box: package unit",
+    "has_drawing": false
+  },
+  {
+    "idx": 487,
+    "style": "Normal",
+    "text": "10 kg crate: wholesale unit",
+    "has_drawing": false
+  },
+  {
+    "idx": 488,
+    "style": "Normal",
+    "text": "\tEach selling unit has its own price and a conversion factor to the base inventory unit (kg).",
+    "has_drawing": false
+  },
+  {
+    "idx": 489,
+    "style": "Normal",
+    "text": "The following orders are processed sequentially:",
+    "has_drawing": false
+  },
+  {
+    "idx": 490,
+    "style": "Normal",
+    "text": "Order 1: 2 × 3 kg boxes",
+    "has_drawing": false
+  },
+  {
+    "idx": 491,
+    "style": "Normal",
+    "text": "Order 2: 5 × 10 kg crates",
+    "has_drawing": false
+  },
+  {
+    "idx": 492,
+    "style": "Normal",
+    "text": "Order 3: 4 kg",
+    "has_drawing": false
+  },
+  {
+    "idx": 493,
+    "style": "Normal",
+    "text": "Order 4: 4 × 10 kg crates",
+    "has_drawing": false
+  },
+  {
+    "idx": 494,
+    "style": "Normal",
+    "text": "The expected inventory deductions are 6 kg, 50 kg, 4 kg, and 40 kg, respectively.",
+    "has_drawing": false
+  },
+  {
+    "idx": 495,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 496,
+    "style": "Normal",
+    "text": "Measurement Results:",
+    "has_drawing": false
+  },
+  {
+    "idx": 497,
+    "style": "Caption",
+    "text": "Table 4.5: Multi-UoM Inventory Deduction and Pricing Lookup Latency",
+    "has_drawing": false
+  },
+  {
+    "idx": 498,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 499,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": true
+  },
+  {
+    "idx": 500,
+    "style": "Caption",
+    "text": "Figure 4.3: Execution log in SQL Server verifying Multi-UoM inventory depletion and tiered pricing.",
+    "has_drawing": false
+  },
+  {
+    "idx": 501,
+    "style": "Normal",
+    "text": "Discussion of Results:",
+    "has_drawing": false
+  },
+  {
+    "idx": 502,
+    "style": "Normal",
+    "text": "\tThe four orders use three different selling units while drawing inventory from the same 100 kg stock pool. The system converts each ordered quantity to kilograms before deducting inventory. The actual stock therefore changes from 100 kg to 94 kg, 44 kg, 40 kg, and finally 0 kg.",
+    "has_drawing": false
+  },
+  {
+    "idx": 503,
+    "style": "Normal",
+    "text": "\tThe recorded prices also match the prices configured for the selected selling units. This shows that the system can handle different selling units while maintaining a common inventory unit and the corresponding selling-unit prices.",
+    "has_drawing": false
+  },
+  {
+    "idx": 504,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 505,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 506,
+    "style": "Heading 2",
+    "text": " Evaluation of Expiration-Driven FEFO Allocation and Concurrency Control (RQ2)",
+    "has_drawing": false
+  },
+  {
+    "idx": 507,
+    "style": "Heading 3",
+    "text": "Experiment 1: Outbound Batch Allocation via Greedy FEFO",
+    "has_drawing": false
+  },
+  {
+    "idx": 508,
+    "style": "Normal",
+    "text": "\tThis experiment evaluates whether the inventory allocation process selects batches according to their expiration dates and can allocate an order across multiple batches when a single batch does not contain enough stock.",
+    "has_drawing": false
+  },
+  {
+    "idx": 509,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 510,
+    "style": "Normal",
+    "text": "Test Procedure:",
+    "has_drawing": false
+  },
+  {
+    "idx": 511,
+    "style": "Normal",
+    "text": "Initialize two inventory lots of 034 Avocados at the Binh Thanh warehouse:",
+    "has_drawing": false
+  },
+  {
+    "idx": 512,
+    "style": "Normal",
+    "text": "Two inventory batches of 034 Avocados were initialized at the Binh Thanh warehouse:",
+    "has_drawing": false
+  },
+  {
+    "idx": 513,
+    "style": "Normal",
+    "text": "Lot A (LOT-BO-03D): 3 days of remaining shelf life, quantity: 30.00 kg.",
+    "has_drawing": false
+  },
+  {
+    "idx": 514,
+    "style": "Normal",
+    "text": "Lot B (LOT-BO-15D): 15 days of remaining shelf life, quantity: 50.00 kg.",
+    "has_drawing": false
+  },
+  {
+    "idx": 515,
+    "style": "Normal",
+    "text": "Two test scenarios were executed:",
+    "has_drawing": false
+  },
+  {
+    "idx": 516,
+    "style": "Normal",
+    "text": "Scenario 1 – Single-Batch FEFO: An order of 20.00 kg was placed. The expected result was to allocate the full quantity from Lot A and leave Lot B unchanged.",
+    "has_drawing": false
+  },
+  {
+    "idx": 517,
+    "style": "Normal",
+    "text": "Scenario 2 – Multi-Batch FEFO: An order of 40.00 kg was placed. The expected result was to use the available quantity in Lot A first and then allocate the remaining quantity from Lot B.",
+    "has_drawing": false
+  },
+  {
+    "idx": 518,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 519,
+    "style": "Caption",
+    "text": "Table 4.6: Outbound Batch Allocation under Single-Batch and Greedy Multi-Batch FEFO",
+    "has_drawing": false
+  },
+  {
+    "idx": 520,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 521,
+    "style": "Normal",
+    "text": "Figure 4.4 shows the SQL Server execution log for the two allocation scenarios.",
+    "has_drawing": false
+  },
+  {
+    "idx": 522,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": true
+  },
+  {
+    "idx": 523,
+    "style": "Caption",
+    "text": "Figure 4.4: Verification of FEFO prioritization and multi-batch allocation in SQL Server.",
+    "has_drawing": false
+  },
+  {
+    "idx": 524,
+    "style": "Normal",
+    "text": "Discussion of Results:",
+    "has_drawing": false
+  },
+  {
+    "idx": 525,
+    "style": "Normal",
+    "text": "\tIn Scenario 1, the system allocated the order from the batch with 3 days of remaining shelf life, while the 15-day batch was not used. In Scenario 2, the available quantity in Lot A was allocated first, and the remaining order quantity was taken from Lot B.",
+    "has_drawing": false
+  },
+  {
+    "idx": 526,
+    "style": "Normal",
+    "text": "\tThe results show that the implemented FEFO process prioritizes the earlier-expiring batch and can continue allocation from a second batch when the first batch is insufficient.",
+    "has_drawing": false
+  },
+  {
+    "idx": 527,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 528,
+    "style": "Heading 3",
+    "text": "Experiment 2: High-Concurrency Inventory Reservation under 500 CCU",
+    "has_drawing": false
+  },
+  {
+    "idx": 529,
+    "style": "Normal",
+    "text": "\tThis experiment evaluates the inventory reservation mechanism under concurrent checkout requests. The test examines successful reservations, rejected requests, transaction errors, and the final inventory balance.",
+    "has_drawing": false
+  },
+  {
+    "idx": 530,
+    "style": "Normal",
+    "text": "Test Procedure:  A test lot (SKU-STRESS-50) was initialized with 50 units of available stock. The stress_test_rq2.js script was used to send 500 concurrent checkout requests to the inventory reservation endpoint.",
+    "has_drawing": false
+  },
+  {
+    "idx": 531,
+    "style": "Caption",
+    "text": "Table 4.7: Empirical Concurrency Stress-Testing Metrics under 500 Concurrent Checkout Users (500 CCU)",
+    "has_drawing": false
+  },
+  {
+    "idx": 532,
+    "style": "Normal",
+    "text": "Figure 4.5 shows the execution log of the concurrent checkout test..",
+    "has_drawing": false
+  },
+  {
+    "idx": 533,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": true
+  },
+  {
+    "idx": 534,
+    "style": "Caption",
+    "text": "Figure 4.5: Terminal execution log of high-concurrency stress testing with 500 CCU, confirming zero transaction errors and a 0.00% overselling rate.",
+    "has_drawing": false
+  },
+  {
+    "idx": 535,
+    "style": "Normal",
+    "text": "Discussion of Results",
+    "has_drawing": false
+  },
+  {
+    "idx": 536,
+    "style": "Normal",
+    "text": "\tThe test was run with 500 concurrent checkout requests against the same inventory lot. 50 requests were completed successfully, while 450 requests were rejected after the available stock had been exhausted. No transaction deadlocks or server errors were observed during the test.",
+    "has_drawing": false
+  },
+  {
+    "idx": 537,
+    "style": "Normal",
+    "text": "\tThe final inventory remained at 0 units, and the total reserved quantity did not exceed the initial available stock. The measured overselling rate was 0.00%.",
+    "has_drawing": false
+  },
+  {
+    "idx": 538,
+    "style": "Normal",
+    "text": "Under the tested workload, the reservation mechanism maintained inventory consistency during concurrent checkout.",
+    "has_drawing": false
+  },
+  {
+    "idx": 539,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 540,
+    "style": "Heading 2",
+    "text": "Evaluation of Single-Hub Routing and Cold-Chain Geofencing (RQ3)",
+    "has_drawing": false
+  },
+  {
+    "idx": 541,
+    "style": "Normal",
+    "text": "\tThis experiment evaluates the warehouse-selection process used for fresh agricultural orders. The test considers product type, customer distance, warehouse stock availability, and complete-order assignment. he test uses four scenarios to cover the main warehouse-selection rules.",
+    "has_drawing": false
+  },
+  {
+    "idx": 542,
+    "style": "Normal",
+    "text": "Test Procedure:",
+    "has_drawing": false
+  },
+  {
+    "idx": 543,
+    "style": "Normal",
+    "text": "TC-01 – Perishable product within delivery range: A customer located within the predefined 15 km delivery range places an order for a perishable product. The expected result is that the order is accepted when suitable stock is available.",
+    "has_drawing": false
+  },
+  {
+    "idx": 544,
+    "style": "Normal",
+    "text": "TC-02 – Perishable product outside delivery range: A customer located outside the 15 km range places an order for a perishable product. The expected result is that the order is rejected by the delivery-distance constraint.",
+    "has_drawing": false
+  },
+  {
+    "idx": 545,
+    "style": "Normal",
+    "text": "TC-03 – Ambient product outside delivery range: A customer at the same long-distance location places an order for an ambient product. The delivery-distance constraint is not applied to this product type, and an available fulfillment option is selected.",
+    "has_drawing": false
+  },
+  {
+    "idx": 546,
+    "style": "Normal",
+    "text": "TC-04 – Multi-item single-hub assignment: A customer places an order containing Organic Spinach and Pork Belly. The nearest warehouse has stock for only one item, while another warehouse has sufficient stock for both items. The expected result is that the latter warehouse is selected so that the complete order can be fulfilled from one location.",
+    "has_drawing": false
+  },
+  {
+    "idx": 547,
+    "style": "Normal",
+    "text": "\tThe distance between the customer and each candidate warehouse is calculated from their latitude and longitude coordinates.",
+    "has_drawing": false
+  },
+  {
+    "idx": 548,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 549,
+    "style": "Caption",
+    "text": "Table 4.8: Warehouse Routing and Cold-Chain Geofencing Evaluation Matrix",
+    "has_drawing": false
+  },
+  {
+    "idx": 550,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 551,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": true
+  },
+  {
+    "idx": 552,
+    "style": "Caption",
+    "text": "Figure 4.6: Execution log of the automated routing test suite verifying cold-chain geofencing and single-hub fulfillment.",
+    "has_drawing": false
+  },
+  {
+    "idx": 553,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 554,
+    "style": "Normal",
+    "text": "Discussion of Results",
+    "has_drawing": false
+  },
+  {
+    "idx": 555,
+    "style": "Normal",
+    "text": "\tFor TC-01, the perishable-product order was accepted because the selected warehouse was within the defined delivery range. In TC-02, the order was rejected because the customer was outside the configured range.",
+    "has_drawing": false
+  },
+  {
+    "idx": 556,
+    "style": "Normal",
+    "text": "\tTC-03 shows that the same distance rule was not applied to the ambient product. The system therefore allowed the order to proceed and selected an available fulfillment warehouse.",
+    "has_drawing": false
+  },
+  {
+    "idx": 557,
+    "style": "Normal",
+    "text": "\tIn TC-04, the closest warehouse had only partial stock for the requested items. The system selected another warehouse with sufficient stock for the complete order, so the order was assigned to one warehouse instead of being split.",
+    "has_drawing": false
+  },
+  {
+    "idx": 558,
+    "style": "Normal",
+    "text": "\tOverall, the test cases show that the warehouse-selection mechanism considers delivery distance, product requirements, and stock availability when assigning an order. Under the tested scenarios, the mechanism supported complete-order assignment when a suitable warehouse was available and reduced unnecessary order splitting.",
+    "has_drawing": false
+  },
+  {
+    "idx": 559,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 560,
+    "style": "Heading 2",
+    "text": "Evaluation of Conversational AI Commerce and In-Chat Order Processing (RQ4)",
+    "has_drawing": false
+  },
+  {
+    "idx": 561,
+    "style": "Heading 3",
+    "text": "Experiment 1: Tool Calling Accuracy and Anti-Hallucination Verification",
+    "has_drawing": false
+  },
+  {
+    "idx": 562,
+    "style": "Normal",
+    "text": "\tThis experiment evaluates whether the Solaris AI assistant can retrieve product information from backend services, handle inventory-related queries, support order-related actions, and reject requests for products outside the system catalog.",
+    "has_drawing": false
+  },
+  {
+    "idx": 563,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 564,
+    "style": "Normal",
+    "text": "Test Procedure:",
+    "has_drawing": false
+  },
+  {
+    "idx": 565,
+    "style": "Normal",
+    "text": "A benchmark of 50 customer queries was prepared and divided into four groups:",
+    "has_drawing": false
+  },
+  {
+    "idx": 566,
+    "style": "Normal",
+    "text": "Price and Product Information (15 queries): Product prices, specifications, and different selling units.",
+    "has_drawing": false
+  },
+  {
+    "idx": 567,
+    "style": "Normal",
+    "text": "Inventory and Certification (12 queries): Stock availability and product certification information.",
+    "has_drawing": false
+  },
+  {
+    "idx": 568,
+    "style": "Normal",
+    "text": "Conversational Checkout (13 queries): Customer purchase requests and generation of the order data required for checkout.",
+    "has_drawing": false
+  },
+  {
+    "idx": 569,
+    "style": "Normal",
+    "text": "Out-of-Catalog Queries (10 queries): Requests for products that are not available in the Solaris catalog.",
+    "has_drawing": false
+  },
+  {
+    "idx": 570,
+    "style": "Normal",
+    "text": "\tThe queries were sent to POST /api/shop/ai/chat. For each query, the test recorded whether the required backend tool was called, whether the returned information matched the expected system data, whether an unsupported product or value was generated, and the end-to-end response time.",
+    "has_drawing": false
+  },
+  {
+    "idx": 571,
+    "style": "Caption",
+    "text": "Table 4.9: Results of the Conversational AI Benchmark",
+    "has_drawing": false
+  },
+  {
+    "idx": 572,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 573,
+    "style": "Caption",
+    "text": "Table 4.10: Representative Out-of-Catalog Test Cases",
+    "has_drawing": false
+  },
+  {
+    "idx": 574,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 575,
+    "style": "Normal",
+    "text": "Discussion of Results",
+    "has_drawing": false
+  },
+  {
+    "idx": 576,
+    "style": "Normal",
+    "text": "\tAll 50 test queries produced the expected tool or rejection behavior. The assistant returned the expected product, price, and inventory information for the supported queries, while the out-of-catalog queries did not result in unsupported products or prices being added to the response.",
+    "has_drawing": false
+  },
+  {
+    "idx": 577,
+    "style": "Normal",
+    "text": "\tNo hallucinated product, price, or inventory information was observed in the 50-query test set, resulting in a measured hallucination rate of 0.00% for the evaluated dataset. The average end-to-end response time was 1,601.4 ms.",
+    "has_drawing": false
+  },
+  {
+    "idx": 578,
+    "style": "Normal",
+    "text": "\tThese results indicate that, under the tested conditions, the database-grounded conversational workflow was able to retrieve system data and support the tested ordering interactions.",
+    "has_drawing": false
+  },
+  {
+    "idx": 579,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": true
+  },
+  {
+    "idx": 580,
+    "style": "Caption",
+    "text": "Figure 4.7: AI assistant interface demonstrating polite rejection of an out-of-catalog purchase request, verifying anti-hallucination guardrails.",
+    "has_drawing": false
+  },
+  {
+    "idx": 581,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": true
+  },
+  {
+    "idx": 582,
+    "style": "Caption",
+    "text": "Figure 4.8: In-chat Interactive Order Card rendering real-time inventory, cold-chain shipping calculation, and single-click checkout confirmation.",
+    "has_drawing": false
+  },
+  {
+    "idx": 583,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 584,
+    "style": "Heading 3",
+    "text": "Experiment 2: End-to-End Automated Checkout Benchmark",
+    "has_drawing": false
+  },
+  {
+    "idx": 585,
+    "style": "Normal",
+    "text": "\tThis experiment quantitatively evaluates the human-computer interaction (HCI) and system performance gains of the Conversational AI 1-Click checkout compared to the traditional multi-page web checkout. Both workflows were executed across 10 automated iterations () in a controlled headless Chromium environment driven by Playwright:",
+    "has_drawing": false
+  },
+  {
+    "idx": 586,
+    "style": "Normal",
+    "text": "Test procedue",
+    "has_drawing": false
+  },
+  {
+    "idx": 587,
+    "style": "Normal",
+    "text": "Flow A — Traditional Web Checkout (4-Page Manual Flow): Simulates a customer navigating through the standard e-commerce funnel: Product Catalog  Product Detail  Shopping Cart  Checkout Review. This journey requires filling in delivery information, choosing payment methods across successive pages, and confirming the order.",
+    "has_drawing": false
+  },
+  {
+    "idx": 588,
+    "style": "Normal",
+    "text": "Flow B — Conversational AI 1-Click Checkout (In-Chat Flow): The customer opens the AI assistant widget on any page, issues a natural language purchase intent (e.g., \"Buy 2 packs of Hao Hao Noodles\"), and directly confirms the auto-populated Interactive Order Card within the dialogue.",
+    "has_drawing": false
+  },
+  {
+    "idx": 589,
+    "style": "Caption",
+    "text": "Table 4.11: E2E Benchmark Comparative Results",
+    "has_drawing": false
+  },
+  {
+    "idx": 590,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 591,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": true
+  },
+  {
+    "idx": 592,
+    "style": "Caption",
+    "text": "Figure 4.9: Terminal summary report of the automated E2E benchmark (N = 10 runs, headless Chromium), validating reductions in checkout time, user interactions, and HTTP requests.",
+    "has_drawing": false
+  },
+  {
+    "idx": 593,
+    "style": "Normal",
+    "text": "Discussion of Results:",
+    "has_drawing": false
+  },
+  {
+    "idx": 594,
+    "style": "Normal",
+    "text": "\tThe conversational AI checkout had a lower mean checkout time, decreasing from 4.48 s to 3.63 s. The number of recorded user interactions decreased from 8 to 3, while the total number of HTTP requests decreased from 84 to 36.",
+    "has_drawing": false
+  },
+  {
+    "idx": 595,
+    "style": "Normal",
+    "text": "\tThe standard deviation was also lower for the AI-assisted flow (0.44 s compared with 0.77 s). The maximum checkout time decreased from 5.71 s to 4.66 s.",
+    "has_drawing": false
+  },
+  {
+    "idx": 596,
+    "style": "Normal",
+    "text": "\tAll 10 test runs in both flows completed the order transaction successfully. Under the tested conditions, the shorter AI-assisted checkout flow did not result in failed order transactions.",
+    "has_drawing": false
+  },
+  {
+    "idx": 597,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 598,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 599,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 600,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 601,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 602,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 603,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 604,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 605,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 606,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 607,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 608,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 609,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 610,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 611,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 612,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 613,
+    "style": "Heading 1",
+    "text": "CONCLUSION",
+    "has_drawing": false
+  },
+  {
+    "idx": 614,
+    "style": "Heading 2",
+    "text": "Summary of Research",
+    "has_drawing": false
+  },
+  {
+    "idx": 615,
+    "style": "Normal",
+    "text": "\tThis study addresses four main technical challenges in agricultural e-commerce: flexible product data and multiple selling units using the EAV model; expiry-aware inventory management using FEFO and inventory reservation; warehouse selection based on product availability and delivery distance; and a database-grounded AI shopping assistant that supports product inquiries and order completion within the chat.",
+    "has_drawing": false
+  },
+  {
+    "idx": 616,
+    "style": "Heading 2",
+    "text": "Conclusions",
+    "has_drawing": false
+  },
+  {
+    "idx": 617,
+    "style": "Normal",
+    "text": "\tFor RQ1, the results show that the combination of EAV and multiple-unit management can support flexible product data in the Solaris system. New product attributes can be added without changing the main product table. Different package sizes can also be converted into a common inventory unit, allowing stock to be managed consistently across different selling units.",
+    "has_drawing": false
+  },
+  {
+    "idx": 618,
+    "style": "Normal",
+    "text": "\tFor RQ2, the results show that FEFO correctly selects batches with earlier expiration dates before later-expiring batches. The inventory reservation mechanism also maintained consistent stock quantities during the concurrent checkout test with 500 users. No transaction deadlocks, server crashes, or overselling were observed under the tested conditions.",
+    "has_drawing": false
+  },
+  {
+    "idx": 619,
+    "style": "Normal",
+    "text": "\tFor RQ3, the results show that warehouse selection can consider both product availability and delivery distance. Perishable-product orders outside the predefined 15 km delivery range were rejected, while orders within the range could be assigned to a suitable warehouse. In the multi-item test, the system selected a warehouse with enough stock to fulfill the complete order, avoiding unnecessary order splitting in that scenario.",
+    "has_drawing": false
+  },
+  {
+    "idx": 620,
+    "style": "Normal",
+    "text": "\tFor RQ4, the results show that integrating the AI assistant with backend functions allowed it to use current product, price, and inventory information during the conversation and support order completion. In the end-to-end checkout test, the AI-assisted flow reduced user interactions by 62.5% and HTTP requests by 57.1% compared with the traditional four-page checkout. The average checkout time was also lower, from 4.48 seconds to 3.63 seconds, and all tested order transactions were completed successfully.",
+    "has_drawing": false
+  },
+  {
+    "idx": 621,
+    "style": "Heading 2",
+    "text": "Research Contributions",
+    "has_drawing": false
+  },
+  {
+    "idx": 622,
+    "style": "Normal",
+    "text": "\tThe primary contribution of this thesis is the design and implementation of a dedicated e-commerce solution for agricultural products, creating a seamless link between the customer-facing storefront and the back-office warehouse management system. Inventory levels, tiered prices, and batch histories remain consistently synchronized throughout the platform. This solution has strong practical value and can be directly adopted by small and medium-sized enterprises (SMEs) and agricultural cooperatives seeking to distribute clean food in Vietnam.",
+    "has_drawing": false
+  },
+  {
+    "idx": 623,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 624,
+    "style": "Heading 2",
+    "text": "Limitations",
+    "has_drawing": false
+  },
+  {
+    "idx": 625,
+    "style": "Normal",
+    "text": "\tDespite these results, the project has several limitations due to time and resource constraints. First, the system does not cover the full scope of a standard ERP platform. It currently focuses on warehouse operations, customer management, and basic order accounting. Second, online payments are limited to the VNPAY Sandbox and do not involve real financial transactions.",
+    "has_drawing": false
+  },
+  {
+    "idx": 626,
+    "style": "Normal",
+    "text": "\tInternal delivery is also simulated using routing algorithms because the system does not have an actual delivery fleet. Integration with third-party logistics such as Giao Hang Nhanh has limited practical value because perishable products require refrigerated transportation. Finally, the storefront and admin panel are mainly functional and focus on meeting technical requirements rather than providing a fully polished user interface.",
+    "has_drawing": false
+  },
+  {
+    "idx": 627,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 628,
+    "style": "Heading 2",
+    "text": "Future Work",
+    "has_drawing": false
+  },
+  {
+    "idx": 629,
+    "style": "Normal",
+    "text": "\tSeveral directions can be considered for future development. First, Bluetooth (BLE) or RFID temperature and humidity sensors could be added to motorbike delivery boxes to provide real-time telemetry and improve monitoring of produce conditions beyond the current 15 km radius-based approach. The Google Maps API could also be integrated to allow customers and managers to track delivery locations and routes in real time.",
+    "has_drawing": false
+  },
+  {
+    "idx": 630,
+    "style": "Normal",
+    "text": "\tFor business operations, the platform could be extended from a procurement-based model to a hybrid model that directly manages partner farms. This would allow product quality to be monitored from cultivation to the final customer within the ERP system. Another direction is to fine-tune a dedicated large language model for Vietnamese agricultural terminology and trading practices. The model could support retail customers on the storefront and assist managers in analyzing internal data.",
+    "has_drawing": false
+  },
+  {
+    "idx": 631,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 632,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 633,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 634,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 635,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 636,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 637,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 638,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 639,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 640,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 641,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 642,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 643,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 644,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 645,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 646,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 647,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 648,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 649,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 650,
+    "style": "Title",
+    "text": "APPENDICES",
+    "has_drawing": false
+  },
+  {
+    "idx": 651,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 652,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 653,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 654,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 655,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 656,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 657,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 658,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 659,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 660,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 661,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 662,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 663,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 664,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 665,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 666,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 667,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 668,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 669,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 670,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 671,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 672,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 673,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 674,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 675,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 676,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 677,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 678,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 679,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 680,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 681,
+    "style": "Title",
+    "text": "REFERENCES",
+    "has_drawing": false
+  },
+  {
+    "idx": 682,
+    "style": "List Paragraph",
+    "text": "K. Peffers, T. Tuunanen, M. A. Rothenberger, and S. Chatterjee, “A design science research methodology for information systems research,” Journal of Management Information Systems, vol. 24, no. 3, pp. 45–77, 2007.",
+    "has_drawing": false
+  },
+  {
+    "idx": 683,
+    "style": "List Paragraph",
+    "text": "M. Niemir and B. Mrugalska, “Basic product data in e-commerce: Specifications and problems of data exchange,” European Research Studies Journal, vol. XXIV, no. Special Issue 2, pp. 317–329, 2021.",
+    "has_drawing": false
+  },
+  {
+    "idx": 684,
+    "style": "List Paragraph",
+    "text": "T. Arici, K. Kumar, H. Çeker, A. S. V. K. K. Saladi, and I. Tutar, “Solving price per unit problem around the world: Formulating fact extraction as question answering,” in Proc. KDD 2021 Workshop on Truth Discovery and Fact Checking (TrueFact 2021), Aug. 2021.",
+    "has_drawing": false
+  },
+  {
+    "idx": 685,
+    "style": "List Paragraph",
+    "text": "M. L. A. T. M. Hertog, I. Uysal, U. McCarthy, B. M. Verlinden, and B. M. Nicolaï, “Shelf life modelling for first-expired-first-out warehouse management,” Philosophical Transactions of the Royal Society A: Mathematical, Physical and Engineering Sciences, vol. 372, no. 2017, p. 20130309, 2014.",
+    "has_drawing": false
+  },
+  {
+    "idx": 686,
+    "style": "List Paragraph",
+    "text": "G. Figueira, W. van Jaarsveld, P. Amorim, and J. C. Fransoo, “The impact of committing to customer orders in online retail,” Manufacturing & Service Operations Management, vol. 25, no. 1, pp. 307–322, 2023.",
+    "has_drawing": false
+  },
+  {
+    "idx": 687,
+    "style": "List Paragraph",
+    "text": "Y. Zhang, W.-H. Lin, M. Huang, and X. Hu, “Multi-warehouse package consolidation for split orders in online retailing,” European Journal of Operational Research, vol. 289, no. 3, pp. 1040–1055, 2021.",
+    "has_drawing": false
+  },
+  {
+    "idx": 688,
+    "style": "List Paragraph",
+    "text": "Y. Zhan and Y. Jiang, “Integrated optimization of order allocation and last-mile multi-temperature joint distribution for fresh agriproduct community retail,” Sustainability, vol. 14, no. 15, p. 9790, 2022.",
+    "has_drawing": false
+  },
+  {
+    "idx": 689,
+    "style": "List Paragraph",
+    "text": "C. E. Rhee and J. H. Choi, “Effects of personalization and social role in voice shopping: An experimental study on product recommendation by a conversational voice agent,” Computers in Human Behavior, vol. 109, p. 106347, 2020.",
+    "has_drawing": false
+  },
+  {
+    "idx": 690,
+    "style": "List Paragraph",
+    "text": "Y. Liu et al., “Conversational recommender system and large language model are made for each other in e-commerce pre-sales dialogue,” in Findings of the Association for Computational Linguistics: EMNLP 2023, Singapore, pp. 7844–7857, Dec. 2023.",
+    "has_drawing": false
+  },
+  {
+    "idx": 691,
+    "style": "List Paragraph",
+    "text": "L. Jiang, K. Jiang, X. Chu, S. Gulati, and P. Garg, “Hallucination detection in LLM-enriched product listings,” in Proc. 7th Workshop on e-Commerce and NLP (ECNLP 7), LREC-COLING 2024, Torino, Italy, pp. 63–71, May 2024.",
+    "has_drawing": false
+  },
+  {
+    "idx": 692,
+    "style": "List Paragraph",
+    "text": "R. C. Martin, Clean Architecture: A Craftsman’s Guide to Software Structure and Design. Boston, MA, USA: Prentice Hall, 2017.",
+    "has_drawing": false
+  },
+  {
+    "idx": 693,
+    "style": "List Paragraph",
+    "text": "R. C. Martin, “Design principles and design patterns,” Object Mentor, vol. 20, pp. 1–34, 2000.",
+    "has_drawing": false
+  },
+  {
+    "idx": 694,
+    "style": "List Paragraph",
+    "text": "V. Dinu and P. Nadkarni, “Guidelines for the effective use of entity-attribute-value modeling for biomedical databases,” International Journal of Medical Informatics, vol. 76, no. 11–12, pp. 769–779, 2007.",
+    "has_drawing": false
+  },
+  {
+    "idx": 695,
+    "style": "List Paragraph",
+    "text": "S. O. Tromp, J. G. A. J. van der Vorst, and D. J. van der Zee, “A systematic approach to preserving perishable food quality in supply chain distribution,” Journal of Food Engineering, vol. 113, no. 1, pp. 8–15, 2012.",
+    "has_drawing": false
+  },
+  {
+    "idx": 696,
+    "style": "List Paragraph",
+    "text": "S. Mercier, S. Villeneuve, M. Mondor, and I. Uysal, “Time–temperature management along the food cold chain: A review of recent developments,” Comprehensive Reviews in Food Science and Food Safety, vol. 16, no. 4, pp. 647–667, 2017.",
+    "has_drawing": false
+  },
+  {
+    "idx": 697,
+    "style": "List Paragraph",
+    "text": "N. Provos and D. Mazières, “A future-adaptable password scheme,” in Proc. 8th USENIX Security Symposium, Washington, D.C., USA, pp. 81–92, Aug. 1999.",
+    "has_drawing": false
+  },
+  {
+    "idx": 698,
+    "style": "List Paragraph",
+    "text": "T. Schick et al., “Toolformer: Language models can teach themselves to use tools,” in Advances in Neural Information Processing Systems (NeurIPS 2023), vol. 36, pp. 68539–68551, Dec. 2023.",
+    "has_drawing": false
+  },
+  {
+    "idx": 699,
+    "style": "List Paragraph",
+    "text": "R. W. Sinnott, “Virtues of the Haversine,” Sky and Telescope, vol. 68, no. 2, p. 159, 1984.",
+    "has_drawing": false
+  },
+  {
+    "idx": 700,
+    "style": "List Paragraph",
+    "text": "J. Gray and A. Reuter, Transaction Processing: Concepts and Techniques. San Francisco, CA, USA: Morgan Kaufmann Publishers, 1992.",
+    "has_drawing": false
+  },
+  {
+    "idx": 701,
+    "style": "List Paragraph",
+    "text": "R. Bavaresco et al., “Conversational agents in business: A systematic literature review and future research directions,” Computer Science Review, vol. 36, p. 100239, 2020.",
+    "has_drawing": false
+  },
+  {
+    "idx": 702,
+    "style": "List Paragraph",
+    "text": "Microsoft Corporation, “Transaction locking and row versioning guide: Schema modification (Sch-M) locks and concurrency,” Microsoft Learn, 2022. Internet: https://learn.microsoft.com/en-us/sql/relational-databases/sql-server-transaction-locking-and-row-versioning-guide (accessed Jan. 12, 2026).",
+    "has_drawing": false
+  },
+  {
+    "idx": 703,
+    "style": "List Paragraph",
+    "text": "Google AI for Developers, “Gemini API: Function calling and structured outputs,” 2024. Internet: https://ai.google.dev/docs/function_calling (accessed Jan. 20, 2026).",
+    "has_drawing": false
+  },
+  {
+    "idx": 704,
+    "style": "List Paragraph",
+    "text": "Apache Software Foundation, “Apache JMeter 5.6.3 user manual: Distributed and concurrency testing,” 2024. Internet: https://jmeter.apache.org/usermanual/ (accessed Feb. 02, 2026).",
+    "has_drawing": false
+  },
+  {
+    "idx": 705,
+    "style": "List Paragraph",
+    "text": "Microsoft Corporation, “Playwright core v1.48: Fast and reliable end-to-end testing for modern web apps,” 2024. Internet: https://playwright.dev (accessed Feb. 05, 2026).",
+    "has_drawing": false
+  },
+  {
+    "idx": 706,
+    "style": "List Paragraph",
+    "text": "Vietnam Payment Solution JSC (VNPAY), “VNPAY payment gateway integration specification,” 2023. Internet: https://sandbox.vnpayment.vn/apis/docs/ (accessed Feb. 10, 2026).",
+    "has_drawing": false
+  },
+  {
+    "idx": 707,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 708,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 709,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 710,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 711,
+    "style": "Normal",
+    "text": "",
+    "has_drawing": false
+  },
+  {
+    "idx": 712,
+    "style": "Normal (Web)",
+    "text": "",
+    "has_drawing": false
+  }
+]

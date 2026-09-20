@@ -43,21 +43,30 @@ namespace backend.Services
         // ============================================================
         // DASHBOARD 1: OVERVIEW
         // ============================================================
-        public async Task<DashboardOverviewDto> GetOverviewAsync(string period, DateTime? fromDate, DateTime? toDate)
+        public async Task<DashboardOverviewDto> GetOverviewAsync(string period, DateTime? fromDate, DateTime? toDate, List<int>? allowedWarehouseIds = null)
         {
             var (from, to) = ResolveDateRange(period, fromDate, toDate);
             var (prevFrom, prevTo) = GetPreviousPeriod(from, to);
 
-            var orders = await _db.Orders
+            var ordersQuery = _db.Orders
                 .AsNoTracking()
                 .Where(o => !o.IsDeleted && o.OrderDate >= from && o.OrderDate <= to)
                 .Include(o => o.Customer)
-                .ToListAsync();
+                .AsQueryable();
 
-            var prevOrders = await _db.Orders
+            var prevOrdersQuery = _db.Orders
                 .AsNoTracking()
                 .Where(o => !o.IsDeleted && o.OrderDate >= prevFrom && o.OrderDate <= prevTo)
-                .ToListAsync();
+                .AsQueryable();
+
+            if (allowedWarehouseIds != null && allowedWarehouseIds.Any())
+            {
+                ordersQuery = ordersQuery.Where(o => o.WarehouseId.HasValue && allowedWarehouseIds.Contains(o.WarehouseId.Value));
+                prevOrdersQuery = prevOrdersQuery.Where(o => o.WarehouseId.HasValue && allowedWarehouseIds.Contains(o.WarehouseId.Value));
+            }
+
+            var orders = await ordersQuery.ToListAsync();
+            var prevOrders = await prevOrdersQuery.ToListAsync();
 
             var totalRevenue = orders
                 .Where(o => o.Status == OrderStatus.Completed)
@@ -157,11 +166,11 @@ namespace backend.Services
         // ============================================================
         // DASHBOARD 2: SALES & GEOGRAPHY
         // ============================================================
-        public async Task<DashboardSalesGeographyDto> GetSalesGeographyAsync(string period, DateTime? fromDate, DateTime? toDate)
+        public async Task<DashboardSalesGeographyDto> GetSalesGeographyAsync(string period, DateTime? fromDate, DateTime? toDate, List<int>? allowedWarehouseIds = null)
         {
             var (from, to) = ResolveDateRange(period, fromDate, toDate);
 
-            var completedOrders = await _db.Orders
+            var ordersQuery = _db.Orders
                 .AsNoTracking()
                 .Where(o => !o.IsDeleted && o.Status == OrderStatus.Completed && o.OrderDate >= from && o.OrderDate <= to)
                 .Include(o => o.Details)
@@ -173,7 +182,14 @@ namespace backend.Services
                     .ThenInclude(d => d.UoM)
                 .Include(o => o.Customer)
                     .ThenInclude(c => c!.CustomerTier)
-                .ToListAsync();
+                .AsQueryable();
+
+            if (allowedWarehouseIds != null && allowedWarehouseIds.Any())
+            {
+                ordersQuery = ordersQuery.Where(o => o.WarehouseId.HasValue && allowedWarehouseIds.Contains(o.WarehouseId.Value));
+            }
+
+            var completedOrders = await ordersQuery.ToListAsync();
 
             var uomMap = await _db.UoMs.AsNoTracking().ToDictionaryAsync(u => u.Id, u => u.Name);
             var allDetails = completedOrders.SelectMany(o => o.Details).ToList();
@@ -273,18 +289,27 @@ namespace backend.Services
         // ============================================================
         // DASHBOARD 3: INVENTORY & CAPACITY
         // ============================================================
-        public async Task<DashboardInventoryCapacityDto> GetInventoryCapacityAsync()
+        public async Task<DashboardInventoryCapacityDto> GetInventoryCapacityAsync(List<int>? allowedWarehouseIds = null)
         {
-            var warehouses = await _db.Warehouses
+            var warehousesQuery = _db.Warehouses
                 .AsNoTracking()
                 .Where(w => !w.IsDeleted && w.IsActive)
-                .ToListAsync();
+                .AsQueryable();
 
-            var inventories = await _db.WarehouseInventories
+            var inventoriesQuery = _db.WarehouseInventories
                 .AsNoTracking()
                 .Include(wi => wi.Variant)
                 .Include(wi => wi.Warehouse)
-                .ToListAsync();
+                .AsQueryable();
+
+            if (allowedWarehouseIds != null && allowedWarehouseIds.Any())
+            {
+                warehousesQuery = warehousesQuery.Where(w => allowedWarehouseIds.Contains(w.Id));
+                inventoriesQuery = inventoriesQuery.Where(wi => allowedWarehouseIds.Contains(wi.WarehouseId));
+            }
+
+            var warehouses = await warehousesQuery.ToListAsync();
+            var inventories = await inventoriesQuery.ToListAsync();
 
             var prices = await _db.ProductVariantPrices
                 .AsNoTracking()
@@ -417,17 +442,24 @@ namespace backend.Services
         // ============================================================
         // DASHBOARD 4: QUALITY & EXPIRY
         // ============================================================
-        public async Task<DashboardQualityExpiryDto> GetQualityExpiryAsync()
+        public async Task<DashboardQualityExpiryDto> GetQualityExpiryAsync(List<int>? allowedWarehouseIds = null)
         {
             var today = DateTime.UtcNow.Date;
 
             // Inventory with batch info (for expiry)
-            var inventories = await _db.WarehouseInventories
+            var inventoriesQuery = _db.WarehouseInventories
                 .AsNoTracking()
                 .Include(wi => wi.Batch)
                 .Include(wi => wi.Variant)
                 .Include(wi => wi.Warehouse)
-                .ToListAsync();
+                .AsQueryable();
+
+            if (allowedWarehouseIds != null && allowedWarehouseIds.Any())
+            {
+                inventoriesQuery = inventoriesQuery.Where(wi => allowedWarehouseIds.Contains(wi.WarehouseId));
+            }
+
+            var inventories = await inventoriesQuery.ToListAsync();
 
             var prices = await _db.ProductVariantPrices
                 .AsNoTracking()
@@ -544,13 +576,13 @@ namespace backend.Services
         // ============================================================
         // DASHBOARD 5: FINANCIAL & CASH FLOW PERFORMANCE
         // ============================================================
-        public async Task<DashboardFinancialPerformanceDto> GetFinancialPerformanceAsync(string period, DateTime? fromDate, DateTime? toDate)
+        public async Task<DashboardFinancialPerformanceDto> GetFinancialPerformanceAsync(string period, DateTime? fromDate, DateTime? toDate, List<int>? allowedWarehouseIds = null)
         {
             var (from, to) = ResolveDateRange(period, fromDate, toDate);
             var (prevFrom, prevTo) = GetPreviousPeriod(from, to);
 
             // 1. Đơn hàng bán trong kỳ
-            var orders = await _db.Orders
+            var ordersQuery = _db.Orders
                 .AsNoTracking()
                 .Where(o => !o.IsDeleted && o.OrderDate >= from && o.OrderDate <= to)
                 .Include(o => o.Details)
@@ -558,35 +590,57 @@ namespace backend.Services
                         .ThenInclude(v => v!.Product)
                             .ThenInclude(p => p!.Category)
                                 .ThenInclude(c => c!.CategoryGroup)
-                .ToListAsync();
+                .AsQueryable();
 
             // Đơn hàng bán kỳ trước (để tính tăng trưởng)
-            var prevCompletedOrders = await _db.Orders
+            var prevOrdersQuery = _db.Orders
                 .AsNoTracking()
                 .Where(o => !o.IsDeleted && o.Status == OrderStatus.Completed && o.OrderDate >= prevFrom && o.OrderDate <= prevTo)
-                .ToListAsync();
+                .AsQueryable();
 
             // 2. Đơn trả hàng (RMA) trong kỳ
-            var returns = await _db.CustomerReturns
+            var returnsQuery = _db.CustomerReturns
                 .AsNoTracking()
                 .Where(r => !r.IsDeleted && r.ReturnDate >= from && r.ReturnDate <= to)
-                .ToListAsync();
+                .AsQueryable();
 
             // 3. Đơn mua hàng PO trong kỳ
-            var purchaseOrders = await _db.PurchaseOrders
+            var poQuery = _db.PurchaseOrders
                 .AsNoTracking()
                 .Where(po => !po.IsDeleted && po.OrderDate >= from && po.OrderDate <= to)
                 .Include(po => po.Supplier)
                 .Include(po => po.Details)
-                .ToListAsync();
+                .AsQueryable();
 
             // 4. Phiếu nhập kho trong kỳ
-            var receipts = await _db.InventoryReceipts
+            var receiptsQuery = _db.InventoryReceipts
                 .AsNoTracking()
                 .Where(ir => !ir.IsDeleted && ir.CreatedAt >= from && ir.CreatedAt <= to)
                 .Include(ir => ir.Details)
                 .Include(ir => ir.Supplier)
-                .ToListAsync();
+                .AsQueryable();
+
+            var inventoriesQuery = _db.WarehouseInventories
+                .AsNoTracking()
+                .Include(wi => wi.Batch)
+                .AsQueryable();
+
+            if (allowedWarehouseIds != null && allowedWarehouseIds.Any())
+            {
+                ordersQuery = ordersQuery.Where(o => o.WarehouseId.HasValue && allowedWarehouseIds.Contains(o.WarehouseId.Value));
+                prevOrdersQuery = prevOrdersQuery.Where(o => o.WarehouseId.HasValue && allowedWarehouseIds.Contains(o.WarehouseId.Value));
+                returnsQuery = returnsQuery.Where(r => allowedWarehouseIds.Contains(r.WarehouseId));
+                poQuery = poQuery.Where(po => po.WarehouseId.HasValue && allowedWarehouseIds.Contains(po.WarehouseId.Value));
+                receiptsQuery = receiptsQuery.Where(ir => allowedWarehouseIds.Contains(ir.WarehouseId));
+                inventoriesQuery = inventoriesQuery.Where(wi => allowedWarehouseIds.Contains(wi.WarehouseId));
+            }
+
+            var orders = await ordersQuery.ToListAsync();
+            var prevCompletedOrders = await prevOrdersQuery.ToListAsync();
+            var returns = await returnsQuery.ToListAsync();
+            var purchaseOrders = await poQuery.ToListAsync();
+            var receipts = await receiptsQuery.ToListAsync();
+            var inventories = await inventoriesQuery.ToListAsync();
 
             // 5. Giá vốn tham chiếu từ PO và SupplierProduct
             var latestPoPrices = await _db.PurchaseOrderDetails
@@ -606,10 +660,6 @@ namespace backend.Services
 
             // Bảng tồn kho hàng hỏng và hết date
             var today = DateTime.UtcNow.Date;
-            var inventories = await _db.WarehouseInventories
-                .AsNoTracking()
-                .Include(wi => wi.Batch)
-                .ToListAsync();
 
             // --- TÍNH TOÁN CHỈ SỐ DOANH THU & GIÁ VỐN ---
             var completedOrders = orders.Where(o => o.Status == OrderStatus.Completed).ToList();
@@ -918,11 +968,27 @@ namespace backend.Services
         // DASHBOARD 6: PRICE VOLATILITY & MARGIN SPREAD
         // ============================================================
 
-        public async Task<List<SkuSelectItemDto>> GetPriceVolatilitySkusAsync()
+        public async Task<List<SkuSelectItemDto>> GetPriceVolatilitySkusAsync(List<int>? allowedWarehouseIds = null)
         {
-            var variants = await _db.ProductVariants
+            var query = _db.ProductVariants
                 .AsNoTracking()
-                .Where(v => !v.IsDeleted && v.IsActive)
+                .Where(v => !v.IsDeleted && v.IsActive);
+
+            if (allowedWarehouseIds != null && allowedWarehouseIds.Any())
+            {
+                var warehouseVariantIds = await _db.WarehouseInventories
+                    .Where(il => allowedWarehouseIds.Contains(il.WarehouseId))
+                    .Select(il => il.VariantId)
+                    .Distinct()
+                    .ToListAsync();
+
+                if (warehouseVariantIds.Any())
+                {
+                    query = query.Where(v => warehouseVariantIds.Contains(v.Id));
+                }
+            }
+
+            var variants = await query
                 .Include(v => v.Product)
                     .ThenInclude(p => p!.BaseUoM)
                 .OrderBy(v => v.Name)
@@ -939,7 +1005,7 @@ namespace backend.Services
             return variants;
         }
 
-        public async Task<DashboardPriceVolatilityDto> GetPriceVolatilityAsync(int? variantId, string timeframe, DateTime? fromDate, DateTime? toDate)
+        public async Task<DashboardPriceVolatilityDto> GetPriceVolatilityAsync(int? variantId, string timeframe, DateTime? fromDate, DateTime? toDate, List<int>? allowedWarehouseIds = null)
         {
             // 1. Xác định SKU cần xem
             int targetVariantId = 0;
@@ -949,8 +1015,15 @@ namespace backend.Services
             }
             else
             {
-                var popularVariantId = await _db.OrderDetails
-                    .Where(od => !od.Order.IsDeleted && od.Order.Status != OrderStatus.Cancelled)
+                var popOrderQuery = _db.OrderDetails
+                    .Where(od => !od.Order.IsDeleted && od.Order.Status != OrderStatus.Cancelled);
+
+                if (allowedWarehouseIds != null && allowedWarehouseIds.Any())
+                {
+                    popOrderQuery = popOrderQuery.Where(od => od.Order.WarehouseId.HasValue && allowedWarehouseIds.Contains(od.Order.WarehouseId.Value));
+                }
+
+                var popularVariantId = await popOrderQuery
                     .GroupBy(od => od.VariantId)
                     .OrderByDescending(g => g.Count())
                     .Select(g => g.Key)
@@ -962,8 +1035,21 @@ namespace backend.Services
                 }
                 else
                 {
-                    targetVariantId = await _db.ProductVariants
-                        .Where(v => !v.IsDeleted && v.IsActive)
+                    var firstVarQuery = _db.ProductVariants
+                        .Where(v => !v.IsDeleted && v.IsActive);
+
+                    if (allowedWarehouseIds != null && allowedWarehouseIds.Any())
+                    {
+                        var whVarIds = _db.WarehouseInventories
+                            .Where(il => allowedWarehouseIds.Contains(il.WarehouseId))
+                            .Select(il => il.VariantId);
+                        if (await whVarIds.AnyAsync())
+                        {
+                            firstVarQuery = firstVarQuery.Where(v => whVarIds.Contains(v.Id));
+                        }
+                    }
+
+                    targetVariantId = await firstVarQuery
                         .Select(v => v.Id)
                         .FirstOrDefaultAsync();
                 }
@@ -1042,43 +1128,72 @@ namespace backend.Services
                 }
             }
 
-            // 4. Lấy dữ liệu Đơn mua hàng (PO - Nhập hàng)
-            var poDetails = await _db.PurchaseOrderDetails
+            // 4. Lấy dữ liệu Đơn mua hàng (PO - Nhập hàng) có lọc theo kho
+            var poQuery = _db.PurchaseOrderDetails
                 .AsNoTracking()
                 .Where(pod => pod.VariantId == targetVariantId &&
                               !pod.PurchaseOrder.IsDeleted &&
                               pod.PurchaseOrder.Status != PurchaseOrderStatus.Cancelled &&
                               pod.PurchaseOrder.Status != PurchaseOrderStatus.Draft &&
                               pod.PurchaseOrder.OrderDate >= from &&
-                              pod.PurchaseOrder.OrderDate <= to)
+                              pod.PurchaseOrder.OrderDate <= to);
+
+            if (allowedWarehouseIds != null && allowedWarehouseIds.Any())
+            {
+                poQuery = poQuery.Where(pod => pod.PurchaseOrder.WarehouseId.HasValue && allowedWarehouseIds.Contains(pod.PurchaseOrder.WarehouseId.Value));
+            }
+
+            var poDetails = await poQuery
                 .Include(pod => pod.PurchaseOrder)
                     .ThenInclude(po => po.Supplier)
                 .Include(pod => pod.UoM)
                 .OrderBy(pod => pod.PurchaseOrder.OrderDate)
                 .ToListAsync();
 
-            // 5. Lấy dữ liệu Đơn bán hàng (Order - Bán hàng)
-            var orderDetails = await _db.OrderDetails
+            // 5. Lấy dữ liệu Đơn bán hàng (Order - Bán hàng) có lọc theo kho
+            var orderQuery = _db.OrderDetails
                 .AsNoTracking()
                 .Where(od => od.VariantId == targetVariantId &&
                              !od.Order.IsDeleted &&
                              od.Order.Status != OrderStatus.Cancelled &&
                              od.Order.OrderDate >= from &&
-                             od.Order.OrderDate <= to)
+                             od.Order.OrderDate <= to);
+
+            if (allowedWarehouseIds != null && allowedWarehouseIds.Any())
+            {
+                orderQuery = orderQuery.Where(od => od.Order.WarehouseId.HasValue && allowedWarehouseIds.Contains(od.Order.WarehouseId.Value));
+            }
+
+            var orderDetails = await orderQuery
                 .Include(od => od.Order)
                     .ThenInclude(o => o.Customer)
                 .Include(od => od.UoM)
                 .OrderBy(od => od.Order.OrderDate)
                 .ToListAsync();
 
-            // 6. Tính thẻ tóm tắt
+            // 5b. Lấy dữ liệu Lịch sử điều chỉnh giá NCC (SupplierProductPriceHistories)
+            var priceHistories = await _db.SupplierProductPriceHistories
+                .AsNoTracking()
+                .Where(h => h.VariantId == targetVariantId &&
+                            h.EffectiveDate >= from &&
+                            h.EffectiveDate <= to)
+                .Include(h => h.Supplier)
+                .Include(h => h.PurchaseUoM)
+                .OrderBy(h => h.EffectiveDate)
+                .ToListAsync();
+
+            // 6. Tính thẻ tóm tắt (Latest Import Price, Selling Price, Margins)
             decimal latestImportPrice = 0;
             decimal prevImportPrice = 0;
+            DateTime latestImportDate = DateTime.MinValue;
+
+            // Kiểm tra từ PO
             if (poDetails.Count > 0)
             {
                 var latestPo = poDetails.Last();
                 var normLatest = Normalize(latestPo.UoMId, latestPo.UnitPrice, latestPo.OrderQuantity);
                 latestImportPrice = normLatest.normPrice;
+                latestImportDate = latestPo.PurchaseOrder.OrderDate;
 
                 if (poDetails.Count > 1)
                 {
@@ -1091,7 +1206,24 @@ namespace backend.Services
                     prevImportPrice = latestImportPrice;
                 }
             }
-            else
+
+            // Kiểm tra từ Lịch sử điều chỉnh giá NCC (nếu có bản ghi mới hơn PO hoặc không có PO)
+            if (priceHistories.Count > 0)
+            {
+                var latestHist = priceHistories.Last();
+                if (latestHist.EffectiveDate >= latestImportDate)
+                {
+                    var normLatestHist = Normalize(latestHist.PurchaseUoMId, latestHist.NewPrice, 1);
+                    var normPrevHist = Normalize(latestHist.PurchaseUoMId, latestHist.OldPrice, 1);
+
+                    latestImportPrice = normLatestHist.normPrice;
+                    prevImportPrice = normPrevHist.normPrice > 0 ? normPrevHist.normPrice : latestImportPrice;
+                    latestImportDate = latestHist.EffectiveDate;
+                }
+            }
+
+            // Fallback nếu cả 2 đều không có trong khoảng thời gian
+            if (latestImportPrice == 0)
             {
                 var supProd = await _db.SupplierProducts
                     .Where(sp => sp.VariantId == targetVariantId)
@@ -1139,13 +1271,21 @@ namespace backend.Services
                         .Select(p => Normalize(p.UoMId, p.UnitPrice, p.OrderQuantity))
                         .ToList();
 
+                    var weekPriceHistories = priceHistories
+                        .Where(h => h.EffectiveDate >= weekStart && h.EffectiveDate <= weekEnd)
+                        .Select(h => Normalize(h.PurchaseUoMId, h.NewPrice, 1))
+                        .ToList();
+
                     var weekSales = orderDetails
                         .Where(o => o.Order.OrderDate >= weekStart && o.Order.OrderDate <= weekEnd)
                         .Select(o => Normalize(o.UoMId, o.UnitPrice, o.Quantity))
                         .ToList();
 
-                    decimal avgImp = weekImports.Count > 0 && weekImports.Sum(x => x.normQty) > 0
-                        ? Math.Round(weekImports.Sum(x => x.normPrice * x.normQty) / weekImports.Sum(x => x.normQty), 0)
+                    decimal totalImpQty = weekImports.Sum(x => x.normQty) + weekPriceHistories.Count;
+                    decimal totalImpVal = weekImports.Sum(x => x.normPrice * x.normQty) + weekPriceHistories.Sum(x => x.normPrice);
+
+                    decimal avgImp = totalImpQty > 0
+                        ? Math.Round(totalImpVal / totalImpQty, 0)
                         : (timelinePoints.Count > 0 ? timelinePoints.Last().AvgImportPrice : latestImportPrice);
 
                     decimal avgSell = weekSales.Count > 0 && weekSales.Sum(x => x.normQty) > 0
@@ -1181,13 +1321,21 @@ namespace backend.Services
                         .Select(p => Normalize(p.UoMId, p.UnitPrice, p.OrderQuantity))
                         .ToList();
 
+                    var qPriceHistories = priceHistories
+                        .Where(h => h.EffectiveDate >= cur && h.EffectiveDate <= qEnd)
+                        .Select(h => Normalize(h.PurchaseUoMId, h.NewPrice, 1))
+                        .ToList();
+
                     var qSales = orderDetails
                         .Where(o => o.Order.OrderDate >= cur && o.Order.OrderDate <= qEnd)
                         .Select(o => Normalize(o.UoMId, o.UnitPrice, o.Quantity))
                         .ToList();
 
-                    decimal avgImp = qImports.Count > 0 && qImports.Sum(x => x.normQty) > 0
-                        ? Math.Round(qImports.Sum(x => x.normPrice * x.normQty) / qImports.Sum(x => x.normQty), 0)
+                    decimal totalImpQty = qImports.Sum(x => x.normQty) + qPriceHistories.Count;
+                    decimal totalImpVal = qImports.Sum(x => x.normPrice * x.normQty) + qPriceHistories.Sum(x => x.normPrice);
+
+                    decimal avgImp = totalImpQty > 0
+                        ? Math.Round(totalImpVal / totalImpQty, 0)
                         : (timelinePoints.Count > 0 ? timelinePoints.Last().AvgImportPrice : latestImportPrice);
 
                     decimal avgSell = qSales.Count > 0 && qSales.Sum(x => x.normQty) > 0
@@ -1223,13 +1371,21 @@ namespace backend.Services
                         .Select(p => Normalize(p.UoMId, p.UnitPrice, p.OrderQuantity))
                         .ToList();
 
+                    var mPriceHistories = priceHistories
+                        .Where(h => h.EffectiveDate >= cur && h.EffectiveDate <= mEnd)
+                        .Select(h => Normalize(h.PurchaseUoMId, h.NewPrice, 1))
+                        .ToList();
+
                     var mSales = orderDetails
                         .Where(o => o.Order.OrderDate >= cur && o.Order.OrderDate <= mEnd)
                         .Select(o => Normalize(o.UoMId, o.UnitPrice, o.Quantity))
                         .ToList();
 
-                    decimal avgImp = mImports.Count > 0 && mImports.Sum(x => x.normQty) > 0
-                        ? Math.Round(mImports.Sum(x => x.normPrice * x.normQty) / mImports.Sum(x => x.normQty), 0)
+                    decimal totalImpQty = mImports.Sum(x => x.normQty) + mPriceHistories.Count;
+                    decimal totalImpVal = mImports.Sum(x => x.normPrice * x.normQty) + mPriceHistories.Sum(x => x.normPrice);
+
+                    decimal avgImp = totalImpQty > 0
+                        ? Math.Round(totalImpVal / totalImpQty, 0)
                         : (timelinePoints.Count > 0 ? timelinePoints.Last().AvgImportPrice : latestImportPrice);
 
                     decimal avgSell = mSales.Count > 0 && mSales.Sum(x => x.normQty) > 0
@@ -1283,6 +1439,23 @@ namespace backend.Services
                     PartnerName = ord.Order.Customer?.Name ?? ord.Order.ReceiverName ?? "Khách hàng",
                     OriginalUnitPrice = ord.UnitPrice,
                     OriginalUoMName = ord.UoM?.Name ?? baseUoMName,
+                    NormalizedUnitPrice = norm.normPrice,
+                    QuantityInBaseUoM = norm.normQty,
+                    BaseUoMName = baseUoMName
+                });
+            }
+
+            foreach (var h in priceHistories.OrderByDescending(h => h.EffectiveDate).Take(15))
+            {
+                var norm = Normalize(h.PurchaseUoMId, h.NewPrice, 1);
+                transactions.Add(new PriceTransactionDetailDto
+                {
+                    Date = h.EffectiveDate,
+                    Type = "Điều chỉnh giá NCC",
+                    DocumentCode = $"PRC-NCC-{h.Id:D4}",
+                    PartnerName = h.Supplier?.Name ?? "Nhà cung cấp",
+                    OriginalUnitPrice = h.NewPrice,
+                    OriginalUoMName = h.PurchaseUoM?.Name ?? baseUoMName,
                     NormalizedUnitPrice = norm.normPrice,
                     QuantityInBaseUoM = norm.normQty,
                     BaseUoMName = baseUoMName

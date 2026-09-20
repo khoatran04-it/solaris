@@ -210,6 +210,23 @@ namespace backend.Services
                 _context.SupplierProducts.Add(entity);
                 await _context.SaveChangesAsync();
 
+                // Ghi nhận lịch sử giá nhập khởi tạo
+                var history = new SupplierProductPriceHistory
+                {
+                    SupplierProductId = entity.Id,
+                    SupplierId = entity.SupplierId,
+                    VariantId = entity.VariantId,
+                    PurchaseUoMId = entity.PurchaseUoMId,
+                    OldPrice = 0,
+                    NewPrice = entity.LastImportPrice,
+                    PriceChange = entity.LastImportPrice,
+                    ChangeType = "INITIAL",
+                    EffectiveDate = DateTime.UtcNow,
+                    Note = "Thiết lập bảng giá cung ứng ban đầu từ NCC"
+                };
+                _context.SupplierProductPriceHistories.Add(history);
+                await _context.SaveChangesAsync();
+
                 return entity.Id;
             });
         }
@@ -247,8 +264,30 @@ namespace backend.Services
 
             return await _context.ExecuteInTransactionAsync(async () =>
             {
+                decimal oldPrice = entity.LastImportPrice;
+                decimal newPrice = dto.LastImportPrice;
+
                 _mapper.Map(dto, entity);
                 entity.UpdatedAt = DateTime.UtcNow;
+
+                // Nếu có thay đổi đơn giá nhập, ghi lại lịch sử biến động giá phục vụ báo cáo
+                if (oldPrice != newPrice)
+                {
+                    var history = new SupplierProductPriceHistory
+                    {
+                        SupplierProductId = entity.Id,
+                        SupplierId = entity.SupplierId,
+                        VariantId = entity.VariantId,
+                        PurchaseUoMId = entity.PurchaseUoMId,
+                        OldPrice = oldPrice,
+                        NewPrice = newPrice,
+                        PriceChange = newPrice - oldPrice,
+                        ChangeType = "MANUAL_UPDATE",
+                        EffectiveDate = DateTime.UtcNow,
+                        Note = $"Điều chỉnh đơn giá nhập từ {oldPrice:N0} đ sang {newPrice:N0} đ"
+                    };
+                    _context.SupplierProductPriceHistories.Add(history);
+                }
 
                 await _context.SaveChangesAsync();
                 return true;

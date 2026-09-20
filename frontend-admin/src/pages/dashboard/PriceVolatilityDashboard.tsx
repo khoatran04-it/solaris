@@ -463,6 +463,8 @@ export default function PriceVolatilityDashboard() {
                           className={`inline-block px-2 py-0.5 rounded-full font-bold text-[11px] border ${
                             tx.type === 'Nhập hàng'
                               ? 'bg-blue-50 text-blue-700 border-blue-200/60'
+                              : tx.type === 'Điều chỉnh giá NCC'
+                              ? 'bg-amber-50 text-amber-700 border-amber-200/60'
                               : 'bg-emerald-50 text-emerald-700 border-emerald-200/60'
                           }`}
                         >

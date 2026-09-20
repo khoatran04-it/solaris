@@ -1,0 +1,1107 @@
+[
+  {
+    "table_idx": 0,
+    "rows": [
+      [
+        "NO.",
+        "NAME",
+        "STUDENT ID"
+      ],
+      [
+        "1",
+        "TRẦN ĐĂNG KHOA",
+        "2200008421"
+      ]
+    ]
+  },
+  {
+    "table_idx": 1,
+    "rows": [
+      [
+        "NO.",
+        "NAME",
+        "STUDENT ID"
+      ],
+      [
+        "1",
+        "TRẦN ĐĂNG KHOA",
+        "2200008421"
+      ]
+    ]
+  },
+  {
+    "table_idx": 2,
+    "rows": [
+      [
+        "Supervisor\n(Name and Signature)",
+        "Student\n(Name and Signature)"
+      ]
+    ]
+  },
+  {
+    "table_idx": 3,
+    "rows": [
+      [
+        "ABBREVIATION",
+        "EXPLANATION"
+      ],
+      [
+        "ACID",
+        "Atomicity, Consistency, Isolation, Durability"
+      ],
+      [
+        "AI",
+        "Artificial Intelligence"
+      ],
+      [
+        "API",
+        "Application Programming Interface"
+      ],
+      [
+        "ASP.NET",
+        "Active Server Pages .NET"
+      ],
+      [
+        "B2C",
+        "Business-to-Consumer"
+      ],
+      [
+        "BLE",
+        "Bluetooth Low Energy"
+      ],
+      [
+        "CCU",
+        "Concurrent Users"
+      ],
+      [
+        "CORS",
+        "Cross-Origin Resource Sharing"
+      ],
+      [
+        "CPU",
+        "Central Processing Unit"
+      ],
+      [
+        "CSS",
+        "Cascading Style Sheets"
+      ],
+      [
+        "D2C",
+        "Direct-to-Consumer"
+      ],
+      [
+        "DIP",
+        "Dependency Inversion Principle"
+      ],
+      [
+        "DMV",
+        "Dynamic Management View"
+      ],
+      [
+        "DSRM",
+        "Design Science Research Methodology"
+      ],
+      [
+        "E2E",
+        "End-to-End"
+      ],
+      [
+        "EAV",
+        "Entity-Attribute-Value"
+      ],
+      [
+        "EF Core",
+        "Entity Framework Core"
+      ],
+      [
+        "ERD",
+        "Entity-Relationship Diagram"
+      ],
+      [
+        "ERP",
+        "Enterprise Resource Planning"
+      ],
+      [
+        "FEFO",
+        "First-Expired, First-Out"
+      ],
+      [
+        "FIFO",
+        "First-In, First-Out"
+      ],
+      [
+        "GAP",
+        "Research Gap"
+      ],
+      [
+        "GHN",
+        "Giao Hang Nhanh"
+      ],
+      [
+        "GPS",
+        "Global Positioning System"
+      ],
+      [
+        "HCI",
+        "Human-Computer Interaction"
+      ],
+      [
+        "HTTP",
+        "Hypertext Transfer Protocol"
+      ],
+      [
+        "HTTPS",
+        "Hypertext Transfer Protocol Secure"
+      ],
+      [
+        "IEEE",
+        "Institute of Electrical and Electronics Engineers"
+      ],
+      [
+        "IoT",
+        "Internet of Things"
+      ],
+      [
+        "JSON",
+        "JavaScript Object Notation"
+      ],
+      [
+        "JWT",
+        "JSON Web Token"
+      ],
+      [
+        "LLM",
+        "Large Language Model"
+      ],
+      [
+        "Multi-UoM",
+        "Multiple Units of Measure"
+      ],
+      [
+        "NLP",
+        "Natural Language Processing"
+      ],
+      [
+        "ORM",
+        "Object-Relational Mapping"
+      ],
+      [
+        "OS",
+        "Operating System"
+      ],
+      [
+        "PPU",
+        "Price Per Unit"
+      ],
+      [
+        "RAM",
+        "Random Access Memory"
+      ],
+      [
+        "REST",
+        "Representational State Transfer"
+      ],
+      [
+        "RFID",
+        "Radio Frequency Identification"
+      ],
+      [
+        "RQ",
+        "Research Question"
+      ],
+      [
+        "Sch-M",
+        "Schema Modification"
+      ],
+      [
+        "SDK",
+        "Software Development Kit"
+      ],
+      [
+        "SKU",
+        "Stock Keeping Unit"
+      ],
+      [
+        "SME",
+        "Small and Medium-sized Enterprises"
+      ],
+      [
+        "SOLID",
+        "Single Responsibility, Open/Closed, Liskov Substitution, Interface Segregation, Dependency Inversion"
+      ],
+      [
+        "SPA",
+        "Single-Page Application"
+      ],
+      [
+        "SQL",
+        "Structured Query Language"
+      ],
+      [
+        "SSD",
+        "Solid-State Drive"
+      ],
+      [
+        "SSL",
+        "Secure Sockets Layer"
+      ],
+      [
+        "SSMS",
+        "SQL Server Management Studio"
+      ],
+      [
+        "SSR",
+        "Server-Side Rendering"
+      ],
+      [
+        "TC",
+        "Test Case"
+      ],
+      [
+        "TCT",
+        "Total Checkout Time"
+      ],
+      [
+        "TLS",
+        "Transport Layer Security"
+      ],
+      [
+        "TMS",
+        "Transportation Management System"
+      ],
+      [
+        "UI",
+        "User Interface"
+      ],
+      [
+        "UoM",
+        "Unit of Measure"
+      ],
+      [
+        "URL",
+        "Uniform Resource Locator"
+      ],
+      [
+        "UTC",
+        "Coordinated Universal Time"
+      ],
+      [
+        "VietGAP",
+        "Vietnamese Good Agricultural Practices"
+      ],
+      [
+        "VND",
+        "Vietnamese Dong"
+      ],
+      [
+        "VNPAY",
+        "Vietnam Payment Solution"
+      ]
+    ]
+  },
+  {
+    "table_idx": 4,
+    "rows": [
+      [
+        "Chapter",
+        "Title",
+        "Summary Content"
+      ],
+      [
+        "Chapter 1",
+        "Introduction",
+        "Presents the research background, problem statement, objectives, scope, methodology, and significance of the study."
+      ],
+      [
+        "Chapter 2",
+        "Literature Review and Theoretical Foundation",
+        "Reviews related studies, identifies the research gaps and research questions, and presents the theoretical foundation of the study."
+      ],
+      [
+        "Chapter 3",
+        "Reseach Methodology",
+        "Describes the system requirements, architecture, and design of the proposed system."
+      ],
+      [
+        "Chapter 4",
+        "Results and Discussion",
+        "Presents the system evaluation results and discusses the main findings."
+      ],
+      [
+        "Chapter 5",
+        "Conclusion and Future Work",
+        "Summarizes the findings, discusses the contributions and limitations, and presents directions for future development."
+      ]
+    ]
+  },
+  {
+    "table_idx": 5,
+    "rows": [
+      [
+        "Gap Code",
+        "Reference Studies",
+        "Identified Technical Gap",
+        "Proposed Solaris Architectural Solution",
+        "Research Question (RQ)"
+      ],
+      [
+        "GAP-01",
+        "Niemir and Mrugalska (2021); Arici et al. (2021)",
+        "A product data model that supports dynamic attributes, multiple selling units, and associated prices for agricultural products.",
+        "EAV model combined with a multi-UoM pricing mechanism.",
+        "RQ1"
+      ],
+      [
+        "GAP-02",
+        "Hertog et al. (2014); Figueira et al. (2023)",
+        "Managing online orders when inventory is differentiated by batch and expiration date under concurrent checkout.",
+        "FEFO-based batch allocation with transactional inventory reservation.",
+        "RQ2"
+      ],
+      [
+        "GAP-03",
+        "Zhang et al. (2021); Zhan and Jiang (2022)",
+        "A simple warehouse-selection approach based on complete-order stock availability and customer delivery distance.",
+        "Rule-based warehouse selection using inventory availability and a 15 km delivery constraint.",
+        "RQ3"
+      ],
+      [
+        "GAP-04",
+        "Rhee and Choi (2020); Liu et al. (2023); Jiang et al. (2024)",
+        "Using conversational AI for current e-commerce information and actual order processing within the same conversation.",
+        "Database-grounded AI using Function Calling and in-chat order cards.",
+        "RQ4"
+      ]
+    ]
+  },
+  {
+    "table_idx": 6,
+    "rows": [
+      [
+        "Attribute Name",
+        "Data Type",
+        "Measurement Unit"
+      ],
+      [
+        "Sweetness Level",
+        "Numeric (decimal)",
+        "°Bx"
+      ],
+      [
+        "VietGAP Certified",
+        "Boolean (bool)",
+        "True / False"
+      ],
+      [
+        "Farming Technique",
+        "String (nvarchar)",
+        "N/A"
+      ]
+    ]
+  },
+  {
+    "table_idx": 7,
+    "rows": [
+      [
+        "Product Variant (Entity)",
+        "Attribute (Attribute)",
+        "Recorded Value (Value)"
+      ],
+      [
+        "Grade-1 Hoa Loc Mango",
+        "Sweetness Level",
+        "18.5"
+      ],
+      [
+        "Grade-1 Hoa Loc Mango",
+        "VietGAP Certified",
+        "True"
+      ],
+      [
+        "Grade-1 Hoa Loc Mango",
+        "Farming Technique",
+        "Certified Organic"
+      ]
+    ]
+  },
+  {
+    "table_idx": 8,
+    "rows": [
+      [
+        "Operational Phase",
+        "Available Stock ()",
+        "Reserved Stock ()",
+        "Physical Stock ()",
+        "Business Purpose"
+      ],
+      [
+        "1. Checkout Reservation",
+        "",
+        "",
+        "Unchanged",
+        "Temporarily locks stock during payment"
+      ],
+      [
+        "2. Order Dispatching",
+        "Unchanged",
+        "",
+        "",
+        "Handed over to courier; produce physically leaves warehouse"
+      ],
+      [
+        "3. Order Cancellation",
+        "",
+        "",
+        "Unchanged",
+        "Order timed out or aborted; stock returned to commercial pool"
+      ],
+      [
+        "4. QC Quarantine",
+        "",
+        "Unchanged",
+        "",
+        "Isolates spoiled items to prevent accidental order picking"
+      ]
+    ]
+  },
+  {
+    "table_idx": 9,
+    "rows": [
+      [
+        "Layer / Category",
+        "Component",
+        "Specification / Model",
+        "Configuration Details / Runtime Parameters"
+      ],
+      [
+        "Hardware",
+        "Processor (CPU)",
+        "AMD Ryzen 5 5600H",
+        "6 Cores, 12 Threads (Base: 3.3 GHz, Boost: up to 4.2 GHz, 16 MB L3 Cache)"
+      ],
+      [
+        "",
+        "System Memory (RAM)",
+        "16 GB DDR4",
+        "2  8 GB Kingston, 3200 MHz, Dual-Channel mode"
+      ],
+      [
+        "",
+        "Storage (SSD)",
+        "512 GB NVMe PCIe SSD",
+        "Kingston OM8PDP3512B-AA1 (High I/O throughput)"
+      ],
+      [
+        "Operating System",
+        "OS Version",
+        "Microsoft Windows 11 Home Single Language",
+        "64-bit operating system, Build 26200"
+      ],
+      [
+        "Database Tier",
+        "Database Engine",
+        "Microsoft SQL Server 2025 Developer Edition",
+        "64-bit (v17.0.1000.7 RTM)"
+      ],
+      [
+        "",
+        "Buffer Pool Limit",
+        "Max Server Memory",
+        "Capped at 8 GB RAM to evaluate cache pressure"
+      ],
+      [
+        "",
+        "Connection Pool",
+        "ADO.NET Connection Pooling",
+        "Configured with Max Pool Size = 200 concurrent connections"
+      ],
+      [
+        "Backend Service",
+        "Target Framework",
+        ".NET 8.0 (ASP.NET Core Web API)",
+        "Compiled in Release mode with Tiered Compilation"
+      ],
+      [
+        "",
+        "Web Server",
+        "Kestrel",
+        "In-process high-performance reverse-proxy hosting"
+      ],
+      [
+        "Frontend Clients",
+        "D2C Storefront",
+        "Next.js (App Router) with SSR",
+        "React 19, Tailwind CSS, Node.js v24.x runtime"
+      ],
+      [
+        "",
+        "ERP Admin Portal",
+        "React Single-Page Application (SPA)",
+        "React 19, Ant Design, bundled via Vite"
+      ],
+      [
+        "Network & Testbed",
+        "Network Interface",
+        "Isolated Local Loopback / LAN",
+        "Measured latency  (eliminating transmission bias)"
+      ],
+      [
+        "",
+        "Workload Generator",
+        "Automated Benchmark Suite",
+        "k6 / Artillery script runners generating concurrent virtual users (VUs)"
+      ]
+    ]
+  },
+  {
+    "table_idx": 10,
+    "rows": [
+      [
+        "Data Entity",
+        "Actual Scale",
+        "Data Characteristics for Experimental Testing & Demonstration"
+      ],
+      [
+        "Category Groups & Categories",
+        "4 groups, 8 categories",
+        "Logically segregates cold-chain perishables (RequiresColdChain = 1) from dry ambient groceries (RequiresColdChain = 0)."
+      ],
+      [
+        "Parent Products (Products)",
+        "64 products",
+        "Comprehensive agricultural catalog covering VietGAP fresh produce, tropical fruits, clean meats, fresh aquaculture, specialty grains, and dry foods."
+      ],
+      [
+        "Product Variants (ProductVariants)",
+        "67 variants",
+        "Differentiates packaging specifications and quality grades; strictly preserves the stress-test SKU SKU-STRESS-50."
+      ],
+      [
+        "EAV Dynamic Attribute Values",
+        "137 records",
+        "Dynamically stores provenance (provinces), quality standards (VietGAP, GlobalGAP, OCOP 4-star, PGS Organic), and fruit sweetness (Brix )."
+      ],
+      [
+        "Multi-UoM Pricing Rules",
+        "105 price rules",
+        "Supports tiered pricing across base packaging units (Kg, Pack) and wholesale conversions (3-kg gift boxes, 10-kg cold crates)."
+      ],
+      [
+        "Fulfillment Warehouses",
+        "8 warehouses",
+        "1 Southern Central Hub and 5 urban retail fulfillment hubs across Ho Chi Minh City with GPS coordinates and a 15 km service radius constraint."
+      ],
+      [
+        "FEFO Expiration Batches",
+        "126 batches",
+        "Multi-tier expiration milestones: near-expiry lots (3–5 days), standard lots (15–30 days), and the dedicated stress lot LOT-STRESS-50-FEFO."
+      ],
+      [
+        "Inventory Records",
+        "678 records",
+        "Tracks atomic available (QuantityAvailable) and reserved (QuantityReserved) stocks mapped across warehouses, variants, and batches."
+      ],
+      [
+        "Customers & Delivery Addresses",
+        "100 users, 115 addresses",
+        "Includes the 20 benchmark test customer profiles (CUST-001 to CUST-020) alongside 80 realistic consumer profiles across HCMC districts."
+      ],
+      [
+        "Sales Orders & Transaction Logs",
+        "220 orders, 516 items",
+        "Realistic 40-day sales history with diverse fulfillment statuses (Completed, Shipping, Processing, Cancelled) and cumulative revenue of 113,732,266 VND."
+      ]
+    ]
+  },
+  {
+    "table_idx": 11,
+    "rows": [
+      [
+        "Tool / Software",
+        "What It Was Used For (Purpose)",
+        "Why It Was Chosen (Rationale)"
+      ],
+      [
+        "SQL Server Management Studio (SSMS) and SQL Server DMVs",
+        "Database testing for RQ1 and RQ2, including schema-change behavior, query performance, transaction activity, and blocking during concurrent inventory operations.",
+        "SSMS provides direct access to the database for running test queries and inspecting results. SQL Server DMVs provide execution and server-level performance information, while blocking can be examined using SQL Server monitoring facilities."
+      ],
+      [
+        "Apache JMeter 5.6.3",
+        "RQ2 using workloads of 100, 200, and 500 concurrent users to assess inventory consistency and overselling under checkout contention.",
+        "JMeter supports configurable concurrent virtual users and a Synchronizing Timer, which can release threads together to create a controlled burst of requests."
+      ],
+      [
+        "Automated Test Scripts (JavaScript / PowerShell)",
+        "Warehouse-selection and delivery-distance tests for RQ3, including different customer locations, warehouse availability, and the 15 km delivery constraint.",
+        "Automated scripts make the same routing scenarios repeatable and reduce the need for manual testing."
+      ],
+      [
+        "Google Gemini API and AI Benchmark Suite",
+        "RQ4 evaluation of product and inventory information retrieval, tool selection, unsupported product queries, and order-related interactions.",
+        "Gemini Function Calling allows the application to connect the model to external functions and data sources such as backend services and databases."
+      ],
+      [
+        "Playwright Core v1.48 with Headless Chromium",
+        "End-to-end checkout testing for RQ4, including comparison of the traditional checkout flow and the AI-assisted ordering flow.",
+        "Accurately records real-world browser page navigation and user action times down to the millisecond under controlled conditions."
+      ]
+    ]
+  },
+  {
+    "table_idx": 12,
+    "rows": [
+      [
+        "Evaluation Criterion",
+        "\n",
+        "\n"
+      ],
+      [
+        "Operation",
+        "ALTER TABLE ... ADD",
+        "INSERT INTO AttributeDefinitions"
+      ],
+      [
+        "Transaction duration",
+        "\n",
+        "\n"
+      ],
+      [
+        "Concurrent query",
+        "Blocked",
+        "Completed"
+      ],
+      [
+        "Wait type",
+        "LCK_M_SCH_S",
+        "None observed"
+      ],
+      [
+        "Client read latency",
+        "19 s",
+        "0 s*"
+      ],
+      [
+        "Schema modification",
+        "Required",
+        "Not required"
+      ]
+    ]
+  },
+  {
+    "table_idx": 13,
+    "rows": [
+      [
+        "Transaction",
+        "Customer Selected Packaging",
+        "Unit Price (VND)",
+        "Deducted Stock",
+        "Remaining Stock",
+        "Lookup Latency"
+      ],
+      [
+        "Initial State",
+        "Inbound lot receipt",
+        "—",
+        "—",
+        "100.0 kg",
+        "—"
+      ],
+      [
+        "Order 1",
+        "2 boxes (3 kg/box)",
+        "130,000 / box",
+        "−6.0 kg",
+        "94.0 kg",
+        "4.2 ms"
+      ],
+      [
+        "Order 2",
+        "5 crates (10 kg/crate)",
+        "400,000 / crate",
+        "−50.0 kg",
+        "44.0 kg",
+        "4.0 ms"
+      ],
+      [
+        "Order 3",
+        "4 kg retail",
+        "45,000 / kg",
+        "−4.0 kg",
+        "40.0 kg",
+        "3.9 ms"
+      ],
+      [
+        "Order 4",
+        "4 crates (10 kg/crate)",
+        "400,000 / crate",
+        "−40.0 kg",
+        "0.0 kg",
+        "4.3 ms"
+      ]
+    ]
+  },
+  {
+    "table_idx": 14,
+    "rows": [
+      [
+        "Test Scenario",
+        "Batch Code (Shelf-Life)",
+        "Initial Stock",
+        "Allocated Qty",
+        "Remaining Stock",
+        "Algorithmic FEFO Action"
+      ],
+      [
+        "Initial State",
+        "Lot A (3 days left)",
+        "30.0 kg",
+        "—",
+        "30.0 kg",
+        "Testbed initialization at Binh Thanh Hub"
+      ],
+      [
+        "Initial State",
+        "Lot B (15 days left)",
+        "50.0 kg",
+        "—",
+        "50.0 kg",
+        "Testbed initialization at Binh Thanh Hub"
+      ],
+      [
+        "Scenario 1\n",
+        "Lot A (3 days left)",
+        "30.0 kg",
+        "20.0 kg",
+        "10.0 kg",
+        "Prioritized: Pulled 100% from near-expiry Lot"
+      ],
+      [
+        "",
+        "Lot B (15 days left)",
+        "50.0 kg",
+        "0.0 kg",
+        "50.0 kg",
+        "Preserved: Shelf-stable Lot B untouched"
+      ],
+      [
+        "Scenario 2",
+        "Lot A (3 days left)",
+        "30.0 kg",
+        "30.0 kg",
+        "0.0 kg",
+        "Exhausted: Greedily depleted all near-expiry Lot A\n"
+      ],
+      [
+        "",
+        "Lot B (15 days left)",
+        "50.0 kg",
+        "10.0 kg",
+        "40.0 kg",
+        "Cascaded: Auto-allocated remaining 10 kg from Lot B"
+      ]
+    ]
+  },
+  {
+    "table_idx": 15,
+    "rows": [
+      [
+        "Performance Metric",
+        "Expected Target",
+        "Measured Empirical Value",
+        "System Evaluation & ACID Conformance"
+      ],
+      [
+        "Concurrent Virtual Users (CCU)",
+        "500 CCU",
+        "500 CCU",
+        "Instantaneous burst traffic triggered at "
+      ],
+      [
+        "Initial Available Stock",
+        "50.0 kg",
+        "50.0 kg",
+        "Initial inventory lot (SKU-STRESS-50) baseline"
+      ],
+      [
+        "Successful Checkouts (HTTP 200 OK)",
+        "50 orders",
+        "50 orders",
+        "Exactly matches the physical available stock"
+      ],
+      [
+        "Stockout Rejections (HTTP 400 Bad Request)",
+        "450 orders",
+        "450 orders",
+        "Graceful rejection; informed customer of stock depletion"
+      ],
+      [
+        "Transaction Deadlocks / Crashes",
+        "0 errors",
+        "0 errors (0.00%)",
+        "Zero database lock contention failures or 500 errors"
+      ],
+      [
+        "Final Available Balance",
+        "0.0 kg",
+        "0.0 kg",
+        "Fully depleted with zero negative balance"
+      ],
+      [
+        "Final Reserved Stock",
+        "50.0 kg",
+        "50.0 kg",
+        "100% reserved in order details for packaging"
+      ],
+      [
+        "Overselling Index ()",
+        "",
+        " (0.00%)",
+        "Absolute ACID inventory integrity preserved"
+      ],
+      [
+        "Total 500-Request Processing Duration",
+        "",
+        "2,796 ms",
+        "Average transaction latency  per request"
+      ]
+    ]
+  },
+  {
+    "table_idx": 16,
+    "rows": [
+      [
+        "Scenario Code",
+        "Test Scenario",
+        "Customer Location",
+        "Distance",
+        "Selected Fulfillment Hub",
+        "Observed Outcome",
+        "Processing Latency"
+      ],
+      [
+        "TC-01",
+        "Perishable product within delivery range",
+        "District 1",
+        "2.38 km",
+        "District 4 Retail Hub",
+        "Order accepted (Refrigerated vehicle)",
+        "12.4 ms"
+      ],
+      [
+        "TC-02",
+        "Perishable product outside delivery range",
+        "Cu Chi District",
+        "34.35 km",
+        "None",
+        "Order rejected (Geofence enforced > 15 km)",
+        "8.6 ms"
+      ],
+      [
+        "TC-03",
+        "Ambient product outside delivery range",
+        "Cu Chi District",
+        "34.35 km",
+        "District 4 Retail Hub",
+        "Order accepted (National courier dispatch)",
+        "13.8 ms"
+      ],
+      [
+        "TC-04",
+        "Multi-item order with partial stock at nearest hub",
+        "Binh Thanh District",
+        "5.03 km",
+        "District 4 Retail Hub",
+        "Single-hub consolidated (Split rate: 0.00%)",
+        "24.6 ms"
+      ]
+    ]
+  },
+  {
+    "table_idx": 17,
+    "rows": [
+      [
+        "Operational Domain",
+        "Sample Size",
+        "Correct Tool Calls",
+        "Tool Calling Accuracy",
+        "Hallucination Rate",
+        "Average Latency"
+      ],
+      [
+        "Price and Product Information",
+        "15",
+        "15/15",
+        "100.0%",
+        "0.00%",
+        "1,653.2 ms"
+      ],
+      [
+        "Inventory and Certification",
+        "12",
+        "12/12",
+        "100.0%",
+        "0.00%",
+        "1,515.8 ms"
+      ],
+      [
+        "Conversational Checkout",
+        "13",
+        "13/13",
+        "100.0%",
+        "0.00%",
+        "1,544.5 ms"
+      ],
+      [
+        "Out-of-Catalog Queries",
+        "10",
+        "10/10",
+        "100.0%",
+        "0.00%",
+        "1,700.5 ms"
+      ],
+      [
+        "Overall Performance",
+        "50",
+        "50/50",
+        "100.0%",
+        "0.00%",
+        "1,601.4 ms"
+      ]
+    ]
+  },
+  {
+    "table_idx": 18,
+    "rows": [
+      [
+        "Customer Query",
+        "Observed System Response",
+        "Result"
+      ],
+      [
+        "“Shop có bán điện thoại iPhone không?”",
+        "No matching product was found and no order was created.",
+        "PASS"
+      ],
+      [
+        "“Bán cho tôi 1 bao xi măng xây dựng.”",
+        "No matching product was found and the request was rejected.",
+        "PASS"
+      ],
+      [
+        "“Solaris có bán tivi máy giặt không?”",
+        "No matching catalog item was found and no order data was generated.",
+        "PASS"
+      ],
+      [
+        "“Cho mua 2 vỉ thuốc giảm đau Panadol.”",
+        "The request was rejected because the product was outside the system scope.",
+        "PASS"
+      ],
+      [
+        "“Có bán xe máy Honda Wave không shop?”",
+        "No matching product was found and no order was created.",
+        "PASS"
+      ]
+    ]
+  },
+  {
+    "table_idx": 19,
+    "rows": [
+      [
+        "Performance Metric",
+        "Traditional Web Checkout (Flow A)",
+        "Conversational AI Checkout (Flow B)",
+        "Operational Improvement"
+      ],
+      [
+        "Number of Runs ()",
+        "10",
+        "10",
+        "—"
+      ],
+      [
+        "Mean Total Checkout Time (TCT)",
+        "4.48 s",
+        "3.63 s",
+        "-19.0% (Faster completion)"
+      ],
+      [
+        "Standard Deviation ()",
+        "0.77 s",
+        "0.44 s",
+        "1.75x more consistent"
+      ],
+      [
+        "Minimum Checkout Time",
+        "3.60 s",
+        "3.17 s",
+        "-0.43 s"
+      ],
+      [
+        "Maximum Checkout Time",
+        "5.71 s",
+        "4.66 s",
+        "-18.4%"
+      ],
+      [
+        "User Interactions (Clicks)",
+        "8 clicks",
+        "3 clicks",
+        "-62.5% (Fewer friction points)"
+      ],
+      [
+        "Total HTTP Requests",
+        "84 requests",
+        "36 requests",
+        "-57.1% (Reduced network load)"
+      ],
+      [
+        "ACID Order Integrity",
+        "100% (10/10)",
+        "100% (10/10)",
+        "Maintained (Zero failed orders)"
+      ]
+    ]
+  },
+  {
+    "table_idx": 20,
+    "rows": [
+      [
+        "Number",
+        "Name",
+        "Link\t"
+      ],
+      [
+        "1",
+        "Github source code",
+        "https://github.com/khoatran04-it/solaris"
+      ],
+      [
+        "2",
+        "Product Demo",
+        "link video demo"
+      ],
+      [
+        "3",
+        "Swagger",
+        "https://www.solaris-api.io.vn/swagger/index.html"
+      ],
+      [
+        "4",
+        "Frontend shop",
+        "https://www.solaris-os.io.vn/"
+      ],
+      [
+        "5",
+        "Frontend admin",
+        "https://www.solaris-admin.io.vn/login#"
+      ],
+      [
+        "6",
+        "Power Point",
+        "link powerpoint"
+      ]
+    ]
+  }
+]

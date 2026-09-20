@@ -18,7 +18,7 @@ namespace backend.Services.Interfaces
         /// </summary>
         /// <param name="isActiveOnly">Nếu true, chỉ lấy các kho đang hoạt động (Dùng khi tạo phiếu). Nếu false, lấy tất cả (Dùng cho bộ lọc tra cứu).</param>
         /// <param name="warehouseType">Tùy chọn lọc theo loại kho cụ thể (Ví dụ: Kho Tổng, Kho Bán Lẻ).</param>
-        Task<IEnumerable<WarehouseReadDto>> GetAllListAsync(bool isActiveOnly = false, string? warehouseType = null);
+        Task<IEnumerable<WarehouseReadDto>> GetAllListAsync(bool isActiveOnly = false, string? warehouseType = null, List<int>? allowedWarehouseIds = null);
 
         /// <summary>
         /// Lấy danh sách Kho hàng có hỗ trợ phân trang và bộ lọc nâng cao.
@@ -29,12 +29,14 @@ namespace backend.Services.Interfaces
         /// <param name="province">Lọc kho hàng theo Khu vực / Tỉnh thành.</param>
         /// <param name="pageIndex">Chỉ số trang hiện tại (bắt đầu từ 1).</param>
         /// <param name="pageSize">Số lượng bản ghi trên mỗi trang.</param>
+        /// <param name="allowedWarehouseIds">Danh sách các kho được phép truy cập theo quyền người dùng.</param>
         Task<PagedResult<WarehouseReadDto>> GetPagedAsync(
             string? search,
             bool? isActive,
             string? province,
             int pageIndex,
-            int pageSize
+            int pageSize,
+            List<int>? allowedWarehouseIds = null
         );
 
         /// <summary>

@@ -489,19 +489,55 @@ namespace backend.Services
         }
 
         /// <inheritdoc />
-        public async Task<List<ShopProductCardDto>> GetFeaturedProductsAsync(int limit = 8, int? warehouseId = null)
+        public async Task<List<ShopProductCardDto>> GetFeaturedProductsAsync(int limit = 20, int? warehouseId = null)
         {
-            var result = await GetProductsAsync(new ShopProductFilterParams
+            // Lấy top các sản phẩm được mua nhiều nhất dựa trên OrderDetails của các đơn hàng hợp lệ (không bị hủy)
+            var topSellingProductIds = await _context.OrderDetails
+                .Include(od => od.Order)
+                .Include(od => od.Variant)
+                .Where(od => od.Order != null && od.Order.Status != OrderStatus.Cancelled && !od.Order.IsDeleted && od.Variant != null)
+                .GroupBy(od => od.Variant!.ProductId)
+                .Select(g => new
+                {
+                    ProductId = g.Key,
+                    TotalSold = g.Sum(x => x.Quantity)
+                })
+                .OrderByDescending(x => x.TotalSold)
+                .Take(limit)
+                .Select(x => x.ProductId)
+                .ToListAsync();
+
+            var allCardsResult = await GetProductsAsync(new ShopProductFilterParams
             {
-                PageSize = limit,
-                SortBy = "discount",
+                PageSize = 100,
                 WarehouseId = warehouseId
             });
-            return result.Items.Take(limit).ToList();
+
+            var cardMap = allCardsResult.Items.ToDictionary(c => c.Id, c => c);
+
+            var featuredCards = new List<ShopProductCardDto>();
+            foreach (var pid in topSellingProductIds)
+            {
+                if (cardMap.TryGetValue(pid, out var card))
+                {
+                    featuredCards.Add(card);
+                }
+            }
+
+            // Nếu chưa đủ limit (ví dụ db mới chỉ có vài sản phẩm có đơn hàng), bổ sung các sản phẩm khác để đảm bảo hiển thị đẹp
+            if (featuredCards.Count < limit)
+            {
+                var remainingCards = allCardsResult.Items
+                    .Where(c => !featuredCards.Any(f => f.Id == c.Id))
+                    .Take(limit - featuredCards.Count);
+                featuredCards.AddRange(remainingCards);
+            }
+
+            return featuredCards.Take(limit).ToList();
         }
 
         /// <inheritdoc />
-        public async Task<List<ShopProductCardDto>> GetNewArrivalsAsync(int limit = 8, int? warehouseId = null)
+        public async Task<List<ShopProductCardDto>> GetNewArrivalsAsync(int limit = 20, int? warehouseId = null)
         {
             var result = await GetProductsAsync(new ShopProductFilterParams
             {
@@ -510,6 +546,47 @@ namespace backend.Services
                 WarehouseId = warehouseId
             });
             return result.Items.Take(limit).ToList();
+        }
+
+        /// <inheritdoc />
+        public async Task<List<ShopProductCardDto>> GetDiscountedProductsAsync(int limit = 20, int? warehouseId = null)
+        {
+            var now = DateTime.UtcNow;
+
+            // Lấy danh sách ProductId có biến thể nằm trong chiến dịch khuyến mãi đang hoạt động
+            var promoProductIds = await _context.PromotionVariants
+                .Include(pv => pv.PromotionCampaign)
+                .Include(pv => pv.Variant)
+                .Where(pv => pv.PromotionCampaign != null &&
+                             pv.PromotionCampaign.IsActive &&
+                             !pv.PromotionCampaign.IsDeleted &&
+                             pv.PromotionCampaign.StartDate <= now &&
+                             pv.PromotionCampaign.EndDate >= now &&
+                             pv.Variant != null &&
+                             pv.Variant.IsActive &&
+                             !pv.Variant.IsDeleted)
+                .Select(pv => pv.Variant!.ProductId)
+                .Distinct()
+                .ToListAsync();
+
+            if (!promoProductIds.Any())
+            {
+                return new List<ShopProductCardDto>();
+            }
+
+            var allCardsResult = await GetProductsAsync(new ShopProductFilterParams
+            {
+                PageSize = 100,
+                WarehouseId = warehouseId
+            });
+
+            var discountedCards = allCardsResult.Items
+                .Where(c => promoProductIds.Contains(c.Id) && c.HasPromotion)
+                .OrderByDescending(c => c.DiscountPercent)
+                .Take(limit)
+                .ToList();
+
+            return discountedCards;
         }
 
         /// <inheritdoc />
