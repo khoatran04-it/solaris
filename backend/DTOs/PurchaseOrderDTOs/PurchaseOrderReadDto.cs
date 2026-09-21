@@ -30,6 +30,12 @@ namespace backend.DTOs.PurchaseOrderDTOs
 
         /// <summary>Tổng giá trị cuối cùng của đơn đặt hàng (VND).</summary>
         public decimal TotalAmount { get; set; }
+
+        /// <summary>
+        /// Giá trị quyết toán thực tế chốt theo số lượng thực nhận (VND).
+        /// Null nếu đơn chưa hoàn tất hoặc nhận đủ 100% theo TotalAmount ban đầu.
+        /// </summary>
+        public decimal? SettledAmount { get; set; }
         #endregion
 
         #region Ghi chú & Yêu cầu
@@ -38,6 +44,9 @@ namespace backend.DTOs.PurchaseOrderDTOs
 
         /// <summary>Lý do hủy đơn (Chỉ xuất hiện nếu Status = Cancelled).</summary>
         public string? CancellationReason { get; set; }
+
+        /// <summary>Lý do chốt đóng đơn sớm theo thực nhận (khi NCC không giao bù hàng bị từ chối).</summary>
+        public string? ClosureReason { get; set; }
         #endregion
 
         #region Đối tác & Nhân sự (Flattened Data)
@@ -103,6 +112,11 @@ namespace backend.DTOs.PurchaseOrderDTOs
         /// Nghiệp vụ: Dựa vào đây, Frontend có thể vẽ thanh Progress Bar (Ví dụ: Đã nhận 50/100 Thùng) cho từng mặt hàng.
         /// </summary>
         public decimal ReceivedQuantity { get; set; }
+
+        /// <summary>
+        /// Số lượng hàng hóa bị từ chối / trả lại ngay tại cửa kho (Lũy kế).
+        /// </summary>
+        public decimal RejectedQuantity { get; set; }
         #endregion
 
         #region Tài chính

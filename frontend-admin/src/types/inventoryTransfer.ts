@@ -5,6 +5,7 @@ import { PaginationParams } from './common';
 // =========================================================
 export enum InventoryTransferStatus {
   Draft = 1,
+  Approved = 5,
   InTransit = 2,
   Completed = 3,
   Cancelled = 4,
@@ -12,6 +13,7 @@ export enum InventoryTransferStatus {
 
 export const InventoryTransferStatusLabels: Record<InventoryTransferStatus, string> = {
   [InventoryTransferStatus.Draft]: 'Nháp',
+  [InventoryTransferStatus.Approved]: 'Đã duyệt',
   [InventoryTransferStatus.InTransit]: 'Đang vận chuyển',
   [InventoryTransferStatus.Completed]: 'Đã nhận hàng',
   [InventoryTransferStatus.Cancelled]: 'Đã hủy',
@@ -19,6 +21,7 @@ export const InventoryTransferStatusLabels: Record<InventoryTransferStatus, stri
 
 export const InventoryTransferStatusColors: Record<InventoryTransferStatus, string> = {
   [InventoryTransferStatus.Draft]: 'bg-slate-50 text-slate-600 border-slate-200',
+  [InventoryTransferStatus.Approved]: 'bg-blue-50 text-blue-700 border-blue-200',
   [InventoryTransferStatus.InTransit]: 'bg-amber-50 text-amber-700 border-amber-200',
   [InventoryTransferStatus.Completed]: 'bg-emerald-50 text-emerald-700 border-emerald-200',
   [InventoryTransferStatus.Cancelled]: 'bg-rose-50 text-rose-700 border-rose-200',
@@ -58,6 +61,11 @@ export interface InventoryTransfer {
 
   createdById: number;
   createdByName: string;
+
+  approvedById?: number;
+  approvedByName?: string;
+  approvedDate?: string;
+  approvalNote?: string;
 
   dispatchedById?: number;
   dispatchedByName?: string;

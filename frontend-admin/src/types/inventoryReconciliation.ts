@@ -17,6 +17,7 @@ export interface ShiftClosingItem {
   currentAvailable: number;
   currentReserved: number;
   currentDamaged: number;
+  currentQC?: number;
 }
 
 export interface ShiftClosingReport {

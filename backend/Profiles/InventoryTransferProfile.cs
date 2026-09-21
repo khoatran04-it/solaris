@@ -14,6 +14,7 @@ namespace backend.Profiles
                 .ForMember(dest => dest.ToWarehouseName, opt => opt.MapFrom(src => src.ToWarehouse != null ? src.ToWarehouse.Name : string.Empty))
                 .ForMember(dest => dest.OrderCode, opt => opt.MapFrom(src => src.Order != null ? src.Order.OrderCode : null))
                 .ForMember(dest => dest.CreatedByName, opt => opt.MapFrom(src => src.CreatedBy != null ? src.CreatedBy.FullName : string.Empty))
+                .ForMember(dest => dest.ApprovedByName, opt => opt.MapFrom(src => src.ApprovedBy != null ? src.ApprovedBy.FullName : null))
                 .ForMember(dest => dest.DispatchedByName, opt => opt.MapFrom(src => src.DispatchedBy != null ? src.DispatchedBy.FullName : null))
                 .ForMember(dest => dest.ReceivedByName, opt => opt.MapFrom(src => src.ReceivedBy != null ? src.ReceivedBy.FullName : null))
                 .ForMember(dest => dest.InspectedByName, opt => opt.MapFrom(src => src.InspectedBy != null ? src.InspectedBy.FullName : null));
@@ -23,6 +24,10 @@ namespace backend.Profiles
                 .ForMember(dest => dest.Id, opt => opt.Ignore())
                 .ForMember(dest => dest.TransferCode, opt => opt.Ignore())
                 .ForMember(dest => dest.Status, opt => opt.Ignore())
+                .ForMember(dest => dest.ApprovedById, opt => opt.Ignore())
+                .ForMember(dest => dest.ApprovedBy, opt => opt.Ignore())
+                .ForMember(dest => dest.ApprovedDate, opt => opt.Ignore())
+                .ForMember(dest => dest.ApprovalNote, opt => opt.Ignore())
                 .ForMember(dest => dest.DispatchedDate, opt => opt.Ignore())
                 .ForMember(dest => dest.DispatchedById, opt => opt.Ignore())
                 .ForMember(dest => dest.ReceivedDate, opt => opt.Ignore())

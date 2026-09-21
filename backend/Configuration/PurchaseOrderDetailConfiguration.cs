@@ -14,6 +14,7 @@ namespace backend.Configurations
             // Số lượng: 3 thập phân cho nông sản đo theo kg (VD: 12.500 kg)
             builder.Property(x => x.OrderQuantity).HasColumnType("decimal(18,3)");
             builder.Property(x => x.ReceivedQuantity).HasColumnType("decimal(18,3)").HasDefaultValue(0m);
+            builder.Property(x => x.RejectedQuantity).HasColumnType("decimal(18,3)").HasDefaultValue(0m);
 
             // Tiền: 2 thập phân chuẩn kế toán
             builder.Property(x => x.UnitPrice).HasColumnType("decimal(18,2)");

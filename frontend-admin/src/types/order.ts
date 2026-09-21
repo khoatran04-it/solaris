@@ -38,6 +38,8 @@ export enum PaymentStatus {
   PartiallyPaid = 2,
   Paid = 3,
   Refunded = 4,
+  Failed = 5,
+  PartiallyRefunded = 6,
 }
 
 export const PaymentStatusLabels: Record<PaymentStatus, string> = {
@@ -45,6 +47,8 @@ export const PaymentStatusLabels: Record<PaymentStatus, string> = {
   [PaymentStatus.PartiallyPaid]: 'Đã đặt cọc',
   [PaymentStatus.Paid]: 'Đã thanh toán',
   [PaymentStatus.Refunded]: 'Đã hoàn tiền',
+  [PaymentStatus.Failed]: 'Thanh toán lỗi',
+  [PaymentStatus.PartiallyRefunded]: 'Hoàn tiền 1 phần',
 };
 
 export const PaymentStatusColors: Record<PaymentStatus, string> = {
@@ -52,6 +56,8 @@ export const PaymentStatusColors: Record<PaymentStatus, string> = {
   [PaymentStatus.PartiallyPaid]: 'bg-amber-50 text-amber-700 border-amber-200',
   [PaymentStatus.Paid]: 'bg-emerald-50 text-emerald-700 border-emerald-200',
   [PaymentStatus.Refunded]: 'bg-rose-50 text-rose-700 border-rose-200',
+  [PaymentStatus.Failed]: 'bg-red-50 text-red-700 border-red-200',
+  [PaymentStatus.PartiallyRefunded]: 'bg-orange-50 text-orange-700 border-orange-200',
 };
 
 export enum PaymentMethod {

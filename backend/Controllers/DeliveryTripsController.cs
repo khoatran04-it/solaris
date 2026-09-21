@@ -159,6 +159,63 @@ namespace backend.Controllers
                 return BadRequest(new { message = ex.Message });
             }
         }
+
+        /// <summary>
+        /// Hủy bỏ chuyến xe (Giải phóng phương tiện và hoàn trả trạng thái cho các đơn hàng/phiếu trả liên kết).
+        /// </summary>
+        [HttpPost("{id:int}/cancel")]
+        [ProducesResponseType(typeof(DeliveryTripReadDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> CancelTrip(int id, [FromBody] CancelTripRequest request)
+        {
+            try
+            {
+                var trip = await _deliveryTripService.CancelTripAsync(id, request.Reason);
+                return Ok(trip);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Đánh dấu tài xế đã thu hồi thành công hàng trả RMA tại nhà khách.
+        /// </summary>
+        [HttpPost("{id:int}/returns/{returnId:int}/pickup")]
+        [ProducesResponseType(typeof(DeliveryTripReadDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> MarkReturnPickedUp(int id, int returnId, [FromBody] MarkReturnPickedUpRequest? request)
+        {
+            try
+            {
+                var trip = await _deliveryTripService.MarkTripReturnPickedUpAsync(id, returnId, request?.Note);
+                return Ok(trip);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Đánh dấu tài xế thu hồi thất bại hàng trả RMA (khách vắng mặt, không liên lạc được, từ chối trả).
+        /// </summary>
+        [HttpPost("{id:int}/returns/{returnId:int}/failed")]
+        [ProducesResponseType(typeof(DeliveryTripReadDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> MarkReturnFailed(int id, int returnId, [FromBody] MarkReturnFailedRequest request)
+        {
+            try
+            {
+                var result = await _deliveryTripService.MarkTripReturnFailedAsync(id, returnId, request.Reason ?? "Thu hồi không thành công");
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
     }
 
     public class MarkOrderDeliveredRequest
@@ -169,5 +226,20 @@ namespace backend.Controllers
     public class MarkOrderFailedRequest
     {
         public string Reason { get; set; } = "Khách từ chối nhận hàng";
+    }
+
+    public class CancelTripRequest
+    {
+        public string Reason { get; set; } = string.Empty;
+    }
+
+    public class MarkReturnPickedUpRequest
+    {
+        public string? Note { get; set; }
+    }
+
+    public class MarkReturnFailedRequest
+    {
+        public string Reason { get; set; } = "Khách vắng mặt / không thể thu hồi";
     }
 }

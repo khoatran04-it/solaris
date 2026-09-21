@@ -522,10 +522,31 @@ namespace backend.Services
                 .Take(20)
                 .ToList();
 
-            // Inbound QC reject rate (from InventoryReceiptDetails)
-            var receiptDetails = await _db.InventoryReceiptDetails
-                .AsNoTracking()
-                .ToListAsync();
+            // Inbound QC reject rate (from InventoryReceiptDetails with optional Warehouse RBAC)
+            List<InventoryReceiptDetail> receiptDetails;
+            int totalOrders;
+            int totalReturns;
+
+            if (allowedWarehouseIds != null && allowedWarehouseIds.Any())
+            {
+                receiptDetails = await _db.InventoryReceiptDetails
+                    .AsNoTracking()
+                    .Where(d => _db.InventoryReceipts.Any(r => r.Id == d.InventoryReceiptId && !r.IsDeleted && allowedWarehouseIds.Contains(r.WarehouseId)))
+                    .ToListAsync();
+
+                totalOrders = await _db.Orders.AsNoTracking().CountAsync(o => !o.IsDeleted && o.WarehouseId.HasValue && allowedWarehouseIds.Contains(o.WarehouseId.Value));
+                totalReturns = await _db.CustomerReturns.AsNoTracking().CountAsync(r => !r.IsDeleted && allowedWarehouseIds.Contains(r.WarehouseId));
+            }
+            else
+            {
+                receiptDetails = await _db.InventoryReceiptDetails
+                    .AsNoTracking()
+                    .ToListAsync();
+
+                totalOrders = await _db.Orders.AsNoTracking().CountAsync(o => !o.IsDeleted);
+                totalReturns = await _db.CustomerReturns.AsNoTracking().CountAsync(r => !r.IsDeleted);
+            }
+
             var totalInbound = (int)receiptDetails.Sum(d => d.AcceptedQuantity + d.RejectedQuantity);
             var totalRejected = (int)receiptDetails.Sum(d => d.RejectedQuantity);
             decimal qcRejectRate = totalInbound == 0 ? 0 : Math.Round((decimal)totalRejected / totalInbound * 100, 1);
@@ -549,8 +570,6 @@ namespace backend.Services
                 .ToList();
 
             // Customer return rate
-            var totalOrders = await _db.Orders.AsNoTracking().CountAsync(o => !o.IsDeleted);
-            var totalReturns = await _db.CustomerReturns.AsNoTracking().CountAsync(r => !r.IsDeleted);
             decimal returnRate = totalOrders == 0 ? 0 : Math.Round((decimal)totalReturns / totalOrders * 100, 1);
 
             return new DashboardQualityExpiryDto
@@ -602,6 +621,11 @@ namespace backend.Services
             var returnsQuery = _db.CustomerReturns
                 .AsNoTracking()
                 .Where(r => !r.IsDeleted && r.ReturnDate >= from && r.ReturnDate <= to)
+                .Include(r => r.Details)
+                    .ThenInclude(d => d.Variant)
+                        .ThenInclude(v => v!.Product)
+                            .ThenInclude(p => p!.Category)
+                                .ThenInclude(c => c!.CategoryGroup)
                 .AsQueryable();
 
             // 3. Đơn mua hàng PO trong kỳ
@@ -703,12 +727,45 @@ namespace backend.Services
                 }
             }
 
-            decimal grossProfit = netRevenue - totalCogs;
+            // Hoàn nhập giá vốn hàng bán (COGS Reversal) theo chuẩn mực kế toán VAS 14 / TT 200:
+            // Khi phát sinh hàng bán bị trả lại, ngoài việc giảm trừ Doanh thu, bắt buộc phải hoàn nhập Giá vốn tương ứng (Ghi Nợ TK 156 / Có TK 632)
+            decimal totalReturnedCogs = 0;
+            foreach (var ret in completedReturns)
+            {
+                foreach (var d in ret.Details)
+                {
+                    decimal unitCost = 0;
+                    if (latestPoPrices.TryGetValue(d.VariantId, out var poCost) && poCost > 0)
+                        unitCost = poCost;
+                    else if (supplierProductPrices.TryGetValue(d.VariantId, out var spCost) && spCost > 0)
+                        unitCost = spCost;
+                    else
+                        unitCost = d.UnitPrice * 0.70m;
+
+                    decimal retQty = d.ReturnedQuantity > 0 ? d.ReturnedQuantity : (d.AcceptedQuantity + d.DamagedQuantity);
+                    decimal lineReturnedCogs = unitCost * retQty;
+                    totalReturnedCogs += lineReturnedCogs;
+
+                    var catName = d.Variant?.Product?.Category?.CategoryGroup?.Name ?? "Nông sản tổng hợp";
+                    if (categoryMap.ContainsKey(catName))
+                    {
+                        var current = categoryMap[catName];
+                        decimal adjustedCogs = Math.Max(0, current.Cogs - lineReturnedCogs);
+                        decimal adjustedRev = Math.Max(0, current.Revenue - d.RefundAmount);
+                        int adjustedQty = Math.Max(0, current.Qty - (int)retQty);
+                        categoryMap[catName] = (adjustedRev, adjustedCogs, adjustedQty);
+                    }
+                }
+            }
+
+            decimal netCogs = Math.Max(0, totalCogs - totalReturnedCogs);
+            decimal grossProfit = netRevenue - netCogs;
             decimal grossMarginPercent = netRevenue == 0 ? 0 : Math.Round(grossProfit / netRevenue * 100, 1);
 
             // --- TÍNH TOÁN CẦU NỐI DÒNG TIỀN (CASH FLOW BRIDGE) ---
             decimal onlineInflow = orders
-                .Where(o => (o.PaymentStatus == PaymentStatus.Paid) &&
+                .Where(o => (o.PaymentStatus == PaymentStatus.Paid || o.PaymentStatus == PaymentStatus.PartiallyRefunded || o.PaymentStatus == PaymentStatus.Refunded) &&
+                            o.Status != OrderStatus.Cancelled &&
                             (o.PaymentMethod == PaymentMethod.BankTransfer || o.PaymentMethod == PaymentMethod.EWallet || o.PaymentMethod == PaymentMethod.CreditCard))
                 .Sum(o => o.TotalAmount);
 
@@ -775,8 +832,20 @@ namespace backend.Services
                 {
                     var poCount = g.Count();
                     var poVal = g.Sum(p => p.TotalAmount);
-                    var recVal = g.Where(p => p.Status == PurchaseOrderStatus.Completed).Sum(p => p.TotalAmount);
-                    var pending = Math.Max(0, poVal - recVal);
+                    var recVal = g.Sum(p => p.SettledAmount ?? (p.Details.Any(d => d.ReceivedQuantity > 0)
+                        ? p.Details.Sum(d => d.ReceivedQuantity * d.UnitPrice)
+                        : (p.Status == PurchaseOrderStatus.Completed ? p.TotalAmount : 0m)));
+
+                    var qcRejVal = g.Sum(p => p.Details.Sum(d => d.RejectedQuantity * d.UnitPrice));
+                    if (qcRejVal == 0)
+                    {
+                        var supRecs = receipts.Where(r => r.SupplierId == g.Key.SupplierId && r.Status == InventoryReceiptStatus.Completed);
+                        qcRejVal = supRecs.SelectMany(r => r.Details).Sum(d => d.RejectedQuantity * (latestPoPrices.TryGetValue(d.VariantId, out var c) ? c : 50000m));
+                    }
+
+                    var pending = g.Where(p => p.Status == PurchaseOrderStatus.Approved || p.Status == PurchaseOrderStatus.PartiallyReceived)
+                        .Sum(p => Math.Max(0, p.TotalAmount - p.Details.Sum(d => (d.ReceivedQuantity + d.RejectedQuantity) * d.UnitPrice)));
+
                     return new SupplierPayableItem
                     {
                         SupplierId = g.Key.SupplierId,
@@ -785,7 +854,7 @@ namespace backend.Services
                         TotalPoCount = poCount,
                         TotalPoValue = poVal,
                         ReceivedValue = recVal,
-                        QcRejectedValue = 0,
+                        QcRejectedValue = qcRejVal,
                         PendingCommitment = pending
                     };
                 })
@@ -877,14 +946,32 @@ namespace backend.Services
                                 dayCogs += c * (d.BaseQuantity > 0 ? d.BaseQuantity : d.Quantity);
                             }
                         }
+
+                        // Hoàn nhập trả hàng trong ngày
+                        var dayReturns = completedReturns.Where(r => r.ReturnDate.Date == g.Key).ToList();
+                        var dayRefund = dayReturns.Sum(r => r.RefundAmount);
+                        decimal dayReturnedCogs = 0;
+                        foreach (var ret in dayReturns)
+                        {
+                            foreach (var d in ret.Details)
+                            {
+                                decimal c = latestPoPrices.GetValueOrDefault(d.VariantId, supplierProductPrices.GetValueOrDefault(d.VariantId, d.UnitPrice * 0.7m));
+                                decimal retQty = d.ReturnedQuantity > 0 ? d.ReturnedQuantity : (d.AcceptedQuantity + d.DamagedQuantity);
+                                dayReturnedCogs += c * retQty;
+                            }
+                        }
+
+                        decimal netDayRev = Math.Max(0, rev - dayRefund);
+                        decimal netDayCogs = Math.Max(0, dayCogs - dayReturnedCogs);
+
                         return new FinancialTimelinePoint
                         {
                             Label = g.Key.ToString("dd/MM"),
-                            Revenue = rev,
-                            Cogs = dayCogs,
-                            GrossProfit = rev - dayCogs,
-                            CashInflow = rev,
-                            CashOutflow = dayCogs
+                            Revenue = netDayRev,
+                            Cogs = netDayCogs,
+                            GrossProfit = netDayRev - netDayCogs,
+                            CashInflow = netDayRev,
+                            CashOutflow = netDayCogs
                         };
                     }).ToList();
             }
@@ -905,14 +992,32 @@ namespace backend.Services
                                 monthCogs += c * (d.BaseQuantity > 0 ? d.BaseQuantity : d.Quantity);
                             }
                         }
+
+                        // Hoàn nhập trả hàng trong tháng
+                        var monthReturns = completedReturns.Where(r => r.ReturnDate.Year == g.Key.Year && r.ReturnDate.Month == g.Key.Month).ToList();
+                        var monthRefund = monthReturns.Sum(r => r.RefundAmount);
+                        decimal monthReturnedCogs = 0;
+                        foreach (var ret in monthReturns)
+                        {
+                            foreach (var d in ret.Details)
+                            {
+                                decimal c = latestPoPrices.GetValueOrDefault(d.VariantId, supplierProductPrices.GetValueOrDefault(d.VariantId, d.UnitPrice * 0.7m));
+                                decimal retQty = d.ReturnedQuantity > 0 ? d.ReturnedQuantity : (d.AcceptedQuantity + d.DamagedQuantity);
+                                monthReturnedCogs += c * retQty;
+                            }
+                        }
+
+                        decimal netMonthRev = Math.Max(0, rev - monthRefund);
+                        decimal netMonthCogs = Math.Max(0, monthCogs - monthReturnedCogs);
+
                         return new FinancialTimelinePoint
                         {
                             Label = $"T{g.Key.Month}/{g.Key.Year % 100}",
-                            Revenue = rev,
-                            Cogs = monthCogs,
-                            GrossProfit = rev - monthCogs,
-                            CashInflow = rev,
-                            CashOutflow = monthCogs
+                            Revenue = netMonthRev,
+                            Cogs = netMonthCogs,
+                            GrossProfit = netMonthRev - netMonthCogs,
+                            CashInflow = netMonthRev,
+                            CashOutflow = netMonthCogs
                         };
                     }).ToList();
             }
@@ -922,7 +1027,7 @@ namespace backend.Services
                 GrossRevenue = grossRevenue,
                 CustomerRefunds = customerRefunds,
                 NetRevenue = netRevenue,
-                TotalCogs = totalCogs,
+                TotalCogs = netCogs,
                 GrossProfit = grossProfit,
                 GrossMarginPercent = grossMarginPercent,
                 TotalPoValue = totalPoValue,
@@ -1132,6 +1237,7 @@ namespace backend.Services
             var poQuery = _db.PurchaseOrderDetails
                 .AsNoTracking()
                 .Where(pod => pod.VariantId == targetVariantId &&
+                              pod.PurchaseOrder != null &&
                               !pod.PurchaseOrder.IsDeleted &&
                               pod.PurchaseOrder.Status != PurchaseOrderStatus.Cancelled &&
                               pod.PurchaseOrder.Status != PurchaseOrderStatus.Draft &&
@@ -1140,20 +1246,21 @@ namespace backend.Services
 
             if (allowedWarehouseIds != null && allowedWarehouseIds.Any())
             {
-                poQuery = poQuery.Where(pod => pod.PurchaseOrder.WarehouseId.HasValue && allowedWarehouseIds.Contains(pod.PurchaseOrder.WarehouseId.Value));
+                poQuery = poQuery.Where(pod => pod.PurchaseOrder != null && pod.PurchaseOrder.WarehouseId.HasValue && allowedWarehouseIds.Contains(pod.PurchaseOrder.WarehouseId.Value));
             }
 
             var poDetails = await poQuery
                 .Include(pod => pod.PurchaseOrder)
-                    .ThenInclude(po => po.Supplier)
+                    .ThenInclude(po => po!.Supplier)
                 .Include(pod => pod.UoM)
-                .OrderBy(pod => pod.PurchaseOrder.OrderDate)
+                .OrderBy(pod => pod.PurchaseOrder!.OrderDate)
                 .ToListAsync();
 
             // 5. Lấy dữ liệu Đơn bán hàng (Order - Bán hàng) có lọc theo kho
             var orderQuery = _db.OrderDetails
                 .AsNoTracking()
                 .Where(od => od.VariantId == targetVariantId &&
+                             od.Order != null &&
                              !od.Order.IsDeleted &&
                              od.Order.Status != OrderStatus.Cancelled &&
                              od.Order.OrderDate >= from &&
@@ -1161,7 +1268,7 @@ namespace backend.Services
 
             if (allowedWarehouseIds != null && allowedWarehouseIds.Any())
             {
-                orderQuery = orderQuery.Where(od => od.Order.WarehouseId.HasValue && allowedWarehouseIds.Contains(od.Order.WarehouseId.Value));
+                orderQuery = orderQuery.Where(od => od.Order != null && od.Order.WarehouseId.HasValue && allowedWarehouseIds.Contains(od.Order.WarehouseId.Value));
             }
 
             var orderDetails = await orderQuery
@@ -1281,12 +1388,20 @@ namespace backend.Services
                         .Select(o => Normalize(o.UoMId, o.UnitPrice, o.Quantity))
                         .ToList();
 
-                    decimal totalImpQty = weekImports.Sum(x => x.normQty) + weekPriceHistories.Count;
-                    decimal totalImpVal = weekImports.Sum(x => x.normPrice * x.normQty) + weekPriceHistories.Sum(x => x.normPrice);
-
-                    decimal avgImp = totalImpQty > 0
-                        ? Math.Round(totalImpVal / totalImpQty, 0)
-                        : (timelinePoints.Count > 0 ? timelinePoints.Last().AvgImportPrice : latestImportPrice);
+                    decimal weekImpQty = weekImports.Sum(x => x.normQty);
+                    decimal avgImp;
+                    if (weekImpQty > 0)
+                    {
+                        avgImp = Math.Round(weekImports.Sum(x => x.normPrice * x.normQty) / weekImpQty, 0);
+                    }
+                    else if (weekPriceHistories.Count > 0)
+                    {
+                        avgImp = Math.Round(weekPriceHistories.Last().normPrice, 0);
+                    }
+                    else
+                    {
+                        avgImp = timelinePoints.Count > 0 ? timelinePoints.Last().AvgImportPrice : latestImportPrice;
+                    }
 
                     decimal avgSell = weekSales.Count > 0 && weekSales.Sum(x => x.normQty) > 0
                         ? Math.Round(weekSales.Sum(x => x.normPrice * x.normQty) / weekSales.Sum(x => x.normQty), 0)
@@ -1331,12 +1446,20 @@ namespace backend.Services
                         .Select(o => Normalize(o.UoMId, o.UnitPrice, o.Quantity))
                         .ToList();
 
-                    decimal totalImpQty = qImports.Sum(x => x.normQty) + qPriceHistories.Count;
-                    decimal totalImpVal = qImports.Sum(x => x.normPrice * x.normQty) + qPriceHistories.Sum(x => x.normPrice);
-
-                    decimal avgImp = totalImpQty > 0
-                        ? Math.Round(totalImpVal / totalImpQty, 0)
-                        : (timelinePoints.Count > 0 ? timelinePoints.Last().AvgImportPrice : latestImportPrice);
+                    decimal qImpQty = qImports.Sum(x => x.normQty);
+                    decimal avgImp;
+                    if (qImpQty > 0)
+                    {
+                        avgImp = Math.Round(qImports.Sum(x => x.normPrice * x.normQty) / qImpQty, 0);
+                    }
+                    else if (qPriceHistories.Count > 0)
+                    {
+                        avgImp = Math.Round(qPriceHistories.Last().normPrice, 0);
+                    }
+                    else
+                    {
+                        avgImp = timelinePoints.Count > 0 ? timelinePoints.Last().AvgImportPrice : latestImportPrice;
+                    }
 
                     decimal avgSell = qSales.Count > 0 && qSales.Sum(x => x.normQty) > 0
                         ? Math.Round(qSales.Sum(x => x.normPrice * x.normQty) / qSales.Sum(x => x.normQty), 0)
@@ -1381,12 +1504,20 @@ namespace backend.Services
                         .Select(o => Normalize(o.UoMId, o.UnitPrice, o.Quantity))
                         .ToList();
 
-                    decimal totalImpQty = mImports.Sum(x => x.normQty) + mPriceHistories.Count;
-                    decimal totalImpVal = mImports.Sum(x => x.normPrice * x.normQty) + mPriceHistories.Sum(x => x.normPrice);
-
-                    decimal avgImp = totalImpQty > 0
-                        ? Math.Round(totalImpVal / totalImpQty, 0)
-                        : (timelinePoints.Count > 0 ? timelinePoints.Last().AvgImportPrice : latestImportPrice);
+                    decimal mImpQty = mImports.Sum(x => x.normQty);
+                    decimal avgImp;
+                    if (mImpQty > 0)
+                    {
+                        avgImp = Math.Round(mImports.Sum(x => x.normPrice * x.normQty) / mImpQty, 0);
+                    }
+                    else if (mPriceHistories.Count > 0)
+                    {
+                        avgImp = Math.Round(mPriceHistories.Last().normPrice, 0);
+                    }
+                    else
+                    {
+                        avgImp = timelinePoints.Count > 0 ? timelinePoints.Last().AvgImportPrice : latestImportPrice;
+                    }
 
                     decimal avgSell = mSales.Count > 0 && mSales.Sum(x => x.normQty) > 0
                         ? Math.Round(mSales.Sum(x => x.normPrice * x.normQty) / mSales.Sum(x => x.normQty), 0)

@@ -21,6 +21,12 @@ namespace backend.Models
         /// Đơn hàng (PO) chỉ hoàn tất khi ReceivedQuantity == OrderQuantity của tất cả các dòng.
         /// </summary>
         public decimal ReceivedQuantity { get; set; } = 0;
+
+        /// <summary>
+        /// Số lượng hàng hóa bị từ chối / trả lại ngay tại cửa kho (Lũy kế).
+        /// Dùng làm căn cứ đối soát giảm trừ công nợ với Nhà cung cấp.
+        /// </summary>
+        public decimal RejectedQuantity { get; set; } = 0;
         #endregion
 
         #region Chỉ tiêu Tài chính

@@ -49,9 +49,9 @@ namespace backend.DTOs.InventoryReceiptDTOs
         /// <summary>
         /// KỶ LUẬT THÉP: Mã định danh của Lô hàng (Batch).
         /// Nghiệp vụ: Mọi mặt hàng nhập vào kho bắt buộc phải được gắn vào một Lô để phục vụ Truy xuất nguồn gốc 
-        /// và thuật toán xuất kho FEFO (Hết hạn trước, xuất trước).
+        /// và thuật toán xuất kho FEFO (Hết hạn trước, xuất trước). Cho phép null khi hàng bị từ chối 100% tại cửa kho.
         /// </summary>
-        public int BatchId { get; set; }
+        public int? BatchId { get; set; }
 
         /// <summary>Mã định danh Đơn vị tính (UoM) lúc nhập.</summary>
         public int UoMId { get; set; }

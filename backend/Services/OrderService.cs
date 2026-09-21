@@ -343,10 +343,27 @@ namespace backend.Services
 
         public async Task<bool> UpdateStatusAsync(int id, OrderUpdateDto dto)
         {
+            // SAFETY SHIELD: Nếu trạng thái chuyển sang Hủy (Cancelled), bắt buộc phải thực thi qua CancelAsync
+            // để hoàn trả toàn bộ tồn kho đã giữ chỗ (Unreserve) và ghi sổ cái bất biến
+            if (dto.Status.HasValue && dto.Status.Value == OrderStatus.Cancelled)
+            {
+                var reason = !string.IsNullOrWhiteSpace(dto.CancellationReason)
+                    ? dto.CancellationReason
+                    : (!string.IsNullOrWhiteSpace(dto.Note) ? dto.Note : "Hủy đơn hàng từ giao diện Quản trị viên");
+                return await CancelAsync(id, reason);
+            }
+
             return await _context.ExecuteInTransactionAsync(async () =>
             {
                 var order = await _context.Orders.FindAsync(id);
                 if (order == null) throw new KeyNotFoundException("Không tìm thấy Đơn hàng.");
+
+                // SAFETY SHIELD: Không thể đổi trạng thái đơn hàng đã bị Hủy hoặc Hoàn tất
+                if (order.Status == OrderStatus.Cancelled)
+                    throw new InvalidOperationException("Không thể thay đổi trạng thái của đơn hàng đã bị Hủy.");
+
+                if (order.Status == OrderStatus.Completed && dto.Status.HasValue && dto.Status.Value != OrderStatus.Completed)
+                    throw new InvalidOperationException("Không thể thay đổi trạng thái của đơn hàng đã Hoàn tất giao hàng.");
 
                 if (dto.Status.HasValue) order.Status = dto.Status.Value;
                 if (dto.PaymentStatus.HasValue) order.PaymentStatus = dto.PaymentStatus.Value;
@@ -427,6 +444,10 @@ namespace backend.Services
 
                 order.Status = OrderStatus.Cancelled;
                 order.CancellationReason = reason?.Trim();
+                if (order.PaymentStatus == PaymentStatus.Paid || order.PaymentStatus == PaymentStatus.PartiallyPaid)
+                {
+                    order.PaymentStatus = PaymentStatus.Refunded;
+                }
                 order.UpdatedAt = DateTime.UtcNow;
 
                 await _context.SaveChangesAsync();

@@ -98,6 +98,20 @@ const InventoryTransferDetail: React.FC = () => {
     fetchTransfer();
   }, [fetchTransfer]);
 
+  const handleApprove = async () => {
+    if (!transfer) return;
+    try {
+      setActionLoading(true);
+      await inventoryTransferApi.approve(transfer.id);
+      showToast('success', 'PHÊ DUYỆT LỆNH CHUYỂN KHO THÀNH CÔNG! Sẵn sàng điều phối vận chuyển.');
+      fetchTransfer();
+    } catch (err: any) {
+      showToast('error', err.response?.data?.message || 'Không thể phê duyệt lệnh chuyển kho!');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const handleDispatch = () => {
     if (!transfer) return;
     showToast(
@@ -227,21 +241,38 @@ const InventoryTransferDetail: React.FC = () => {
 
           {/* Vách ngăn nếu có nút tiếp theo */}
           {(transfer.status === InventoryTransferStatus.Draft ||
+            transfer.status === InventoryTransferStatus.Approved ||
             transfer.status === InventoryTransferStatus.InTransit) && (
             <div className="h-6 w-px bg-slate-200 mx-2 hidden md:block"></div>
           )}
 
           {/* Nút Điều phối (Nằm bên trái) */}
           <div className="flex items-center gap-2">
-            {/* Nếu Nháp: Nút Gửi Yêu Cầu Điều Phối Xe */}
+            {/* Nếu Nháp: Nút Phê Duyệt Lệnh Chuyển */}
             {transfer.status === InventoryTransferStatus.Draft && (
+              <button
+                onClick={handleApprove}
+                disabled={actionLoading}
+                className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-sm transition-all shadow-xs disabled:opacity-50 cursor-pointer"
+              >
+                {actionLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <CheckCircle size={16} />
+                )}
+                Phê Duyệt Lệnh Chuyển
+              </button>
+            )}
+
+            {/* Nếu Đã Duyệt: Nút Điều Phối Xe Vận Chuyển */}
+            {transfer.status === InventoryTransferStatus.Approved && (
               <button
                 onClick={handleDispatch}
                 disabled={actionLoading}
                 className="flex items-center gap-2 px-5 py-2.5 bg-amber-400 hover:bg-amber-300 text-slate-900 rounded-xl font-bold text-sm transition-all shadow-xs disabled:opacity-50 cursor-pointer"
               >
                 <Truck size={16} />
-                Gửi Yêu Cầu Điều Phối Xe
+                Điều Phối Xe Vận Chuyển
               </button>
             )}
 
@@ -287,6 +318,7 @@ const InventoryTransferDetail: React.FC = () => {
 
           {/* Nút Hủy Lệnh: Nằm góc phải */}
           {(transfer.status === InventoryTransferStatus.Draft ||
+            transfer.status === InventoryTransferStatus.Approved ||
             transfer.status === InventoryTransferStatus.InTransit) && (
             <button
               onClick={() => setCancelModalOpen(true)}
@@ -451,7 +483,19 @@ const InventoryTransferDetail: React.FC = () => {
             </DetailSection>
 
             <DetailSection title="Tiến Độ Vận Chuyển" dotColor="bg-indigo-400">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-y-6 gap-x-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-y-6 gap-x-8">
+                <InfoField label="Người phê duyệt" value={transfer.approvedByName || '---'} />
+                <div className="flex flex-col items-start">
+                  <span className="text-[11px] font-bold text-slate-400 uppercase mb-1">
+                    Thời gian duyệt
+                  </span>
+                  {transfer.approvedDate ? (
+                    <DateTimeCell isoString={transfer.approvedDate} />
+                  ) : (
+                    <span className="font-medium text-slate-800">---</span>
+                  )}
+                </div>
+
                 <InfoField label="Thủ kho xuất hàng" value={transfer.dispatchedByName || '---'} />
                 <div className="flex flex-col items-start">
                   <span className="text-[11px] font-bold text-slate-400 uppercase mb-1">

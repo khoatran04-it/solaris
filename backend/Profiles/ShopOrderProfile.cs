@@ -99,6 +99,8 @@ namespace backend.Profiles
             PaymentStatus.PartiallyPaid => "Thanh toán 1 phần",
             PaymentStatus.Paid => "Đã thanh toán",
             PaymentStatus.Refunded => "Đã hoàn tiền",
+            PaymentStatus.Failed => "Thanh toán thất bại",
+            PaymentStatus.PartiallyRefunded => "Hoàn tiền 1 phần",
             _ => status.ToString()
         };
 

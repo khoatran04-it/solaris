@@ -23,9 +23,11 @@ namespace backend.Configurations
 
             // Tổng tiền: Chuẩn kế toán 18 chữ số, 2 thập phân
             builder.Property(x => x.TotalAmount).HasColumnType("decimal(18,2)");
+            builder.Property(x => x.SettledAmount).HasColumnType("decimal(18,2)");
 
             builder.Property(x => x.Note).HasMaxLength(500);
             builder.Property(x => x.CancellationReason).HasMaxLength(500);
+            builder.Property(x => x.ClosureReason).HasMaxLength(500);
 
             // --- AUDIT & SOFT DELETE ---
             builder.Property(x => x.CreatedAt).HasColumnType("datetime2");

@@ -41,6 +41,16 @@ namespace backend.Models
         public int CreatedById { get; set; }
         public virtual IAUser? CreatedBy { get; set; }
 
+        /// <summary>Quản lý kiểm tra và phê duyệt lệnh chuyển kho.</summary>
+        public int? ApprovedById { get; set; }
+        public virtual IAUser? ApprovedBy { get; set; }
+
+        /// <summary>Thời điểm lệnh chuyển được phê duyệt.</summary>
+        public DateTime? ApprovedDate { get; set; }
+
+        /// <summary>Ghi chú của người phê duyệt.</summary>
+        public string? ApprovalNote { get; set; }
+
         /// <summary>Thủ kho tại Kho nguồn thực hiện xuất hàng lên xe tải.</summary>
         public int? DispatchedById { get; set; }
         public virtual IAUser? DispatchedBy { get; set; }

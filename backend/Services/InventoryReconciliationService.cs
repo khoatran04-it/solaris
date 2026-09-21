@@ -1,6 +1,7 @@
 using backend.Data;
 using backend.DTOs;
 using backend.DTOs.InventoryReconciliationDTOs;
+using backend.Models;
 using backend.Models.Enums;
 using backend.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
@@ -80,6 +81,13 @@ namespace backend.Services
                 await _context.SaveChangesAsync();
             }
 
+            // 1b. Nếu xem khoảng thời gian trong quá khứ (toUtc < DateTime.UtcNow), tải các giao dịch từ toUtc đến hiện tại để tính giật lùi
+            var afterTransactions = toUtc < DateTime.UtcNow
+                ? await _context.InventoryTransactions
+                    .Where(t => t.WarehouseId == warehouseId && t.CreatedAt >= toUtc)
+                    .ToListAsync()
+                : new List<InventoryTransaction>();
+
             // 2. Lấy số dư hiện tại trong kho
             var currentInventories = await _context.WarehouseInventories
                 .Include(i => i.Variant!).ThenInclude(v => v.Product!).ThenInclude(p => p.BaseUoM)
@@ -102,23 +110,36 @@ namespace backend.Services
                 var variant = vTxns.FirstOrDefault()?.Variant ?? vInvs.FirstOrDefault()?.Variant;
                 var uomName = variant?.Product?.BaseUoM?.Name ?? "Cái";
 
-                decimal receipt = vTxns.Where(t => t.Type == TransactionType.Receipt).Sum(t => t.Quantity);
-                decimal transferIn = vTxns.Where(t => t.Type == TransactionType.TransferIn).Sum(t => t.Quantity);
-                decimal customerReturn = vTxns.Where(t => t.Type == TransactionType.CustomerReturn).Sum(t => t.Quantity);
+                decimal receipt = vTxns.Where(t => t.Type == TransactionType.Receipt).Sum(t => Math.Abs(t.Quantity));
+                decimal transferIn = vTxns.Where(t => t.Type == TransactionType.TransferIn).Sum(t => Math.Abs(t.Quantity));
+                decimal customerReturn = vTxns.Where(t => t.Type == TransactionType.CustomerReturn).Sum(t => Math.Abs(t.Quantity));
 
-                decimal issue = vTxns.Where(t => t.Type == TransactionType.Issue).Sum(t => t.Quantity);
-                decimal transferOut = vTxns.Where(t => t.Type == TransactionType.TransferOut).Sum(t => t.Quantity);
+                decimal issue = vTxns.Where(t => t.Type == TransactionType.Issue).Sum(t => Math.Abs(t.Quantity));
+                decimal transferOut = vTxns.Where(t => t.Type == TransactionType.TransferOut).Sum(t => Math.Abs(t.Quantity));
                 decimal adjustment = vTxns.Where(t => t.Type == TransactionType.Adjustment).Sum(t => t.Quantity);
 
                 decimal curAvailable = vInvs.Sum(i => i.QuantityAvailable);
                 decimal curReserved = vInvs.Sum(i => i.QuantityReserved);
                 decimal curDamaged = vInvs.Sum(i => i.QuantityDamaged);
+                decimal curQC = vInvs.Sum(i => i.QuantityQC);
 
-                decimal totalCurrent = curAvailable + curReserved + curDamaged;
-                // Tính ngược lại tồn đầu ca
+                decimal totalCurrent = curAvailable + curReserved + curDamaged + curQC;
+
+                // Tính toán biến động ròng của các giao dịch diễn ra sau kỳ báo cáo (từ toUtc đến hiện tại)
+                var vAfterTxns = afterTransactions.Where(t => t.VariantId == vId).ToList();
+                decimal afterInflow = vAfterTxns.Where(t => t.Type == TransactionType.Receipt || t.Type == TransactionType.TransferIn || t.Type == TransactionType.CustomerReturn).Sum(t => Math.Abs(t.Quantity));
+                decimal afterOutflow = vAfterTxns.Where(t => t.Type == TransactionType.Issue || t.Type == TransactionType.TransferOut || t.Type == TransactionType.SupplierReturn).Sum(t => Math.Abs(t.Quantity));
+                decimal afterAdj = vAfterTxns.Where(t => t.Type == TransactionType.Adjustment).Sum(t => t.Quantity);
+                decimal netAfterPeriodChange = afterInflow - afterOutflow + afterAdj;
+
+                // Tồn cuối kỳ thực tế tại mốc toUtc
+                decimal closingStock = Math.Max(0, totalCurrent - netAfterPeriodChange);
+
+                // Biến động ròng trong kỳ báo cáo [fromUtc, toUtc]
                 decimal netPeriodChange = (receipt + transferIn + customerReturn) - (issue + transferOut) + adjustment;
-                decimal openingStock = Math.Max(0, totalCurrent - netPeriodChange);
-                decimal closingStock = openingStock + netPeriodChange;
+
+                // Tồn đầu kỳ thực tế tại mốc fromUtc
+                decimal openingStock = Math.Max(0, closingStock - netPeriodChange);
 
                 reportItems.Add(new ShiftClosingItemDto
                 {
@@ -136,7 +157,8 @@ namespace backend.Services
                     ClosingStock = closingStock,
                     CurrentAvailable = curAvailable,
                     CurrentReserved = curReserved,
-                    CurrentDamaged = curDamaged
+                    CurrentDamaged = curDamaged,
+                    CurrentQC = curQC
                 });
             }
 

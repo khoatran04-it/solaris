@@ -40,6 +40,8 @@ const PurchaseOrderDetail: React.FC = () => {
   );
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
+  const [closeModalOpen, setCloseModalOpen] = useState(false);
+  const [closeReason, setCloseReason] = useState('');
   const [printModalOpen, setPrintModalOpen] = useState(false);
 
   // --- EFFECTS ---
@@ -89,6 +91,27 @@ const PurchaseOrderDetail: React.FC = () => {
     } catch (error) {
       console.error('Error updating status:', error);
       showToast('error', 'CẬP NHẬT TRẠNG THÁI THẤT BẠI');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleCloseAndSettle = async () => {
+    if (!po || !closeReason.trim()) {
+      showToast('error', 'VUI LÒNG NHẬP LÝ DO CHỐT ĐÓNG ĐƠN');
+      return;
+    }
+
+    try {
+      setActionLoading(true);
+      await purchaseOrderApi.closeAndSettle(po.id, closeReason.trim());
+      showToast('success', 'CHỐT ĐÓNG ĐƠN VÀ QUYẾT TOÁN CÔNG NỢ THÀNH CÔNG');
+      setCloseModalOpen(false);
+      setCloseReason('');
+      fetchPo();
+    } catch (error: any) {
+      console.error('Error closing PO:', error);
+      showToast('error', error?.response?.data?.message || 'CHỐT ĐÓNG ĐƠN THẤT BẠI');
     } finally {
       setActionLoading(false);
     }
@@ -198,6 +221,18 @@ const PurchaseOrderDetail: React.FC = () => {
             </>
           )}
 
+          {/* NÚT: CHỐT ĐÓNG ĐƠN KHI ĐANG Ở PARTIALLY RECEIVED */}
+          {po.status === PurchaseOrderStatus.PartiallyReceived && (
+            <button
+              onClick={() => setCloseModalOpen(true)}
+              disabled={actionLoading}
+              className="flex items-center gap-2 px-4 py-2.5 bg-amber-500 text-white rounded-xl font-bold text-sm hover:bg-amber-600 transition-all shadow-xs cursor-pointer disabled:opacity-50"
+              title="Chốt đóng đơn sớm và quyết toán công nợ theo số lượng thực tế đã nhận"
+            >
+              <CheckCircle size={16} /> Chốt Đóng Đơn (Theo Thực Nhận)
+            </button>
+          )}
+
           {/* NÚT: APPROVED / PARTIALLY RECEIVED -> TẠO PHIẾU NHẬP */}
           {(po.status === PurchaseOrderStatus.Approved ||
             po.status === PurchaseOrderStatus.PartiallyReceived) && (
@@ -243,6 +278,17 @@ const PurchaseOrderDetail: React.FC = () => {
                 </div>
               )}
 
+              {/* Thông báo Chốt đóng đơn theo thực nhận */}
+              {po.closureReason && (
+                <div className="bg-amber-50 border border-amber-200 text-amber-900 p-4 rounded-2xl flex gap-3 items-start shadow-sm">
+                  <CheckCircle className="w-5 h-5 shrink-0 mt-0.5 text-amber-600" />
+                  <div>
+                    <h4 className="font-bold text-sm uppercase tracking-wider">Lý do chốt đóng đơn theo thực nhận:</h4>
+                    <p className="text-sm mt-1 font-medium">{po.closureReason}</p>
+                  </div>
+                </div>
+              )}
+
               <DetailSection title="Chứng Từ Giao Dịch">
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-6">
                   <InfoField
@@ -282,14 +328,35 @@ const PurchaseOrderDetail: React.FC = () => {
                     label="Ngày Giao Dự Kiến"
                     value={formatDate(po.expectedDeliveryDate)}
                   />
-                  <InfoField
-                    label="Tổng Tiền Thanh Toán"
-                    value={
-                      <span className="font-black text-amber-700 text-lg">
-                        {formatCurrency(po.totalAmount)}
-                      </span>
-                    }
-                  />
+                  {po.settledAmount != null ? (
+                    <>
+                      <InfoField
+                        label="Tổng Tiền Đặt Ban Đầu"
+                        value={
+                          <span className="font-bold text-slate-400 line-through">
+                            {formatCurrency(po.totalAmount)}
+                          </span>
+                        }
+                      />
+                      <InfoField
+                        label="Quyết Toán Thực Nhận"
+                        value={
+                          <span className="font-black text-emerald-700 text-lg">
+                            {formatCurrency(po.settledAmount)}
+                          </span>
+                        }
+                      />
+                    </>
+                  ) : (
+                    <InfoField
+                      label="Tổng Tiền Thanh Toán"
+                      value={
+                        <span className="font-black text-amber-700 text-lg">
+                          {formatCurrency(po.totalAmount)}
+                        </span>
+                      }
+                    />
+                  )}
                 </div>
 
                 {cleanNoteText ? (
@@ -317,19 +384,20 @@ const PurchaseOrderDetail: React.FC = () => {
                     <thead className="bg-slate-50/80 text-slate-500 font-bold text-xs uppercase tracking-wider border-b border-slate-200">
                       <tr>
                         <th className="py-3.5 px-4 text-center w-12">#</th>
-                        <th className="py-3.5 px-4 w-[18%]">Mã SKU</th>
-                        <th className="py-3.5 px-4 w-[32%]">Tên Sản Phẩm</th>
-                        <th className="py-3.5 px-4 w-[12%]">Đơn Vị Tính</th>
-                        <th className="py-3.5 px-4 w-[14%] text-right">Giá Nhập</th>
-                        <th className="py-3.5 px-4 w-[10%] text-center">SL Đặt</th>
+                        <th className="py-3.5 px-4 w-[16%]">Mã SKU</th>
+                        <th className="py-3.5 px-4 w-[28%]">Tên Sản Phẩm</th>
+                        <th className="py-3.5 px-4 w-[10%]">Đơn Vị Tính</th>
+                        <th className="py-3.5 px-4 w-[12%] text-right">Giá Nhập</th>
+                        <th className="py-3.5 px-4 w-[8%] text-center">SL Đặt</th>
                         <th className="py-3.5 px-4 w-[10%] text-center">Đã Nhận</th>
+                        <th className="py-3.5 px-4 w-[10%] text-center">Từ Chối QC</th>
                         <th className="py-3.5 px-4 w-[14%] text-right">Thành Tiền</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                       {!po.details || po.details.length === 0 ? (
                         <tr>
-                          <td colSpan={8} className="py-8 text-center text-slate-400 italic">
+                          <td colSpan={9} className="py-8 text-center text-slate-400 italic">
                             Không có dữ liệu mặt hàng
                           </td>
                         </tr>
@@ -383,6 +451,17 @@ const PurchaseOrderDetail: React.FC = () => {
                                 )}
                               </td>
 
+                              {/* Cột SL Từ Chối QC (Trả xe tải) */}
+                              <td className="py-3.5 px-4 text-center">
+                                {Number(item.rejectedQuantity) > 0 ? (
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-rose-100 text-rose-700 border border-rose-200">
+                                    -{item.rejectedQuantity}
+                                  </span>
+                                ) : (
+                                  <span className="text-slate-300 font-medium text-xs">0</span>
+                                )}
+                              </td>
+
                               <td className="py-3.5 px-4 text-right font-extrabold text-slate-800">
                                 {formatCurrency(item.totalPrice)}
                               </td>
@@ -392,18 +471,44 @@ const PurchaseOrderDetail: React.FC = () => {
                       )}
                     </tbody>
                     {po.details && po.details.length > 0 && (
-                      <tfoot className="bg-slate-50/80 border-t border-slate-200">
+                      <tfoot className="bg-slate-50/80 border-t border-slate-200 divide-y divide-slate-100">
                         <tr>
                           <td
-                            colSpan={7}
-                            className="px-6 py-4 text-right text-slate-600 text-xs font-extrabold uppercase tracking-wider"
+                            colSpan={8}
+                            className="px-6 py-3 text-right text-slate-500 text-xs font-bold uppercase tracking-wider"
                           >
-                            Tổng Giá Trị Đơn Hàng:
+                            Tổng Giá Trị Đặt Ban Đầu:
                           </td>
-                          <td className="px-4 py-4 text-right text-lg font-black text-amber-700">
+                          <td className="px-4 py-3 text-right text-sm font-bold text-slate-700">
                             {formatCurrency(po.totalAmount)}
                           </td>
                         </tr>
+                        {po.settledAmount != null && (
+                          <>
+                            <tr>
+                              <td
+                                colSpan={8}
+                                className="px-6 py-2.5 text-right text-rose-600 text-xs font-bold uppercase tracking-wider"
+                              >
+                                Giảm Trừ Hàng Từ Chối / Giao Thiếu:
+                              </td>
+                              <td className="px-4 py-2.5 text-right text-sm font-bold text-rose-600">
+                                -{formatCurrency(po.totalAmount - po.settledAmount)}
+                              </td>
+                            </tr>
+                            <tr className="bg-emerald-50/40">
+                              <td
+                                colSpan={8}
+                                className="px-6 py-3.5 text-right text-emerald-800 text-xs font-extrabold uppercase tracking-wider"
+                              >
+                                Giá Trị Quyết Toán Thực Nhận (Công Nợ Phải Trả):
+                              </td>
+                              <td className="px-4 py-3.5 text-right text-lg font-black text-emerald-700">
+                                {formatCurrency(po.settledAmount)}
+                              </td>
+                            </tr>
+                          </>
+                        )}
                       </tfoot>
                     )}
                   </table>
@@ -462,6 +567,65 @@ const PurchaseOrderDetail: React.FC = () => {
                 className="px-5 py-2 bg-rose-600 text-white rounded-lg text-sm font-bold hover:bg-rose-700 transition-colors disabled:opacity-50 disabled:bg-slate-300 shadow-sm cursor-pointer"
               >
                 {actionLoading ? 'Đang xử lý...' : 'Xác Nhận Hủy'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ================= MODAL CHỐT ĐÓNG ĐƠN ================= */}
+      {closeModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 animate-in fade-in">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="px-6 py-4 border-b border-slate-100 bg-amber-50/50">
+              <h3 className="text-lg font-black text-amber-800 flex items-center gap-2">
+                <CheckCircle size={20} className="text-amber-600" /> Chốt Đóng Đơn & Quyết Toán Công Nợ
+              </h3>
+            </div>
+            <div className="p-6">
+              <p className="text-sm text-slate-600 mb-4 leading-relaxed">
+                Bạn đang thực hiện chốt đóng sớm đơn hàng{' '}
+                <strong className="text-slate-900 bg-slate-100 px-1 rounded">{po.orderCode}</strong>.
+              </p>
+              <div className="bg-amber-50 rounded-xl p-3 mb-5 border border-amber-200 text-xs text-amber-900 space-y-1">
+                <div className="font-bold flex items-center gap-1.5 text-amber-800">
+                  <AlertCircle size={14} /> Lưu ý về công nợ & hàng tồn:
+                </div>
+                <div>• Trạng thái đơn sẽ được hoàn thành ngay lập tức.</div>
+                <div>• Công nợ phải trả NCC sẽ được chốt theo <strong>thực nhận</strong>.</div>
+                <div>• Giá trị cam kết hàng chờ (Pending Commitment) còn lại sẽ được đưa về 0.</div>
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-2">
+                  Lý do chốt đơn <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 resize-none text-sm"
+                  rows={3}
+                  placeholder="Ví dụ: NCC hết vụ/hàng đợt cuối, hai bên thống nhất kết thúc đợt giao..."
+                  value={closeReason}
+                  onChange={(e) => setCloseReason(e.target.value)}
+                  autoFocus
+                ></textarea>
+              </div>
+            </div>
+            <div className="px-6 py-4 bg-slate-50 flex justify-end gap-3 border-t border-slate-100">
+              <button
+                onClick={() => {
+                  setCloseModalOpen(false);
+                  setCloseReason('');
+                }}
+                disabled={actionLoading}
+                className="px-5 py-2 border border-slate-300 rounded-lg text-sm font-bold text-slate-600 bg-white hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                Quay lại
+              </button>
+              <button
+                onClick={handleCloseAndSettle}
+                disabled={actionLoading || !closeReason.trim()}
+                className="px-5 py-2 bg-amber-500 text-white rounded-lg text-sm font-bold hover:bg-amber-600 transition-colors disabled:opacity-50 disabled:bg-slate-300 shadow-sm cursor-pointer"
+              >
+                {actionLoading ? 'Đang xử lý...' : 'Xác Nhận Chốt Đơn'}
               </button>
             </div>
           </div>

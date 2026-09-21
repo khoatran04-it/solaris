@@ -36,6 +36,14 @@ namespace backend.DTOs.InventoryTransferDTOs
         /// <summary>Tên người khởi tạo lệnh điều chuyển.</summary>
         public string CreatedByName { get; set; } = string.Empty;
 
+        public int? ApprovedById { get; set; }
+        /// <summary>Tên Quản lý đã phê duyệt lệnh chuyển kho.</summary>
+        public string? ApprovedByName { get; set; }
+        /// <summary>Thời điểm lệnh chuyển được duyệt.</summary>
+        public DateTime? ApprovedDate { get; set; }
+        /// <summary>Ghi chú của người phê duyệt.</summary>
+        public string? ApprovalNote { get; set; }
+
         public int? DispatchedById { get; set; }
         /// <summary>Tên Thủ kho đã thực hiện xuất hàng lên xe tải (Bước 1).</summary>
         public string? DispatchedByName { get; set; }

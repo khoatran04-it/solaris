@@ -21,11 +21,16 @@ namespace backend.Services
     {
         private readonly SolarisDbContext _context;
         private readonly IMapper _mapper;
+        private readonly IUoMConversionService _uomConversionService;
 
-        public InventoryAuditService(SolarisDbContext context, IMapper mapper)
+        public InventoryAuditService(
+            SolarisDbContext context,
+            IMapper mapper,
+            IUoMConversionService? uomConversionService = null)
         {
             _context = context;
             _mapper = mapper;
+            _uomConversionService = uomConversionService ?? new UoMConversionService(context, mapper);
         }
 
         #region Truy vấn & Phân quyền (Query & RBAC)
@@ -191,18 +196,21 @@ namespace backend.Services
                                 ?? inv.Variant?.Prices?.FirstOrDefault()?.Price
                                 ?? 0;
 
-                totalSysQty += inv.QuantityAvailable;
+                // Tồn kho vật lý thực tế trên kệ bao gồm hàng khả dụng và hàng đã giữ chỗ (chờ đóng gói/giao)
+                decimal physicalStock = inv.QuantityAvailable + inv.QuantityReserved;
+
+                totalSysQty += physicalStock;
 
                 audit.Details.Add(new InventoryAuditDetail
                 {
                     VariantId = inv.VariantId,
                     BatchId = inv.BatchId,
                     UoMId = uomId,
-                    SystemQuantity = inv.QuantityAvailable,
+                    SystemQuantity = physicalStock,
                     ActualQuantity = 0,
-                    VarianceQuantity = -inv.QuantityAvailable,
+                    VarianceQuantity = -physicalStock,
                     UnitPrice = unitPrice,
-                    VarianceAmount = -inv.QuantityAvailable * unitPrice
+                    VarianceAmount = -physicalStock * unitPrice
                 });
             }
 
@@ -335,6 +343,10 @@ namespace backend.Services
 
                         var qty = Math.Abs(detail.VarianceQuantity);
 
+                        // Quy đổi số lượng chênh lệch sang Đơn vị tính cơ sở (Base UoM)
+                        decimal baseQty = await _uomConversionService.ConvertToBaseQuantityAsync(detail.VariantId, detail.UoMId, qty);
+                        decimal baseVarianceQty = detail.VarianceQuantity > 0 ? baseQty : -baseQty;
+
                         adjustment.Details.Add(new InventoryAdjustmentDetail
                         {
                             VariantId = detail.VariantId,
@@ -347,7 +359,7 @@ namespace backend.Services
                             ReasonDetail = detail.ReasonNote ?? $"Điều chỉnh kiểm kê {audit.AuditCode}"
                         });
 
-                        // Cập nhật ngay vào WarehouseInventory
+                        // Cập nhật ngay vào WarehouseInventory theo Đơn vị tính cơ sở (Base UoM)
                         var inv = await _context.WarehouseInventories
                             .FirstOrDefaultAsync(x => x.WarehouseId == audit.WarehouseId &&
                                                       x.VariantId == detail.VariantId &&
@@ -360,7 +372,7 @@ namespace backend.Services
                                 WarehouseId = audit.WarehouseId,
                                 VariantId = detail.VariantId,
                                 BatchId = detail.BatchId,
-                                QuantityAvailable = qty,
+                                QuantityAvailable = baseQty,
                                 QuantityReserved = 0,
                                 QuantityQC = 0,
                                 QuantityDamaged = 0
@@ -371,15 +383,15 @@ namespace backend.Services
                         {
                             if (adjType == InventoryAdjustmentType.IncreaseAvailable)
                             {
-                                inv.QuantityAvailable += qty;
+                                inv.QuantityAvailable += baseQty;
                             }
                             else
                             {
-                                inv.QuantityAvailable = Math.Max(0, inv.QuantityAvailable - qty);
+                                inv.QuantityAvailable = Math.Max(0, inv.QuantityAvailable - baseQty);
                             }
                         }
 
-                        // Ghi Sổ cái giao dịch InventoryTransaction
+                        // Ghi Sổ cái giao dịch InventoryTransaction theo Đơn vị tính cơ sở (Base UoM)
                         _context.InventoryTransactions.Add(new InventoryTransaction
                         {
                             TransactionCode = $"TXN-{DateTimeHelper.VietnamNow:yyyyMMddHHmmss}-{Guid.NewGuid().ToString()[..4].ToUpper()}",
@@ -387,7 +399,7 @@ namespace backend.Services
                             VariantId = detail.VariantId,
                             BatchId = detail.BatchId,
                             Type = TransactionType.Adjustment,
-                            Quantity = detail.VarianceQuantity,
+                            Quantity = baseVarianceQty,
                             ReferenceCode = audit.AuditCode,
                             Note = $"Cân bằng kiểm kê {audit.AuditCode}: Thực tế={detail.ActualQuantity}, Hệ thống={detail.SystemQuantity} ({detail.ReasonNote})",
                             CreatedById = approvedById,

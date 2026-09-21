@@ -18,6 +18,7 @@ namespace backend.DTOs.InventoryReconciliationDTOs
         public decimal CurrentAvailable { get; set; }// Tồn khả dụng hiện tại
         public decimal CurrentReserved { get; set; } // Tồn giữ chỗ hiện tại
         public decimal CurrentDamaged { get; set; }  // Hàng hỏng hiện tại
+        public decimal CurrentQC { get; set; }       // Hàng chờ kiểm định QC hiện tại
     }
 
     public class ShiftClosingReportDto

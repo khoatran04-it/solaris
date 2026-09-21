@@ -10,6 +10,7 @@ import { InventoryTransferStatus } from '../../../types/inventoryTransfer';
 vi.mock('../../../api/inventoryTransferApi', () => ({
   inventoryTransferApi: {
     getById: vi.fn(),
+    approve: vi.fn(),
     dispatch: vi.fn(),
     receive: vi.fn(),
     cancel: vi.fn(),
@@ -59,6 +60,15 @@ describe('Module 10 - InventoryTransferDetail Component', () => {
     ],
   };
 
+  const mockApprovedTransfer = {
+    ...mockDraftTransfer,
+    id: 1,
+    status: InventoryTransferStatus.Approved,
+    approvedById: 12,
+    approvedByName: 'Trần Quản Lý',
+    approvedDate: '2026-08-30T08:30:00Z',
+  };
+
   const mockInTransitTransfer = {
     ...mockDraftTransfer,
     id: 2,
@@ -73,7 +83,7 @@ describe('Module 10 - InventoryTransferDetail Component', () => {
   });
 
   // TC01: RENDER CHI TIẾT PHIẾU ĐIỀU CHUYỂN DRAFT
-  it('TC01 - Render thông tin phiếu điều chuyển, kho nguồn, kho đích và nút xuất hàng đi', async () => {
+  it('TC01 - Render thông tin phiếu điều chuyển, kho nguồn, kho đích và nút phê duyệt lệnh chuyển', async () => {
     (inventoryTransferApi.getById as any).mockResolvedValue(mockDraftTransfer);
 
     render(
@@ -91,12 +101,13 @@ describe('Module 10 - InventoryTransferDetail Component', () => {
     expect(await screen.findByText('TRF-20260830-001')).toBeInTheDocument();
     expect(screen.getByText('Tổng Kho Hà Nội')).toBeInTheDocument();
     expect(screen.getByText('Kho Nam Sài Gòn')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Gửi Yêu Cầu Điều Phối Xe/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Phê Duyệt Lệnh Chuyển/i })).toBeInTheDocument();
   });
 
-  // TC02: BƯỚC 1 - GỬI YÊU CẦU ĐIỀU PHỐI XE SANG MODULE VẬN TẢI
-  it('TC02 - Bấm nút Gửi Yêu Cầu Điều Phối Xe hiển thị thông báo chuyển hướng sang Module Vận Tải', async () => {
+  // TC01B: PHÊ DUYỆT LỆNH CHUYỂN KHO DRAFT
+  it('TC01B - Bấm nút Phê Duyệt Lệnh Chuyển gọi API approve', async () => {
     (inventoryTransferApi.getById as any).mockResolvedValue(mockDraftTransfer);
+    (inventoryTransferApi.approve as any).mockResolvedValue(undefined);
 
     render(
       <MemoryRouter initialEntries={['/inventory-transfers/1']}>
@@ -110,7 +121,31 @@ describe('Module 10 - InventoryTransferDetail Component', () => {
       expect(screen.getByText('TRF-20260830-001')).toBeInTheDocument();
     });
 
-    const dispatchBtn = screen.getByRole('button', { name: /Gửi Yêu Cầu Điều Phối Xe/i });
+    const approveBtn = screen.getByRole('button', { name: /Phê Duyệt Lệnh Chuyển/i });
+    fireEvent.click(approveBtn);
+
+    await waitFor(() => {
+      expect(inventoryTransferApi.approve).toHaveBeenCalledWith(1);
+    });
+  });
+
+  // TC02: BƯỚC ĐIỀU PHỐI XE KHI ĐÃ APPROVED
+  it('TC02 - Bấm nút Điều Phối Xe Vận Chuyển hiển thị thông báo chuyển hướng sang Module Vận Tải', async () => {
+    (inventoryTransferApi.getById as any).mockResolvedValue(mockApprovedTransfer);
+
+    render(
+      <MemoryRouter initialEntries={['/inventory-transfers/1']}>
+        <Routes>
+          <Route path="/inventory-transfers/:id" element={<InventoryTransferDetail />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('TRF-20260830-001')).toBeInTheDocument();
+    });
+
+    const dispatchBtn = screen.getByRole('button', { name: /Điều Phối Xe Vận Chuyển/i });
     fireEvent.click(dispatchBtn);
 
     await waitFor(() => {

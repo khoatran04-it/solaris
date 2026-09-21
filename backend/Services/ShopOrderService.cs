@@ -40,6 +40,9 @@ namespace backend.Services
 
         public async Task<ShopOrderReadDto> CheckoutAsync(int customerId, ShopCheckoutRequestDto request)
         {
+            if (request.ShippingFee < 0)
+                throw new ArgumentException("Phí vận chuyển không hợp lệ (không được là số âm).");
+
             var customer = await _context.Customers
                 .Include(c => c.CustomerTier)
                 .Include(c => c.Addresses.Where(a => !a.IsDeleted))
@@ -334,7 +337,7 @@ namespace backend.Services
                 if (customer.CustomerTier != null && customer.CustomerTier.DiscountPercent > 0)
                 {
                     decimal tierDiscount = Math.Round(subTotal * (customer.CustomerTier.DiscountPercent / 100m));
-                    totalDiscount += tierDiscount;
+                    totalDiscount = Math.Min(subTotal, totalDiscount + tierDiscount);
                 }
 
                 var order = new Order
@@ -484,6 +487,10 @@ namespace backend.Services
 
                 order.Status = OrderStatus.Cancelled;
                 order.CancellationReason = reason.Trim();
+                if (order.PaymentStatus == PaymentStatus.Paid || order.PaymentStatus == PaymentStatus.PartiallyPaid)
+                {
+                    order.PaymentStatus = PaymentStatus.Refunded;
+                }
                 order.UpdatedAt = now;
 
                 await _context.SaveChangesAsync();

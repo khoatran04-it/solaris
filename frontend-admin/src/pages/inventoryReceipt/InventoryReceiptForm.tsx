@@ -427,7 +427,7 @@ const InventoryReceiptForm: React.FC = () => {
     let hasItems = false;
     details.forEach((d) => {
       if (!d.variantId) newErrors[`variantId_${d.id}`] = 'Trống';
-      if (!d.batchId) newErrors[`batchId_${d.id}`] = 'Trống';
+      if (Number(d.acceptedQuantity) > 0 && !d.batchId) newErrors[`batchId_${d.id}`] = 'Trống';
       if (!d.uoMId) newErrors[`uoMId_${d.id}`] = 'Trống';
       if (Number(d.acceptedQuantity) < 0) newErrors[`acceptedQuantity_${d.id}`] = '>= 0';
       if (Number(d.rejectedQuantity) > 0 && !d.rejectReason.trim())
@@ -467,13 +467,10 @@ const InventoryReceiptForm: React.FC = () => {
                 ? (v.lengthCm * v.widthCm * v.heightCm) / 1000000
                 : 0.02);
             const unitWeight = v?.grossWeightKg || 1;
-            const qty =
-              Number(d.acceptedQuantity) > 0
-                ? Number(d.acceptedQuantity)
-                : Number(d.expectedQuantity);
+            const qty = Number(d.acceptedQuantity);
             return {
               variantId: d.variantId as number,
-              batchId: d.batchId as number,
+              batchId: d.batchId ? (d.batchId as number) : undefined,
               uoMId: d.uoMId as number,
               purchaseOrderDetailId: d.purchaseOrderDetailId || undefined,
               expectedQuantity: Number(d.expectedQuantity),

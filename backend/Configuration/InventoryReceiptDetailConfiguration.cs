@@ -36,6 +36,7 @@ namespace backend.Configurations
             builder.HasOne(x => x.Batch)
                    .WithMany()
                    .HasForeignKey(x => x.BatchId)
+                   .IsRequired(false)
                    .OnDelete(DeleteBehavior.Restrict); // Cấm xóa Lô nếu đã có phiếu nhập
 
             builder.HasOne(x => x.UoM)

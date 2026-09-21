@@ -684,5 +684,130 @@ namespace backend.Tests.Modules.Module09_Purchasing
                 .WithMessage("*Chỉ Kho Tổng*mới được phép tiếp nhận đơn đặt mua hàng*");
         }
         #endregion
+
+        #region CLOSE AND SETTLE ORDER ASYNC (QUYẾT TOÁN CÔNG NỢ THEO THỰC NHẬN)
+        /// <summary>
+        /// Test: Đóng đơn mua hàng đang ở trạng thái PartiallyReceived và quyết toán công nợ theo thực nhận.
+        /// Cập nhật Status = Completed, SettledAmount = Sum(ReceivedQty * UnitPrice), lưu ClosureReason.
+        /// </summary>
+        [Fact]
+        public async Task CloseAndSettleOrderAsync_WhenPartiallyReceived_ShouldCompleteOrderAndSetSettledAmount()
+        {
+            // Arrange
+            using var context = TestFactories.CreateInMemoryDbContext();
+            await SeedDependenciesAsync(context);
+
+            var po = new PurchaseOrder
+            {
+                Id = 10,
+                OrderCode = "PO-SETTLE-TEST",
+                WarehouseId = 1,
+                SupplierId = 1,
+                CreatedById = 1,
+                Status = PurchaseOrderStatus.PartiallyReceived,
+                TotalAmount = 5000000m,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+                Details = new List<PurchaseOrderDetail>
+                {
+                    new PurchaseOrderDetail
+                    {
+                        Id = 101,
+                        VariantId = 1,
+                        UoMId = 1,
+                        OrderQuantity = 100,
+                        ReceivedQuantity = 60,
+                        RejectedQuantity = 10,
+                        UnitPrice = 50000m,
+                        TotalPrice = 5000000m
+                    }
+                }
+            };
+            context.PurchaseOrders.Add(po);
+            await context.SaveChangesAsync();
+
+            var service = new PurchaseOrderService(context, _mapper);
+
+            // Act
+            var reason = "Nhà cung cấp hết vụ thu hoạch đợt cuối, hai bên thống nhất chốt đơn theo 60 hộp thực nhận";
+            var result = await service.CloseAndSettleOrderAsync(10, reason, currentUserId: 1);
+
+            // Assert
+            result.Should().BeTrue();
+
+            var settledPo = await context.PurchaseOrders.Include(p => p.Details).FirstOrDefaultAsync(p => p.Id == 10);
+            settledPo.Should().NotBeNull();
+            settledPo!.Status.Should().Be(PurchaseOrderStatus.Completed);
+            settledPo.SettledAmount.Should().Be(3000000m); // 60 * 50,000
+            settledPo.TotalAmount.Should().Be(5000000m);   // Giá trị gốc hợp đồng bảo toàn
+            settledPo.ClosureReason.Should().Be(reason);
+        }
+
+        /// <summary>
+        /// Test: Chặn đóng và quyết toán đơn nếu đơn không ở trạng thái PartiallyReceived (ví dụ đang ở Approved hoặc Draft).
+        /// </summary>
+        [Fact]
+        public async Task CloseAndSettleOrderAsync_WhenNotPartiallyReceived_ThrowsInvalidOperationException()
+        {
+            // Arrange
+            using var context = TestFactories.CreateInMemoryDbContext();
+            await SeedDependenciesAsync(context);
+
+            var po = new PurchaseOrder
+            {
+                Id = 11,
+                OrderCode = "PO-APPROVED-TEST",
+                WarehouseId = 1,
+                SupplierId = 1,
+                CreatedById = 1,
+                Status = PurchaseOrderStatus.Approved,
+                TotalAmount = 1000000m,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+            context.PurchaseOrders.Add(po);
+            await context.SaveChangesAsync();
+
+            var service = new PurchaseOrderService(context, _mapper);
+
+            // Act & Assert
+            var act = () => service.CloseAndSettleOrderAsync(11, "Lý do chốt đơn", 1);
+            await act.Should().ThrowAsync<InvalidOperationException>()
+                .WithMessage("*Chỉ có thể chốt đóng đơn mua hàng khi đơn đang ở trạng thái Đã nhận một phần*");
+        }
+
+        /// <summary>
+        /// Test: Bắt buộc cung cấp lý do khi chốt đóng đơn mua hàng sớm.
+        /// </summary>
+        [Fact]
+        public async Task CloseAndSettleOrderAsync_WithoutReason_ThrowsInvalidOperationException()
+        {
+            // Arrange
+            using var context = TestFactories.CreateInMemoryDbContext();
+            await SeedDependenciesAsync(context);
+
+            var po = new PurchaseOrder
+            {
+                Id = 12,
+                OrderCode = "PO-NO-REASON-TEST",
+                WarehouseId = 1,
+                SupplierId = 1,
+                CreatedById = 1,
+                Status = PurchaseOrderStatus.PartiallyReceived,
+                TotalAmount = 1000000m,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+            context.PurchaseOrders.Add(po);
+            await context.SaveChangesAsync();
+
+            var service = new PurchaseOrderService(context, _mapper);
+
+            // Act & Assert
+            var act = () => service.CloseAndSettleOrderAsync(12, "   ", 1);
+            await act.Should().ThrowAsync<InvalidOperationException>()
+                .WithMessage("*Vui lòng cung cấp lý do chốt đóng đơn mua hàng sớm*");
+        }
+        #endregion
     }
 }

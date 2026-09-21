@@ -489,12 +489,13 @@ namespace backend.Tests.Modules.Module10_Inventory
         }
         #endregion
 
-        #region TC09: PHÂN LOẠI HÀNG HỎNG KHI NHẬP KHO (QUANTITY DAMAGED ROUTING)
+        #region TC09: PHÂN LOẠI HÀNG TỪ CHỐI TẠI DOCK VS HÀNG HỎNG RMA THU HỒI
         /// <summary>
-        /// TC09: Kiểm tra khi hoàn tất phiếu nhập có RejectedQuantity > 0, hệ thống cộng số lượng này vào QuantityDamaged.
+        /// TC09: Kiểm tra khi hoàn tất phiếu nhập từ Nhà cung cấp có RejectedQuantity > 0,
+        /// hàng bị từ chối giữ nguyên trên xe NCC (không nhập kho), KHÔNG cộng vào QuantityDamaged.
         /// </summary>
         [Fact]
-        public async Task TC09_CompleteReceiptAsync_WithDamagedQuantity_ShouldRouteToQuantityDamaged()
+        public async Task TC09_CompleteReceiptAsync_WithRejectedQuantity_FromSupplier_ShouldNotRouteToQuantityDamaged()
         {
             // Arrange
             using var context = TestFactories.CreateInMemoryDbContext();
@@ -503,7 +504,7 @@ namespace backend.Tests.Modules.Module10_Inventory
             var receipt = new InventoryReceipt
             {
                 Id = 15,
-                ReceiptCode = "IR-DAMAGED-TEST",
+                ReceiptCode = "IR-SUPPLIER-REJECT-TEST",
                 WarehouseId = 1,
                 SupplierId = 1,
                 Status = InventoryReceiptStatus.Pending,
@@ -520,7 +521,7 @@ namespace backend.Tests.Modules.Module10_Inventory
                 ExpectedQuantity = 100,
                 AcceptedQuantity = 90,
                 RejectedQuantity = 10,
-                RejectReason = "10 hộp bị dập nát"
+                RejectReason = "10 hộp bị dập nát, trả lại xe NCC ngay tại dock"
             });
             context.InventoryReceipts.Add(receipt);
             await context.SaveChangesAsync();
@@ -528,14 +529,116 @@ namespace backend.Tests.Modules.Module10_Inventory
             var service = new InventoryReceiptService(context, _mapper);
 
             // Act
-            var success = await service.CompleteReceiptAsync(15, receivedById: 1, note: "Nhập hàng có 10 hộp hỏng");
+            var success = await service.CompleteReceiptAsync(15, receivedById: 1, note: "Nhập hàng thực nhận 90, trả lại NCC 10");
 
             // Assert
             success.Should().BeTrue();
 
             var inv = await context.WarehouseInventories.FirstAsync(x => x.WarehouseId == 1 && x.VariantId == 1 && x.BatchId == 1);
-            inv.QuantityAvailable.Should().Be(90);  // Hàng tốt
-            inv.QuantityDamaged.Should().Be(10);    // Hàng hỏng
+            inv.QuantityAvailable.Should().Be(90);  // Chỉ hàng thực nhận nhập kho
+            inv.QuantityDamaged.Should().Be(0);    // Hàng NCC bị trả lại không tạo tồn kho hỏng ảo
+        }
+
+        /// <summary>
+        /// TC09_B: Kiểm tra khi hoàn tất phiếu nhập kho thu hồi khách hàng (RMA),
+        /// hàng hỏng (RejectedQuantity) được thu hồi và đưa vào khu cách ly kho (QuantityDamaged).
+        /// </summary>
+        [Fact]
+        public async Task TC09_CompleteReceiptAsync_WithCustomerReturn_ShouldRouteDamagedToQuantityDamaged()
+        {
+            // Arrange
+            using var context = TestFactories.CreateInMemoryDbContext();
+            await SeedDependenciesAsync(context);
+
+            var receipt = new InventoryReceipt
+            {
+                Id = 16,
+                ReceiptCode = "IR-RMA-DAMAGED",
+                WarehouseId = 1,
+                SupplierId = null, // Thu hồi khách hàng không có SupplierId
+                Note = "Thu hồi khách hàng theo RMA RET-20260901-001",
+                Status = InventoryReceiptStatus.Pending,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+            receipt.Details.Add(new InventoryReceiptDetail
+            {
+                Id = 1,
+                InventoryReceiptId = 16,
+                VariantId = 1,
+                BatchId = 1,
+                UoMId = 1,
+                ExpectedQuantity = 20,
+                AcceptedQuantity = 15,
+                RejectedQuantity = 5,
+                RejectReason = "5 hộp dập hỏng do vận chuyển"
+            });
+            context.InventoryReceipts.Add(receipt);
+            await context.SaveChangesAsync();
+
+            var service = new InventoryReceiptService(context, _mapper);
+
+            // Act
+            var success = await service.CompleteReceiptAsync(16, receivedById: 1, note: "Nhập hàng thu hồi từ khách");
+
+            // Assert
+            success.Should().BeTrue();
+
+            var inv = await context.WarehouseInventories.FirstAsync(x => x.WarehouseId == 1 && x.VariantId == 1 && x.BatchId == 1);
+            inv.QuantityAvailable.Should().Be(15);
+            inv.QuantityDamaged.Should().Be(5);     // RMA hàng hỏng đưa vào kho cách ly
+        }
+
+        /// <summary>
+        /// TC09_C: Khi hàng bị từ chối 100% tại dock tiếp nhận, không yêu cầu BatchId,
+        /// không sinh bản ghi tồn kho và cập nhật RejectedQuantity lên PO.
+        /// </summary>
+        [Fact]
+        public async Task TC09_CompleteReceiptAsync_When100PercentRejected_ShouldNotCreateInventoryOrRequireBatch()
+        {
+            // Arrange
+            using var context = TestFactories.CreateInMemoryDbContext();
+            await SeedDependenciesAsync(context);
+
+            var receipt = new InventoryReceipt
+            {
+                Id = 17,
+                ReceiptCode = "IR-100PCT-REJECTED",
+                WarehouseId = 1,
+                SupplierId = 1,
+                Status = InventoryReceiptStatus.Pending,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+            receipt.Details.Add(new InventoryReceiptDetail
+            {
+                Id = 1,
+                InventoryReceiptId = 17,
+                VariantId = 1,
+                BatchId = null, // BatchId null vì từ chối 100% tại dock
+                UoMId = 1,
+                PurchaseOrderDetailId = 1,
+                ExpectedQuantity = 50,
+                AcceptedQuantity = 0,
+                RejectedQuantity = 50,
+                RejectReason = "Hàng sai quy cách chất lượng hoàn toàn"
+            });
+            context.InventoryReceipts.Add(receipt);
+            await context.SaveChangesAsync();
+
+            var service = new InventoryReceiptService(context, _mapper);
+
+            // Act
+            var success = await service.CompleteReceiptAsync(17, receivedById: 1, note: "Từ chối toàn bộ 50 đơn vị");
+
+            // Assert
+            success.Should().BeTrue();
+
+            var inv = await context.WarehouseInventories.FirstOrDefaultAsync(x => x.WarehouseId == 1 && x.VariantId == 1);
+            inv.Should().BeNull(); // Không tạo bản ghi tồn kho
+
+            var poDetail = await context.PurchaseOrderDetails.FindAsync(1);
+            poDetail!.RejectedQuantity.Should().Be(50);
         }
         #endregion
 

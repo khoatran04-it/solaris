@@ -312,7 +312,17 @@ namespace backend.Tests.Modules.Module10_Inventory
 
             var service = new InventoryTransferService(context, _mapper);
 
-            // Act: Xuất phát chuyến hàng (Bước 1)
+            // Bước 1: Quản lý phê duyệt lệnh chuyển kho (Approved)
+            var approveSuccess = await service.ApproveTransferAsync(1, approvedById: 1, "Duyệt xuất hàng sang chi nhánh 2");
+            approveSuccess.Should().BeTrue();
+
+            var approvedTransfer = await context.InventoryTransfers.FindAsync(1);
+            approvedTransfer!.Status.Should().Be(InventoryTransferStatus.Approved);
+            approvedTransfer.ApprovedById.Should().Be(1);
+            approvedTransfer.ApprovedDate.Should().NotBeNull();
+            approvedTransfer.ApprovalNote.Should().Be("Duyệt xuất hàng sang chi nhánh 2");
+
+            // Bước 2: Xuất phát chuyến hàng (Dispatched)
             var success = await service.DispatchTransferAsync(1, dispatchedById: 2);
 
             // Assert
@@ -378,9 +388,14 @@ namespace backend.Tests.Modules.Module10_Inventory
 
             var service = new InventoryTransferService(context, _mapper);
 
-            // Act & Assert: Bị chặn do thiếu hàng
-            var act = async () => await service.DispatchTransferAsync(2, 2);
-            await act.Should().ThrowAsync<InvalidOperationException>()
+            // Test 1: Chặn xuất kho khi phiếu chưa được duyệt (vẫn ở Draft)
+            var actDraft = async () => await service.DispatchTransferAsync(2, 2);
+            await actDraft.Should().ThrowAsync<InvalidOperationException>()
+                .WithMessage("*phê duyệt (Approved)*");
+
+            // Test 2: Chặn phê duyệt khi kho nguồn không đủ số lượng tồn kho khả dụng
+            var actApprove = async () => await service.ApproveTransferAsync(2, 1);
+            await actApprove.Should().ThrowAsync<InvalidOperationException>()
                 .WithMessage("*Kho nguồn không đủ số lượng khả dụng*");
         }
         #endregion

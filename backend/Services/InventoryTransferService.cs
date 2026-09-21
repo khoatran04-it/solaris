@@ -107,6 +107,7 @@ namespace backend.Services
                 .Include(t => t.ToWarehouse)
                 .Include(t => t.Order)
                 .Include(t => t.CreatedBy)
+                .Include(t => t.ApprovedBy)
                 .Include(t => t.DispatchedBy)
                 .Include(t => t.ReceivedBy)
                 .Include(t => t.Details).ThenInclude(d => d.Variant)
@@ -209,6 +210,57 @@ namespace backend.Services
         }
 
         /// <inheritdoc />
+        public async Task<bool> ApproveTransferAsync(int id, int approvedById, string? note = null)
+        {
+            return await _context.ExecuteInTransactionAsync(async () =>
+            {
+                var transfer = await _context.InventoryTransfers
+                    .Include(t => t.Details)
+                    .FirstOrDefaultAsync(t => t.Id == id && !t.IsDeleted);
+
+                if (transfer == null)
+                    throw new KeyNotFoundException("Không tìm thấy Phiếu chuyển kho.");
+
+                if (transfer.Status != InventoryTransferStatus.Draft)
+                    throw new InvalidOperationException($"Chỉ có thể phê duyệt phiếu chuyển kho đang ở trạng thái Nháp (Draft). Phiếu hiện tại đang ở trạng thái '{transfer.Status}'.");
+
+                var userExists = await _context.IAUsers.AnyAsync(u => u.Id == approvedById && !u.IsDeleted);
+                if (!userExists)
+                {
+                    var firstUser = await _context.IAUsers.FirstOrDefaultAsync(u => !u.IsDeleted);
+                    approvedById = firstUser?.Id ?? 1;
+                }
+
+                // SAFETY SHIELD: Kiểm tra lại tồn kho khả dụng tại Kho Nguồn tại thời điểm Quản lý phê duyệt
+                foreach (var detail in transfer.Details)
+                {
+                    decimal baseQty = await _uomConversionService.ConvertToBaseQuantityAsync(detail.VariantId, detail.UoMId, detail.Quantity);
+                    var sourceInv = await _context.WarehouseInventories
+                        .FirstOrDefaultAsync(i => i.WarehouseId == transfer.FromWarehouseId &&
+                                                  i.VariantId == detail.VariantId &&
+                                                  i.BatchId == detail.BatchId);
+
+                    if (sourceInv == null || sourceInv.QuantityAvailable < baseQty)
+                    {
+                        throw new InvalidOperationException($"Kho nguồn không đủ số lượng khả dụng cho mặt hàng mã #{detail.VariantId}, lô #{detail.BatchId} (Hiện có: {sourceInv?.QuantityAvailable ?? 0}, Yêu cầu chuyển: {baseQty}).");
+                    }
+                }
+
+                transfer.Status = InventoryTransferStatus.Approved;
+                transfer.ApprovedById = approvedById;
+                transfer.ApprovedDate = DateTime.UtcNow;
+                if (!string.IsNullOrWhiteSpace(note))
+                {
+                    transfer.ApprovalNote = note.Trim();
+                }
+                transfer.UpdatedAt = DateTime.UtcNow;
+
+                await _context.SaveChangesAsync();
+                return true;
+            });
+        }
+
+        /// <inheritdoc />
         public async Task<bool> CancelTransferAsync(int id, string reason)
         {
             if (string.IsNullOrWhiteSpace(reason))
@@ -223,8 +275,11 @@ namespace backend.Services
                 if (transfer == null)
                     throw new KeyNotFoundException("Không tìm thấy Phiếu chuyển kho.");
 
-                if (transfer.Status != InventoryTransferStatus.Draft)
-                    throw new InvalidOperationException("Chỉ được phép hủy khi phiếu chuyển kho đang ở trạng thái Nháp (Draft).");
+                if (transfer.Status != InventoryTransferStatus.Draft && transfer.Status != InventoryTransferStatus.Approved)
+                    throw new InvalidOperationException("Chỉ được phép hủy khi phiếu chuyển kho đang ở trạng thái Nháp (Draft) hoặc Đã duyệt (Approved).");
+
+                if (transfer.DeliveryTripId.HasValue)
+                    throw new InvalidOperationException("Phiếu chuyển kho đã được gán vào chuyến xe, vui lòng hủy chuyến xe trước.");
 
                 transfer.Status = InventoryTransferStatus.Cancelled;
                 transfer.CancellationReason = reason.Trim();
@@ -249,8 +304,8 @@ namespace backend.Services
                 if (transfer == null)
                     throw new KeyNotFoundException("Không tìm thấy Phiếu chuyển kho.");
 
-                if (transfer.Status != InventoryTransferStatus.Draft)
-                    throw new InvalidOperationException("Chỉ có thể xuất phát phiếu chuyển đang ở trạng thái Nháp (Draft).");
+                if (transfer.Status != InventoryTransferStatus.Approved)
+                    throw new InvalidOperationException($"Chỉ có thể xuất phát phiếu chuyển đã được phê duyệt (Approved). Phiếu hiện tại đang ở trạng thái '{transfer.Status}'.");
 
                 var userExists = await _context.IAUsers.AnyAsync(u => u.Id == dispatchedById && !u.IsDeleted);
                 if (!userExists)
@@ -494,10 +549,10 @@ namespace backend.Services
                             WarehouseId = transfer.ToWarehouseId,
                             VariantId = detail.VariantId,
                             BatchId = detail.BatchId,
-                            Type = TransactionType.Adjustment,
-                            Quantity = -damagedBaseQty,
+                            Type = TransactionType.TransferIn,
+                            Quantity = damagedBaseQty,
                             ReferenceCode = transfer.TransferCode,
-                            Note = $"Hàng hư hỏng/dập nát khi vận chuyển từ kho #{transfer.FromWarehouseId} (Phiếu {transfer.TransferCode}, {damaged} ĐVT -> {damagedBaseQty} Base UoM ghi vào ngăn Hỏng)",
+                            Note = $"Nhận hàng hư hỏng/dập nát khi vận chuyển từ kho #{transfer.FromWarehouseId} (Phiếu {transfer.TransferCode}, {damaged} ĐVT -> {damagedBaseQty} Base UoM ghi vào ngăn Hỏng)",
                             CreatedById = inspectedById,
                             CreatedAt = DateTime.UtcNow
                         });

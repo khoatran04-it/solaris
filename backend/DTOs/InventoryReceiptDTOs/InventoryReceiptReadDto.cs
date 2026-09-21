@@ -70,9 +70,9 @@ namespace backend.DTOs.InventoryReceiptDTOs
         /// <summary>Tên hiển thị của Biến thể sản phẩm.</summary>
         public string VariantName { get; set; } = string.Empty;
 
-        public int BatchId { get; set; }
+        public int? BatchId { get; set; }
         /// <summary>Mã Lô hàng (Rất quan trọng để nhân viên dán tem QR Code Truy xuất nguồn gốc lên thùng hàng).</summary>
-        public string BatchCode { get; set; } = string.Empty;
+        public string? BatchCode { get; set; }
 
         public int UoMId { get; set; }
         /// <summary>Tên Đơn vị tính (Ví dụ: Thùng, Pallet, Tấn).</summary>

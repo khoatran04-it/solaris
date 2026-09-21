@@ -34,4 +34,13 @@ namespace backend.DTOs.PurchaseOrderDTOs
         public string? Note { get; set; }
         #endregion
     }
+
+    /// <summary>
+    /// DTO yêu cầu Chốt đóng đơn mua hàng sớm theo số lượng thực nhận (Settle & Close PO).
+    /// </summary>
+    public class ClosePurchaseOrderDto
+    {
+        /// <summary>Lý do chốt đóng đơn (bắt buộc, ví dụ: NCC không giao bù hàng bị từ chối/hỏng).</summary>
+        public string Reason { get; set; } = string.Empty;
+    }
 }

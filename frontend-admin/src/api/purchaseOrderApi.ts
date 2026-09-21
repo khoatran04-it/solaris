@@ -35,4 +35,8 @@ export const purchaseOrderApi = {
   delete: (id: number): Promise<{ message: string }> => {
     return axiosClient.delete(`/purchase-orders/${id}`);
   },
+
+  closeAndSettle: (id: number, reason: string): Promise<{ message: string }> => {
+    return axiosClient.post(`/purchase-orders/${id}/close-and-settle`, { reason });
+  },
 };

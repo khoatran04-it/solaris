@@ -47,8 +47,15 @@ namespace backend.Services.Interfaces
         Task<int> CreateAsync(InventoryTransferCreateDto dto);
 
         /// <summary>
+        /// Phê duyệt lệnh điều chuyển kho (Chuyển trạng thái từ Draft sang Approved).
+        /// Ràng buộc: Kiểm tra tồn kho khả dụng tại Kho Nguồn trước khi duyệt.
+        /// Chỉ khi phiếu đã được duyệt mới được phép điều phối xe tải lạnh hoặc xuất bến.
+        /// </summary>
+        Task<bool> ApproveTransferAsync(int id, int approvedById, string? note = null);
+
+        /// <summary>
         /// Hủy lệnh điều chuyển.
-        /// Ràng buộc: Chỉ được phép hủy khi hàng chưa được xuất đi (Status = Draft). 
+        /// Ràng buộc: Chỉ được phép hủy khi hàng chưa được xuất đi (Status = Draft hoặc Approved). 
         /// Nếu hàng đã lên xe (Dispatched), bắt buộc phải làm quy trình nhập lại kho nguồn (Hoàn trả) thay vì bấm xóa/hủy.
         /// </summary>
         Task<bool> CancelTransferAsync(int id, string reason);

@@ -1,6 +1,7 @@
 using backend.Models.Enums;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 
 namespace backend.DTOs.ShopDTOs
 {
@@ -42,6 +43,7 @@ namespace backend.DTOs.ShopDTOs
         public string? GhnWardCode { get; set; }
 
         /// <summary>Phí vận chuyển dự kiến (Tính từ API bên thứ 3 hoặc rule hệ thống).</summary>
+        [Range(0, 50000000, ErrorMessage = "Phí vận chuyển không hợp lệ (phải từ 0 VNĐ trở lên).")]
         public decimal ShippingFee { get; set; }
 
         /// <summary>

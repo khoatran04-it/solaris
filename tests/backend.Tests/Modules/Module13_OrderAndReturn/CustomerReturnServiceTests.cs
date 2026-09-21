@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+using AutoMapper;
 using backend.DTOs.CustomerReturnDTOs;
 using backend.Models;
 using backend.Models.Enums;
@@ -242,7 +242,21 @@ namespace backend.Tests.Modules.Module13_OrderAndReturn
             using var context = TestFactories.CreateInMemoryDbContext();
             var now = DateTime.UtcNow;
 
-            var order = new Order { Id = 1, OrderCode = "ORD-001", CustomerId = 1, WarehouseId = 1, OrderDate = now, CreatedAt = now, UpdatedAt = now };
+            var order = new Order
+            {
+                Id = 1,
+                OrderCode = "ORD-001",
+                CustomerId = 1,
+                WarehouseId = 1,
+                Status = OrderStatus.Completed,
+                OrderDate = now,
+                CreatedAt = now,
+                UpdatedAt = now,
+                Details = new List<OrderDetail>
+                {
+                    new() { Id = 1, VariantId = 10, UoMId = 1, Quantity = 5, UnitPrice = 50000m }
+                }
+            };
             var customer = new Customer { Id = 1, Code = "CUST-001", Name = "Khách Hàng A", PhoneNumber = "0901234567", IsActive = true };
             var warehouse = new Warehouse { Id = 1, Code = "WH-01", Name = "Kho", IsActive = true };
 

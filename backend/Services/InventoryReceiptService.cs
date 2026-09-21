@@ -158,19 +158,76 @@ namespace backend.Services
                 var variantIds = entity.Details.Select(d => d.VariantId).Distinct().ToList();
                 var variants = await _context.ProductVariants.Where(v => variantIds.Contains(v.Id)).ToDictionaryAsync(v => v.Id);
 
+                // Kiểm tra hợp lệ: Hàng đạt chuẩn > 0 bắt buộc phải có Lô. Hàng bị từ chối 100% không bắt buộc Lô.
+                foreach (var d in entity.Details)
+                {
+                    if (d.AcceptedQuantity > 0 && (!d.BatchId.HasValue || d.BatchId.Value <= 0))
+                        throw new InvalidOperationException($"Mặt hàng có mã ID {d.VariantId} có số lượng đạt chuẩn > 0 bắt buộc phải được gắn vào một Lô hàng (Batch).");
+
+                    if (d.AcceptedQuantity == 0 && d.BatchId.HasValue && d.BatchId.Value <= 0)
+                        d.BatchId = null;
+                }
+
                 // Ràng buộc bảo mật: Lô hàng bắt buộc phải thuộc đúng Biến thể sản phẩm (Chống Cam gán nhầm Lô Táo)
-                var batchIds = entity.Details.Where(d => d.BatchId > 0).Select(d => d.BatchId).Distinct().ToList();
+                var batchIds = entity.Details.Where(d => d.BatchId.HasValue && d.BatchId.Value > 0).Select(d => d.BatchId!.Value).Distinct().ToList();
                 if (batchIds.Any())
                 {
                     var batches = await _context.ProductBatches
                         .Where(b => batchIds.Contains(b.Id))
                         .ToDictionaryAsync(b => b.Id);
 
-                    foreach (var d in entity.Details.Where(d => d.BatchId > 0))
+                    foreach (var d in entity.Details.Where(d => d.BatchId.HasValue && d.BatchId.Value > 0))
                     {
-                        if (batches.TryGetValue(d.BatchId, out var b) && b.VariantId != d.VariantId)
+                        if (batches.TryGetValue(d.BatchId!.Value, out var b) && b.VariantId != d.VariantId)
                         {
                             throw new InvalidOperationException($"Lô hàng '{b.BatchCode}' không thuộc về sản phẩm có mã ID {d.VariantId}. Không được phép gán lô hàng khác loại sản phẩm.");
+                        }
+                    }
+                }
+
+                // RÀNG BUỘC BẢO VỆ PO: Chặn nhận hàng vượt quá số lượng PO & Chặn nhận vào PO đã Đóng/Hủy
+                var poDetailIds = entity.Details
+                    .Where(d => d.PurchaseOrderDetailId.HasValue && d.PurchaseOrderDetailId.Value > 0)
+                    .Select(d => d.PurchaseOrderDetailId!.Value)
+                    .Distinct()
+                    .ToList();
+
+                if (poDetailIds.Any())
+                {
+                    var poDetails = await _context.PurchaseOrderDetails
+                        .Include(pod => pod.PurchaseOrder)
+                        .Include(pod => pod.Variant)
+                        .Where(pod => poDetailIds.Contains(pod.Id))
+                        .ToDictionaryAsync(pod => pod.Id);
+
+                    foreach (var d in entity.Details.Where(d => d.PurchaseOrderDetailId.HasValue && d.PurchaseOrderDetailId.Value > 0))
+                    {
+                        if (poDetails.TryGetValue(d.PurchaseOrderDetailId!.Value, out var poDetail))
+                        {
+                            var po = poDetail.PurchaseOrder;
+                            if (po == null || po.IsDeleted)
+                                throw new InvalidOperationException($"Đơn đặt mua hàng liên kết với dòng sản phẩm ID {d.VariantId} không tồn tại hoặc đã bị xóa.");
+
+                            if (po.Status == PurchaseOrderStatus.Completed)
+                                throw new InvalidOperationException($"Đơn đặt mua hàng '{po.OrderCode}' đã Hoàn tất (Completed). Không thể tiếp tục lập phiếu nhập kho.");
+
+                            if (po.Status == PurchaseOrderStatus.Cancelled)
+                                throw new InvalidOperationException($"Đơn đặt mua hàng '{po.OrderCode}' đã bị Hủy (Cancelled). Không thể lập phiếu nhập kho.");
+
+                            if (po.Status != PurchaseOrderStatus.Approved && po.Status != PurchaseOrderStatus.PartiallyReceived)
+                                throw new InvalidOperationException($"Đơn đặt mua hàng '{po.OrderCode}' đang ở trạng thái '{po.Status}'. Chỉ có thể nhập hàng cho đơn ở trạng thái Đã duyệt (Approved) hoặc Đã nhận một phần (PartiallyReceived).");
+
+                            // Kiểm tra vượt mức tiếp nhận (Over-Receiving Shield):
+                            // Cho phép dung sai tiếp nhận tối đa 10% theo thông lệ chuỗi lạnh nông sản
+                            const decimal MAX_OVER_RECEIVE_TOLERANCE = 1.10m;
+                            decimal remainingQty = Math.Max(0, poDetail.OrderQuantity - poDetail.ReceivedQuantity);
+                            decimal maxAllowedIncoming = Math.Round(remainingQty * MAX_OVER_RECEIVE_TOLERANCE, 2);
+                            decimal currentAttemptQty = d.AcceptedQuantity + d.RejectedQuantity;
+
+                            if (currentAttemptQty > maxAllowedIncoming)
+                            {
+                                throw new InvalidOperationException($"Số lượng tiếp nhận ({currentAttemptQty}) cho sản phẩm '{poDetail.Variant?.Name ?? d.VariantId.ToString()}' vượt quá số lượng còn lại của đơn mua hàng ({remainingQty}) kèm dung sai 10% (tối đa cho phép: {maxAllowedIncoming}).");
+                            }
                         }
                     }
                 }
@@ -179,7 +236,7 @@ namespace backend.Services
                 {
                     if (variants.TryGetValue(d.VariantId, out var variant))
                     {
-                        var qty = d.AcceptedQuantity > 0 ? d.AcceptedQuantity : d.ExpectedQuantity;
+                        var qty = d.AcceptedQuantity;
                         if (!d.CalculatedCbm.HasValue || d.CalculatedCbm.Value <= 0)
                         {
                             var unitCbm = variant.UnitCbm ?? (
@@ -234,7 +291,7 @@ namespace backend.Services
 
                 if (!string.IsNullOrWhiteSpace(note))
                 {
-                    receipt.Note = note.Trim();
+                    receipt.Note = string.IsNullOrWhiteSpace(receipt.Note) ? note.Trim() : $"{receipt.Note} | {note.Trim()}";
                 }
 
                 // Cập nhật CBM/Weight thực tế nếu còn thiếu
@@ -312,7 +369,7 @@ namespace backend.Services
                 }
 
                 bool isCustomerReturn = customerReturn != null ||
-                    (!string.IsNullOrWhiteSpace(receipt.Note) && (receipt.Note.Contains("RET-", StringComparison.OrdinalIgnoreCase) || receipt.Note.Contains("thu hồi", StringComparison.OrdinalIgnoreCase) || receipt.Note.Contains("trả hàng", StringComparison.OrdinalIgnoreCase)));
+                    (!string.IsNullOrWhiteSpace(receipt.Note) && (receipt.Note.Contains("RET-", StringComparison.OrdinalIgnoreCase) || receipt.Note.Contains("thu hồi", StringComparison.OrdinalIgnoreCase) || receipt.Note.Contains("trả hàng", StringComparison.OrdinalIgnoreCase) || receipt.Note.Contains("RMA", StringComparison.OrdinalIgnoreCase)));
 
                 var poIdsToUpdate = new HashSet<int>();
 
@@ -323,37 +380,84 @@ namespace backend.Services
                     decimal baseDamagedQty = await _uomConversionService.ConvertToBaseQuantityAsync(detail.VariantId, detail.UoMId, detail.RejectedQuantity);
 
                     // 1. Cập nhật két sắt tồn kho (WarehouseInventory) theo Base UoM
-                    var inventory = await _context.WarehouseInventories
-                        .FirstOrDefaultAsync(x => x.WarehouseId == receipt.WarehouseId &&
-                                                  x.VariantId == detail.VariantId &&
-                                                  x.BatchId == detail.BatchId);
-
-                    if (inventory == null)
+                    if (isCustomerReturn)
                     {
-                        inventory = new WarehouseInventory
+                        // Đổi trả từ khách hàng: Hàng hỏng được thu hồi vào kho kiểm định / hàng hỏng
+                        if (detail.BatchId.HasValue && detail.BatchId.Value > 0)
                         {
-                            WarehouseId = receipt.WarehouseId,
-                            VariantId = detail.VariantId,
-                            BatchId = detail.BatchId,
-                            QuantityAvailable = baseAcceptedQty,
-                            QuantityReserved = 0,
-                            QuantityQC = 0,
-                            QuantityDamaged = baseDamagedQty,
-                            CreatedAt = DateTime.UtcNow,
-                            UpdatedAt = DateTime.UtcNow
-                        };
-                        _context.WarehouseInventories.Add(inventory);
+                            var inventory = await _context.WarehouseInventories
+                                .FirstOrDefaultAsync(x => x.WarehouseId == receipt.WarehouseId &&
+                                                          x.VariantId == detail.VariantId &&
+                                                          x.BatchId == detail.BatchId.Value);
+
+                            if (inventory == null)
+                            {
+                                inventory = new WarehouseInventory
+                                {
+                                    WarehouseId = receipt.WarehouseId,
+                                    VariantId = detail.VariantId,
+                                    BatchId = detail.BatchId.Value,
+                                    QuantityAvailable = baseAcceptedQty,
+                                    QuantityReserved = 0,
+                                    QuantityQC = 0,
+                                    QuantityDamaged = baseDamagedQty,
+                                    CreatedAt = DateTime.UtcNow,
+                                    UpdatedAt = DateTime.UtcNow
+                                };
+                                _context.WarehouseInventories.Add(inventory);
+                            }
+                            else
+                            {
+                                inventory.QuantityAvailable += baseAcceptedQty;
+                                inventory.QuantityDamaged += baseDamagedQty;
+                                inventory.UpdatedAt = DateTime.UtcNow;
+                            }
+                        }
                     }
                     else
                     {
-                        inventory.QuantityAvailable += baseAcceptedQty;
-                        inventory.QuantityDamaged += baseDamagedQty;
-                        inventory.UpdatedAt = DateTime.UtcNow;
+                        // Nhập hàng từ Nhà Cung Cấp:
+                        // Hàng từ chối (RejectedQuantity) được tài xế chở về ngay tại cửa kho -> KHÔNG VÀO TỒN KHO.
+                        // CHỈ cập nhật tồn kho cho phần hàng nghiệm thu đạt chuẩn (baseAcceptedQty > 0).
+                        if (baseAcceptedQty > 0)
+                        {
+                            if (!detail.BatchId.HasValue || detail.BatchId.Value <= 0)
+                            {
+                                throw new InvalidOperationException($"Mặt hàng có mã ID {detail.VariantId} đạt chuẩn {detail.AcceptedQuantity} chưa được chỉ định Lô hàng hợp lệ.");
+                            }
+
+                            var inventory = await _context.WarehouseInventories
+                                .FirstOrDefaultAsync(x => x.WarehouseId == receipt.WarehouseId &&
+                                                          x.VariantId == detail.VariantId &&
+                                                          x.BatchId == detail.BatchId.Value);
+
+                            if (inventory == null)
+                            {
+                                inventory = new WarehouseInventory
+                                {
+                                    WarehouseId = receipt.WarehouseId,
+                                    VariantId = detail.VariantId,
+                                    BatchId = detail.BatchId.Value,
+                                    QuantityAvailable = baseAcceptedQty,
+                                    QuantityReserved = 0,
+                                    QuantityQC = 0,
+                                    QuantityDamaged = 0,
+                                    CreatedAt = DateTime.UtcNow,
+                                    UpdatedAt = DateTime.UtcNow
+                                };
+                                _context.WarehouseInventories.Add(inventory);
+                            }
+                            else
+                            {
+                                inventory.QuantityAvailable += baseAcceptedQty;
+                                inventory.UpdatedAt = DateTime.UtcNow;
+                            }
+                        }
                     }
 
                     // 2. Ghi sổ cái bất biến (InventoryTransaction) theo Base UoM
                     decimal baseTotalIncoming = isCustomerReturn ? (baseAcceptedQty + baseDamagedQty) : baseAcceptedQty;
-                    if (baseTotalIncoming > 0)
+                    if (baseTotalIncoming > 0 && detail.BatchId.HasValue && detail.BatchId.Value > 0)
                     {
                         var txnType = isCustomerReturn ? TransactionType.CustomerReturn : TransactionType.Receipt;
                         string refCode = customerReturn != null ? customerReturn.ReturnCode : receipt.ReceiptCode;
@@ -366,7 +470,7 @@ namespace backend.Services
                             TransactionCode = $"TXN-{DateTimeHelper.VietnamNow:yyyyMMddHHmmss}-{Guid.NewGuid().ToString()[..4].ToUpper()}",
                             WarehouseId = receipt.WarehouseId,
                             VariantId = detail.VariantId,
-                            BatchId = detail.BatchId,
+                            BatchId = detail.BatchId.Value,
                             Type = txnType,
                             Quantity = baseTotalIncoming,
                             ReferenceCode = refCode,
@@ -387,6 +491,7 @@ namespace backend.Services
                         if (poDetail != null)
                         {
                             poDetail.ReceivedQuantity += detail.AcceptedQuantity;
+                            poDetail.RejectedQuantity += detail.RejectedQuantity;
                             poIdsToUpdate.Add(poDetail.PurchaseOrderId);
                         }
                     }
@@ -413,10 +518,29 @@ namespace backend.Services
                     }
                     if (customerReturn.OrderId > 0)
                     {
-                        var order = await _context.Orders.FirstOrDefaultAsync(o => o.Id == customerReturn.OrderId);
-                        if (order != null && order.PaymentStatus != PaymentStatus.Refunded)
+                        var order = await _context.Orders
+                            .Include(o => o.Details)
+                            .FirstOrDefaultAsync(o => o.Id == customerReturn.OrderId);
+                        if (order != null)
                         {
-                            order.PaymentStatus = PaymentStatus.Refunded;
+                            var allCompletedReturns = await _context.CustomerReturns
+                                .Include(r => r.Details)
+                                .Where(r => r.OrderId == order.Id && !r.IsDeleted && (r.Status == CustomerReturnStatus.Completed || r.Id == customerReturn.Id))
+                                .ToListAsync();
+
+                            bool isFullyReturned = (order.Details != null && order.Details.Any())
+                                ? order.Details.All(orderDetail =>
+                                {
+                                    decimal totalReturnedForVariant = allCompletedReturns
+                                        .SelectMany(r => r.Details)
+                                        .Where(d => d.VariantId == orderDetail.VariantId)
+                                        .Sum(d => (d.AcceptedQuantity + d.DamagedQuantity) > 0 ? (decimal)(d.AcceptedQuantity + d.DamagedQuantity) : (decimal)d.ReturnedQuantity);
+
+                                    return totalReturnedForVariant >= orderDetail.Quantity;
+                                })
+                                : true;
+
+                            order.PaymentStatus = isFullyReturned ? PaymentStatus.Refunded : PaymentStatus.PartiallyRefunded;
                             order.UpdatedAt = DateTime.UtcNow;
                         }
                     }
@@ -424,7 +548,7 @@ namespace backend.Services
 
                 await _context.SaveChangesAsync();
 
-                // 4. Cập nhật trạng thái Đơn mua hàng gốc (PO)
+                // 5. Cập nhật trạng thái Đơn mua hàng gốc (PO)
                 foreach (var poId in poIdsToUpdate)
                 {
                     var po = await _context.PurchaseOrders
@@ -438,7 +562,15 @@ namespace backend.Services
                         // nếu nhận được >= 95% số lượng đặt thì ghi nhận PO hoàn tất chu trình.
                         const decimal ACCEPTABLE_TOLERANCE_PERCENT = 0.05m;
                         bool isFullyReceived = po.Details.All(d => d.ReceivedQuantity >= (d.OrderQuantity * (1.0m - ACCEPTABLE_TOLERANCE_PERCENT)));
-                        po.Status = isFullyReceived ? PurchaseOrderStatus.Completed : PurchaseOrderStatus.PartiallyReceived;
+                        if (isFullyReceived)
+                        {
+                            po.Status = PurchaseOrderStatus.Completed;
+                            po.SettledAmount = po.Details.Sum(d => d.ReceivedQuantity * d.UnitPrice);
+                        }
+                        else
+                        {
+                            po.Status = PurchaseOrderStatus.PartiallyReceived;
+                        }
                         po.UpdatedAt = DateTime.UtcNow;
                     }
                 }

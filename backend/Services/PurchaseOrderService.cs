@@ -373,6 +373,38 @@ namespace backend.Services
         }
 
         /// <inheritdoc />
+        public async Task<bool> CloseAndSettleOrderAsync(int id, string reason, int currentUserId)
+        {
+            return await _context.ExecuteInTransactionAsync(async () =>
+            {
+                var entity = await _context.PurchaseOrders
+                    .Include(x => x.Details)
+                    .FirstOrDefaultAsync(x => x.Id == id);
+
+                if (entity == null)
+                    throw new KeyNotFoundException($"Không tìm thấy Đơn đặt mua hàng với ID {id}.");
+
+                // SAFETY SHIELD: Chỉ cho phép chốt đóng đơn khi đang ở trạng thái PartiallyReceived
+                if (entity.Status != PurchaseOrderStatus.PartiallyReceived)
+                    throw new InvalidOperationException("Chỉ có thể chốt đóng đơn mua hàng khi đơn đang ở trạng thái Đã nhận một phần (PartiallyReceived).");
+
+                if (string.IsNullOrWhiteSpace(reason))
+                    throw new InvalidOperationException("Vui lòng cung cấp lý do chốt đóng đơn mua hàng sớm.");
+
+                // Tính toán giá trị quyết toán thực tế dựa trên số lượng hàng thực nhận
+                decimal settledAmount = entity.Details.Sum(d => d.ReceivedQuantity * d.UnitPrice);
+
+                entity.Status = PurchaseOrderStatus.Completed;
+                entity.SettledAmount = settledAmount;
+                entity.ClosureReason = reason.Trim();
+                entity.UpdatedAt = DateTime.UtcNow;
+
+                await _context.SaveChangesAsync();
+                return true;
+            });
+        }
+
+        /// <inheritdoc />
         public async Task<bool> DeleteAsync(int id)
         {
             return await _context.ExecuteInTransactionAsync(async () =>

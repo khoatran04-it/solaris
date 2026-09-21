@@ -19,6 +19,10 @@ export const inventoryTransferApi = {
     return axiosClient.post('/InventoryTransfers', data);
   },
 
+  approve: (id: number, note?: string): Promise<void> => {
+    return axiosClient.post(`/InventoryTransfers/${id}/approve`, { note });
+  },
+
   dispatch: (id: number): Promise<void> => {
     return axiosClient.post(`/InventoryTransfers/${id}/dispatch`);
   },

@@ -34,8 +34,9 @@ namespace backend.Profiles
                 // Bỏ qua các trường Nghiệp vụ (Sẽ được xử lý bằng logic tại tầng Service)
                 .ForMember(dest => dest.Status, opt => opt.Ignore()) // Mặc định luôn là Draft khi tạo mới
                 .ForMember(dest => dest.TotalAmount, opt => opt.Ignore()) // Service sẽ tự tính tổng từ các dòng Details
+                .ForMember(dest => dest.SettledAmount, opt => opt.Ignore())
                 .ForMember(dest => dest.CancellationReason, opt => opt.Ignore())
-                .ForMember(dest => dest.CancellationReason, opt => opt.Ignore())
+                .ForMember(dest => dest.ClosureReason, opt => opt.Ignore())
 
                 // Bỏ qua Navigation Properties chống lỗi EF Core Tracking
                 .ForMember(dest => dest.Supplier, opt => opt.Ignore())
@@ -97,8 +98,9 @@ namespace backend.Profiles
                 // BẢO MẬT NGHIỆP VỤ:
                 // Thành tiền sẽ được Service tự tính (OrderQuantity * UnitPrice), không tin tưởng số do Client gửi lên.
                 .ForMember(dest => dest.TotalPrice, opt => opt.Ignore())
-                // Số lượng đã nhận (ReceivedQuantity) bắt buộc phải là 0 lúc mới tạo, không cho phép gán đè.
+                // Số lượng đã nhận (ReceivedQuantity) và bị từ chối (RejectedQuantity) bắt buộc phải là 0 lúc mới tạo, không cho phép gán đè.
                 .ForMember(dest => dest.ReceivedQuantity, opt => opt.Ignore())
+                .ForMember(dest => dest.RejectedQuantity, opt => opt.Ignore())
 
                 // Bỏ qua Navigation Properties
                 .ForMember(dest => dest.PurchaseOrder, opt => opt.Ignore())

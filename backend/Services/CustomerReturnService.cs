@@ -122,9 +122,15 @@ namespace backend.Services
                 throw new ArgumentException("Phiếu trả hàng phải có ít nhất 1 dòng chi tiết.");
 
             // 1. Kiểm tra đơn hàng gốc
-            var order = await _context.Orders.FindAsync(dto.OrderId);
+            var order = await _context.Orders
+                .Include(o => o.Details)
+                .FirstOrDefaultAsync(o => o.Id == dto.OrderId);
             if (order == null)
                 throw new ArgumentException($"Đơn hàng với ID {dto.OrderId} không tồn tại.");
+
+            // SAFETY SHIELD: Chỉ cho phép tạo phiếu trả hàng cho đơn hàng ĐÃ HOÀN TẤT hoặc ĐANG GIAO (đã phát sinh xuất kho)
+            if (order.Status != OrderStatus.Completed && order.Status != OrderStatus.Shipping && order.Status != OrderStatus.Processing)
+                throw new InvalidOperationException($"Không thể lập phiếu trả hàng cho đơn hàng '{order.OrderCode}' đang ở trạng thái '{order.Status}'. Chỉ áp dụng cho đơn hàng Đang xử lý, Đang giao hoặc Đã hoàn tất.");
 
             // 2. Kiểm tra khách hàng
             var customerId = dto.CustomerId > 0 ? dto.CustomerId : order.CustomerId;
@@ -150,6 +156,34 @@ namespace backend.Services
                 safeUserId = firstUser?.Id ?? 1;
             }
 
+            // SAFETY SHIELD: Chống trả hàng vượt số lượng mua & Chống hoàn tiền lặp lại (Double-Refund)
+            var activeReturns = await _context.CustomerReturns
+                .Include(r => r.Details)
+                .Where(r => r.OrderId == order.Id && !r.IsDeleted && r.Status != CustomerReturnStatus.Rejected)
+                .ToListAsync();
+
+            foreach (var item in dto.Details)
+            {
+                if (item.ReturnedQuantity <= 0)
+                    throw new InvalidOperationException("Số lượng trả hàng của từng mặt hàng phải lớn hơn 0.");
+
+                var orderDetail = order.Details.FirstOrDefault(d => d.VariantId == item.VariantId);
+                if (orderDetail == null)
+                    throw new InvalidOperationException($"Sản phẩm có mã biến thể ID {item.VariantId} không thuộc đơn hàng '{order.OrderCode}'.");
+
+                decimal alreadyReturned = activeReturns
+                    .SelectMany(r => r.Details)
+                    .Where(d => d.VariantId == item.VariantId)
+                    .Sum(d => d.ReturnedQuantity);
+
+                decimal remainingReturnable = Math.Max(0, orderDetail.Quantity - alreadyReturned);
+
+                if (item.ReturnedQuantity > remainingReturnable)
+                {
+                    throw new InvalidOperationException($"Số lượng trả hàng ({item.ReturnedQuantity}) cho sản phẩm ID {item.VariantId} vượt quá số lượng mua còn lại có thể trả ({remainingReturnable}). Đơn hàng đã mua {orderDetail.Quantity}, đã lập phiếu trả trước đó: {alreadyReturned}.");
+                }
+            }
+
             return await _context.ExecuteInTransactionAsync(async () =>
             {
                 var ret = new CustomerReturn
@@ -170,13 +204,19 @@ namespace backend.Services
 
                 foreach (var item in dto.Details)
                 {
+                    var orderDetail = order.Details.FirstOrDefault(d => d.VariantId == item.VariantId);
+                    decimal unitPrice = (item.UnitPrice.HasValue && item.UnitPrice.Value > 0)
+                        ? item.UnitPrice.Value
+                        : (orderDetail?.UnitPrice ?? 0);
+                    int uomId = item.UoMId > 0 ? item.UoMId : (orderDetail?.UoMId ?? 1);
+
                     ret.Details.Add(new CustomerReturnDetail
                     {
                         VariantId = item.VariantId,
                         BatchId = item.BatchId,
-                        UoMId = item.UoMId,
+                        UoMId = uomId,
                         ReturnedQuantity = item.ReturnedQuantity,
-                        UnitPrice = item.UnitPrice ?? 0,
+                        UnitPrice = unitPrice,
                         AcceptedQuantity = 0,
                         DamagedQuantity = 0,
                         RefundAmount = 0
@@ -281,6 +321,7 @@ namespace backend.Services
                 var ret = await _context.CustomerReturns
                     .Include(r => r.Details)
                     .Include(r => r.Order)
+                        .ThenInclude(o => o!.Details)
                     .FirstOrDefaultAsync(r => r.Id == id);
 
                 if (ret == null) throw new KeyNotFoundException("Không tìm thấy Phiếu trả hàng.");
@@ -348,10 +389,28 @@ namespace backend.Services
                     }
                 }
 
-                // Cập nhật trạng thái hoàn tiền trên Đơn hàng gốc
+                // Cập nhật trạng thái hoàn tiền trên Đơn hàng gốc:
+                // Phân định Hoàn tiền toàn phần (Refunded) vs Hoàn tiền một phần (PartiallyRefunded)
                 if (ret.Order != null)
                 {
-                    ret.Order.PaymentStatus = PaymentStatus.Refunded;
+                    var allCompletedReturns = await _context.CustomerReturns
+                        .Include(r => r.Details)
+                        .Where(r => r.OrderId == ret.OrderId && !r.IsDeleted && (r.Status == CustomerReturnStatus.Completed || r.Id == ret.Id))
+                        .ToListAsync();
+
+                    bool isFullyReturned = (ret.Order.Details != null && ret.Order.Details.Any())
+                        ? ret.Order.Details.All(orderDetail =>
+                        {
+                            decimal totalReturnedForVariant = allCompletedReturns
+                                .SelectMany(r => r.Details)
+                                .Where(d => d.VariantId == orderDetail.VariantId)
+                                .Sum(d => (d.AcceptedQuantity + d.DamagedQuantity) > 0 ? (decimal)(d.AcceptedQuantity + d.DamagedQuantity) : (decimal)d.ReturnedQuantity);
+
+                            return totalReturnedForVariant >= orderDetail.Quantity;
+                        })
+                        : true;
+
+                    ret.Order.PaymentStatus = isFullyReturned ? PaymentStatus.Refunded : PaymentStatus.PartiallyRefunded;
                     ret.Order.UpdatedAt = DateTime.UtcNow;
                 }
 

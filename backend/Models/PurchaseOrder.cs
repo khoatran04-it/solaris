@@ -36,11 +36,20 @@ namespace backend.Models
         /// <summary>Tổng giá trị cuối cùng của đơn đặt hàng (VND) (Bao gồm tiền hàng, sau khi trừ chiết khấu và cộng thuế).</summary>
         public decimal TotalAmount { get; set; }
 
+        /// <summary>
+        /// Giá trị quyết toán thực tế chốt theo số lượng thực nhận (VND).
+        /// Null nếu đơn chưa hoàn tất hoặc nhận đủ 100% theo TotalAmount ban đầu.
+        /// </summary>
+        public decimal? SettledAmount { get; set; }
+
         /// <summary>Ghi chú hoặc yêu cầu đặc biệt gửi đến Nhà cung cấp (Ví dụ: Yêu cầu xe bảo ôn chuyên dụng, giao trước 8h sáng...).</summary>
         public string? Note { get; set; }
 
         /// <summary>Lý do hủy đơn (Nghiệp vụ: Bắt buộc yêu cầu nhân viên nhập lý do nếu trạng thái Status chuyển sang Cancelled).</summary>
         public string? CancellationReason { get; set; }
+
+        /// <summary>Lý do chốt đóng đơn sớm theo thực nhận (khi NCC không giao bù hàng bị từ chối).</summary>
+        public string? ClosureReason { get; set; }
         #endregion
 
         #region Hệ thống & Soft Delete

@@ -37,8 +37,8 @@ export interface InventoryReceiptDetail {
   variantName: string;
   variantCode: string; // Thêm mã SKU để UI dễ bề hiển thị
 
-  batchId: number;
-  batchCode: string;
+  batchId?: number;
+  batchCode?: string;
 
   uoMId: number;
   uoMName: string;
@@ -84,7 +84,7 @@ export interface InventoryReceipt {
 
 export interface InventoryReceiptDetailPayload {
   variantId: number;
-  batchId: number; // Bắt buộc chỉ định BatchId để quản lý theo dõi lô hàng
+  batchId?: number; // Chỉ định BatchId khi acceptedQuantity > 0. Hàng bị từ chối 100% có thể bỏ qua.
   uoMId: number;
   purchaseOrderDetailId?: number;
 

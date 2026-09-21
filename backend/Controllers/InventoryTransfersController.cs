@@ -133,12 +133,51 @@ namespace backend.Controllers
         }
 
         /// <summary>
+        /// Phê duyệt lệnh chuyển kho (Approve) - Chuyển từ trạng thái Nháp (Draft) sang Đã duyệt (Approved).
+        /// Chỉ khi phiếu đã được duyệt mới được phép điều phối xe tải lạnh hoặc xuất bến.
+        /// </summary>
+        /// <param name="id">ID phiếu điều chuyển cần phê duyệt.</param>
+        /// <param name="request">Ghi chú phê duyệt (tùy chọn).</param>
+        /// <returns>Thông báo kết quả phê duyệt.</returns>
+        /// <response code="200">Phê duyệt phiếu chuyển kho thành công.</response>
+        /// <response code="400">Phiếu không ở trạng thái Draft hoặc kho nguồn không đủ số lượng tồn khả dụng.</response>
+        /// <response code="401">Chưa xác thực người dùng.</response>
+        /// <response code="404">Không tìm thấy phiếu điều chuyển.</response>
+        [HttpPost("{id}/approve")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> Approve(int id, [FromBody] ApproveTransferRequest? request)
+        {
+            try
+            {
+                var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                int userId = 1;
+                if (!string.IsNullOrEmpty(userIdStr) && int.TryParse(userIdStr, out int parsedId))
+                {
+                    userId = parsedId;
+                }
+
+                await _service.ApproveTransferAsync(id, userId, request?.Note);
+                return Ok(new { message = "Phê duyệt phiếu điều chuyển kho thành công, sẵn sàng điều phối vận chuyển" });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        /// <summary>
         /// Bước 1: Xuất hàng đi (Dispatch) - Trừ tồn kho tại kho nguồn và chuyển trạng thái sang Đang vận chuyển (InTransit).
         /// </summary>
         /// <param name="id">ID phiếu điều chuyển cần xuất phát.</param>
         /// <returns>Thông báo kết quả xuất phát.</returns>
         /// <response code="200">Xuất hàng đi thành công.</response>
-        /// <response code="400">Phiếu không ở trạng thái Draft hoặc kho nguồn không đủ số lượng tồn khả dụng.</response>
+        /// <response code="400">Phiếu không ở trạng thái Approved hoặc kho nguồn không đủ số lượng tồn khả dụng.</response>
         /// <response code="401">Chưa xác thực người dùng.</response>
         /// <response code="404">Không tìm thấy phiếu điều chuyển.</response>
         [HttpPost("{id}/dispatch")]
@@ -270,6 +309,15 @@ namespace backend.Controllers
                 return BadRequest(new { message = ex.Message });
             }
         }
+    }
+
+    /// <summary>
+    /// Payload yêu cầu phê duyệt phiếu điều chuyển kho.
+    /// </summary>
+    public class ApproveTransferRequest
+    {
+        /// <summary>Ghi chú của người phê duyệt (tùy chọn).</summary>
+        public string? Note { get; set; }
     }
 
     /// <summary>

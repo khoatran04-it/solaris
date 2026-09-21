@@ -46,6 +46,7 @@ export interface PurchaseOrderDetail {
   unitPrice: number;
   totalPrice: number;
   receivedQuantity: number;
+  rejectedQuantity?: number;
 }
 
 // Đơn mua hàng (Read)
@@ -56,8 +57,10 @@ export interface PurchaseOrder {
   expectedDeliveryDate?: string;
   status: PurchaseOrderStatus;
   totalAmount: number;
+  settledAmount?: number;
   note?: string;
   cancellationReason?: string;
+  closureReason?: string;
 
   supplierId: number;
   supplierName: string;

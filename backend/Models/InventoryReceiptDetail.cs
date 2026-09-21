@@ -59,7 +59,7 @@ namespace backend.Models
         /// Nghiệp vụ khắt khe: Hàng hóa nhập vào kho bắt buộc phải được gán vào một Mã Lô (Batch) cụ thể 
         /// để hệ thống quản lý Truy xuất nguồn gốc và áp dụng thuật toán xuất kho FEFO (Hết hạn trước xuất trước).
         /// </summary>
-        public int BatchId { get; set; }
+        public int? BatchId { get; set; }
         public virtual ProductBatch? Batch { get; set; }
 
         /// <summary>Mã định danh Đơn vị tính (UoM) lúc nhập kho.</summary>

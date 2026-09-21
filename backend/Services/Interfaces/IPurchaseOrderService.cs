@@ -37,6 +37,13 @@ namespace backend.Services.Interfaces
         /// <summary>Cập nhật trạng thái vòng đời đơn hàng (Duyệt, Đang giao, Hoàn tất hoặc Hủy đơn kèm lý do).</summary>
         Task<bool> UpdateStatusAsync(int id, PurchaseOrderStatusUpdateDto dto);
 
+        /// <summary>
+        /// Chốt đóng đơn mua hàng sớm theo số lượng thực nhận (Settle & Close PO).
+        /// Áp dụng cho các đơn hàng ở trạng thái PartiallyReceived khi NCC không giao tiếp phần hàng thiếu/hỏng.
+        /// Chuyển trạng thái sang Completed và cập nhật SettledAmount để chốt công nợ chính xác.
+        /// </summary>
+        Task<bool> CloseAndSettleOrderAsync(int id, string reason, int currentUserId);
+
         /// <summary>Xóa mềm đơn đặt mua hàng (Chỉ cho phép xóa khi đơn còn ở trạng thái Nháp).</summary>
         Task<bool> DeleteAsync(int id);
         #endregion

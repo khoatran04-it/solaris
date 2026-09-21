@@ -190,6 +190,44 @@ namespace backend.Controllers
         }
 
         /// <summary>
+        /// Chốt đóng đơn mua hàng sớm theo số lượng thực nhận (Settle & Close PO).
+        /// Áp dụng khi đơn ở trạng thái PartiallyReceived và NCC không giao tiếp phần hàng thiếu/hỏng.
+        /// </summary>
+        /// <param name="id">Mã định danh đơn mua hàng cần chốt đóng.</param>
+        /// <param name="dto">Dữ liệu lý do chốt đóng đơn.</param>
+        [HttpPost("{id}/close-and-settle")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> CloseAndSettle(int id, [FromBody] ClosePurchaseOrderDto dto)
+        {
+            try
+            {
+                int currentUserId = 0;
+                var claimVal = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (int.TryParse(claimVal, out int parsedId))
+                {
+                    currentUserId = parsedId;
+                }
+
+                await _service.CloseAndSettleOrderAsync(id, dto.Reason, currentUserId);
+                return Ok(new { message = "Chốt đóng đơn mua hàng và quyết toán công nợ thành công." });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        /// <summary>
         /// Xóa mềm đơn đặt mua hàng (Chỉ cho phép khi đơn ở trạng thái Nháp hoặc Đã hủy và chưa có phiếu nhập kho).
         /// </summary>
         /// <param name="id">Mã định danh đơn mua hàng cần xóa.</param>

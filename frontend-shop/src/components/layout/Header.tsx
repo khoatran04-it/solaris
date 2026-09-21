@@ -15,8 +15,6 @@ import {
   Package,
   MapPin,
   RotateCcw,
-  PhoneCall,
-  Clock,
   ArrowRight,
 } from "lucide-react";
 import { useAuthStore } from "@/stores/authStore";
