@@ -16,9 +16,11 @@ namespace backend.Configurations
 
             builder.Property(x => x.Note).HasMaxLength(500);
             builder.Property(x => x.CancellationReason).HasMaxLength(500);
+            builder.Property(x => x.ApprovalNote).HasMaxLength(500);
 
             builder.Property(x => x.DispatchedDate).HasColumnType("datetime2");
             builder.Property(x => x.ReceivedDate).HasColumnType("datetime2");
+            builder.Property(x => x.ApprovedDate).HasColumnType("datetime2");
             builder.Property(x => x.CreatedAt).HasColumnType("datetime2");
             builder.Property(x => x.UpdatedAt).HasColumnType("datetime2");
             builder.Property(x => x.IsDeleted).HasDefaultValue(false);
@@ -43,6 +45,11 @@ namespace backend.Configurations
             builder.HasOne(x => x.CreatedBy)
                    .WithMany()
                    .HasForeignKey(x => x.CreatedById)
+                   .OnDelete(DeleteBehavior.Restrict);
+
+            builder.HasOne(x => x.ApprovedBy)
+                   .WithMany()
+                   .HasForeignKey(x => x.ApprovedById)
                    .OnDelete(DeleteBehavior.Restrict);
 
             builder.HasOne(x => x.DispatchedBy)
