@@ -1,4 +1,4 @@
-﻿using backend.Data;
+using backend.Data;
 using backend.Models;
 using backend.Models.Enums;
 using backend.Services;
@@ -236,7 +236,8 @@ namespace backend.Tests.Modules.Module16_Dashboard
             result.InventoryCompartments.ReservedQty.Should().Be(5);
             result.InventoryCompartments.InQcQty.Should().Be(2);
             result.InventoryCompartments.DamagedQty.Should().Be(1);
-            result.InventoryCompartments.TotalValue.Should().Be(20 * 180_000);
+            // Định giá tài sản kho theo giá vốn COGS (85% giá bán định mức) và tính toàn bộ hàng thực tế đang giữ trong kho (Available 20 + Reserved 5 + QC 2 = 27)
+            result.InventoryCompartments.TotalValue.Should().Be(27 * (180_000 * 0.85m));
 
             // Low Stock Alert
             result.LowStockAlerts.Should().HaveCount(1);
@@ -366,9 +367,18 @@ namespace backend.Tests.Modules.Module16_Dashboard
             });
 
             // QC Inbound Receipts Details
+            context.InventoryReceipts.Add(new InventoryReceipt
+            {
+                Id = 1,
+                WarehouseId = 1,
+                ReceiptCode = "REC-QC-001",
+                Status = InventoryReceiptStatus.Completed,
+                CreatedAt = today
+            });
             context.InventoryReceiptDetails.Add(new InventoryReceiptDetail
             {
                 Id = 1,
+                InventoryReceiptId = 1,
                 VariantId = 1,
                 BatchId = 1,
                 UoMId = 1,

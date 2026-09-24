@@ -258,5 +258,45 @@ namespace backend.Controllers
                 return BadRequest(new { message = ex.Message });
             }
         }
+
+        /// <summary>
+        /// Ghi nhận thanh toán / giải ngân công nợ cho Đơn mua hàng (PO).
+        /// </summary>
+        /// <param name="id">Mã định danh đơn mua hàng cần thanh toán.</param>
+        /// <param name="dto">Thông tin số tiền, ngày thanh toán, mã tham chiếu và ghi chú.</param>
+        /// <response code="200">Ghi nhận thanh toán thành công.</response>
+        /// <response code="404">Không tìm thấy đơn mua hàng.</response>
+        /// <response code="400">Số tiền hoặc trạng thái đơn không hợp lệ.</response>
+        [HttpPost("{id}/payments")]
+        [ProducesResponseType(typeof(PurchaseOrderReadDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> RecordPayment(int id, [FromBody] RecordPurchaseOrderPaymentDto dto)
+        {
+            try
+            {
+                int currentUserId = 0;
+                var claimVal = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (int.TryParse(claimVal, out int parsedId))
+                {
+                    currentUserId = parsedId;
+                }
+
+                var result = await _service.RecordPaymentAsync(id, dto, currentUserId);
+                return Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
     }
 }

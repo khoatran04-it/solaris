@@ -35,6 +35,8 @@ namespace backend.Profiles
                 .ForMember(dest => dest.Status, opt => opt.Ignore()) // Mặc định luôn là Draft khi tạo mới
                 .ForMember(dest => dest.TotalAmount, opt => opt.Ignore()) // Service sẽ tự tính tổng từ các dòng Details
                 .ForMember(dest => dest.SettledAmount, opt => opt.Ignore())
+                .ForMember(dest => dest.PaidAmount, opt => opt.Ignore())
+                .ForMember(dest => dest.PaymentStatus, opt => opt.Ignore())
                 .ForMember(dest => dest.CancellationReason, opt => opt.Ignore())
                 .ForMember(dest => dest.ClosureReason, opt => opt.Ignore())
 

@@ -431,6 +431,9 @@ export default function FinancialPerformanceDashboard() {
                   { header: 'Tổng Giá Trị Đặt (VNĐ)', accessor: (s) => s.totalPoValue },
                   { header: 'Đã Nhập Kho (VNĐ)', accessor: (s) => s.receivedValue },
                   { header: 'Từ Chối QC (VNĐ)', accessor: (s) => s.qcRejectedValue },
+                  { header: 'Đã Thanh Toán (VNĐ)', accessor: (s) => s.totalPaidAmount ?? 0 },
+                  { header: 'Còn Nợ Thực Tế (VNĐ)', accessor: (s) => s.remainingDebt ?? (s.receivedValue - (s.totalPaidAmount ?? 0)) },
+                  { header: 'Trạng Thái', accessor: (s) => s.paymentStatus ?? 'Chưa thanh toán' },
                   { header: 'Cam Kết Chờ Nhập (VNĐ)', accessor: (s) => s.pendingCommitment },
                 ]}
               />
@@ -445,13 +448,16 @@ export default function FinancialPerformanceDashboard() {
                     <th className="pb-2.5 font-bold text-right">Tổng đặt</th>
                     <th className="pb-2.5 font-bold text-right">Đã nhập kho</th>
                     <th className="pb-2.5 font-bold text-right">Từ chối QC</th>
+                    <th className="pb-2.5 font-bold text-right">Đã trả</th>
+                    <th className="pb-2.5 font-bold text-right">Nợ còn lại</th>
+                    <th className="pb-2.5 font-bold text-center">Trạng thái</th>
                     <th className="pb-2.5 font-bold text-right">Chờ nhập</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {!data?.supplierPayables || data.supplierPayables.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="py-6 text-center text-slate-400">
+                      <td colSpan={9} className="py-6 text-center text-slate-400">
                         Chưa phát sinh dữ liệu đơn mua hàng trong kỳ
                       </td>
                     </tr>
@@ -475,6 +481,27 @@ export default function FinancialPerformanceDashboard() {
                         </td>
                         <td className="py-2.5 text-right font-medium text-rose-600">
                           {sup.qcRejectedValue > 0 ? `-${fmtVnd(sup.qcRejectedValue)}` : '0 ₫'}
+                        </td>
+                        <td className="py-2.5 text-right font-medium text-blue-600">
+                          {fmtVnd(sup.totalPaidAmount ?? 0)}
+                        </td>
+                        <td className="py-2.5 text-right font-bold text-amber-700">
+                          {fmtVnd(sup.remainingDebt ?? Math.max(0, sup.receivedValue - (sup.totalPaidAmount ?? 0)))}
+                        </td>
+                        <td className="py-2.5 text-center">
+                          <span
+                            className={`inline-block px-2 py-0.5 text-[10px] font-bold rounded-full border ${
+                              sup.paymentStatus === 'Đã tất toán'
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                : sup.paymentStatus === 'Đã trả một phần'
+                                  ? 'bg-amber-50 text-amber-700 border-amber-200'
+                                  : sup.paymentStatus === 'Không phát sinh nợ'
+                                    ? 'bg-slate-50 text-slate-600 border-slate-200'
+                                    : 'bg-rose-50 text-rose-700 border-rose-200'
+                            }`}
+                          >
+                            {sup.paymentStatus || 'Chưa thanh toán'}
+                          </span>
                         </td>
                         <td className="py-2.5 text-right font-medium text-slate-500">
                           {fmtVnd(sup.pendingCommitment)}

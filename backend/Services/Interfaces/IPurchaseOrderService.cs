@@ -44,6 +44,12 @@ namespace backend.Services.Interfaces
         /// </summary>
         Task<bool> CloseAndSettleOrderAsync(int id, string reason, int currentUserId);
 
+        /// <summary>
+        /// Ghi nhận thanh toán / giải ngân công nợ cho Đơn mua hàng (PO).
+        /// Cập nhật lũy kế PaidAmount, tự động chuyển trạng thái PaymentStatus (PartiallyPaid / Paid).
+        /// </summary>
+        Task<PurchaseOrderReadDto> RecordPaymentAsync(int id, RecordPurchaseOrderPaymentDto dto, int currentUserId);
+
         /// <summary>Xóa mềm đơn đặt mua hàng (Chỉ cho phép xóa khi đơn còn ở trạng thái Nháp).</summary>
         Task<bool> DeleteAsync(int id);
         #endregion

@@ -436,6 +436,64 @@ namespace backend.Services
             });
         }
 
+        /// <inheritdoc />
+        public async Task<PurchaseOrderReadDto> RecordPaymentAsync(int id, RecordPurchaseOrderPaymentDto dto, int currentUserId)
+        {
+            return await _context.ExecuteInTransactionAsync(async () =>
+            {
+                var entity = await _context.PurchaseOrders
+                    .Include(x => x.Supplier)
+                    .Include(x => x.Warehouse)
+                    .Include(x => x.CreatedBy)
+                    .Include(x => x.Details)
+                        .ThenInclude(d => d.Variant)
+                    .Include(x => x.Details)
+                        .ThenInclude(d => d.UoM)
+                    .FirstOrDefaultAsync(x => x.Id == id);
+
+                if (entity == null)
+                    throw new KeyNotFoundException($"Không tìm thấy Đơn đặt mua hàng với ID {id}.");
+
+                if (entity.Status == PurchaseOrderStatus.Draft || entity.Status == PurchaseOrderStatus.Cancelled)
+                    throw new InvalidOperationException("Không thể thanh toán cho đơn mua hàng ở trạng thái Nháp (Draft) hoặc Đã hủy (Cancelled).");
+
+                if (dto.Amount <= 0)
+                    throw new InvalidOperationException("Số tiền thanh toán phải lớn hơn 0 VND.");
+
+                decimal payableCeiling = entity.SettledAmount ?? entity.TotalAmount;
+                decimal remainingDebt = Math.Max(0, payableCeiling - entity.PaidAmount);
+
+                if (remainingDebt <= 0)
+                    throw new InvalidOperationException($"Đơn mua hàng '{entity.OrderCode}' đã được tất toán đủ 100% công nợ (Đã trả: {entity.PaidAmount:N0} VND).");
+
+                if (dto.Amount > remainingDebt)
+                    throw new InvalidOperationException($"Số tiền thanh toán ({dto.Amount:N0} VND) vượt quá số dư nợ còn lại ({remainingDebt:N0} VND) của đơn mua hàng này.");
+
+                entity.PaidAmount += dto.Amount;
+
+                // Tự động cập nhật PaymentStatus
+                if (entity.PaidAmount >= payableCeiling)
+                {
+                    entity.PaymentStatus = SupplierPaymentStatus.Paid;
+                }
+                else
+                {
+                    entity.PaymentStatus = SupplierPaymentStatus.PartiallyPaid;
+                }
+
+                if (!string.IsNullOrWhiteSpace(dto.Note) || !string.IsNullOrWhiteSpace(dto.ReferenceCode))
+                {
+                    var payNote = $"[Thanh toán {DateTimeHelper.VietnamNow:dd/MM/yyyy HH:mm}]: {dto.Amount:N0} VND (Ref: {dto.ReferenceCode ?? "N/A"}). {dto.Note?.Trim()}".Trim();
+                    entity.Note = string.IsNullOrWhiteSpace(entity.Note) ? payNote : $"{entity.Note} | {payNote}";
+                }
+
+                entity.UpdatedAt = DateTime.UtcNow;
+                await _context.SaveChangesAsync();
+
+                return _mapper.Map<PurchaseOrderReadDto>(entity);
+            });
+        }
+
         #endregion
     }
 }

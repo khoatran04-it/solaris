@@ -119,10 +119,10 @@ namespace backend.DTOs.DashboardDTOs
 
     public class InventoryCompartmentsDto
     {
-        public int AvailableQty { get; set; }
-        public int ReservedQty { get; set; }
-        public int InQcQty { get; set; }
-        public int DamagedQty { get; set; }
+        public decimal AvailableQty { get; set; }
+        public decimal ReservedQty { get; set; }
+        public decimal InQcQty { get; set; }
+        public decimal DamagedQty { get; set; }
         public decimal TotalValue { get; set; }
     }
 
@@ -139,13 +139,18 @@ namespace backend.DTOs.DashboardDTOs
         public string VariantName { get; set; } = string.Empty;
         public string VariantCode { get; set; } = string.Empty;
         public string WarehouseName { get; set; } = string.Empty;
-        public int AvailableQty { get; set; }
+        public decimal AvailableQty { get; set; }
+        public decimal GuidelineQty { get; set; }
+        public decimal ShortfallQty { get; set; }
+        public bool IsOutOfStock { get; set; }
     }
 
     public class DashboardInventoryCapacityDto
     {
         public decimal TotalStockValue { get; set; }
         public int TotalActiveWarehouses { get; set; }
+        public int TotalLowStockCount { get; set; }
+        public int TotalOutOfStockCount { get; set; }
         public List<WarehouseCapacityItem> WarehouseCapacities { get; set; } = new();
         public InventoryCompartmentsDto InventoryCompartments { get; set; } = new();
         public List<TopSpaceConsumingItem> TopSpaceConsumingProducts { get; set; } = new();
@@ -172,7 +177,9 @@ namespace backend.DTOs.DashboardDTOs
         public string WarehouseName { get; set; } = string.Empty;
         public DateTime ExpiryDate { get; set; }
         public int DaysRemaining { get; set; }
-        public int QuantityAvailable { get; set; }
+        public decimal QuantityAvailable { get; set; }
+        public decimal QuantityQC { get; set; }
+        public bool IsExpired { get; set; }
         public decimal UnitPrice { get; set; }
         public decimal EstimatedLossValue { get; set; }
     }
@@ -232,6 +239,9 @@ namespace backend.DTOs.DashboardDTOs
         public decimal TotalPoValue { get; set; }
         public decimal ReceivedValue { get; set; }
         public decimal QcRejectedValue { get; set; }
+        public decimal TotalPaidAmount { get; set; }
+        public decimal RemainingDebt { get; set; }
+        public string PaymentStatus { get; set; } = string.Empty;
         public decimal PendingCommitment { get; set; }
     }
 
@@ -320,6 +330,10 @@ namespace backend.DTOs.DashboardDTOs
         public decimal PriceSpread { get; set; }
         public decimal MarginPercent { get; set; }
         public decimal ImportPriceChangePercent { get; set; }
+        public decimal CoefficientOfVariation { get; set; }
+        public string VolatilityLevel { get; set; } = string.Empty;
+        public decimal MinImportPrice { get; set; }
+        public decimal MaxImportPrice { get; set; }
         public bool IsLossMaking => PriceSpread < 0;
         public List<PriceVolatilityPointDto> Timeline { get; set; } = new();
         public List<PriceTransactionDetailDto> Transactions { get; set; } = new();

@@ -42,6 +42,21 @@ namespace backend.Models
         /// </summary>
         public decimal? SettledAmount { get; set; }
 
+        /// <summary>
+        /// Tổng số tiền thực tế đã giải ngân / thanh toán cho Nhà cung cấp (VND).
+        /// </summary>
+        public decimal PaidAmount { get; set; } = 0;
+
+        /// <summary>
+        /// Hạn chót thanh toán công nợ theo thỏa thuận hợp đồng (Net 7, Net 15, Net 30...).
+        /// </summary>
+        public DateTime? PaymentDueDate { get; set; }
+
+        /// <summary>
+        /// Trạng thái thanh toán công nợ của đơn mua hàng (Chưa trả, Trả một phần, Đã tất toán, Quá hạn).
+        /// </summary>
+        public SupplierPaymentStatus PaymentStatus { get; set; } = SupplierPaymentStatus.Unpaid;
+
         /// <summary>Ghi chú hoặc yêu cầu đặc biệt gửi đến Nhà cung cấp (Ví dụ: Yêu cầu xe bảo ôn chuyên dụng, giao trước 8h sáng...).</summary>
         public string? Note { get; set; }
 

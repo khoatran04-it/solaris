@@ -119,11 +119,16 @@ export interface LowStockAlertItem {
   variantCode: string;
   warehouseName: string;
   availableQty: number;
+  guidelineQty?: number;
+  shortfallQty?: number;
+  isOutOfStock?: boolean;
 }
 
 export interface DashboardInventoryCapacityDto {
   totalStockValue: number;
   totalActiveWarehouses: number;
+  totalLowStockCount?: number;
+  totalOutOfStockCount?: number;
   warehouseCapacities: WarehouseCapacityItem[];
   inventoryCompartments: InventoryCompartmentsDto;
   topSpaceConsumingProducts: TopSpaceConsumingItem[];
@@ -146,6 +151,8 @@ export interface ExpiringBatchItem {
   expiryDate: string;
   daysRemaining: number;
   quantityAvailable: number;
+  quantityQC?: number;
+  isExpired?: boolean;
   unitPrice: number;
   estimatedLossValue: number;
 }
@@ -199,6 +206,9 @@ export interface SupplierPayableItem {
   totalPoValue: number;
   receivedValue: number;
   qcRejectedValue: number;
+  totalPaidAmount?: number;
+  remainingDebt?: number;
+  paymentStatus?: string;
   pendingCommitment: number;
 }
 
@@ -279,6 +289,10 @@ export interface DashboardPriceVolatilityDto {
   priceSpread: number;
   marginPercent: number;
   importPriceChangePercent: number;
+  coefficientOfVariation?: number;
+  volatilityLevel?: string;
+  minImportPrice?: number;
+  maxImportPrice?: number;
   isLossMaking: boolean;
   timeline: PriceVolatilityPoint[];
   transactions: PriceTransactionDetail[];

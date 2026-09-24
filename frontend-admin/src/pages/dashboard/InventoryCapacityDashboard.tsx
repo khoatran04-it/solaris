@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { RefreshCw, AlertCircle, Warehouse, Layers, Coins } from 'lucide-react';
 import { dashboardApi } from '../../api/dashboardApi';
 import type { DashboardInventoryCapacityDto } from '../../types/dashboard';
@@ -243,12 +243,15 @@ export default function InventoryCapacityDashboard() {
                         <th className="text-left pb-2.5 pr-4 font-bold">Sản phẩm</th>
                         <th className="text-left pb-2.5 pr-4 font-bold">Mã SKU</th>
                         <th className="text-left pb-2.5 pr-4 font-bold">Kho lưu trữ</th>
+                        <th className="text-center pb-2.5 pr-4 font-bold">Trạng thái</th>
+                        <th className="text-right pb-2.5 pr-4 font-bold">Định mức</th>
+                        <th className="text-right pb-2.5 pr-4 font-bold">Thiếu hụt</th>
                         <th className="text-right pb-2.5 font-bold">Tồn khả dụng</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                       {data?.lowStockAlerts.map((a, i) => (
-                        <tr key={i} className="hover:bg-rose-50/20">
+                        <tr key={i} className={`hover:bg-rose-50/20 ${a.isOutOfStock ? 'bg-rose-50/30' : ''}`}>
                           <td className="py-2.5 pr-4 font-semibold text-slate-800">
                             {a.variantName}
                           </td>
@@ -256,7 +259,24 @@ export default function InventoryCapacityDashboard() {
                             {a.variantCode}
                           </td>
                           <td className="py-2.5 pr-4 text-slate-600">{a.warehouseName}</td>
-                          <td className="py-2.5 text-right font-bold text-rose-600">
+                          <td className="py-2.5 pr-4 text-center">
+                            <span
+                              className={`inline-block px-2 py-0.5 text-[10px] font-bold rounded-full border ${
+                                a.isOutOfStock || a.availableQty <= 0
+                                  ? 'bg-rose-100 text-rose-800 border-rose-300'
+                                  : 'bg-amber-50 text-amber-800 border-amber-200'
+                              }`}
+                            >
+                              {a.isOutOfStock || a.availableQty <= 0 ? 'Hết hàng' : 'Sắp hết'}
+                            </span>
+                          </td>
+                          <td className="py-2.5 pr-4 text-right font-medium text-slate-600">
+                            {a.guidelineQty !== undefined ? fmtNum(a.guidelineQty) : '-'}
+                          </td>
+                          <td className="py-2.5 pr-4 text-right font-bold text-rose-600">
+                            {a.shortfallQty !== undefined ? fmtNum(a.shortfallQty) : '-'}
+                          </td>
+                          <td className="py-2.5 text-right font-bold text-slate-900">
                             {fmtNum(a.availableQty)}
                           </td>
                         </tr>

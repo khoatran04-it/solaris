@@ -357,7 +357,7 @@ namespace backend.Tests.Modules.Module09_Purchasing
 
             // Kiểm tra giá trị tồn kho hỏng trên Dashboard
             var dashboard = await dashboardService.GetFinancialPerformanceAsync("30days", null, null);
-            dashboard.ShrinkageLoss.DamagedStockValue.Should().Be(5 * 40000m, "Chỉ tính 5 đơn vị RMA hỏng theo giá vốn tồn kho định mức (5 * 40,000 = 200,000 đ), hoàn toàn không tính 8 đơn vị NCC bị từ chối tại dock");
+            dashboard.ShrinkageLoss.DamagedStockValue.Should().Be(5 * 50000m, "Chỉ tính 5 đơn vị RMA hỏng theo giá vốn tồn kho định mức (5 * 50,000 = 250,000 đ), hoàn toàn không tính 8 đơn vị NCC bị từ chối tại dock");
         }
         #endregion
 

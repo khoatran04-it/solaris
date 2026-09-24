@@ -220,7 +220,20 @@ export default function PriceVolatilityDashboard() {
               tính cơ sở: <span className="font-bold text-slate-800">{data?.baseUoMName}</span>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            {data?.volatilityLevel && (
+              <span
+                className={`px-3 py-1 text-xs font-bold rounded-full border ${
+                  data.volatilityLevel === 'Ổn định'
+                    ? 'bg-blue-50 text-blue-700 border-blue-200'
+                    : data.volatilityLevel === 'Vừa phải'
+                      ? 'bg-amber-50 text-amber-700 border-amber-200'
+                      : 'bg-rose-50 text-rose-700 border-rose-200'
+                }`}
+              >
+                Biến động: {data.volatilityLevel} (CV: {data.coefficientOfVariation ?? 0}%)
+              </span>
+            )}
             <span
               className={`px-3 py-1 text-xs font-bold rounded-full border ${
                 (data?.priceSpread ?? 0) >= 0
@@ -238,7 +251,11 @@ export default function PriceVolatilityDashboard() {
           <KpiMetricCard
             title={`Giá nhập gần nhất (${data?.baseUoMName || 'ĐVT'})`}
             value={fmtVnd(data?.latestImportPrice ?? 0)}
-            subtitle="Đơn giá nhập từ đơn mua PO"
+            subtitle={
+              data?.minImportPrice && data?.maxImportPrice && data.minImportPrice !== data.maxImportPrice
+                ? `Biên độ: ${fmtVnd(data.minImportPrice)} - ${fmtVnd(data.maxImportPrice)}`
+                : 'Đơn giá nhập từ đơn mua PO'
+            }
             badge={
               data?.importPriceChangePercent !== undefined
                 ? `Biến động ${data.importPriceChangePercent >= 0 ? '+' : ''}${data.importPriceChangePercent}%`

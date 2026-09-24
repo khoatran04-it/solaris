@@ -36,6 +36,18 @@ namespace backend.DTOs.PurchaseOrderDTOs
         /// Null nếu đơn chưa hoàn tất hoặc nhận đủ 100% theo TotalAmount ban đầu.
         /// </summary>
         public decimal? SettledAmount { get; set; }
+
+        /// <summary>Tổng số tiền đã thanh toán cho Nhà cung cấp (VND).</summary>
+        public decimal PaidAmount { get; set; }
+
+        /// <summary>Hạn chót thanh toán công nợ theo thỏa thuận.</summary>
+        public DateTime? PaymentDueDate { get; set; }
+
+        /// <summary>Trạng thái thanh toán công nợ.</summary>
+        public SupplierPaymentStatus PaymentStatus { get; set; }
+
+        /// <summary>Số dư công nợ còn lại phải trả cho đơn này (SettledAmount ?? TotalAmount) - PaidAmount.</summary>
+        public decimal RemainingDebt => Math.Max(0, (SettledAmount ?? TotalAmount) - PaidAmount);
         #endregion
 
         #region Ghi chú & Yêu cầu
