@@ -120,6 +120,17 @@ namespace backend.Services
                 }
             }
 
+            // Nếu không có GPS thực tế: Tự động tra cứu Ma trận 105 Tọa độ Trọng tâm Hành chính (GIS Centroid)
+            if (destLat == 0 && destLng == 0)
+            {
+                var centroid = GeoHelper.FindCoordinates(destDistrict, destProvince);
+                if (centroid.HasValue)
+                {
+                    destLat = centroid.Value.Lat;
+                    destLng = centroid.Value.Lng;
+                }
+            }
+
             return await _context.ExecuteInTransactionAsync(async () =>
             {
                 var now = DateTime.UtcNow;
@@ -153,13 +164,13 @@ namespace backend.Services
 
                 double distanceKm = routing.DistanceKm;
 
-                // Kiểm tra an toàn: Nếu distanceKm chưa hợp lệ mà có GPS cả hai bên thì tính lại qua Haversine
+                // Kiểm tra an toàn: Nếu distanceKm chưa hợp lệ mà có GPS cả hai bên thì tính lại qua Haversine * 1.25
                 if ((distanceKm <= 0 || distanceKm >= 99999 || double.IsInfinity(distanceKm) || double.IsNaN(distanceKm)) &&
                     destLat != 0 && destLng != 0 && targetWarehouse?.Address != null &&
                     targetWarehouse.Address.Latitude != 0 && targetWarehouse.Address.Longitude != 0)
                 {
                     var distanceService = new DistanceService();
-                    distanceKm = distanceService.CalculateDistanceKm(destLat, destLng, targetWarehouse.Address.Latitude, targetWarehouse.Address.Longitude);
+                    distanceKm = Math.Round(distanceService.CalculateDistanceKm(destLat, destLng, targetWarehouse.Address.Latitude, targetWarehouse.Address.Longitude) * 1.25, 2);
                 }
 
                 // Fallback theo cấp hành chính nếu khoảng cách vẫn bất thường

@@ -674,15 +674,6 @@ const OrderForm: React.FC = () => {
                           </span>
                         )}
                       </div>
-                      {routingPreview.suggestedSourceWarehouseName && (
-                        <div className="pt-2 border-t border-amber-100 text-amber-950 font-medium bg-amber-50/50 p-2 rounded-xl">
-                          Gợi ý điều phối: Có thể lập lệnh chuyển kho từ{' '}
-                          <strong className="text-amber-950 font-extrabold">
-                            {routingPreview.suggestedSourceWarehouseName}
-                          </strong>{' '}
-                          về.
-                        </div>
-                      )}
                     </div>
                   )}
                 </div>

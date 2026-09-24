@@ -69,46 +69,50 @@ namespace backend.Services
                 custLon = 0;
             }
 
-            // 1. Tính khoảng cách an toàn với Fallback theo cấp hành chính (tránh lỗi vô cực khi thiếu GPS)
+            // Nếu không có GPS thực tế: Tự động tra cứu Ma trận 105 Tọa độ Trọng tâm Hành chính (GIS Centroid)
+            if (custLat == 0 && custLon == 0)
+            {
+                var centroid = GeoHelper.FindCoordinates(custDistrict, custProvince);
+                if (centroid.HasValue)
+                {
+                    custLat = centroid.Value.Lat;
+                    custLon = centroid.Value.Lng;
+                }
+            }
+
+            // 1. Tính khoảng cách an toàn (áp dụng Hệ số uốn khúc đường bộ thực tế K = 1.25)
             double CalculateSafeDistance(Warehouse wh)
             {
                 if (wh.Address == null) return 5.0;
 
-                // Ưu tiên 1: Cùng quận/huyện giữa khách hàng và kho hàng (Dynamic Same-District Match)
-                if (!string.IsNullOrEmpty(wh.Address.District) && !string.IsNullOrEmpty(custDistrict))
-                {
-                    if (GeoHelper.IsSameLocation(wh.Address.District, custDistrict))
-                    {
-                        bool hasCust = custLat != 0 && custLon != 0;
-                        bool hasWh = wh.Address.Latitude != 0 && wh.Address.Longitude != 0;
-                        if (hasCust && hasWh)
-                        {
-                            double d = _distanceService.CalculateDistanceKm(custLat, custLon, wh.Address.Latitude, wh.Address.Longitude);
-                            if (!double.IsInfinity(d) && !double.IsNaN(d) && d < 15.0)
-                                return d;
-                        }
-                        return 2.5; // Cùng quận: Kho nằm ngay tại quận của khách hàng!
-                    }
-                }
-
-                // Ưu tiên 2: Tính khoảng cách GPS thực tế nếu có
                 bool hasCustCoords = custLat != 0 && custLon != 0;
                 bool hasWhCoords = wh.Address.Latitude != 0 && wh.Address.Longitude != 0;
 
+                // Ưu tiên 1: Tính khoảng cách đường bộ thực tế từ Tọa độ GPS thật hoặc Tọa độ Trọng tâm Quận
                 if (hasCustCoords && hasWhCoords)
                 {
                     double d = _distanceService.CalculateDistanceKm(custLat, custLon, wh.Address.Latitude, wh.Address.Longitude);
                     if (!double.IsInfinity(d) && !double.IsNaN(d) && d < 99999)
                     {
-                        return d;
+                        // Nhân hệ số uốn khúc đường sá đô thị 1.25 (Road Tortuosity Factor)
+                        return Math.Round(d * 1.25, 2);
                     }
                 }
 
-                // Ưu tiên 3: Fallback địa lý theo cấp Tỉnh/Thành phố
+                // Fallback cấp 1: Cùng quận/huyện giữa khách hàng và kho hàng (nếu thiếu tọa độ cả 2 bên)
+                if (!string.IsNullOrEmpty(wh.Address.District) && !string.IsNullOrEmpty(custDistrict))
+                {
+                    if (GeoHelper.IsSameLocation(wh.Address.District, custDistrict))
+                    {
+                        return 2.5; // Cùng quận: Kho nằm ngay tại quận của khách hàng!
+                    }
+                }
+
+                // Fallback cấp 2: Phân cấp địa lý theo Tỉnh/Thành phố
                 if (!string.IsNullOrEmpty(wh.Address.Province) && !string.IsNullOrEmpty(custProvince))
                 {
                     bool sameProvince = GeoHelper.IsSameLocation(wh.Address.Province, custProvince);
-                    if (sameProvince) return 7.5; // Cùng tỉnh/TP: ước tính ~7.5km
+                    if (sameProvince) return 8.0; // Cùng tỉnh/TP: ước tính ~8.0km
                     return 100.0; // Khác tỉnh thành
                 }
 
@@ -124,7 +128,8 @@ namespace backend.Services
             .OrderBy(x => x.Distance)
             .ToList();
 
-            // 2. Kiểm tra tồn kho khả dụng tại từng kho
+            // 2. Kiểm tra tồn kho khả dụng tại từng kho (chỉ tính các lô còn hạn sử dụng)
+            var now = DateTime.UtcNow;
             foreach (var item in warehousesWithDistance)
             {
                 var wh = item.Warehouse;
@@ -134,7 +139,7 @@ namespace backend.Services
                 foreach (var orderItem in items)
                 {
                     var available = await _context.WarehouseInventories
-                        .Where(i => i.WarehouseId == wh.Id && i.VariantId == orderItem.VariantId)
+                        .Where(i => i.WarehouseId == wh.Id && i.VariantId == orderItem.VariantId && (i.Batch == null || i.Batch.ExpiryDate > now))
                         .SumAsync(i => (decimal?)i.QuantityAvailable) ?? 0;
 
                     if (available < orderItem.Quantity)
@@ -165,14 +170,14 @@ namespace backend.Services
                 }
             }
 
-            // 3. Nếu không có kho nào đủ 100% -> Chọn kho gần nhất làm kho đích, tìm kho phụ cung ứng
+            // 3. Nếu không có kho nào đủ 100% -> Chọn kho gần nhất làm kho tối ưu và báo danh sách hàng thiếu
             var nearest = warehousesWithDistance.First();
             var targetMissingList = new List<MissingItemDto>();
 
             foreach (var orderItem in items)
             {
                 var available = await _context.WarehouseInventories
-                    .Where(i => i.WarehouseId == nearest.Warehouse.Id && i.VariantId == orderItem.VariantId)
+                    .Where(i => i.WarehouseId == nearest.Warehouse.Id && i.VariantId == orderItem.VariantId && (i.Batch == null || i.Batch.ExpiryDate > now))
                     .SumAsync(i => (decimal?)i.QuantityAvailable) ?? 0;
 
                 if (available < orderItem.Quantity)
@@ -188,38 +193,13 @@ namespace backend.Services
                 }
             }
 
-            // Tìm kho nguồn có hàng còn thiếu
-            int? suggestedSourceId = null;
-            string? suggestedSourceName = null;
-
-            if (targetMissingList.Any())
-            {
-                var firstMissing = targetMissingList.First();
-                var sourceWh = await _context.WarehouseInventories
-                    .Include(i => i.Warehouse)
-                    .Where(i => i.WarehouseId != nearest.Warehouse.Id &&
-                                i.VariantId == firstMissing.VariantId &&
-                                i.QuantityAvailable >= firstMissing.MissingQuantity &&
-                                (i.Warehouse == null || i.Warehouse.WarehouseType != WarehouseTypeConstants.Damaged))
-                    .Select(i => i.Warehouse)
-                    .FirstOrDefaultAsync();
-
-                if (sourceWh != null)
-                {
-                    suggestedSourceId = sourceWh.Id;
-                    suggestedSourceName = sourceWh.Name;
-                }
-            }
-
             return new RoutingResultDto
             {
                 OptimalWarehouseId = nearest.Warehouse.Id,
                 WarehouseName = nearest.Warehouse.Name,
                 DistanceKm = nearest.Distance,
                 IsFullyStocked = false,
-                MissingItems = targetMissingList,
-                SuggestedSourceWarehouseId = suggestedSourceId,
-                SuggestedSourceWarehouseName = suggestedSourceName
+                MissingItems = targetMissingList
             };
         }
     }

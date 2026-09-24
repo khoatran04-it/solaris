@@ -203,8 +203,6 @@ export interface RoutingPreviewResult {
     availableQuantity: number;
     missingQuantity: number;
   }[];
-  suggestedSourceWarehouseId?: number;
-  suggestedSourceWarehouseName?: string;
 }
 
 // =========================================================

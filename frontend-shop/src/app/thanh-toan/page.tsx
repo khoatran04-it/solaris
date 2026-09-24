@@ -16,9 +16,11 @@ import {
   ShieldCheck,
   Lock,
   ThermometerSnowflake,
+  MapPin,
 } from "lucide-react";
 import { useAuthStore } from "@/stores/authStore";
 import { useCartStore } from "@/stores/cartStore";
+import { useLocationStore } from "@/stores/locationStore";
 import shopOrderApi from "@/api/shopOrderApi";
 import shopCustomerApi from "@/api/shopCustomerApi";
 import shopShippingApi from "@/api/shopShippingApi";
@@ -32,6 +34,8 @@ export default function ThanhToanPage() {
   const router = useRouter();
   const { isAuthenticated, initAuth } = useAuthStore();
   const { cart, fetchCart, clearCart } = useCartStore();
+  const { userLatitude, userLongitude, detectGps, isDetectingGps } =
+    useLocationStore();
 
   const [addresses, setAddresses] = useState<ShopAddress[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState<number | null>(
@@ -274,6 +278,19 @@ export default function ThanhToanPage() {
       const currentWard =
         wards.find((w) => w.wardCode === selectedWardCode)?.wardName || "";
 
+      // Xác định tọa độ thực tế: nếu chọn địa chỉ đã lưu có GPS, hoặc có GPS từ locationStore
+      const selectedAddrObj = addresses.find((a) => a.id === selectedAddressId);
+      const effectiveLat = useNewAddress
+        ? (userLatitude || 0)
+        : (selectedAddrObj?.latitude && selectedAddrObj.latitude !== 0
+            ? selectedAddrObj.latitude
+            : (userLatitude || 0));
+      const effectiveLng = useNewAddress
+        ? (userLongitude || 0)
+        : (selectedAddrObj?.longitude && selectedAddrObj.longitude !== 0
+            ? selectedAddrObj.longitude
+            : (userLongitude || 0));
+
       const payload: ShopCheckoutPayload = {
         customerAddressId: useNewAddress
           ? undefined
@@ -289,8 +306,8 @@ export default function ThanhToanPage() {
         ghnDistrictId: selectedDistrictId ?? undefined,
         ghnWardCode: selectedWardCode || undefined,
         shippingFee: shippingFee,
-        latitude: 0,
-        longitude: 0,
+        latitude: effectiveLat,
+        longitude: effectiveLng,
         paymentMethod: paymentMethod,
         note: note.trim(),
       };
@@ -494,6 +511,42 @@ export default function ThanhToanPage() {
                   {useNewAddress ? "Chọn địa chỉ có sẵn" : "+ Thêm địa chỉ mới"}
                 </button>
               )}
+            </div>
+
+            {/* GPS Indicator Banner */}
+            <div className="flex flex-wrap items-center justify-between gap-2 p-3 bg-slate-50/80 rounded-2xl border border-slate-200/70 text-xs">
+              <div className="flex items-center gap-2">
+                <MapPin
+                  className={`w-4 h-4 shrink-0 ${
+                    userLatitude && userLongitude
+                      ? "text-emerald-600"
+                      : "text-slate-400"
+                  }`}
+                />
+                <span className="text-slate-700 font-medium">
+                  {userLatitude && userLongitude ? (
+                    <>
+                      Tọa độ GPS định vị:{" "}
+                      <strong className="text-emerald-700 font-bold">
+                        {userLatitude.toFixed(4)}, {userLongitude.toFixed(4)}
+                      </strong>{" "}
+                      <span className="text-slate-400 text-[11px]">
+                        (Định tuyến cự ly thực tế)
+                      </span>
+                    </>
+                  ) : (
+                    "Chưa bật GPS (Hệ thống sẽ định tuyến thông minh theo Quận/Huyện)"
+                  )}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => detectGps(false)}
+                disabled={isDetectingGps}
+                className="px-2.5 py-1 text-[11px] font-bold text-emerald-700 bg-white hover:bg-emerald-50 border border-slate-200 rounded-lg cursor-pointer transition-all disabled:opacity-50"
+              >
+                {isDetectingGps ? "Đang định vị..." : "📍 Cập nhật GPS"}
+              </button>
             </div>
 
             {/* List Saved Addresses */}

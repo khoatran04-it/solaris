@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { MapPin, Plus, Trash2, CheckCircle2 } from "lucide-react";
 import { useAuthStore } from "@/stores/authStore";
+import { useLocationStore } from "@/stores/locationStore";
 import shopCustomerApi from "@/api/shopCustomerApi";
 import { ShopAddress, ShopAddressPayload } from "@/types/customer";
 import GhnAddressSelect from "@/components/address/GhnAddressSelect";
@@ -13,6 +14,8 @@ import EmptyState from "@/components/common/EmptyState";
 export default function DiaChiPage() {
   const router = useRouter();
   const { isAuthenticated, initAuth } = useAuthStore();
+  const { userLatitude, userLongitude, detectGps, isDetectingGps } =
+    useLocationStore();
   const [addresses, setAddresses] = useState<ShopAddress[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
 
@@ -23,6 +26,8 @@ export default function DiaChiPage() {
   const [district, setDistrict] = useState("");
   const [ward, setWard] = useState("");
   const [streetAddress, setStreetAddress] = useState("");
+  const [addrLat, setAddrLat] = useState<number | null>(null);
+  const [addrLng, setAddrLng] = useState<number | null>(null);
   const [isDefault, setIsDefault] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -69,8 +74,8 @@ export default function DiaChiPage() {
         ward: ward.trim(),
         streetAddress: streetAddress.trim(),
         isDefault,
-        latitude: 0,
-        longitude: 0,
+        latitude: addrLat || userLatitude || 0,
+        longitude: addrLng || userLongitude || 0,
       } as ShopAddressPayload);
 
       setShowAddForm(false);
@@ -79,6 +84,8 @@ export default function DiaChiPage() {
       setDistrict("");
       setWard("");
       setStreetAddress("");
+      setAddrLat(null);
+      setAddrLng(null);
       setIsDefault(false);
       loadAddresses();
     } catch (error: any) {
@@ -231,6 +238,47 @@ export default function DiaChiPage() {
                     </label>
                   </div>
 
+                  {/* GPS Locator */}
+                  <div className="sm:col-span-2 flex flex-wrap items-center justify-between gap-2 p-3 bg-slate-50 rounded-2xl border border-slate-200/80 text-xs">
+                    <div className="flex items-center gap-2">
+                      <MapPin
+                        className={`w-4 h-4 shrink-0 ${
+                          addrLat || userLatitude
+                            ? "text-emerald-600"
+                            : "text-slate-400"
+                        }`}
+                      />
+                      <span className="text-slate-700 font-medium">
+                        {(addrLat || userLatitude) && (addrLng || userLongitude) ? (
+                          <>
+                            Tọa độ GPS định vị:{" "}
+                            <strong className="text-emerald-700 font-bold">
+                              {(addrLat || userLatitude)?.toFixed(4)},{" "}
+                              {(addrLng || userLongitude)?.toFixed(4)}
+                            </strong>
+                          </>
+                        ) : (
+                          "Chưa gắn tọa độ GPS (Hệ thống sẽ định tuyến qua Quận/Huyện)"
+                        )}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        await detectGps(false);
+                        const store = useLocationStore.getState();
+                        if (store.userLatitude && store.userLongitude) {
+                          setAddrLat(store.userLatitude);
+                          setAddrLng(store.userLongitude);
+                        }
+                      }}
+                      disabled={isDetectingGps}
+                      className="px-2.5 py-1 text-[11px] font-bold text-emerald-700 bg-white hover:bg-emerald-50 border border-slate-200 rounded-lg cursor-pointer transition-all disabled:opacity-50"
+                    >
+                      {isDetectingGps ? "Đang định vị..." : "📍 Lấy GPS hiện tại"}
+                    </button>
+                  </div>
+
                   <div className="sm:col-span-2 flex items-center gap-3 pt-3">
                     <button
                       type="submit"
@@ -281,6 +329,14 @@ export default function DiaChiPage() {
                         {addr.streetAddress}, {addr.ward}, {addr.district},{" "}
                         {addr.province}
                       </p>
+                      {addr.latitude !== 0 && addr.longitude !== 0 && (
+                        <div className="pt-1">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-sky-50 text-sky-700 border border-sky-200/60 rounded-md text-[10px] font-bold">
+                            <MapPin className="w-2.5 h-2.5 text-sky-600" />
+                            GPS: {addr.latitude.toFixed(4)}, {addr.longitude.toFixed(4)}
+                          </span>
+                        </div>
+                      )}
                     </div>
 
                     <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs">

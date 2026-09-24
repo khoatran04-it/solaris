@@ -9,8 +9,6 @@ namespace backend.Services.Interfaces
         public double DistanceKm { get; set; }
         public bool IsFullyStocked { get; set; }
         public List<MissingItemDto> MissingItems { get; set; } = new();
-        public int? SuggestedSourceWarehouseId { get; set; }
-        public string? SuggestedSourceWarehouseName { get; set; }
     }
 
     public class MissingItemDto

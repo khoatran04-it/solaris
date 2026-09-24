@@ -219,42 +219,51 @@ const InventoryIssueForm: React.FC = () => {
 
         if (ord.details && ord.details.length > 0) {
           const batchMapUpdates: Record<string, SuggestedBatch[]> = {};
+          const rows: DetailRow[] = [];
 
-          const rows: DetailRow[] = await Promise.all(
-            ord.details.map(async (d) => {
-              const unissued = Math.max(0, d.quantity - (d.issuedQuantity || 0));
-              const qty = unissued > 0 ? unissued : d.quantity;
-              let autoBatchId: number | '' = '';
+          for (const d of ord.details) {
+            const unissued = Math.max(0, d.quantity - (d.issuedQuantity || 0));
+            const qty = unissued > 0 ? unissued : d.quantity;
+            let suggestions: SuggestedBatch[] = [];
 
-              if (whId) {
-                try {
-                  const suggestions = await inventoryIssueApi.getSuggestedBatches(
-                    whId,
-                    d.variantId,
-                    qty
-                  );
-                  if (suggestions && suggestions.length > 0) {
-                    autoBatchId = suggestions[0].batchId;
-                    batchMapUpdates[`${whId}_${d.variantId}`] = suggestions;
-                  } else {
-                    batchMapUpdates[`${whId}_${d.variantId}`] = [];
-                  }
-                } catch {
-                  batchMapUpdates[`${whId}_${d.variantId}`] = [];
-                }
+            if (whId) {
+              try {
+                suggestions = await inventoryIssueApi.getSuggestedBatches(
+                  whId,
+                  d.variantId,
+                  qty
+                );
+                batchMapUpdates[`${whId}_${d.variantId}`] = suggestions || [];
+              } catch {
+                batchMapUpdates[`${whId}_${d.variantId}`] = [];
               }
+            }
 
-              return {
+            // Tự động bóc tách đa lô trực quan nếu số lượng cần vét cạn qua nhiều lô
+            if (suggestions && suggestions.length > 1) {
+              for (const sug of suggestions) {
+                rows.push({
+                  id: crypto.randomUUID(),
+                  orderDetailId: d.id,
+                  variantId: d.variantId,
+                  batchId: sug.batchId,
+                  uoMId: d.uoMId,
+                  quantity: sug.suggestedPickQuantity,
+                  unitPrice: d.unitPrice,
+                });
+              }
+            } else {
+              rows.push({
                 id: crypto.randomUUID(),
                 orderDetailId: d.id,
                 variantId: d.variantId,
-                batchId: autoBatchId,
+                batchId: suggestions && suggestions.length > 0 ? suggestions[0].batchId : '',
                 uoMId: d.uoMId,
                 quantity: qty,
                 unitPrice: d.unitPrice,
-              };
-            })
-          );
+              });
+            }
+          }
 
           setVariantBatchesMap((prev) => ({ ...prev, ...batchMapUpdates }));
           setDetails(rows);
@@ -299,24 +308,39 @@ const InventoryIssueForm: React.FC = () => {
     }
     try {
       let successCount = 0;
-      const updatedDetails = await Promise.all(
-        details.map(async (row) => {
-          if (!row.variantId) return row;
-          try {
-            const suggestions = await fetchBatchesForVariant(
-              Number(formData.warehouseId),
-              Number(row.variantId),
-              Number(row.quantity || 1)
-            );
-            if (suggestions && suggestions.length > 0) {
-              successCount++;
-              return { ...row, batchId: suggestions[0].batchId };
+      const newDetails: DetailRow[] = [];
+      for (const row of details) {
+        if (!row.variantId) {
+          newDetails.push(row);
+          continue;
+        }
+        try {
+          const suggestions = await fetchBatchesForVariant(
+            Number(formData.warehouseId),
+            Number(row.variantId),
+            Number(row.quantity || 1)
+          );
+          if (suggestions && suggestions.length > 1) {
+            successCount++;
+            for (const sug of suggestions) {
+              newDetails.push({
+                ...row,
+                id: crypto.randomUUID(),
+                batchId: sug.batchId,
+                quantity: sug.suggestedPickQuantity,
+              });
             }
-          } catch {}
-          return row;
-        })
-      );
-      setDetails(updatedDetails);
+          } else if (suggestions && suggestions.length === 1) {
+            successCount++;
+            newDetails.push({ ...row, batchId: suggestions[0].batchId });
+          } else {
+            newDetails.push(row);
+          }
+        } catch {
+          newDetails.push(row);
+        }
+      }
+      setDetails(newDetails);
       if (successCount > 0) {
         showToast('success', `Đã tự động phân bổ Lô FEFO tối ưu cho ${successCount} mặt hàng!`);
       } else {
@@ -408,7 +432,22 @@ const InventoryIssueForm: React.FC = () => {
         Number(targetRow.quantity || 1)
       );
 
-      if (suggestions && suggestions.length > 0) {
+      if (suggestions && suggestions.length > 1) {
+        setDetails((prev) => {
+          const idx = prev.findIndex((d) => d.id === rowId);
+          if (idx === -1) return prev;
+          const newRows: DetailRow[] = suggestions.map((sug) => ({
+            ...targetRow,
+            id: crypto.randomUUID(),
+            batchId: sug.batchId,
+            quantity: sug.suggestedPickQuantity,
+          }));
+          const copy = [...prev];
+          copy.splice(idx, 1, ...newRows);
+          return copy;
+        });
+        showToast('success', `FEFO đã tự động bóc tách thành ${suggestions.length} lô tối ưu!`);
+      } else if (suggestions && suggestions.length === 1) {
         const topBatch = suggestions[0];
         handleDetailChange(rowId, 'batchId', topBatch.batchId);
         showToast('success', `Đã tự động gán Lô tối ưu FEFO: ${topBatch.batchCode}`);

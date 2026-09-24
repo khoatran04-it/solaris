@@ -206,10 +206,6 @@ const InventoryTransferForm: React.FC = () => {
                 })),
               });
 
-              if (routing.suggestedSourceWarehouseId && !fromWh) {
-                fromWh = routing.suggestedSourceWarehouseId;
-              }
-
               if (routing.missingItems && routing.missingItems.length > 0) {
                 itemsToTransfer = routing.missingItems.map((m) => {
                   const originalDetail = ord.details.find((d) => d.variantId === m.variantId);
@@ -245,24 +241,36 @@ const InventoryTransferForm: React.FC = () => {
           if (itemsToTransfer.length > 0) {
             const newRows: DetailRow[] = [];
             for (const item of itemsToTransfer) {
-              let autoBatchId: number | '' = '';
+              let suggestions: SuggestedBatch[] = [];
               if (fromWh && item.variantId) {
-                const suggestions = await fetchBatchesForVariant(
-                  Number(fromWh),
-                  item.variantId,
-                  item.quantity
-                );
-                if (suggestions && suggestions.length > 0) {
-                  autoBatchId = suggestions[0].batchId;
-                }
+                try {
+                  suggestions = await fetchBatchesForVariant(
+                    Number(fromWh),
+                    item.variantId,
+                    item.quantity
+                  );
+                } catch {}
               }
-              newRows.push({
-                id: crypto.randomUUID(),
-                variantId: item.variantId,
-                batchId: autoBatchId,
-                uoMId: item.uoMId,
-                quantity: item.quantity,
-              });
+
+              if (suggestions && suggestions.length > 1) {
+                for (const sug of suggestions) {
+                  newRows.push({
+                    id: crypto.randomUUID(),
+                    variantId: item.variantId,
+                    batchId: sug.batchId,
+                    uoMId: item.uoMId,
+                    quantity: sug.suggestedPickQuantity,
+                  });
+                }
+              } else {
+                newRows.push({
+                  id: crypto.randomUUID(),
+                  variantId: item.variantId,
+                  batchId: suggestions && suggestions.length > 0 ? suggestions[0].batchId : '',
+                  uoMId: item.uoMId,
+                  quantity: item.quantity,
+                });
+              }
             }
             setDetails(newRows);
           }
@@ -409,7 +417,6 @@ const InventoryTransferForm: React.FC = () => {
     }
   };
 
-  // Nút tự động phân bổ lô FEFO cho toàn bộ mặt hàng
   const handleAutoAllocateAllFEFO = async () => {
     if (!formData.fromWarehouseId) {
       return showToast('warning', 'Vui lòng chọn Kho nguồn xuất phát trước!');
@@ -417,18 +424,32 @@ const InventoryTransferForm: React.FC = () => {
     try {
       setAllocatingFEFO(true);
       const whId = Number(formData.fromWarehouseId);
-      const updatedDetails = [...details];
+      const newDetails: DetailRow[] = [];
 
-      for (let i = 0; i < updatedDetails.length; i++) {
-        const row = updatedDetails[i];
-        if (!row.variantId) continue;
+      for (let i = 0; i < details.length; i++) {
+        const row = details[i];
+        if (!row.variantId) {
+          newDetails.push(row);
+          continue;
+        }
         const suggestions = await fetchBatchesForVariant(whId, Number(row.variantId), row.quantity);
-        if (suggestions && suggestions.length > 0) {
-          row.batchId = suggestions[0].batchId;
+        if (suggestions && suggestions.length > 1) {
+          for (const sug of suggestions) {
+            newDetails.push({
+              ...row,
+              id: crypto.randomUUID(),
+              batchId: sug.batchId,
+              quantity: sug.suggestedPickQuantity,
+            });
+          }
+        } else if (suggestions && suggestions.length === 1) {
+          newDetails.push({ ...row, batchId: suggestions[0].batchId });
+        } else {
+          newDetails.push(row);
         }
       }
 
-      setDetails(updatedDetails);
+      setDetails(newDetails);
       showToast('success', 'ĐÃ TỰ ĐỘNG PHÂN BỔ LÔ FEFO CHO TẤT CẢ MẶT HÀNG!');
     } catch {
       showToast('error', 'Không thể phân bổ lô tự động!');

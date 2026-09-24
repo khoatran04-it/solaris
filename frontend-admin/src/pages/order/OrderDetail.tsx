@@ -386,17 +386,6 @@ const OrderDetail: React.FC = () => {
                     </span>
                   ))}
                 </div>
-
-                {/* Gợi ý kho nguồn */}
-                {routingAnalysis.suggestedSourceWarehouseName && (
-                  <p className="text-xs text-slate-700 pt-0.5 font-medium flex items-center gap-2 flex-wrap">
-                    <span className="text-indigo-700 font-bold">Gợi ý điều phối:</span>
-                    <span>Kho nguồn có sẵn hàng khả dụng là</span>
-                    <strong className="text-indigo-950 font-black bg-indigo-50 px-2.5 py-1 rounded-lg border border-indigo-200">
-                      {routingAnalysis.suggestedSourceWarehouseName}
-                    </strong>
-                  </p>
-                )}
               </div>
             </div>
 
@@ -404,9 +393,7 @@ const OrderDetail: React.FC = () => {
             <button
               onClick={() =>
                 navigate(
-                  `/inventory-transfers/create?orderId=${order.id}&fromWarehouseId=${
-                    routingAnalysis.suggestedSourceWarehouseId || ''
-                  }&toWarehouseId=${order.warehouseId || ''}&missingOnly=true`
+                  `/inventory-transfers/create?orderId=${order.id}&toWarehouseId=${order.warehouseId || ''}&missingOnly=true`
                 )
               }
               className="px-5 py-3.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-black text-xs uppercase tracking-wider rounded-2xl transition-all shadow-md shadow-amber-500/25 hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2.5 shrink-0 border border-amber-400"

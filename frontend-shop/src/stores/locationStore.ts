@@ -41,6 +41,11 @@ interface LocationState {
   detectionMessage: string | null;
   isInitialized: boolean;
 
+  // Tọa độ GPS thực tế của khách hàng (nếu được cấp quyền hoặc chọn từ bản đồ)
+  userLatitude: number | null;
+  userLongitude: number | null;
+  setUserCoordinates: (lat: number | null, lng: number | null) => void;
+
   initLocation: () => Promise<void>;
   fetchWarehouses: () => Promise<ShopWarehouse[]>;
   loadSavedAddresses: () => Promise<ShopAddress[]>;
@@ -52,6 +57,8 @@ interface LocationState {
     ward: string,
     district: string,
     province: string,
+    lat?: number,
+    lng?: number,
   ) => { success: boolean; message?: string };
   openModal: () => void;
   closeModal: () => void;
@@ -63,10 +70,25 @@ export const useLocationStore = create<LocationState>((set, get) => ({
   selectedWarehouse: null,
   warehouses: [],
   savedAddresses: [],
+  userLatitude: null,
+  userLongitude: null,
   isModalOpen: false,
   isDetectingGps: false,
   detectionMessage: null,
   isInitialized: false,
+
+  setUserCoordinates: (lat: number | null, lng: number | null) => {
+    set({ userLatitude: lat, userLongitude: lng });
+    if (typeof window !== "undefined") {
+      if (lat !== null && lng !== null) {
+        localStorage.setItem("solaris_user_lat", lat.toString());
+        localStorage.setItem("solaris_user_lng", lng.toString());
+      } else {
+        localStorage.removeItem("solaris_user_lat");
+        localStorage.removeItem("solaris_user_lng");
+      }
+    }
+  },
 
   fetchWarehouses: async () => {
     try {
@@ -110,6 +132,7 @@ export const useLocationStore = create<LocationState>((set, get) => ({
     if (addrs.length > 0) {
       const defaultAddr = addrs.find((a) => a.isDefault) || addrs[0];
       if (defaultAddr) {
+        const hasCoords = !!(defaultAddr.latitude && defaultAddr.longitude);
         const matchedWh = mapLocationToWarehouse(
           defaultAddr.district,
           defaultAddr.province,
@@ -123,6 +146,8 @@ export const useLocationStore = create<LocationState>((set, get) => ({
             `${defaultAddr.district}, ${defaultAddr.province}`,
           deliveryDistrict: defaultAddr.district,
           selectedWarehouse: matchedWh,
+          userLatitude: hasCoords ? defaultAddr.latitude : null,
+          userLongitude: hasCoords ? defaultAddr.longitude : null,
           isInitialized: true,
         });
         if (typeof window !== "undefined") {
@@ -134,6 +159,16 @@ export const useLocationStore = create<LocationState>((set, get) => ({
             "solaris_delivery_district",
             defaultAddr.district,
           );
+          if (hasCoords) {
+            localStorage.setItem(
+              "solaris_user_lat",
+              defaultAddr.latitude.toString(),
+            );
+            localStorage.setItem(
+              "solaris_user_lng",
+              defaultAddr.longitude.toString(),
+            );
+          }
           localStorage.setItem(
             "solaris_selected_warehouse",
             JSON.stringify(matchedWh),
@@ -148,19 +183,25 @@ export const useLocationStore = create<LocationState>((set, get) => ({
       const savedAddr = localStorage.getItem("solaris_delivery_address");
       const savedDistrict = localStorage.getItem("solaris_delivery_district");
       const savedWhRaw = localStorage.getItem("solaris_selected_warehouse");
+      const savedLat = localStorage.getItem("solaris_user_lat");
+      const savedLng = localStorage.getItem("solaris_user_lng");
+      const userLat = savedLat ? parseFloat(savedLat) : null;
+      const userLng = savedLng ? parseFloat(savedLng) : null;
 
       if (savedDistrict) {
         const remappedWh = mapLocationToWarehouse(
           savedDistrict,
           undefined,
-          undefined,
-          undefined,
+          userLat || undefined,
+          userLng || undefined,
           whList,
         );
         set({
           deliveryAddress: savedAddr || `${savedDistrict}, TP.HCM`,
           deliveryDistrict: savedDistrict,
           selectedWarehouse: remappedWh,
+          userLatitude: userLat,
+          userLongitude: userLng,
           isInitialized: true,
         });
         localStorage.setItem(
@@ -181,6 +222,8 @@ export const useLocationStore = create<LocationState>((set, get) => ({
               deliveryDistrict:
                 savedDistrict || stillExists.district || "",
               selectedWarehouse: stillExists,
+              userLatitude: userLat,
+              userLongitude: userLng,
               isInitialized: true,
             });
             return;
@@ -211,6 +254,8 @@ export const useLocationStore = create<LocationState>((set, get) => ({
         selectedWarehouse: get().selectedWarehouse || defaultWh,
         deliveryAddress: get().deliveryAddress || "Quận 4, TP. Hồ Chí Minh",
         deliveryDistrict: get().deliveryDistrict || "Quận 4",
+        userLatitude: null,
+        userLongitude: null,
         detectionMessage: "Trình duyệt không hỗ trợ định vị GPS.",
         isModalOpen: openModalOnFail,
       });
@@ -248,6 +293,8 @@ export const useLocationStore = create<LocationState>((set, get) => ({
         set({
           selectedWarehouse: defaultWh,
           isDetectingGps: false,
+          userLatitude: userLat,
+          userLongitude: userLon,
           detectionMessage: `Vị trí hiện tại cách chi nhánh gần nhất ${Math.round(distance)}km, vượt quá bán kính giao nhanh 2h. Vui lòng nhập địa chỉ nhận hàng trong TP.HCM.`,
           isModalOpen: true,
         });
@@ -261,6 +308,8 @@ export const useLocationStore = create<LocationState>((set, get) => ({
         deliveryAddress: displayAddress,
         deliveryDistrict: displayDistrict,
         selectedWarehouse: nearest,
+        userLatitude: userLat,
+        userLongitude: userLon,
         isDetectingGps: false,
         detectionMessage: null,
         isModalOpen: false,
@@ -269,6 +318,8 @@ export const useLocationStore = create<LocationState>((set, get) => ({
       if (typeof window !== "undefined") {
         localStorage.setItem("solaris_delivery_address", displayAddress);
         localStorage.setItem("solaris_delivery_district", displayDistrict);
+        localStorage.setItem("solaris_user_lat", userLat.toString());
+        localStorage.setItem("solaris_user_lng", userLon.toString());
         localStorage.setItem(
           "solaris_selected_warehouse",
           JSON.stringify(nearest),
@@ -283,6 +334,8 @@ export const useLocationStore = create<LocationState>((set, get) => ({
         deliveryAddress: fallbackAddress,
         deliveryDistrict: fallbackDistrict,
         selectedWarehouse: fallbackWh,
+        userLatitude: null,
+        userLongitude: null,
         isDetectingGps: false,
         detectionMessage:
           "Không thể lấy GPS (Bạn đã từ chối hoặc thiết bị chưa bật định vị). Vui lòng điền địa chỉ nhận hàng bên dưới.",
@@ -292,6 +345,8 @@ export const useLocationStore = create<LocationState>((set, get) => ({
       if (typeof window !== "undefined") {
         localStorage.setItem("solaris_delivery_address", fallbackAddress);
         localStorage.setItem("solaris_delivery_district", fallbackDistrict);
+        localStorage.removeItem("solaris_user_lat");
+        localStorage.removeItem("solaris_user_lng");
         localStorage.setItem(
           "solaris_selected_warehouse",
           JSON.stringify(fallbackWh),
@@ -303,6 +358,7 @@ export const useLocationStore = create<LocationState>((set, get) => ({
   // Chọn từ sổ địa chỉ tài khoản
   selectSavedAddress: (addr: ShopAddress) => {
     const whList = get().warehouses;
+    const hasCoords = !!(addr.latitude && addr.longitude);
     const matchedWh = mapLocationToWarehouse(
       addr.district,
       addr.province,
@@ -315,6 +371,8 @@ export const useLocationStore = create<LocationState>((set, get) => ({
       deliveryAddress: addr.fullAddress,
       deliveryDistrict: addr.district,
       selectedWarehouse: matchedWh,
+      userLatitude: hasCoords ? addr.latitude : null,
+      userLongitude: hasCoords ? addr.longitude : null,
       isModalOpen: false,
       detectionMessage: null,
     });
@@ -322,6 +380,13 @@ export const useLocationStore = create<LocationState>((set, get) => ({
     if (typeof window !== "undefined") {
       localStorage.setItem("solaris_delivery_address", addr.fullAddress);
       localStorage.setItem("solaris_delivery_district", addr.district);
+      if (hasCoords) {
+        localStorage.setItem("solaris_user_lat", addr.latitude.toString());
+        localStorage.setItem("solaris_user_lng", addr.longitude.toString());
+      } else {
+        localStorage.removeItem("solaris_user_lat");
+        localStorage.removeItem("solaris_user_lng");
+      }
       localStorage.setItem(
         "solaris_selected_warehouse",
         JSON.stringify(matchedWh),
@@ -349,6 +414,8 @@ export const useLocationStore = create<LocationState>((set, get) => ({
     ward: string,
     district: string,
     province: string,
+    lat?: number,
+    lng?: number,
   ) => {
     const whList = get().warehouses;
 
@@ -365,11 +432,12 @@ export const useLocationStore = create<LocationState>((set, get) => ({
       };
     }
 
+    const hasCoords = !!(lat && lng);
     const matchedWh = mapLocationToWarehouse(
       district,
       province,
-      undefined,
-      undefined,
+      lat,
+      lng,
       whList,
     );
     const parts = [street, ward, district, province].filter(Boolean);
@@ -379,6 +447,8 @@ export const useLocationStore = create<LocationState>((set, get) => ({
       deliveryAddress: fullAddress,
       deliveryDistrict: district,
       selectedWarehouse: matchedWh,
+      userLatitude: hasCoords ? lat! : null,
+      userLongitude: hasCoords ? lng! : null,
       isModalOpen: false,
       detectionMessage: null,
     });
@@ -386,6 +456,13 @@ export const useLocationStore = create<LocationState>((set, get) => ({
     if (typeof window !== "undefined") {
       localStorage.setItem("solaris_delivery_address", fullAddress);
       localStorage.setItem("solaris_delivery_district", district);
+      if (hasCoords) {
+        localStorage.setItem("solaris_user_lat", lat!.toString());
+        localStorage.setItem("solaris_user_lng", lng!.toString());
+      } else {
+        localStorage.removeItem("solaris_user_lat");
+        localStorage.removeItem("solaris_user_lng");
+      }
       localStorage.setItem(
         "solaris_selected_warehouse",
         JSON.stringify(matchedWh),
