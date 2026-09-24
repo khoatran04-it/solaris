@@ -1,4 +1,4 @@
-﻿import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
@@ -11,6 +11,8 @@ vi.mock('../../../api/purchaseOrderApi', () => ({
   purchaseOrderApi: {
     getById: vi.fn(),
     updateStatus: vi.fn(),
+    closeAndSettle: vi.fn(),
+    recordPayment: vi.fn(),
   },
 }));
 
@@ -80,6 +82,17 @@ describe('Module 09 - PurchaseOrderDetail Component', () => {
     orderCode: 'PO-20260830-004',
     status: PurchaseOrderStatus.Cancelled,
     cancellationReason: 'Nhà cung cấp hết hàng mùa vụ',
+  };
+
+  const mockOrderWithDebt = {
+    ...mockOrderApproved,
+    id: 5,
+    orderCode: 'PO-20260830-005',
+    totalAmount: 2000000,
+    paidAmount: 500000,
+    remainingDebt: 1500000,
+    paymentStatus: 2, // PartiallyPaid
+    paymentDueDate: '2026-09-15T00:00:00Z',
   };
 
   beforeEach(() => {
@@ -271,6 +284,69 @@ describe('Module 09 - PurchaseOrderDetail Component', () => {
     await waitFor(() => {
       expect(screen.getByText(/Lý do hủy đơn:/i)).toBeInTheDocument();
       expect(screen.getByText('Nhà cung cấp hết hàng mùa vụ')).toBeInTheDocument();
+    });
+  });
+  // #endregion
+
+  // #region TC08: HIỂN THỊ CÔNG NỢ & NÚT GHI NHẬN THANH TOÁN (MÔ HÌNH 3)
+  it('TC08 - Hiển thị thông tin công nợ NCC và nút "Ghi Nhận Thanh Toán" khi còn nợ', async () => {
+    (purchaseOrderApi.getById as any).mockResolvedValue(mockOrderWithDebt);
+
+    render(
+      <MemoryRouter initialEntries={['/purchase-orders/5']}>
+        <Routes>
+          <Route path="/purchase-orders/:id" element={<PurchaseOrderDetail />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/Ghi Nhận Thanh Toán/i)).toBeInTheDocument();
+      expect(screen.getByText(/Trạng Thái Thanh Toán/i)).toBeInTheDocument();
+      expect(screen.getByText(/Đã trả một phần/i)).toBeInTheDocument();
+      expect(screen.getByText(/Công Nợ Còn Lại/i)).toBeInTheDocument();
+    });
+  });
+  // #endregion
+
+  // #region TC09: GHI NHẬN THANH TOÁN CHO NHÀ CUNG CẤP THÀNH CÔNG
+  it('TC09 - Mở modal Ghi Nhận Thanh Toán, nhập số tiền và gọi API recordPayment', async () => {
+    (purchaseOrderApi.getById as any).mockResolvedValue(mockOrderWithDebt);
+    (purchaseOrderApi.recordPayment as any).mockResolvedValue({
+      ...mockOrderWithDebt,
+      paidAmount: 2000000,
+      remainingDebt: 0,
+      paymentStatus: 3, // Paid
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/purchase-orders/5']}>
+        <Routes>
+          <Route path="/purchase-orders/:id" element={<PurchaseOrderDetail />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/Ghi Nhận Thanh Toán/i)).toBeInTheDocument();
+    });
+
+    const paymentBtn = screen.getByText(/Ghi Nhận Thanh Toán/i);
+    fireEvent.click(paymentBtn);
+
+    // Modal xuất hiện
+    await waitFor(() => {
+      expect(screen.getByText(/Ghi Nhận Thanh Toán NCC/i)).toBeInTheDocument();
+      expect(screen.getByText(/Chứng từ đơn mua PO-20260830-005/i)).toBeInTheDocument();
+    });
+
+    const confirmPaymentBtn = screen.getByRole('button', { name: /Xác Nhận Thanh Toán/i });
+    fireEvent.click(confirmPaymentBtn);
+
+    await waitFor(() => {
+      expect(purchaseOrderApi.recordPayment).toHaveBeenCalledWith(5, expect.objectContaining({
+        amount: 1500000,
+      }));
     });
   });
   // #endregion

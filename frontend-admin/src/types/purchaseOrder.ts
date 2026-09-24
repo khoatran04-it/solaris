@@ -30,6 +30,27 @@ export const PurchaseOrderStatusColors: Record<PurchaseOrderStatus, string> = {
   [PurchaseOrderStatus.Cancelled]: 'bg-rose-50 text-rose-700 border-rose-200',
 };
 
+export enum SupplierPaymentStatus {
+  Unpaid = 1,
+  PartiallyPaid = 2,
+  Paid = 3,
+  Overdue = 4,
+}
+
+export const SupplierPaymentStatusLabels: Record<SupplierPaymentStatus, string> = {
+  [SupplierPaymentStatus.Unpaid]: 'Chưa thanh toán',
+  [SupplierPaymentStatus.PartiallyPaid]: 'Đã trả một phần',
+  [SupplierPaymentStatus.Paid]: 'Đã tất toán',
+  [SupplierPaymentStatus.Overdue]: 'Quá hạn',
+};
+
+export const SupplierPaymentStatusColors: Record<SupplierPaymentStatus, string> = {
+  [SupplierPaymentStatus.Unpaid]: 'bg-rose-50 text-rose-700 border-rose-200',
+  [SupplierPaymentStatus.PartiallyPaid]: 'bg-amber-50 text-amber-700 border-amber-200',
+  [SupplierPaymentStatus.Paid]: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  [SupplierPaymentStatus.Overdue]: 'bg-red-100 text-red-800 border-red-300',
+};
+
 // =========================================================
 // INTERFACES
 // =========================================================
@@ -58,6 +79,10 @@ export interface PurchaseOrder {
   status: PurchaseOrderStatus;
   totalAmount: number;
   settledAmount?: number;
+  paidAmount?: number;
+  paymentDueDate?: string;
+  paymentStatus?: SupplierPaymentStatus;
+  remainingDebt?: number;
   note?: string;
   cancellationReason?: string;
   closureReason?: string;
@@ -76,6 +101,14 @@ export interface PurchaseOrder {
   updatedAt: string;
 
   details: PurchaseOrderDetail[];
+}
+
+// Payload ghi nhận thanh toán NCC
+export interface RecordPurchaseOrderPaymentPayload {
+  amount: number;
+  paymentDate?: string;
+  referenceCode?: string;
+  note?: string;
 }
 
 // Payload tạo chi tiết

@@ -149,7 +149,7 @@ export default function FinancialPerformanceDashboard() {
           <KpiMetricCard
             title="Dòng tiền HĐKD ròng"
             value={fmtVnd(data?.estimatedNetCashFlow ?? 0)}
-            subtitle="Thực thu bán hàng trừ Tiền nhập kho"
+            subtitle="Thực thu bán hàng trừ Tiền thực chi trả NCC"
             badge={(data?.estimatedNetCashFlow ?? 0) >= 0 ? 'Thặng dư tiền' : 'Thâm hụt tiền'}
             badgePositive={(data?.estimatedNetCashFlow ?? 0) >= 0}
             icon={<CreditCard size={18} />}
@@ -240,22 +240,50 @@ export default function FinancialPerformanceDashboard() {
                     </h3>
                   </div>
                   <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200/60">
-                    Kho & Nhà cung cấp
+                    Thực chi & Công nợ
                   </span>
                 </div>
 
                 <div className="mt-4 space-y-3">
                   <div className="flex items-center justify-between text-xs py-1.5 border-b border-slate-50">
                     <div>
-                      <span className="text-slate-600 block">
-                        Tiền hàng đã thực nhập kho (GRN hoàn tất)
+                      <span className="text-slate-800 font-semibold block">
+                        Dòng tiền thực chi trả NCC trong kỳ
                       </span>
                       <span className="text-[11px] text-slate-400">
-                        Nghĩa vụ nợ phát sinh trả NCC
+                        Tiền mặt / chuyển khoản đã thanh toán cho NCC
                       </span>
                     </div>
                     <span className="font-bold text-slate-900">
+                      {fmtVnd(bridge?.supplierPaymentOutflow ?? bridge?.inboundGoodsReceiptOutflow ?? 0)}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between text-xs py-1.5 border-b border-slate-50">
+                    <div>
+                      <span className="text-slate-600 block">
+                        Giá trị hàng đã thực nhập kho (GRN hoàn tất)
+                      </span>
+                      <span className="text-[11px] text-slate-400">
+                        Chi phí dồn tích phát sinh trong kỳ
+                      </span>
+                    </div>
+                    <span className="font-semibold text-slate-800">
                       {fmtVnd(bridge?.inboundGoodsReceiptOutflow ?? 0)}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between text-xs py-1.5 border-b border-slate-50">
+                    <div>
+                      <span className="text-slate-600 block">
+                        Công nợ NCC còn lại trong kỳ
+                      </span>
+                      <span className="text-[11px] text-slate-400">
+                        Hàng nhập kho chưa thanh toán
+                      </span>
+                    </div>
+                    <span className="font-bold text-amber-700">
+                      {fmtVnd(bridge?.supplierRemainingDebt ?? 0)}
                     </span>
                   </div>
 
@@ -272,27 +300,15 @@ export default function FinancialPerformanceDashboard() {
                       {fmtVnd(bridge?.pendingPoCommitment ?? 0)}
                     </span>
                   </div>
-
-                  <div className="flex items-center justify-between text-xs py-1.5 border-b border-slate-50">
-                    <span className="text-slate-600">
-                      Tổng giá trị đơn đặt hàng phát sinh trong kỳ
-                    </span>
-                    <span className="font-bold text-slate-900">
-                      {fmtVnd(
-                        (bridge?.inboundGoodsReceiptOutflow ?? 0) +
-                          (bridge?.pendingPoCommitment ?? 0)
-                      )}
-                    </span>
-                  </div>
                 </div>
               </div>
 
               <div className="mt-6 pt-3 border-t border-slate-200 flex items-center justify-between bg-slate-50/80 -mx-5 -mb-5 p-4 rounded-b-xl">
                 <div>
                   <div className="text-xs font-semibold text-slate-500">
-                    Dòng tiền HĐKD ròng (Thực thu - Thực nhập)
+                    Dòng tiền HĐKD ròng (Thực thu - Thực chi NCC)
                   </div>
-                  <div className="text-[11px] text-slate-400">Chỉ số cân đối vốn lưu động</div>
+                  <div className="text-[11px] text-slate-400">Chuẩn dòng tiền trực tiếp (Direct Cash Flow)</div>
                 </div>
                 <div
                   className={`text-base font-black ${

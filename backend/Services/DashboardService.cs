@@ -390,8 +390,9 @@ namespace backend.Services
                 var kgPercent = (w.MaxWeightCapacityKg ?? 0) > 0
                     ? Math.Max(occupiedKg > 0 ? 0.01m : 0m, Math.Round(occupiedKg / (w.MaxWeightCapacityKg ?? 1) * 100, 2))
                     : 0;
+                var warnThreshold = w.WarningThresholdPercent > 0 ? w.WarningThresholdPercent : 80;
                 string status = cbmPercent >= 95 || kgPercent >= 95 ? "Critical"
-                    : cbmPercent >= w.WarningThresholdPercent || kgPercent >= w.WarningThresholdPercent ? "Warning"
+                    : cbmPercent >= warnThreshold || kgPercent >= warnThreshold ? "Warning"
                     : "Safe";
 
                 return new WarehouseCapacityItem
@@ -906,9 +907,12 @@ namespace backend.Services
                     .Sum(po => po.TotalAmount);
             }
 
+            decimal totalSupplierPaid = purchaseOrders.Sum(po => po.PaidAmount);
+            decimal supplierPaymentOutflow = totalSupplierPaid > 0 ? totalSupplierPaid : goodsReceivedValue;
+            decimal supplierRemainingDebt = Math.Max(0, goodsReceivedValue - totalSupplierPaid);
             decimal pendingPoCommitment = Math.Max(0, totalPoValue - goodsReceivedValue);
             decimal realInflow = onlineInflow + codCollectedInflow;
-            decimal estimatedNetCashFlow = realInflow - customerRefunds - goodsReceivedValue;
+            decimal estimatedNetCashFlow = realInflow - customerRefunds - supplierPaymentOutflow;
 
             var cashFlowBridge = new CashFlowBridgeDto
             {
@@ -917,8 +921,10 @@ namespace backend.Services
                 CodCollectedInflow = codCollectedInflow,
                 CodInTransitAmount = codInTransit,
                 CustomerRefundOutflow = customerRefunds,
+                SupplierPaymentOutflow = supplierPaymentOutflow,
                 InboundGoodsReceiptOutflow = goodsReceivedValue,
                 PendingPoCommitment = pendingPoCommitment,
+                SupplierRemainingDebt = supplierRemainingDebt,
                 NetOperatingCashFlow = estimatedNetCashFlow
             };
 

@@ -149,7 +149,8 @@ export default function OverviewDashboard() {
               <KpiMetricCard
                 title="Giá Trị TB Đơn"
                 value={fmtVnd(data?.averageOrderValue ?? 0)}
-                subtitle="Giá trị trung bình mỗi đơn"
+                subtitle="Giá trị đơn hoàn tất TB (AOV)"
+                tooltip="Chỉ số AOV (Average Order Value) tính riêng trên các đơn đã giao thành công và phát sinh doanh thu thực tế."
                 icon={<TrendingUp size={16} />}
               />
               <KpiMetricCard

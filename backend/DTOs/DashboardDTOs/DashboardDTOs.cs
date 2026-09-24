@@ -225,8 +225,10 @@ namespace backend.DTOs.DashboardDTOs
         public decimal CodCollectedInflow { get; set; }
         public decimal CodInTransitAmount { get; set; }
         public decimal CustomerRefundOutflow { get; set; }
+        public decimal SupplierPaymentOutflow { get; set; }
         public decimal InboundGoodsReceiptOutflow { get; set; }
         public decimal PendingPoCommitment { get; set; }
+        public decimal SupplierRemainingDebt { get; set; }
         public decimal NetOperatingCashFlow { get; set; }
     }
 

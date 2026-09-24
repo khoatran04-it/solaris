@@ -194,6 +194,8 @@ export interface CashFlowBridgeDto {
   codInTransitAmount: number;
   customerRefundOutflow: number;
   inboundGoodsReceiptOutflow: number;
+  supplierPaymentOutflow?: number;
+  supplierRemainingDebt?: number;
   pendingPoCommitment: number;
   netOperatingCashFlow: number;
 }

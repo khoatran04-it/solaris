@@ -5,6 +5,7 @@ import {
   PurchaseOrderCreatePayload,
   PurchaseOrderUpdatePayload,
   PurchaseOrderQueryParams,
+  RecordPurchaseOrderPaymentPayload,
 } from '../types/purchaseOrder';
 
 export const purchaseOrderApi = {
@@ -38,5 +39,9 @@ export const purchaseOrderApi = {
 
   closeAndSettle: (id: number, reason: string): Promise<{ message: string }> => {
     return axiosClient.post(`/purchase-orders/${id}/close-and-settle`, { reason });
+  },
+
+  recordPayment: (id: number, data: RecordPurchaseOrderPaymentPayload): Promise<PurchaseOrder> => {
+    return axiosClient.post(`/purchase-orders/${id}/payments`, data);
   },
 };

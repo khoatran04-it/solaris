@@ -198,7 +198,7 @@ export default function InventoryCapacityDashboard() {
                           <AlertCircle size={12} />
                           {w.status === 'Critical'
                             ? 'Nguy hiểm: Đã vượt 95% sức chứa'
-                            : 'Cảnh báo: Đang tiệm cận ngưỡng tối đa'}
+                            : `Cảnh báo: Đã vượt ngưỡng an toàn (${w.warningThresholdPercent || 80}%)`}
                         </div>
                       )}
                     </div>

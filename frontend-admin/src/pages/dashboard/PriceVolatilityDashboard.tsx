@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { RefreshCw, Search, Scale, DollarSign, TrendingUp, Percent } from 'lucide-react';
+import { RefreshCw, Search, Scale, DollarSign, TrendingUp, Percent, HelpCircle } from 'lucide-react';
 import {
   ResponsiveContainer,
   ComposedChart,
@@ -222,17 +222,30 @@ export default function PriceVolatilityDashboard() {
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             {data?.volatilityLevel && (
-              <span
-                className={`px-3 py-1 text-xs font-bold rounded-full border ${
-                  data.volatilityLevel === 'Ổn định'
-                    ? 'bg-blue-50 text-blue-700 border-blue-200'
-                    : data.volatilityLevel === 'Vừa phải'
-                      ? 'bg-amber-50 text-amber-700 border-amber-200'
-                      : 'bg-rose-50 text-rose-700 border-rose-200'
-                }`}
-              >
-                Biến động: {data.volatilityLevel} (CV: {data.coefficientOfVariation ?? 0}%)
-              </span>
+              <div className="relative group cursor-help inline-flex items-center">
+                <span
+                  className={`px-3 py-1 text-xs font-bold rounded-full border inline-flex items-center gap-1.5 ${
+                    data.volatilityLevel === 'Ổn định'
+                      ? 'bg-blue-50 text-blue-700 border-blue-200'
+                      : data.volatilityLevel === 'Vừa phải'
+                        ? 'bg-amber-50 text-amber-700 border-amber-200'
+                        : 'bg-rose-50 text-rose-700 border-rose-200'
+                  }`}
+                >
+                  <span>Biến động: {data.volatilityLevel} (CV: {data.coefficientOfVariation ?? 0}%)</span>
+                  <HelpCircle size={13} className="text-slate-400 group-hover:text-slate-600 transition-colors" />
+                </span>
+                <div className="absolute right-0 top-full mt-2 hidden group-hover:block z-50 w-72 p-3 bg-slate-900 text-white text-[11px] font-normal leading-relaxed rounded-xl shadow-xl pointer-events-none">
+                  <div className="font-bold text-amber-400 mb-1">Hệ số biến thiên CV% (Kinh tế lượng):</div>
+                  <div className="text-slate-300 mb-1">CV% = (Độ lệch chuẩn σ / Giá TB μ) × 100%</div>
+                  <div className="space-y-0.5 text-slate-400 border-t border-slate-800 pt-1 mt-1">
+                    <div>• &lt; 5%: Giá nhập rất ổn định</div>
+                    <div>• 5% - 15%: Biến động vừa phải</div>
+                    <div>• &gt; 15%: Biến động mạnh (Rủi ro biên lãi)</div>
+                  </div>
+                  <div className="absolute bottom-full right-6 -mb-1 border-4 border-transparent border-b-slate-900" />
+                </div>
+              </div>
             )}
             <span
               className={`px-3 py-1 text-xs font-bold rounded-full border ${
@@ -256,6 +269,7 @@ export default function PriceVolatilityDashboard() {
                 ? `Biên độ: ${fmtVnd(data.minImportPrice)} - ${fmtVnd(data.maxImportPrice)}`
                 : 'Đơn giá nhập từ đơn mua PO'
             }
+            tooltip="Giá mua vào gần nhất từ đơn đặt hàng PO hoặc phiếu nhập kho, quy chuẩn về đơn vị tính cơ sở."
             badge={
               data?.importPriceChangePercent !== undefined
                 ? `Biến động ${data.importPriceChangePercent >= 0 ? '+' : ''}${data.importPriceChangePercent}%`
@@ -269,6 +283,7 @@ export default function PriceVolatilityDashboard() {
             title={`Giá bán hiện tại (${data?.baseUoMName || 'ĐVT'})`}
             value={fmtVnd(data?.currentSellingPrice ?? 0)}
             subtitle="Đơn giá xuất bán thực tế"
+            tooltip="Đơn giá bán niêm yết hiện tại quy đổi về cùng đơn vị tính cơ sở."
             badge="Giá bán chuẩn hóa"
             badgePositive={true}
             icon={<DollarSign size={18} />}
@@ -278,6 +293,7 @@ export default function PriceVolatilityDashboard() {
             title={`Chênh lệch giá (Spread)`}
             value={fmtVnd(data?.priceSpread ?? 0)}
             subtitle="Giá bán trừ Giá nhập cơ sở"
+            tooltip="Spread = Đơn giá bán - Đơn giá nhập cơ sở. Thể hiện biên thặng dư danh nghĩa trên mỗi đơn vị sản phẩm bán ra."
             badge={(data?.priceSpread ?? 0) >= 0 ? 'Thặng dư giá' : 'Bán dưới giá vốn'}
             badgePositive={(data?.priceSpread ?? 0) >= 0}
             icon={<TrendingUp size={18} />}
@@ -287,6 +303,7 @@ export default function PriceVolatilityDashboard() {
             title="Biên lợi nhuận gộp"
             value={`${data?.marginPercent ?? 0}%`}
             subtitle="Tỷ lệ lãi trên doanh thu"
+            tooltip="Biên lợi nhuận gộp = (Chênh lệch giá Spread / Giá bán) × 100%."
             badge={
               (data?.marginPercent ?? 0) >= 20
                 ? 'Biên an toàn'

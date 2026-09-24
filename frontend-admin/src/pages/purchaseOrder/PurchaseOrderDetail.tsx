@@ -1,6 +1,18 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ShoppingCart, FileText, Package, AlertCircle, CheckCircle, Clock } from 'lucide-react';
+import {
+  ShoppingCart,
+  FileText,
+  Package,
+  AlertCircle,
+  CheckCircle,
+  Clock,
+  CreditCard,
+  Calendar,
+  DollarSign,
+  AlertTriangle,
+  X,
+} from 'lucide-react';
 
 // Common UI
 import {
@@ -13,6 +25,7 @@ import {
   InfoField,
 } from '../../components/commons/TabUI';
 import { Toast } from '../../components/commons/Toast';
+import { FormCurrencyInput } from '../../components/commons/FormUI';
 
 // API & Types
 import { purchaseOrderApi } from '../../api/purchaseOrderApi';
@@ -21,6 +34,9 @@ import {
   PurchaseOrderStatus,
   PurchaseOrderStatusLabels,
   PurchaseOrderStatusColors,
+  SupplierPaymentStatus,
+  SupplierPaymentStatusLabels,
+  SupplierPaymentStatusColors,
 } from '../../types/purchaseOrder';
 import { DocumentPrintModal } from '../../components/commons/DocumentPrintModal';
 
@@ -43,6 +59,14 @@ const PurchaseOrderDetail: React.FC = () => {
   const [closeModalOpen, setCloseModalOpen] = useState(false);
   const [closeReason, setCloseReason] = useState('');
   const [printModalOpen, setPrintModalOpen] = useState(false);
+
+  // Payment Modal States
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  const [paymentAmount, setPaymentAmount] = useState<number>(0);
+  const [paymentDate, setPaymentDate] = useState<string>('');
+  const [paymentReference, setPaymentReference] = useState<string>('');
+  const [paymentNote, setPaymentNote] = useState<string>('');
+  const [paymentError, setPaymentError] = useState<string>('');
 
   // --- EFFECTS ---
   const fetchPo = useCallback(async () => {
@@ -117,6 +141,54 @@ const PurchaseOrderDetail: React.FC = () => {
     }
   };
 
+  const handleOpenPaymentModal = () => {
+    if (!po) return;
+    const settledOrTotal = po.settledAmount ?? po.totalAmount;
+    const paid = po.paidAmount ?? 0;
+    const debt = po.remainingDebt != null ? po.remainingDebt : Math.max(0, settledOrTotal - paid);
+    setPaymentAmount(debt);
+    setPaymentDate(new Date().toISOString().split('T')[0]);
+    setPaymentReference('');
+    setPaymentNote('');
+    setPaymentError('');
+    setPaymentModalOpen(true);
+  };
+
+  const handleRecordPayment = async () => {
+    if (!po) return;
+    const settledOrTotal = po.settledAmount ?? po.totalAmount;
+    const paid = po.paidAmount ?? 0;
+    const debt = po.remainingDebt != null ? po.remainingDebt : Math.max(0, settledOrTotal - paid);
+
+    if (paymentAmount <= 0) {
+      setPaymentError('Số tiền thanh toán phải lớn hơn 0');
+      return;
+    }
+    if (paymentAmount > debt) {
+      setPaymentError(`Số tiền thanh toán không được vượt quá số nợ còn lại (${formatCurrency(debt)})`);
+      return;
+    }
+
+    try {
+      setActionLoading(true);
+      await purchaseOrderApi.recordPayment(po.id, {
+        amount: paymentAmount,
+        paymentDate: paymentDate ? new Date(paymentDate).toISOString() : undefined,
+        referenceCode: paymentReference.trim() || undefined,
+        note: paymentNote.trim() || undefined,
+      });
+
+      showToast('success', 'GHI NHẬN THANH TOÁN THÀNH CÔNG');
+      setPaymentModalOpen(false);
+      fetchPo();
+    } catch (error: any) {
+      console.error('Error recording payment:', error);
+      showToast('error', error?.response?.data?.message || 'GHI NHẬN THANH TOÁN THẤT BẠI');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   // --- FORMATTERS ---
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(
@@ -159,6 +231,17 @@ const PurchaseOrderDetail: React.FC = () => {
     );
 
   const cleanNoteText = getCleanNote(po.note);
+  const settledOrTotal = po.settledAmount ?? po.totalAmount;
+  const paid = po.paidAmount ?? 0;
+  const remainingDebt =
+    po.remainingDebt != null ? po.remainingDebt : Math.max(0, settledOrTotal - paid);
+  const paymentStatus =
+    po.paymentStatus ??
+    (paid >= settledOrTotal && settledOrTotal > 0
+      ? SupplierPaymentStatus.Paid
+      : paid > 0
+        ? SupplierPaymentStatus.PartiallyPaid
+        : SupplierPaymentStatus.Unpaid);
 
   return (
     <DetailPageContainer>
@@ -190,6 +273,22 @@ const PurchaseOrderDetail: React.FC = () => {
           >
             In Đơn Mua Hàng
           </button>
+
+          {/* NÚT: GHI NHẬN THANH TOÁN (MÔ HÌNH 3 - KHI ĐÃ CÓ CÔNG NỢ & CHƯA TẤT TOÁN) */}
+          {po.status !== PurchaseOrderStatus.Draft &&
+            po.status !== PurchaseOrderStatus.Cancelled &&
+            remainingDebt > 0 && (
+              <button
+                type="button"
+                onClick={handleOpenPaymentModal}
+                disabled={actionLoading}
+                className="flex items-center gap-2 px-4.5 py-2.5 bg-emerald-600 text-white rounded-xl font-bold text-sm hover:bg-emerald-700 transition-all shadow-xs cursor-pointer disabled:opacity-50"
+                title="Ghi nhận thanh toán cho Nhà cung cấp"
+              >
+                <CreditCard size={16} /> Ghi Nhận Thanh Toán
+              </button>
+            )}
+
           {/* NÚT: DRAFT -> PROCESSING */}
           {po.status === PurchaseOrderStatus.Draft && (
             <button
@@ -357,6 +456,42 @@ const PurchaseOrderDetail: React.FC = () => {
                       }
                     />
                   )}
+
+                  <InfoField
+                    label="Trạng Thái Thanh Toán"
+                    value={
+                      <span
+                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-extrabold border ${
+                          SupplierPaymentStatusColors[paymentStatus] ||
+                          'bg-slate-50 text-slate-600 border-slate-200'
+                        }`}
+                      >
+                        {SupplierPaymentStatusLabels[paymentStatus] || 'Chưa thanh toán'}
+                      </span>
+                    }
+                  />
+                  <InfoField
+                    label="Đã Trả Nhà Cung Cấp"
+                    value={
+                      <span className="font-bold text-emerald-700 text-base">
+                        {formatCurrency(paid)}
+                      </span>
+                    }
+                  />
+                  <InfoField
+                    label="Công Nợ Còn Lại"
+                    value={
+                      <span
+                        className={`font-black text-base ${remainingDebt > 0 ? 'text-rose-600' : 'text-slate-700'}`}
+                      >
+                        {formatCurrency(remainingDebt)}
+                      </span>
+                    }
+                  />
+                  <InfoField
+                    label="Hạn Chót Thanh Toán"
+                    value={formatDate(po.paymentDueDate)}
+                  />
                 </div>
 
                 {cleanNoteText ? (
@@ -509,6 +644,34 @@ const PurchaseOrderDetail: React.FC = () => {
                             </tr>
                           </>
                         )}
+                        {paid > 0 && (
+                          <tr>
+                            <td
+                              colSpan={8}
+                              className="px-6 py-2.5 text-right text-emerald-700 text-xs font-bold uppercase tracking-wider"
+                            >
+                              Đã Thanh Toán Cho Nhà Cung Cấp:
+                            </td>
+                            <td className="px-4 py-2.5 text-right text-sm font-bold text-emerald-700">
+                              -{formatCurrency(paid)}
+                            </td>
+                          </tr>
+                        )}
+                        {remainingDebt > 0 &&
+                          po.status !== PurchaseOrderStatus.Draft &&
+                          po.status !== PurchaseOrderStatus.Cancelled && (
+                            <tr className="bg-rose-50/40">
+                              <td
+                                colSpan={8}
+                                className="px-6 py-3 text-right text-rose-700 text-xs font-extrabold uppercase tracking-wider"
+                              >
+                                Số Dư Công Nợ Phải Trả Còn Lại:
+                              </td>
+                              <td className="px-4 py-3 text-right text-base font-black text-rose-600">
+                                {formatCurrency(remainingDebt)}
+                              </td>
+                            </tr>
+                          )}
                       </tfoot>
                     )}
                   </table>
@@ -626,6 +789,156 @@ const PurchaseOrderDetail: React.FC = () => {
                 className="px-5 py-2 bg-amber-500 text-white rounded-lg text-sm font-bold hover:bg-amber-600 transition-colors disabled:opacity-50 disabled:bg-slate-300 shadow-sm cursor-pointer"
               >
                 {actionLoading ? 'Đang xử lý...' : 'Xác Nhận Chốt Đơn'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ================= MODAL GHI NHẬN THANH TOÁN CHO NCC ================= */}
+      {paymentModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 animate-in fade-in">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200 border border-slate-100">
+            {/* Modal Header */}
+            <div className="px-6 py-4.5 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-emerald-100 text-emerald-700 rounded-xl">
+                  <CreditCard size={20} />
+                </div>
+                <div>
+                  <h3 className="text-base font-extrabold text-slate-800">
+                    Ghi Nhận Thanh Toán NCC
+                  </h3>
+                  <p className="text-xs text-slate-500 font-medium">
+                    Chứng từ đơn mua {po.orderCode}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPaymentModalOpen(false)}
+                className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 space-y-5">
+              {/* Tóm tắt công nợ đơn hàng */}
+              <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 space-y-2.5">
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-slate-500 font-medium">Nhà cung cấp:</span>
+                  <span className="font-bold text-slate-800">{po.supplierName}</span>
+                </div>
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-slate-500 font-medium">
+                    {po.settledAmount != null ? 'Quyết toán thực nhận:' : 'Tổng giá trị đơn:'}
+                  </span>
+                  <span className="font-bold text-slate-800">{formatCurrency(settledOrTotal)}</span>
+                </div>
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-slate-500 font-medium">Đã thanh toán:</span>
+                  <span className="font-bold text-emerald-700">{formatCurrency(paid)}</span>
+                </div>
+                <div className="pt-2 border-t border-slate-200 flex justify-between items-center text-sm">
+                  <span className="font-bold text-slate-700">Công nợ còn lại:</span>
+                  <span className="font-black text-rose-600 text-base">{formatCurrency(remainingDebt)}</span>
+                </div>
+              </div>
+
+              {/* Form Input fields */}
+              <div>
+                <div className="flex justify-between items-center mb-1">
+                  <label className="font-bold text-[13px] text-slate-700 uppercase tracking-wide">
+                    Số Tiền Thanh Toán <span className="text-red-500">*</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPaymentAmount(remainingDebt);
+                      setPaymentError('');
+                    }}
+                    className="text-xs font-bold text-emerald-600 hover:text-emerald-700 hover:underline cursor-pointer"
+                  >
+                    Trả hết nợ ({formatCurrency(remainingDebt)})
+                  </button>
+                </div>
+                <FormCurrencyInput
+                  label=""
+                  value={paymentAmount}
+                  onChange={(val) => {
+                    setPaymentAmount(val);
+                    setPaymentError('');
+                  }}
+                  placeholder="Nhập số tiền..."
+                  error={paymentError}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="font-bold text-[13px] text-slate-700 uppercase tracking-wide mb-2 block">
+                    Ngày Thanh Toán
+                  </label>
+                  <input
+                    type="date"
+                    value={paymentDate}
+                    onChange={(e) => setPaymentDate(e.target.value)}
+                    className="w-full px-4 h-[46px] rounded-xl border border-slate-200 text-sm font-medium text-slate-800 bg-slate-50/50 hover:bg-white focus:bg-white focus:border-yellow-400 focus:ring-4 focus:ring-yellow-400/20 outline-none transition-all"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-[13px] text-slate-700 uppercase tracking-wide mb-2 block">
+                    Mã Tham Chiếu / UNC
+                  </label>
+                  <input
+                    type="text"
+                    value={paymentReference}
+                    onChange={(e) => setPaymentReference(e.target.value)}
+                    placeholder="Ví dụ: UNC-260901, FT..."
+                    className="w-full px-4 h-[46px] rounded-xl border border-slate-200 text-sm font-medium text-slate-800 bg-slate-50/50 hover:bg-white focus:bg-white focus:border-yellow-400 focus:ring-4 focus:ring-yellow-400/20 outline-none transition-all placeholder-slate-400"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="font-bold text-[13px] text-slate-700 uppercase tracking-wide mb-2 block">
+                  Ghi Chú Thanh Toán
+                </label>
+                <textarea
+                  rows={2}
+                  value={paymentNote}
+                  onChange={(e) => setPaymentNote(e.target.value)}
+                  placeholder="Nội dung chuyển khoản, chứng từ thanh toán đính kèm..."
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-medium text-slate-800 bg-slate-50/50 hover:bg-white focus:bg-white focus:border-yellow-400 focus:ring-4 focus:ring-yellow-400/20 outline-none transition-all placeholder-slate-400 resize-none"
+                />
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-6 py-4 bg-slate-50 flex justify-end gap-3 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setPaymentModalOpen(false)}
+                disabled={actionLoading}
+                className="px-5 py-2.5 border border-slate-200 rounded-xl text-sm font-bold text-slate-600 bg-white hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                Hủy Bỏ
+              </button>
+              <button
+                type="button"
+                onClick={handleRecordPayment}
+                disabled={actionLoading || paymentAmount <= 0}
+                className="flex items-center gap-2 px-6 py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-bold hover:bg-emerald-700 transition-all shadow-xs disabled:opacity-50 disabled:bg-slate-300 cursor-pointer"
+              >
+                {actionLoading ? (
+                  'Đang xử lý...'
+                ) : (
+                  <>
+                    <CreditCard size={16} /> Xác Nhận Thanh Toán
+                  </>
+                )}
               </button>
             </div>
           </div>

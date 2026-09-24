@@ -1,4 +1,5 @@
 import React from 'react';
+import { HelpCircle } from 'lucide-react';
 import {
   ResponsiveContainer,
   AreaChart,
@@ -71,6 +72,7 @@ interface KpiMetricCardProps {
   badge?: string;
   badgePositive?: boolean;
   icon?: React.ReactNode;
+  tooltip?: string;
 }
 
 export const KpiMetricCard: React.FC<KpiMetricCardProps> = ({
@@ -80,10 +82,22 @@ export const KpiMetricCard: React.FC<KpiMetricCardProps> = ({
   badge,
   badgePositive,
   icon,
+  tooltip,
 }) => (
   <div className="bg-white rounded-2xl p-5 shadow-[0_1px_8px_-2px_rgba(0,0,0,0.05)] border border-slate-200/80 flex flex-col justify-between">
     <div className="flex items-center justify-between mb-3">
-      <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">{title}</span>
+      <div className="flex items-center gap-1.5">
+        <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">{title}</span>
+        {tooltip && (
+          <div className="relative group cursor-help inline-flex items-center">
+            <HelpCircle size={13} className="text-slate-400 hover:text-slate-600 transition-colors" />
+            <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-1.5 hidden group-hover:block z-50 w-52 p-2.5 bg-slate-900 text-white text-[11px] font-normal leading-relaxed rounded-xl shadow-xl pointer-events-none">
+              {tooltip}
+              <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-900" />
+            </div>
+          </div>
+        )}
+      </div>
       {icon && (
         <div className="w-8 h-8 rounded-lg bg-slate-50 text-slate-600 border border-slate-100 flex items-center justify-center shrink-0">
           {icon}
