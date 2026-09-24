@@ -240,13 +240,13 @@ export default function ChatbotWidget() {
     ? [
         "🔄 Đặt lại đơn hàng cũ",
         "🚚 Kiểm tra đơn hàng của tôi",
-        "🥑 Bơ Sáp 034 & Sầu Riêng",
+        "🥗 Nông sản sạch VietGAP",
         "🎁 Khuyến mãi đang chạy",
         "📦 Chính sách Freeship 300k",
       ]
     : [
         "🥑 Nông sản tươi hôm nay",
-        "🥑 Bơ Sáp 034 & Sầu Riêng",
+        "🥗 Nông sản sạch VietGAP",
         "🎁 Khuyến mãi đang chạy",
         "📦 Chính sách Freeship 300k",
         "🚚 Tra cứu đơn hàng ORD-...",

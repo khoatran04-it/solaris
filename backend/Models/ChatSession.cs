@@ -27,6 +27,12 @@ namespace backend.Models
         /// để làm sạch giao diện UI nhưng vẫn giữ lại data để huấn luyện AI (Fine-tuning) sau này.
         /// </summary>
         public bool IsActive { get; set; } = true;
+
+        /// <summary>
+        /// Khối dữ liệu JSON lưu trữ Giỏ hàng hội thoại tạm thời (Conversational Draft Order State).
+        /// Cho phép cộng dồn, sửa đổi, xóa món xuyên suốt nhiều lượt chat trong cùng một phiên hội thoại.
+        /// </summary>
+        public string? DraftOrderJson { get; set; }
         #endregion
 
         #region Liên kết Người dùng (User Association)

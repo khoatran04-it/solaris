@@ -52,6 +52,15 @@ export default function InteractiveOrderCard({
     totalPrice: it.totalPrice ?? it.TotalPrice ?? 0,
     availableStock: it.availableStock ?? it.AvailableStock ?? 0,
     warningMessage: it.warningMessage ?? it.WarningMessage,
+    availablePrices: (it.availablePrices || it.AvailablePrices || []).map((ap: any) => ({
+      priceId: ap.priceId ?? ap.PriceId ?? 0,
+      uoMId: ap.uoMId ?? ap.UoMId ?? 1,
+      uoMName: ap.uoMName ?? ap.UoMName ?? "ĐVT",
+      price: ap.price ?? ap.Price ?? 0,
+      discountedPrice: ap.discountedPrice ?? ap.DiscountedPrice ?? ap.price ?? ap.Price ?? 0,
+      discountPercent: ap.discountPercent ?? ap.DiscountPercent ?? 0,
+      isDefault: ap.isDefault ?? ap.IsDefault ?? false,
+    })),
   }));
 
   const [items, setItems] = useState<InteractiveOrderItem[]>(normalizedItems);
@@ -161,6 +170,22 @@ export default function InteractiveOrderCard({
   // Handle Remove Item
   const handleRemoveItem = (index: number) => {
     const updated = items.filter((_, i) => i !== index);
+    setItems(updated);
+  };
+
+  // Handle UoM Change (Chuyển đổi đa quy cách bán)
+  const handleUpdateUoM = (index: number, newUoMId: number) => {
+    const updated = [...items];
+    const item = updated[index];
+    if (!item.availablePrices || item.availablePrices.length === 0) return;
+
+    const matchedPrice = item.availablePrices.find((p) => p.uoMId === newUoMId);
+    if (!matchedPrice) return;
+
+    item.uoMId = matchedPrice.uoMId;
+    item.uoMName = matchedPrice.uoMName;
+    item.unitPrice = matchedPrice.discountedPrice || matchedPrice.price;
+    item.totalPrice = Math.max(0, item.quantity * item.unitPrice - item.discountAmount);
     setItems(updated);
   };
 
@@ -391,13 +416,30 @@ export default function InteractiveOrderCard({
                 <p className="font-bold text-slate-800 truncate text-[11px]">
                   {item.variantName}
                 </p>
-                <div className="flex items-center gap-2 text-[10px] text-slate-500">
-                  <span>
-                    {formatVND(item.unitPrice)} / {item.uoMName || "Kg"}
+                <div className="flex items-center gap-1.5 flex-wrap text-[10px] text-slate-500">
+                  <span className="font-semibold text-emerald-700">
+                    {formatVND(item.unitPrice)}
                   </span>
+                  <span>/</span>
+                  {item.availablePrices && item.availablePrices.length > 1 ? (
+                    <select
+                      value={item.uoMId}
+                      onChange={(e) => handleUpdateUoM(idx, Number(e.target.value))}
+                      className="bg-white border border-emerald-300 text-emerald-800 text-[10px] font-bold rounded px-1.5 py-0.5 hover:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer shadow-2xs"
+                      title="Chọn quy cách đóng gói"
+                    >
+                      {item.availablePrices.map((p) => (
+                        <option key={p.uoMId} value={p.uoMId}>
+                          {p.uoMName} ({formatVND(p.discountedPrice || p.price)})
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <span className="font-medium text-slate-600">{item.uoMName || "Kg"}</span>
+                  )}
                   {item.availableStock !== undefined && (
-                    <span className="text-emerald-600 font-medium">
-                      (Kho còn: {item.availableStock})
+                    <span className="text-slate-400 font-normal">
+                      (Kho: {item.availableStock})
                     </span>
                   )}
                 </div>

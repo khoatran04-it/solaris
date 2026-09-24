@@ -97,6 +97,9 @@ namespace backend.DTOs.AiDTOs
 
         /// <summary>Thông báo cảnh báo nếu số lượng bị điều chỉnh theo tồn kho khả dụng.</summary>
         public string? WarningMessage { get; set; }
+
+        /// <summary>Danh sách bảng giá đa quy cách bán khả dụng của biến thể (Kg, Hộp, Thùng...).</summary>
+        public List<AiProductCardPriceDto> AvailablePrices { get; set; } = new List<AiProductCardPriceDto>();
     }
 
     /// <summary>
@@ -285,6 +288,44 @@ namespace backend.DTOs.AiDTOs
         public string? ReturnStatus { get; set; }
         public decimal? RefundAmount { get; set; }
         #endregion
+    }
+    #endregion
+
+    #region 7. Định nghĩa Tham số Công cụ Gemini Native Tool Calling (Function Calling Arguments)
+    public class ManageDraftOrderItemArg
+    {
+        public string ProductName { get; set; } = string.Empty;
+        public string ProductNameOrVariant
+        {
+            get => ProductName;
+            set => ProductName = value;
+        }
+
+        public decimal Quantity { get; set; } = 1;
+
+        public string? Uom { get; set; }
+        public string? RequestedUom
+        {
+            get => Uom;
+            set => Uom = value;
+        }
+    }
+
+    public class ManageDraftOrderToolArgs
+    {
+        public string Action { get; set; } = "add"; // "add", "update", "remove", "clear"
+        public List<ManageDraftOrderItemArg> Items { get; set; } = new List<ManageDraftOrderItemArg>();
+    }
+
+    public class SearchProductsToolArgs
+    {
+        public string Keyword { get; set; } = string.Empty;
+        public string? CategoryGroup { get; set; }
+    }
+
+    public class LookupOrderToolArgs
+    {
+        public string? OrderCode { get; set; }
     }
     #endregion
 }

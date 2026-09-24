@@ -1950,5 +1950,391 @@ namespace backend.Tests.Modules.Module15_AiChatbot
                 .WithMessage("Vui lòng đăng nhập tài khoản để xác nhận tạo đơn hàng.");
         }
         #endregion
+
+                #region TC28: TÍCH LŨY GIỎ HÀNG HỘI THOẠI QUA NHIỀU LƯỢT (MULTI-TURN DRAFT ORDER ACCUMULATION)
+        [Fact]
+        public async Task SendMessageAsync_WhenAddingItemsAcrossTurns_ShouldAccumulateInDraftOrder()
+        {
+            // Arrange
+            using var context = TestFactories.CreateInMemoryDbContext();
+
+            var cat = new ProductCategory { Id = 1, Name = "Nông Sản Sạch", Code = "CAT-NONG-SAN", IsActive = true, IsDeleted = false };
+            var uomKg = new UoM { Id = 1, Name = "Kilogram", Code = "KG" };
+            var uomTrai = new UoM { Id = 5, Name = "Trái/Quả/Củ", Code = "TRAI" };
+
+            var bo = new Product
+            {
+                Id = 1,
+                Name = "Bơ Sáp 034 Lâm Đồng",
+                Code = "SP-BO",
+                Slug = "bo-sap-034",
+                CategoryId = 1,
+                Category = cat,
+                BaseUoMId = 1,
+                BaseUoM = uomKg,
+                IsActive = true,
+                IsDeleted = false
+            };
+            var varBo = new ProductVariant
+            {
+                Id = 101,
+                ProductId = 1,
+                Product = bo,
+                Name = "Bơ Sáp 034",
+                Code = "SKU-BO",
+                IsActive = true,
+                IsDeleted = false,
+                Prices = new List<ProductVariantPrice>
+                {
+                    new ProductVariantPrice { Id = 1, VariantId = 101, UoMId = 1, Price = 80000, IsActive = true, IsDeleted = false }
+                }
+            };
+            bo.Variants.Add(varBo);
+
+            var sauRieng = new Product
+            {
+                Id = 2,
+                Name = "Sầu Riêng Ri6",
+                Code = "SP-SR",
+                Slug = "sau-rieng-ri6",
+                CategoryId = 1,
+                Category = cat,
+                BaseUoMId = 5,
+                BaseUoM = uomTrai,
+                IsActive = true,
+                IsDeleted = false
+            };
+            var varSR = new ProductVariant
+            {
+                Id = 102,
+                ProductId = 2,
+                Product = sauRieng,
+                Name = "Sầu Riêng Ri6",
+                Code = "SKU-SR",
+                IsActive = true,
+                IsDeleted = false,
+                Prices = new List<ProductVariantPrice>
+                {
+                    new ProductVariantPrice { Id = 2, VariantId = 102, UoMId = 5, Price = 150000, IsActive = true, IsDeleted = false }
+                }
+            };
+            sauRieng.Variants.Add(varSR);
+
+            context.ProductCategories.Add(cat);
+            context.UoMs.AddRange(uomKg, uomTrai);
+            context.Products.AddRange(bo, sauRieng);
+            context.ProductVariants.AddRange(varBo, varSR);
+
+            var batchBo = new ProductBatch { Id = 101, BatchCode = "BATCH-BO-28", VariantId = 101, ExpiryDate = DateTime.UtcNow.AddMonths(1) };
+            var batchSR = new ProductBatch { Id = 102, BatchCode = "BATCH-SR-28", VariantId = 102, ExpiryDate = DateTime.UtcNow.AddMonths(1) };
+            context.ProductBatches.AddRange(batchBo, batchSR);
+
+            context.WarehouseInventories.AddRange(
+                new WarehouseInventory { Id = 1, WarehouseId = 1, VariantId = 101, BatchId = 101, QuantityAvailable = 100, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow },
+                new WarehouseInventory { Id = 2, WarehouseId = 1, VariantId = 102, BatchId = 102, QuantityAvailable = 100, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow }
+            );
+
+            await context.SaveChangesAsync();
+
+            var client = CreateMockHttpClient("Dạ em đã thêm vào thẻ đơn hàng cho bạn rồi ạ!");
+            var service = new GeminiChatService(client, _config, context, _mapper, _mockVnPayService, _mockHttpContextAccessor);
+
+            // Turn 1: Lên 2kg bơ
+            var req1 = new AiSendMessageRequestDto
+            {
+                Message = "Cho tôi 2kg bơ"
+            };
+            var res1 = await service.SendMessageAsync(req1, 1, "127.0.0.1");
+
+            res1.Should().NotBeNull();
+            res1.PayloadType.Should().Be("interactive_order");
+            var order1 = (InteractiveOrderPayloadDto)res1.Payload!;
+            order1.Items.Should().HaveCount(1);
+            order1.Items[0].VariantId.Should().Be(101);
+            order1.Items[0].Quantity.Should().Be(2);
+
+            // Kiểm tra session lưu trữ DraftOrderJson
+            var session = await context.ChatSessions.FindAsync(res1.SessionId);
+            session.Should().NotBeNull();
+            session!.DraftOrderJson.Should().NotBeNullOrEmpty();
+
+            // Turn 2: Thêm 1 quả sầu riêng vào cùng session
+            var req2 = new AiSendMessageRequestDto
+            {
+                SessionId = res1.SessionId,
+                SessionToken = res1.SessionToken,
+                Message = "Cho thêm 1 quả sầu riêng"
+            };
+            var res2 = await service.SendMessageAsync(req2, 1, "127.0.0.1");
+
+            res2.Should().NotBeNull();
+            res2.PayloadType.Should().Be("interactive_order");
+            var order2 = (InteractiveOrderPayloadDto)res2.Payload!;
+
+            // Assert: Đơn hàng tự động cộng dồn thành 2 món
+            order2.Items.Should().HaveCount(2);
+            order2.Items.Should().Contain(i => i.VariantId == 101 && i.Quantity == 2);
+            order2.Items.Should().Contain(i => i.VariantId == 102 && i.Quantity == 1);
+        }
+        #endregion
+
+        #region TC29: NATIVE TOOL CALLING EXECUTE MANAGE DRAFT ORDER (ADD, UPDATE, REMOVE, CLEAR)
+        [Fact]
+        public async Task ExecuteManageDraftOrderAsync_WithVariousActions_ShouldUpdateDraftOrderCorrectly()
+        {
+            // Arrange
+            using var context = TestFactories.CreateInMemoryDbContext();
+
+            var uomKg = new UoM { Id = 1, Name = "Kilogram", Code = "KG" };
+            var bo = new Product { Id = 1, Name = "Bơ Sáp 034", Code = "BO", Slug = "bo-sap", BaseUoMId = 1, BaseUoM = uomKg, IsActive = true, IsDeleted = false };
+            var varBo = new ProductVariant
+            {
+                Id = 201,
+                ProductId = 1,
+                Product = bo,
+                Name = "Bơ Sáp 034",
+                Code = "SKU-BO",
+                IsActive = true,
+                IsDeleted = false,
+                Prices = new List<ProductVariantPrice>
+                {
+                    new ProductVariantPrice { Id = 1, VariantId = 201, UoMId = 1, UoM = uomKg, Price = 60000, IsDefault = true, IsActive = true, IsDeleted = false }
+                }
+            };
+            bo.Variants.Add(varBo);
+
+            var batchBo = new ProductBatch { Id = 201, BatchCode = "BATCH-BO-29", VariantId = 201, ExpiryDate = DateTime.UtcNow.AddMonths(1) };
+
+            context.UoMs.Add(uomKg);
+            context.Products.Add(bo);
+            context.ProductVariants.Add(varBo);
+            context.ProductBatches.Add(batchBo);
+            context.WarehouseInventories.Add(new WarehouseInventory { Id = 1, WarehouseId = 1, VariantId = 201, BatchId = 201, QuantityAvailable = 100, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow });
+
+            var session = new ChatSession
+            {
+                Id = 10,
+                SessionToken = "test-session-token",
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+                IsActive = true
+            };
+            context.ChatSessions.Add(session);
+            await context.SaveChangesAsync();
+
+            var service = new GeminiChatService(CreateMockHttpClient(), _config, context, _mapper, _mockVnPayService, _mockHttpContextAccessor);
+
+            // 1. Action: ADD
+            var addArgs = new ManageDraftOrderToolArgs
+            {
+                Action = "add",
+                Items = new List<ManageDraftOrderItemArg>
+                {
+                    new ManageDraftOrderItemArg { ProductName = "Bơ Sáp 034", Quantity = 3, Uom = "Kg" }
+                }
+            };
+            var orderAfterAdd = await service.ExecuteManageDraftOrderAsync(session, addArgs, null);
+            orderAfterAdd.Should().NotBeNull();
+            orderAfterAdd!.Items.Should().HaveCount(1);
+            orderAfterAdd.Items[0].Quantity.Should().Be(3);
+            orderAfterAdd.SubTotal.Should().Be(180000);
+
+            // 2. Action: UPDATE (sửa số lượng thành 5)
+            var updateArgs = new ManageDraftOrderToolArgs
+            {
+                Action = "update",
+                Items = new List<ManageDraftOrderItemArg>
+                {
+                    new ManageDraftOrderItemArg { ProductName = "Bơ Sáp 034", Quantity = 5, Uom = "Kg" }
+                }
+            };
+            var orderAfterUpdate = await service.ExecuteManageDraftOrderAsync(session, updateArgs, null);
+            orderAfterUpdate.Should().NotBeNull();
+            orderAfterUpdate!.Items[0].Quantity.Should().Be(5);
+            orderAfterUpdate.SubTotal.Should().Be(300000);
+
+            // 3. Action: REMOVE (xóa bơ)
+            var removeArgs = new ManageDraftOrderToolArgs
+            {
+                Action = "remove",
+                Items = new List<ManageDraftOrderItemArg>
+                {
+                    new ManageDraftOrderItemArg { ProductName = "Bơ Sáp 034", Quantity = 1 }
+                }
+            };
+            var orderAfterRemove = await service.ExecuteManageDraftOrderAsync(session, removeArgs, null);
+            // Giỏ hàng sau khi xóa hết món sẽ trả về null
+            orderAfterRemove.Should().BeNull();
+
+            // 4. Action: CLEAR
+            var clearArgs = new ManageDraftOrderToolArgs
+            {
+                Action = "clear",
+                Items = new List<ManageDraftOrderItemArg>()
+            };
+            var orderAfterClear = await service.ExecuteManageDraftOrderAsync(session, clearArgs, null);
+            orderAfterClear.Should().NotBeNull();
+            orderAfterClear!.Items.Should().BeEmpty();
+            session.DraftOrderJson.Should().BeNull();
+        }
+        #endregion
+
+        #region TC30: ĐA QUY CÁCH ĐÓNG GÓI - BẢNG GIÁ ĐA ĐVT TRÊN CÙNG SKU (CÁCH 2)
+        [Fact]
+        public async Task ExecuteManageDraftOrderAsync_WhenRequestingSpecificUoM_ShouldMatchExactPriceAndAvailablePrices()
+        {
+            // Arrange
+            using var context = TestFactories.CreateInMemoryDbContext();
+
+            var uomKg = new UoM { Id = 1, Name = "Kg", Code = "KG" };
+            var uomHop = new UoM { Id = 2, Name = "Hộp 3kg", Code = "HOP3KG" };
+
+            var bo = new Product
+            {
+                Id = 1,
+                Name = "Bơ Sáp Đặc Biệt",
+                Code = "SP-BO-DB",
+                Slug = "bo-sap-dac-biet",
+                BaseUoMId = 1,
+                BaseUoM = uomKg,
+                IsActive = true,
+                IsDeleted = false
+            };
+            var varBo = new ProductVariant
+            {
+                Id = 301,
+                ProductId = 1,
+                Product = bo,
+                Name = "Bơ Sáp Đặc Biệt",
+                Code = "SKU-BO-DB",
+                IsActive = true,
+                IsDeleted = false,
+                Prices = new List<ProductVariantPrice>
+                {
+                    new ProductVariantPrice { Id = 1, VariantId = 301, UoMId = 1, UoM = uomKg, Price = 50000, IsDefault = true, IsActive = true, IsDeleted = false },
+                    new ProductVariantPrice { Id = 2, VariantId = 301, UoMId = 2, UoM = uomHop, Price = 140000, IsDefault = false, IsActive = true, IsDeleted = false }
+                }
+            };
+            bo.Variants.Add(varBo);
+
+            var batchBo = new ProductBatch { Id = 301, BatchCode = "BATCH-BO-30", VariantId = 301, ExpiryDate = DateTime.UtcNow.AddMonths(1) };
+
+            context.UoMs.AddRange(uomKg, uomHop);
+            context.Products.Add(bo);
+            context.ProductVariants.Add(varBo);
+            context.ProductBatches.Add(batchBo);
+            context.WarehouseInventories.Add(new WarehouseInventory { Id = 1, WarehouseId = 1, VariantId = 301, BatchId = 301, QuantityAvailable = 50, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow });
+
+            var session = new ChatSession { Id = 20, SessionToken = "token-uom", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow, IsActive = true };
+            context.ChatSessions.Add(session);
+            await context.SaveChangesAsync();
+
+            var service = new GeminiChatService(CreateMockHttpClient(), _config, context, _mapper, _mockVnPayService, _mockHttpContextAccessor);
+
+            // Act: Yêu cầu mua theo quy cách "Hộp 3kg"
+            var toolArgs = new ManageDraftOrderToolArgs
+            {
+                Action = "add",
+                Items = new List<ManageDraftOrderItemArg>
+                {
+                    new ManageDraftOrderItemArg { ProductName = "Bơ Sáp", Quantity = 2, Uom = "Hộp 3kg" }
+                }
+            };
+            var result = await service.ExecuteManageDraftOrderAsync(session, toolArgs, null);
+
+            // Assert
+            result.Should().NotBeNull();
+            result!.Items.Should().HaveCount(1);
+            var item = result.Items[0];
+            item.UoMName.Should().Be("Hộp 3kg");
+            item.UnitPrice.Should().Be(140000);
+            item.Quantity.Should().Be(2);
+            item.TotalPrice.Should().Be(280000);
+
+            // Phải chứa cả 2 bảng giá trong AvailablePrices để UI render dropdown đổi ĐVT
+            item.AvailablePrices.Should().HaveCount(2);
+            item.AvailablePrices.Should().Contain(p => p.UoMName == "Kg" && p.Price == 50000);
+            item.AvailablePrices.Should().Contain(p => p.UoMName == "Hộp 3kg" && p.Price == 140000);
+        }
+        #endregion
+
+        #region TC31: XÓA SẠCH DRAFT ORDER JSON KHI XÁC NHẬN ĐƠN HÀNG THÀNH CÔNG
+        [Fact]
+        public async Task ConfirmInteractiveOrderAsync_WhenOrderPlacedSuccessfully_ShouldClearSessionDraftOrderJson()
+        {
+            // Arrange
+            using var context = TestFactories.CreateInMemoryDbContext();
+
+            var customer = new Customer
+            {
+                Id = 5,
+                Code = "CUST-05",
+                Name = "Nguyễn Văn Test",
+                PhoneNumber = "0987654321",
+                IsActive = true,
+                IsDeleted = false
+            };
+            context.Customers.Add(customer);
+
+            var uom = new UoM { Id = 1, Name = "Kg", Code = "KG" };
+            var product = new Product { Id = 1, Code = "PRD-CAM", Name = "Cam Sành", Slug = "cam-sanh", BaseUoMId = 1 };
+            var variant = new ProductVariant { Id = 401, ProductId = 1, Product = product, Name = "Cam Sành Hàm Yên", Code = "VAR-CAM", IsActive = true, IsDeleted = false };
+            var batchCam = new ProductBatch { Id = 401, BatchCode = "BATCH-CAM-31", VariantId = 401, ExpiryDate = DateTime.UtcNow.AddMonths(1) };
+
+            context.UoMs.Add(uom);
+            context.Products.Add(product);
+            context.ProductVariants.Add(variant);
+            context.ProductBatches.Add(batchCam);
+            context.WarehouseInventories.Add(new WarehouseInventory { Id = 1, WarehouseId = 1, VariantId = 401, BatchId = 401, QuantityAvailable = 100, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow });
+
+            var session = new ChatSession
+            {
+                Id = 30,
+                CustomerId = 5,
+                SessionToken = "token-confirm-clear",
+                DraftOrderJson = "{\"Title\":\"Thẻ Đơn Hàng Tương Tác\",\"Items\":[]}",
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+                IsActive = true
+            };
+            context.ChatSessions.Add(session);
+            await context.SaveChangesAsync();
+
+            var service = new GeminiChatService(CreateMockHttpClient(), _config, context, _mapper, _mockVnPayService, _mockHttpContextAccessor);
+
+            var request = new ConfirmInteractiveOrderRequestDto
+            {
+                SessionId = 30,
+                ReceiverName = "Nguyễn Văn Test",
+                ReceiverPhone = "0987654321",
+                DeliveryAddress = "Số 123 Đường Test, Quận 1, TP.HCM",
+                PaymentMethod = 1, // COD
+                Items = new List<InteractiveOrderItemDto>
+                {
+                    new InteractiveOrderItemDto
+                    {
+                        VariantId = 401,
+                        UoMId = 1,
+                        Quantity = 2,
+                        UnitPrice = 40000,
+                        TotalPrice = 80000
+                    }
+                }
+            };
+
+            // Act
+            var result = await service.ConfirmInteractiveOrderAsync(request, 5);
+
+            // Assert
+            result.Should().NotBeNull();
+            result.OrderCode.Should().StartWith("ORD-");
+
+            // Session DraftOrderJson phải được dọn dẹp sạch sẽ
+            var updatedSession = await context.ChatSessions.FindAsync(30);
+            updatedSession.Should().NotBeNull();
+            updatedSession!.DraftOrderJson.Should().BeNull();
+        }
+        #endregion
+
     }
 }

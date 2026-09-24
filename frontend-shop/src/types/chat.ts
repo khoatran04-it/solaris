@@ -36,6 +36,7 @@ export interface InteractiveOrderItem {
   totalPrice: number;
   availableStock?: number;
   warningMessage?: string;
+  availablePrices?: AiProductCardPrice[];
 }
 
 export interface InteractiveOrderPayload {
