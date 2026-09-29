@@ -284,12 +284,12 @@ export default function ThanhToanPage() {
         ? (userLatitude || 0)
         : (selectedAddrObj?.latitude && selectedAddrObj.latitude !== 0
             ? selectedAddrObj.latitude
-            : (userLatitude || 0));
+            : 0);
       const effectiveLng = useNewAddress
         ? (userLongitude || 0)
         : (selectedAddrObj?.longitude && selectedAddrObj.longitude !== 0
             ? selectedAddrObj.longitude
-            : (userLongitude || 0));
+            : 0);
 
       const payload: ShopCheckoutPayload = {
         customerAddressId: useNewAddress
