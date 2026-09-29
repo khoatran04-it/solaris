@@ -207,6 +207,12 @@ namespace backend.Services
                         .Include(s => s.Messages)
                         .FirstOrDefaultAsync(s => s.Id == request.SessionId.Value && s.IsActive);
                 }
+                else if (!string.IsNullOrEmpty(request.SessionToken))
+                {
+                    session = await _context.ChatSessions
+                        .Include(s => s.Messages)
+                        .FirstOrDefaultAsync(s => s.SessionToken == request.SessionToken && s.IsActive);
+                }
 
                 if (session == null)
                 {
@@ -304,15 +310,7 @@ namespace backend.Services
                     }
                 }
                 // C. Lên đơn mua hàng trực tiếp & Quản lý Giỏ hàng hội thoại Draft Order (Direct Conversational Order)
-                else if (!((lowerText.Contains("tư vấn") || lowerText.Contains("hướng dẫn") || lowerText.Contains("giải thích") || lowerText.Contains("giới thiệu") || lowerText.Contains("cho tôi xem") || lowerText.Contains("cho mình xem")) && !lowerText.Contains("lên đơn") && !lowerText.Contains("chốt đơn") && !lowerText.Contains("đặt mua") && !lowerText.Contains("tạo đơn")) &&
-                         (lowerText.Contains("lên đơn") || lowerText.Contains("chốt đơn") || lowerText.Contains("tôi muốn mua") || lowerText.Contains("đặt mua") ||
-                          lowerText.Contains("đặt hàng") || lowerText.Contains("xác nhận đặt") || lowerText.Contains("xác nhận đơn") || lowerText.Contains("chốt mua") ||
-                          lowerText.Contains("mua hàng") || lowerText.Contains("tạo đơn") || lowerText.StartsWith("mua ") || lowerText.Contains(" mua ") ||
-                          lowerText.Contains("lấy cho tôi") || lowerText.Contains("cho tôi") || lowerText.Contains("cho mình") || lowerText.Contains("lấy giúp") ||
-                          lowerText.Contains("bán cho tôi") || lowerText.Contains("bán tôi") || lowerText.Contains("bán cho") ||
-                          lowerText.Contains("thêm") || lowerText.Contains("cho thêm") || lowerText.Contains("bỏ ") || lowerText.Contains("xóa ") || lowerText.Contains("hủy giỏ") || lowerText.Contains("xóa giỏ") || lowerText.Contains("hủy đơn") ||
-                          System.Text.RegularExpressions.Regex.IsMatch(lowerText, @"\b(cho|lấy|đặt|mua|bán|giao|ship|thêm|bỏ|xóa|cần)\s+(\d+|một|hai|ba|bốn|năm|sáu|bảy|tám|chín|mười)\b") ||
-                          System.Text.RegularExpressions.Regex.IsMatch(lowerText, @"\b(cho|lấy|đặt|mua|bán|giao|ship|thêm|bỏ|xóa|cần)\s+(\d+)\s*(kg|kí|ký|kilo|kí\s*lô|kí\s*lô\s*gam|kilogram|gói|hộp|thùng|quả|trái|bịch|túi|vỉ|chai|lon)\b")))
+                else if (IsOrderIntent(userText))
                 {
                     string orderAction = "add";
                     if (lowerText.Contains("xóa hết") || lowerText.Contains("hủy đơn") || lowerText.Contains("hủy giỏ") || lowerText.Contains("xóa giỏ"))
@@ -351,25 +349,38 @@ namespace backend.Services
                         }
                         else
                         {
-                            var products = await SearchProductsAsync(userText);
-                            if (products.Count > 0)
+                            // Nếu không tìm thấy hoặc chưa khớp được món mới, nhưng khách có ý định lên đơn:
+                            // Trả về Thẻ Đơn Hàng Tương Tác (từ draft hiện tại hoặc đơn gợi ý), TUYỆT ĐỐI KHÔNG fallback sang product_cards
+                            InteractiveOrderPayloadDto? fallbackOrder = null;
+                            if (!string.IsNullOrEmpty(session.DraftOrderJson))
                             {
-                                payloadType = "product_cards";
-                                payloadObject = products;
-                                payloadJson = JsonSerializer.Serialize(products);
+                                try { fallbackOrder = JsonSerializer.Deserialize<InteractiveOrderPayloadDto>(session.DraftOrderJson, new JsonSerializerOptions { PropertyNameCaseInsensitive = true }); } catch { }
                             }
+                            if (fallbackOrder == null || fallbackOrder.Items.Count == 0)
+                            {
+                                fallbackOrder = await PrepareDefaultSuggestionOrderAsync();
+                            }
+                            payloadType = "interactive_order";
+                            payloadObject = fallbackOrder;
+                            payloadJson = JsonSerializer.Serialize(fallbackOrder);
                         }
                     }
                     else
                     {
-                        // Fallback sang tìm kiếm sản phẩm nếu chưa đủ thông tin lên đơn
-                        var products = await SearchProductsAsync(userText);
-                        if (products.Count > 0)
+                        // Khách hàng yêu cầu "lên đơn", "lên đơn hàng", "chốt đơn" nhưng chưa nêu tên món cụ thể:
+                        // Trả về Thẻ Đơn Hàng Tương Tác từ giỏ hàng hội thoại hiện có hoặc đơn gợi ý hôm nay
+                        InteractiveOrderPayloadDto? draftPayload = null;
+                        if (!string.IsNullOrEmpty(session.DraftOrderJson))
                         {
-                            payloadType = "product_cards";
-                            payloadObject = products;
-                            payloadJson = JsonSerializer.Serialize(products);
+                            try { draftPayload = JsonSerializer.Deserialize<InteractiveOrderPayloadDto>(session.DraftOrderJson, new JsonSerializerOptions { PropertyNameCaseInsensitive = true }); } catch { }
                         }
+                        if (draftPayload == null || draftPayload.Items.Count == 0)
+                        {
+                            draftPayload = await PrepareDefaultSuggestionOrderAsync();
+                        }
+                        payloadType = "interactive_order";
+                        payloadObject = draftPayload;
+                        payloadJson = JsonSerializer.Serialize(draftPayload);
                     }
                 }
                 // D. Tra cứu chương trình khuyến mãi (Promotion Finder)
@@ -1439,6 +1450,46 @@ namespace backend.Services
             return (bestVariant, matchedPrice, availablePrices);
         }
 
+        private static string CleanOrderKeyword(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text)) return string.Empty;
+            string cleaned = Regex.Replace(text, @"\b(lên\s*đơn\s*hàng|lên\s*đơn|chốt\s*đơn\s*hàng|chốt\s*đơn|tạo\s*đơn\s*hàng|tạo\s*đơn|đặt\s*hàng|đặt\s*mua|mua\s*hàng|chốt\s*mua|xác\s*nhận\s*đặt|xác\s*nhận\s*đơn|mua\s*ngay|đơn\s*hàng|đơn|cho\s*tôi|cho\s*mình|lấy\s*cho\s*tôi|lấy\s*cho\s*mình|lấy\s*giúp|lấy|mua|bán\s*cho\s*tôi|bán\s*cho\s*mình|bán\s*cho|bán\s*tôi|bán|đặt|thêm|giúp|cho|ơi|nhé|nha|với|tôi|mình|em|anh|chị|xóa\s*hết|xóa|bỏ|bớt)\b", "", RegexOptions.IgnoreCase).Trim();
+            cleaned = Regex.Replace(cleaned, @"^[,\.\-\+\s:]+|[,\.\-\+\s:]+$", "");
+            if (cleaned.Equals("hàng", StringComparison.OrdinalIgnoreCase) ||
+                cleaned.Equals("đơn", StringComparison.OrdinalIgnoreCase) ||
+                cleaned.Equals("đơn hàng", StringComparison.OrdinalIgnoreCase))
+            {
+                return string.Empty;
+            }
+            return cleaned;
+        }
+
+        private static bool IsOrderIntent(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text)) return false;
+            string lowerText = text.ToLower();
+
+            // Nếu chỉ là hỏi thăm/tư vấn/giải thích mà không kèm từ khóa lên đơn/chốt đơn
+            if ((lowerText.Contains("tư vấn") || lowerText.Contains("hướng dẫn") || lowerText.Contains("giải thích") ||
+                 lowerText.Contains("giới thiệu") || lowerText.Contains("cho tôi xem") || lowerText.Contains("cho mình xem")) &&
+                !lowerText.Contains("lên đơn") && !lowerText.Contains("chốt đơn") && !lowerText.Contains("đặt mua") && !lowerText.Contains("tạo đơn"))
+            {
+                return false;
+            }
+
+            return lowerText.Contains("lên đơn") || lowerText.Contains("chốt đơn") || lowerText.Contains("tôi muốn mua") ||
+                   lowerText.Contains("đặt mua") || lowerText.Contains("đặt hàng") || lowerText.Contains("xác nhận đặt") ||
+                   lowerText.Contains("xác nhận đơn") || lowerText.Contains("chốt mua") || lowerText.Contains("mua hàng") ||
+                   lowerText.Contains("tạo đơn") || lowerText.StartsWith("mua ") || lowerText.Contains(" mua ") ||
+                   lowerText.Contains("lấy cho tôi") || lowerText.Contains("cho tôi") || lowerText.Contains("cho mình") ||
+                   lowerText.Contains("lấy giúp") || lowerText.Contains("bán cho tôi") || lowerText.Contains("bán tôi") ||
+                   lowerText.Contains("bán cho") || lowerText.Contains("thêm") || lowerText.Contains("cho thêm") ||
+                   lowerText.Contains("bỏ ") || lowerText.Contains("xóa ") || lowerText.Contains("hủy giỏ") ||
+                   lowerText.Contains("xóa giỏ") || lowerText.Contains("hủy đơn") ||
+                   Regex.IsMatch(lowerText, @"\b(cho|lấy|đặt|mua|bán|giao|ship|thêm|bỏ|xóa|cần)\s+(\d+|một|hai|ba|bốn|năm|sáu|bảy|tám|chín|mười)\b") ||
+                   Regex.IsMatch(lowerText, @"\b(cho|lấy|đặt|mua|bán|giao|ship|thêm|bỏ|xóa|cần)\s+(\d+)\s*(kg|kí|ký|kilo|kí\s*lô|kí\s*lô\s*gam|kilogram|gói|hộp|thùng|quả|trái|bịch|túi|vỉ|chai|lon)\b");
+        }
+
         private async Task<List<ManageDraftOrderItemArg>> ExtractOrderItemsFromTextAsync(string userText, int sessionId)
         {
             var items = new List<ManageDraftOrderItemArg>();
@@ -1471,8 +1522,7 @@ namespace backend.Services
                         keyword = part.Remove(match.Index, match.Length);
                     }
 
-                    keyword = Regex.Replace(keyword, @"\b(cho\s*tôi|cho\s*mình|lấy\s*giúp|lấy|mua|bán|đặt|thêm|giúp|cho|ơi|nhé|nha|với|tôi|mình|em|anh|chị)\b", "", RegexOptions.IgnoreCase).Trim();
-                    keyword = Regex.Replace(keyword, @"^[,\.\-\+\s]+|[,\.\-\+\s]+$", "");
+                    keyword = CleanOrderKeyword(keyword);
 
                     if (!string.IsNullOrWhiteSpace(keyword))
                     {
@@ -1486,11 +1536,11 @@ namespace backend.Services
                 }
             }
 
-            // B. Nếu parts.Count <= 1, quét xem có nhiều cụm [số lượng + ĐVT + tên sản phẩm] không
+            // B. Quét mẫu chuẩn: [Số lượng] [ĐVT] [Tên sản phẩm]
             if (items.Count == 0)
             {
                 var matches = Regex.Matches(userText, @"(\d+(?:[.,]\d+)?)\s*(kg|kí|ký|kilo|kí\s*lô|kí\s*lô\s*gam|kilogram|gói|hộp|thùng|quả|trái|bịch|túi|vỉ|chai|lon|cái)?\s+([^\d,;+\r\n]+)", RegexOptions.IgnoreCase);
-                if (matches.Count > 1)
+                if (matches.Count > 0)
                 {
                     foreach (Match m in matches)
                     {
@@ -1500,8 +1550,7 @@ namespace backend.Services
                             qty = q;
                         }
                         string? uom = m.Groups[2].Success ? m.Groups[2].Value : null;
-                        string prod = Regex.Replace(m.Groups[3].Value, @"\b(cho\s*tôi|cho\s*mình|lấy\s*giúp|lấy|mua|bán|đặt|thêm|giúp|cho|ơi|nhé|nha|với|tôi|mình|em|anh|chị)\b", "", RegexOptions.IgnoreCase).Trim();
-                        prod = Regex.Replace(prod, @"^[,\.\-\+\s]+|[,\.\-\+\s]+$", "");
+                        string prod = CleanOrderKeyword(m.Groups[3].Value);
                         if (!string.IsNullOrWhiteSpace(prod))
                         {
                             items.Add(new ManageDraftOrderItemArg
@@ -1513,25 +1562,32 @@ namespace backend.Services
                         }
                     }
                 }
-                else if (matches.Count == 1)
+            }
+
+            // B2. Quét mẫu đảo cú pháp: [Tên sản phẩm] [Số lượng] [ĐVT] (VD: "mì hảo hảo chua cay 2 gói", "sầu riêng 1 trái")
+            if (items.Count == 0)
+            {
+                var reverseMatches = Regex.Matches(userText, @"([^\d,;+\r\n]+?)\s+(\d+(?:[.,]\d+)?)\s*(kg|kí|ký|kilo|kí\s*lô|kí\s*lô\s*gam|kilogram|gói|hộp|thùng|quả|trái|bịch|túi|vỉ|chai|lon|cái)\b", RegexOptions.IgnoreCase);
+                if (reverseMatches.Count > 0)
                 {
-                    var m = matches[0];
-                    decimal qty = 1;
-                    if (decimal.TryParse(m.Groups[1].Value.Replace(',', '.'), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out decimal q) && q > 0)
+                    foreach (Match m in reverseMatches)
                     {
-                        qty = q;
-                    }
-                    string? uom = m.Groups[2].Success ? m.Groups[2].Value : null;
-                    string prod = Regex.Replace(m.Groups[3].Value, @"\b(cho\s*tôi|cho\s*mình|lấy\s*giúp|lấy|mua|bán|đặt|thêm|giúp|cho|ơi|nhé|nha|với|tôi|mình|em|anh|chị)\b", "", RegexOptions.IgnoreCase).Trim();
-                    prod = Regex.Replace(prod, @"^[,\.\-\+\s]+|[,\.\-\+\s]+$", "");
-                    if (!string.IsNullOrWhiteSpace(prod))
-                    {
-                        items.Add(new ManageDraftOrderItemArg
+                        decimal qty = 1;
+                        if (decimal.TryParse(m.Groups[2].Value.Replace(',', '.'), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out decimal q) && q > 0)
                         {
-                            ProductNameOrVariant = prod,
-                            Quantity = qty,
-                            RequestedUom = uom
-                        });
+                            qty = q;
+                        }
+                        string? uom = m.Groups[3].Success ? m.Groups[3].Value : null;
+                        string prod = CleanOrderKeyword(m.Groups[1].Value);
+                        if (!string.IsNullOrWhiteSpace(prod))
+                        {
+                            items.Add(new ManageDraftOrderItemArg
+                            {
+                                ProductNameOrVariant = prod,
+                                Quantity = qty,
+                                RequestedUom = uom
+                            });
+                        }
                     }
                 }
             }
@@ -1557,8 +1613,7 @@ namespace backend.Services
                     keyword = userText.Remove(singleQtyMatch.Index, singleQtyMatch.Length);
                 }
 
-                keyword = Regex.Replace(keyword, @"\b(cho\s*tôi|cho\s*mình|lấy\s*giúp|lấy|mua|bán|đặt|thêm|giúp|cho|ơi|nhé|nha|với|tôi|mình|em|anh|chị|lên\s*đơn|chốt\s*đơn|tạo\s*đơn|xóa|bỏ|bớt)\b", "", RegexOptions.IgnoreCase).Trim();
-                keyword = Regex.Replace(keyword, @"^[,\.\-\+\s]+|[,\.\-\+\s]+$", "");
+                keyword = CleanOrderKeyword(keyword);
 
                 if (!string.IsNullOrWhiteSpace(keyword))
                 {
@@ -1571,7 +1626,7 @@ namespace backend.Services
                 }
             }
 
-            // D. Nếu không có tên sản phẩm trực tiếp (VD: "Lên đơn cho tôi", "Chốt đơn giúp mình") -> Truy hồi từ ngữ cảnh gần nhất trong phiên
+            // D. Nếu không có tên sản phẩm trực tiếp (VD: "Lên đơn cho tôi", "Chốt đơn giúp mình", "Lên đơn hàng")
             if ((items.Count == 0 || items.All(i => string.IsNullOrWhiteSpace(i.ProductNameOrVariant))) && sessionId > 0)
             {
                 items.Clear();
@@ -1618,7 +1673,7 @@ namespace backend.Services
             {
                 try
                 {
-                    draftOrder = JsonSerializer.Deserialize<InteractiveOrderPayloadDto>(session.DraftOrderJson);
+                    draftOrder = JsonSerializer.Deserialize<InteractiveOrderPayloadDto>(session.DraftOrderJson, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
                 }
                 catch
                 {
@@ -2251,7 +2306,7 @@ namespace backend.Services
                         new
                         {
                             name = "manage_draft_order",
-                            description = "Thao tác trên giỏ hàng hội thoại: thêm mới, cộng dồn, sửa số lượng, đổi quy cách, hoặc xóa sản phẩm.",
+                            description = "BẮT BUỘC gọi công cụ này khi khách hàng có ý định lên đơn, lên đơn hàng, đặt hàng, đặt mua, chốt đơn, tạo đơn, mua sản phẩm, thêm vào giỏ, sửa số lượng hoặc hủy giỏ hàng. Sinh Thẻ Đơn Hàng Tương Tác cho khách.",
                             parameters = new
                             {
                                 type = "OBJECT",
@@ -2286,7 +2341,7 @@ namespace backend.Services
                         new
                         {
                             name = "search_products",
-                            description = "Tìm kiếm sản phẩm nông sản sạch trong danh mục kho Solaris theo từ khóa.",
+                            description = "Chỉ dùng khi khách hàng muốn TƯ VẤN, TÌM KIẾM, HỎI THÔNG TIN sản phẩm (chưa có ý định chốt đơn/lên đơn ngay). KHÔNG gọi công cụ này khi khách nói 'lên đơn', 'đặt hàng', 'chốt đơn'.",
                             parameters = new
                             {
                                 type = "OBJECT",
@@ -2408,6 +2463,33 @@ namespace backend.Services
                                             if (payload != null && !string.IsNullOrEmpty(payload.StockWarning))
                                                 return (true, "none", payload.StockWarning);
                                         }
+
+                                        // Fallback thông minh: nếu AI gọi manage_draft_order nhưng parse items thất bại hoặc rỗng
+                                        if (IsOrderIntent(userText))
+                                        {
+                                            var extractedItems = await ExtractOrderItemsFromTextAsync(userText, session.Id);
+                                            if (extractedItems.Count > 0)
+                                            {
+                                                var fallbackArgs = new ManageDraftOrderToolArgs { Action = "add", Items = extractedItems };
+                                                var payload = await ExecuteManageDraftOrderAsync(session, fallbackArgs, session.CustomerId ?? customerId);
+                                                if (payload != null && payload.Items.Count > 0)
+                                                    return (true, "interactive_order", payload);
+                                                if (payload != null && !string.IsNullOrEmpty(payload.StockWarning))
+                                                    return (true, "none", payload.StockWarning);
+                                            }
+
+                                            // Hiển thị draftOrder hiện có hoặc đơn gợi ý
+                                            InteractiveOrderPayloadDto? draftPayload = null;
+                                            if (!string.IsNullOrEmpty(session.DraftOrderJson))
+                                            {
+                                                try { draftPayload = JsonSerializer.Deserialize<InteractiveOrderPayloadDto>(session.DraftOrderJson, new JsonSerializerOptions { PropertyNameCaseInsensitive = true }); } catch { }
+                                            }
+                                            if (draftPayload == null || draftPayload.Items.Count == 0)
+                                            {
+                                                draftPayload = await PrepareDefaultSuggestionOrderAsync();
+                                            }
+                                            return (true, "interactive_order", draftPayload);
+                                        }
                                         break;
                                     }
                                     case "lookup_order":
@@ -2439,7 +2521,36 @@ namespace backend.Services
                                         {
                                             var prods = await SearchProductsAsync(toolArgs.Keyword);
                                             if (prods.Count > 0)
+                                            {
+                                                if (IsOrderIntent(userText))
+                                                {
+                                                    // Khách có ý định lên đơn nhưng AI lại gọi search_products
+                                                    // -> Tự động chuyển hóa kết quả tìm kiếm thành mặt hàng trong Thẻ Đơn Hàng Tương Tác
+                                                    var extractedItems = await ExtractOrderItemsFromTextAsync(userText, session.Id);
+                                                    decimal targetQty = extractedItems.FirstOrDefault()?.Quantity ?? 1;
+                                                    string? targetUom = extractedItems.FirstOrDefault()?.RequestedUom;
+
+                                                    var orderArgs = new ManageDraftOrderToolArgs
+                                                    {
+                                                        Action = "add",
+                                                        Items = new List<ManageDraftOrderItemArg>
+                                                        {
+                                                            new ManageDraftOrderItemArg
+                                                            {
+                                                                ProductName = prods.First().Name,
+                                                                Quantity = targetQty > 0 ? targetQty : 1,
+                                                                Uom = targetUom ?? prods.First().UoMName
+                                                            }
+                                                        }
+                                                    };
+                                                    var orderPayload = await ExecuteManageDraftOrderAsync(session, orderArgs, session.CustomerId ?? customerId);
+                                                    if (orderPayload != null && orderPayload.Items.Count > 0)
+                                                        return (true, "interactive_order", orderPayload);
+                                                    if (orderPayload != null && !string.IsNullOrEmpty(orderPayload.StockWarning))
+                                                        return (true, "none", orderPayload.StockWarning);
+                                                }
                                                 return (true, "product_cards", prods);
+                                            }
                                         }
                                         break;
                                     }

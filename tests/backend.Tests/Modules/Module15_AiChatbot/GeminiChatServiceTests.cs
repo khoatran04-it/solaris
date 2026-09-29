@@ -2336,5 +2336,284 @@ namespace backend.Tests.Modules.Module15_AiChatbot
         }
         #endregion
 
+        #region TC42: LÊN ĐƠN HÀNG MÌ HẢO HẢO CHUA CAY
+        [Fact]
+        public async Task SendMessageAsync_WhenOrderingHaoHao_ShouldReturnInteractiveOrder()
+        {
+            // Arrange
+            using var context = TestFactories.CreateInMemoryDbContext();
+
+            var cat = new ProductCategory { Id = 5, Name = "Mì & Thực Phẩm Đóng Gói", Code = "CAT-MI", IsActive = true, IsDeleted = false };
+            var uomGoi = new UoM { Id = 8, Name = "Gói", Code = "GOI" };
+
+            var prod = new Product
+            {
+                Id = 10,
+                Name = "Mì Hảo Hảo Tôm Chua Cay",
+                Code = "PRD-MI-HAO-HAO",
+                Slug = "mi-hao-hao-tom-chua-cay",
+                CategoryId = 5,
+                Category = cat,
+                BaseUoMId = 8,
+                BaseUoM = uomGoi,
+                IsActive = true,
+                IsDeleted = false
+            };
+            var variant = new ProductVariant
+            {
+                Id = 101,
+                ProductId = 10,
+                Product = prod,
+                Name = "Mì Hảo Hảo Tôm Chua Cay - Loại 1",
+                Code = "PRD-MI-HAO-HAO-SKU1",
+                IsActive = true,
+                IsDeleted = false,
+                Prices = new List<ProductVariantPrice>
+                {
+                    new ProductVariantPrice { Id = 10, VariantId = 101, UoMId = 8, Price = 4500, IsDefault = true, IsActive = true, IsDeleted = false }
+                }
+            };
+            prod.Variants.Add(variant);
+
+            context.ProductCategories.Add(cat);
+            context.UoMs.Add(uomGoi);
+            context.Products.Add(prod);
+            context.ProductVariants.Add(variant);
+
+            var batch = new ProductBatch { Id = 10, BatchCode = "BATCH-MI-01", VariantId = 101, ExpiryDate = DateTime.UtcNow.AddMonths(3) };
+            context.ProductBatches.Add(batch);
+            context.WarehouseInventories.Add(new WarehouseInventory
+            {
+                Id = 10,
+                WarehouseId = 1,
+                VariantId = 101,
+                BatchId = 10,
+                QuantityAvailable = 100,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            });
+            await context.SaveChangesAsync();
+
+            var service = new GeminiChatService(CreateMockHttpClient(), _config, context, _mapper, _mockVnPayService, _mockHttpContextAccessor);
+
+            var request = new AiSendMessageRequestDto
+            {
+                Message = "Lên đơn hàng cho tôi 2 gói mì hảo hảo chua cay"
+            };
+
+            // Act
+            var result = await service.SendMessageAsync(request, 1, "127.0.0.1");
+
+            // Assert
+            result.Should().NotBeNull();
+            result.PayloadType.Should().Be("interactive_order");
+            result.Payload.Should().BeOfType<InteractiveOrderPayloadDto>();
+
+            var order = (InteractiveOrderPayloadDto)result.Payload!;
+            order.Items.Should().HaveCount(1);
+            order.Items[0].VariantId.Should().Be(101);
+            order.Items[0].Quantity.Should().Be(2);
+            order.Items[0].UnitPrice.Should().Be(4500);
+            order.Items[0].TotalPrice.Should().Be(9000);
+        }
+        #endregion
+
+        #region TC43: LÊN ĐƠN BẰNG CÚ PHÁP ĐẢO (TÊN SẢN PHẨM TRƯỚC, SỐ LƯỢNG SAU)
+        [Fact]
+        public async Task SendMessageAsync_WhenOrderingReverseSyntax_ShouldReturnInteractiveOrder()
+        {
+            // Arrange
+            using var context = TestFactories.CreateInMemoryDbContext();
+
+            var cat = new ProductCategory { Id = 5, Name = "Mì & Thực Phẩm Đóng Gói", Code = "CAT-MI", IsActive = true, IsDeleted = false };
+            var uomGoi = new UoM { Id = 8, Name = "Gói", Code = "GOI" };
+
+            var prod = new Product
+            {
+                Id = 10,
+                Name = "Mì Hảo Hảo Tôm Chua Cay",
+                Code = "PRD-MI-HAO-HAO",
+                Slug = "mi-hao-hao-tom-chua-cay",
+                CategoryId = 5,
+                Category = cat,
+                BaseUoMId = 8,
+                BaseUoM = uomGoi,
+                IsActive = true,
+                IsDeleted = false
+            };
+            var variant = new ProductVariant
+            {
+                Id = 101,
+                ProductId = 10,
+                Product = prod,
+                Name = "Mì Hảo Hảo Tôm Chua Cay - Loại 1",
+                Code = "PRD-MI-HAO-HAO-SKU1",
+                IsActive = true,
+                IsDeleted = false,
+                Prices = new List<ProductVariantPrice>
+                {
+                    new ProductVariantPrice { Id = 10, VariantId = 101, UoMId = 8, Price = 4500, IsDefault = true, IsActive = true, IsDeleted = false }
+                }
+            };
+            prod.Variants.Add(variant);
+
+            context.ProductCategories.Add(cat);
+            context.UoMs.Add(uomGoi);
+            context.Products.Add(prod);
+            context.ProductVariants.Add(variant);
+
+            var batch = new ProductBatch { Id = 10, BatchCode = "BATCH-MI-01", VariantId = 101, ExpiryDate = DateTime.UtcNow.AddMonths(3) };
+            context.ProductBatches.Add(batch);
+            context.WarehouseInventories.Add(new WarehouseInventory
+            {
+                Id = 10,
+                WarehouseId = 1,
+                VariantId = 101,
+                BatchId = 10,
+                QuantityAvailable = 100,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            });
+            await context.SaveChangesAsync();
+
+            var service = new GeminiChatService(CreateMockHttpClient(), _config, context, _mapper, _mockVnPayService, _mockHttpContextAccessor);
+
+            var request = new AiSendMessageRequestDto
+            {
+                Message = "Lên đơn mì hảo hảo chua cay 2 gói"
+            };
+
+            // Act
+            var result = await service.SendMessageAsync(request, 1, "127.0.0.1");
+
+            // Assert
+            result.Should().NotBeNull();
+            result.PayloadType.Should().Be("interactive_order");
+            result.Payload.Should().BeOfType<InteractiveOrderPayloadDto>();
+
+            var order = (InteractiveOrderPayloadDto)result.Payload!;
+            order.Items.Should().HaveCount(1);
+            order.Items[0].VariantId.Should().Be(101);
+            order.Items[0].Quantity.Should().Be(2);
+        }
+        #endregion
+
+        #region TC44: LÊN ĐƠN BẰNG CỤM TỪ CHUNG "LÊN ĐƠN HÀNG" KHÔNG NÊU MÓN -> TRẢ VỀ INTERACTIVE ORDER CARD (GỢI Ý)
+        [Fact]
+        public async Task SendMessageAsync_WhenOrderingGeneralPhrase_ShouldReturnInteractiveOrder()
+        {
+            // Arrange
+            using var context = TestFactories.CreateInMemoryDbContext();
+
+            var cat = new ProductCategory { Id = 1, Name = "Rau Củ", Code = "CAT-RAU", IsActive = true, IsDeleted = false };
+            var uomKg = new UoM { Id = 1, Name = "Kg", Code = "KG" };
+
+            var prod = new Product
+            {
+                Id = 1,
+                Name = "Rau Muống Sạch",
+                Code = "PRD-RAU",
+                Slug = "rau-muong-sach",
+                CategoryId = 1,
+                Category = cat,
+                BaseUoMId = 1,
+                BaseUoM = uomKg,
+                IsActive = true,
+                IsDeleted = false
+            };
+            var variant = new ProductVariant
+            {
+                Id = 1,
+                ProductId = 1,
+                Product = prod,
+                Name = "Rau Muống Nước - Bó 500g",
+                Code = "VAR-RAU-01",
+                IsActive = true,
+                IsDeleted = false,
+                Prices = new List<ProductVariantPrice>
+                {
+                    new ProductVariantPrice { Id = 1, VariantId = 1, UoMId = 1, Price = 15000, IsDefault = true, IsActive = true, IsDeleted = false }
+                }
+            };
+            prod.Variants.Add(variant);
+
+            context.ProductCategories.Add(cat);
+            context.UoMs.Add(uomKg);
+            context.Products.Add(prod);
+            context.ProductVariants.Add(variant);
+            await context.SaveChangesAsync();
+
+            var service = new GeminiChatService(CreateMockHttpClient(), _config, context, _mapper, _mockVnPayService, _mockHttpContextAccessor);
+
+            var request = new AiSendMessageRequestDto
+            {
+                Message = "Lên đơn hàng cho tôi"
+            };
+
+            // Act
+            var result = await service.SendMessageAsync(request, 1, "127.0.0.1");
+
+            // Assert: Phải kích hoạt Thẻ Đơn Hàng Tương Tác (interactive_order), tuyệt đối không trả product_cards
+            result.Should().NotBeNull();
+            result.PayloadType.Should().Be("interactive_order");
+            result.Payload.Should().BeOfType<InteractiveOrderPayloadDto>();
+        }
+        #endregion
+
+        #region TC45: LÊN ĐƠN KHI ĐÃ CÓ DRAFT ORDER TRONG SESSION -> GIỮ NGUYÊN VÀ HIỂN THỊ INTERACTIVE ORDER
+        [Fact]
+        public async Task SendMessageAsync_WhenOrderingWithExistingDraft_ShouldPresentExistingDraftOrder()
+        {
+            // Arrange
+            using var context = TestFactories.CreateInMemoryDbContext();
+
+            var existingDraft = new InteractiveOrderPayloadDto
+            {
+                Title = "Thẻ Đơn Hàng Tương Tác",
+                Items = new List<InteractiveOrderItemDto>
+                {
+                    new InteractiveOrderItemDto
+                    {
+                        VariantId = 101,
+                        VariantName = "Mì Hảo Hảo Tôm Chua Cay - Loại 1",
+                        Quantity = 3,
+                        UnitPrice = 4500,
+                        TotalPrice = 13500
+                    }
+                }
+            };
+
+            var session = new ChatSession
+            {
+                Id = 99,
+                SessionToken = "sess-draft-test",
+                CustomerId = 1,
+                IsActive = true,
+                DraftOrderJson = System.Text.Json.JsonSerializer.Serialize(existingDraft)
+            };
+            context.ChatSessions.Add(session);
+            await context.SaveChangesAsync();
+
+            var service = new GeminiChatService(CreateMockHttpClient(), _config, context, _mapper, _mockVnPayService, _mockHttpContextAccessor);
+
+            var request = new AiSendMessageRequestDto
+            {
+                SessionToken = "sess-draft-test",
+                Message = "Chốt đơn hàng giúp mình"
+            };
+
+            // Act
+            var result = await service.SendMessageAsync(request, 1, "127.0.0.1");
+
+            // Assert
+            result.Should().NotBeNull();
+            result.PayloadType.Should().Be("interactive_order");
+            var order = (InteractiveOrderPayloadDto)result.Payload!;
+            order.Items.Should().HaveCount(1);
+            order.Items[0].VariantId.Should().Be(101);
+            order.Items[0].Quantity.Should().Be(3);
+        }
+        #endregion
+
     }
 }
