@@ -168,9 +168,15 @@ const InventoryTransferForm: React.FC = () => {
       if (!whId || !varId) return [];
       const key = `${whId}_${varId}`;
       try {
-        const res = await inventoryIssueApi.getSuggestedBatches(whId, varId, neededQty);
-        setVariantBatchesMap((prev) => ({ ...prev, [key]: res || [] }));
-        return res || [];
+        // Luôn fetch toàn bộ lô khả dụng (999999) để map dropdown có đầy đủ tất cả các lô
+        const allBatches = await inventoryIssueApi.getSuggestedBatches(whId, varId, 999999);
+        setVariantBatchesMap((prev) => ({ ...prev, [key]: allBatches || [] }));
+
+        if (neededQty !== 999999) {
+          const suggestions = await inventoryIssueApi.getSuggestedBatches(whId, varId, neededQty);
+          return suggestions || [];
+        }
+        return allBatches || [];
       } catch {
         setVariantBatchesMap((prev) => ({ ...prev, [key]: [] }));
         return [];
@@ -364,8 +370,7 @@ const InventoryTransferForm: React.FC = () => {
     if (field === 'variantId' && value && formData.fromWarehouseId) {
       const suggestions = await fetchBatchesForVariant(
         Number(formData.fromWarehouseId),
-        Number(value),
-        1
+        Number(value)
       );
       if (suggestions && suggestions.length > 0) {
         setDetails((prev) =>
@@ -455,6 +460,66 @@ const InventoryTransferForm: React.FC = () => {
       showToast('error', 'Không thể phân bổ lô tự động!');
     } finally {
       setAllocatingFEFO(false);
+    }
+  };
+
+  const handleAutoAllocateRowFEFO = async (rowId: string) => {
+    if (!formData.fromWarehouseId) {
+      return showToast('warning', 'Vui lòng chọn Kho nguồn xuất phát trước!');
+    }
+    const targetRow = details.find((r) => r.id === rowId);
+    if (!targetRow || !targetRow.variantId) {
+      return showToast('warning', 'Vui lòng chọn sản phẩm trước khi phân bổ lô!');
+    }
+
+    try {
+      const whId = Number(formData.fromWarehouseId);
+      const varId = Number(targetRow.variantId);
+      const rowQty = Number(targetRow.quantity) || 1;
+
+      // Tính số lượng theo ĐVT cơ sở nếu ĐVT được chọn có hệ số quy đổi
+      const validOpts = variantUoMsMap[varId] || [];
+      const currentUom = validOpts.find((u) => u.uoMId === Number(targetRow.uoMId));
+      const factor = currentUom ? currentUom.conversionFactorToBase : 1;
+      const baseQty = rowQty * factor;
+
+      const suggestions = await inventoryIssueApi.getSuggestedBatches(whId, varId, baseQty);
+      if (!suggestions || suggestions.length === 0) {
+        return showToast('warning', 'Không có lô hàng nào còn tồn cho sản phẩm này tại kho nguồn!');
+      }
+
+      // Đảm bảo dropdown có đủ danh sách tất cả các lô
+      await fetchBatchesForVariant(whId, varId, 999999);
+
+      if (suggestions.length === 1) {
+        setDetails((prev) =>
+          prev.map((r) => (r.id === rowId ? { ...r, batchId: suggestions[0].batchId } : r))
+        );
+        showToast('success', `Đã chọn Lô ${suggestions[0].batchCode} theo FEFO!`);
+      } else {
+        // Tự động bóc tách thành nhiều dòng theo các lô FEFO gợi ý
+        const splittedRows: DetailRow[] = suggestions.map((sug) => {
+          const qtyInRowUoM = factor === 1 ? sug.suggestedPickQuantity : sug.suggestedPickQuantity / factor;
+          return {
+            ...targetRow,
+            id: crypto.randomUUID(),
+            batchId: sug.batchId,
+            quantity: qtyInRowUoM,
+          };
+        });
+
+        setDetails((prev) => {
+          const idx = prev.findIndex((r) => r.id === rowId);
+          if (idx === -1) return prev;
+          const copy = [...prev];
+          copy.splice(idx, 1, ...splittedRows);
+          return copy;
+        });
+
+        showToast('success', `Đã bóc tách thành ${suggestions.length} dòng theo các lô hạn dùng FEFO!`);
+      }
+    } catch {
+      showToast('error', 'Không thể phân bổ lô FEFO cho sản phẩm này!');
     }
   };
 
@@ -705,34 +770,49 @@ const InventoryTransferForm: React.FC = () => {
 
                         {/* Cột 3: Lô Hàng (Được lọc chính xác theo đúng SP & Kho Nguồn) */}
                         <td className="p-2 min-w-[340px]">
-                          <FormSelect
-                            label=""
-                            placeholder={
-                              !formData.fromWarehouseId
-                                ? '-- Chọn Kho nguồn trước --'
-                                : !row.variantId
-                                  ? '-- Chọn Sản phẩm trước --'
-                                  : rowBatches.length === 0
-                                    ? '-- Kho nguồn hết hàng cho SP này --'
-                                    : '-- Chọn Lô FEFO --'
-                            }
-                            showSearch
-                            searchPlaceholder="Tìm mã lô..."
-                            options={rowBatches.map((b) => ({
-                              value: b.batchId,
-                              label: `${b.batchCode} ${
-                                b.expiryDate
-                                  ? `(HSD: ${new Date(b.expiryDate).toLocaleDateString('vi-VN')})`
-                                  : ''
-                              } - [Khả dụng: ${b.quantityAvailable}]`,
-                            }))}
-                            value={row.batchId}
-                            error={errors[`batchId_${row.id}`]}
-                            disabled={!row.variantId || !formData.fromWarehouseId}
-                            onSelect={(val) =>
-                              handleDetailChange(row.id, 'batchId', val ? Number(val) : '')
-                            }
-                          />
+                          <div className="flex items-center gap-1.5">
+                            <div className="flex-1 min-w-0">
+                              <FormSelect
+                                label=""
+                                placeholder={
+                                  !formData.fromWarehouseId
+                                    ? '-- Chọn Kho nguồn trước --'
+                                    : !row.variantId
+                                      ? '-- Chọn Sản phẩm trước --'
+                                      : rowBatches.length === 0
+                                        ? '-- Kho nguồn hết hàng cho SP này --'
+                                        : '-- Chọn Lô FEFO --'
+                                }
+                                showSearch
+                                searchPlaceholder="Tìm mã lô..."
+                                options={rowBatches.map((b) => ({
+                                  value: b.batchId,
+                                  label: `${b.batchCode} ${
+                                    b.expiryDate
+                                      ? `(HSD: ${new Date(b.expiryDate).toLocaleDateString('vi-VN')})`
+                                      : ''
+                                  } - [Khả dụng: ${b.quantityAvailable}]`,
+                                }))}
+                                value={row.batchId}
+                                error={errors[`batchId_${row.id}`]}
+                                disabled={!row.variantId || !formData.fromWarehouseId}
+                                onSelect={(val) =>
+                                  handleDetailChange(row.id, 'batchId', val ? Number(val) : '')
+                                }
+                              />
+                            </div>
+                            {Boolean(formData.fromWarehouseId && row.variantId) && (
+                              <button
+                                type="button"
+                                title="Tự động bóc tách / chọn lô theo FEFO cho sản phẩm này"
+                                onClick={() => handleAutoAllocateRowFEFO(row.id)}
+                                className="px-2 py-2 text-[11px] font-extrabold text-amber-800 bg-amber-100 hover:bg-amber-200 border border-amber-300 rounded-xl whitespace-nowrap transition-colors flex items-center gap-1 cursor-pointer shrink-0 shadow-2xs"
+                              >
+                                <Sparkles className="w-3 h-3 text-amber-600" />
+                                <span>FEFO</span>
+                              </button>
+                            )}
+                          </div>
                           {row.batchId &&
                             (() => {
                               const selectedBatch = rowBatches.find(

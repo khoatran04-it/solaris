@@ -34,7 +34,7 @@ function TraHangContent() {
   const [reason, setReason] = useState("");
   const [targetOrder, setTargetOrder] = useState<ShopOrder | null>(null);
   const [selectedItems, setSelectedItems] = useState<{
-    [variantId: number]: { qty: number; reason: string; uoMId: number };
+    [variantId: number]: { qty: number; reason: string; uoMId: number; isSelected?: boolean };
   }>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -91,6 +91,7 @@ function TraHangContent() {
           qty: i.quantity,
           reason: "Dập nát hoặc không đạt độ tươi",
           uoMId: i.uoMId,
+          isSelected: true,
         };
       });
       setSelectedItems(init);
@@ -103,18 +104,23 @@ function TraHangContent() {
     e.preventDefault();
     if (!targetOrder) return;
 
+    const items = Object.entries(selectedItems)
+      .filter(([_, data]) => data.isSelected !== false && data.qty > 0)
+      .map(([variantId, data]) => ({
+        variantId: parseInt(variantId, 10),
+        uoMId: data.uoMId,
+        batchId: 0,
+        returnedQuantity: data.qty,
+        reason: data.reason,
+      }));
+
+    if (items.length === 0) {
+      alert("Vui lòng chọn ít nhất một sản phẩm cần đổi/trả.");
+      return;
+    }
+
     setIsSubmitting(true);
     try {
-      const items = Object.entries(selectedItems)
-        .map(([variantId, data]) => ({
-          variantId: parseInt(variantId, 10),
-          uoMId: data.uoMId,
-          batchId: 0,
-          returnedQuantity: data.qty,
-          reason: data.reason,
-        }))
-        .filter((i) => i.returnedQuantity > 0);
-
       await shopReturnApi.create({
         orderCode: targetOrder.orderCode,
         reason: reason.trim(),
@@ -186,48 +192,78 @@ function TraHangContent() {
                     Chọn mặt hàng và số lượng cần trả:
                   </label>
                   <div className="space-y-2">
-                    {targetOrder.items.map((item) => (
-                      <div
-                        key={item.detailId}
-                        className="p-3.5 bg-slate-50/80 rounded-2xl flex items-center justify-between text-xs gap-4 border border-slate-100"
-                      >
-                        <div className="flex-1 truncate">
-                          <p className="font-bold text-slate-900 truncate">
-                            {item.variantName}
-                          </p>
-                          <p className="text-[11px] text-slate-500 font-medium">
-                            Đã nhận: {item.quantity} {item.uoMName}
-                          </p>
-                        </div>
+                    {targetOrder.items.map((item) => {
+                      const currentItem = selectedItems[item.variantId] || {
+                        qty: item.quantity,
+                        reason: "Dập nát hoặc không đạt độ tươi",
+                        uoMId: item.uoMId,
+                        isSelected: true,
+                      };
+                      const isChecked = currentItem.isSelected !== false;
 
-                        <div className="flex items-center gap-2">
-                          <span className="text-[11px] text-slate-600 font-semibold">
-                            SL trả:
-                          </span>
-                          <input
-                            type="number"
-                            min={1}
-                            max={item.quantity}
-                            value={selectedItems[item.variantId]?.qty || 1}
-                            onChange={(e) => {
-                              const val = parseInt(e.target.value, 10) || 1;
-                              setSelectedItems({
-                                ...selectedItems,
-                                [item.variantId]: {
-                                  ...selectedItems[item.variantId],
-                                  qty: val,
-                                  uoMId: item.uoMId,
-                                  reason:
-                                    selectedItems[item.variantId]?.reason ||
-                                    "Không đạt chất lượng",
-                                },
-                              });
-                            }}
-                            className="w-16 h-9 bg-white border border-slate-200 rounded-xl text-center font-bold"
-                          />
+                      return (
+                        <div
+                          key={item.detailId}
+                          className={`p-3.5 rounded-2xl flex items-center justify-between text-xs gap-4 border transition-all ${
+                            isChecked
+                              ? "bg-slate-50/80 border-slate-200"
+                              : "bg-slate-100/50 border-slate-100 opacity-60"
+                          }`}
+                        >
+                          <div className="flex items-center gap-3 flex-1 min-w-0">
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              aria-label={`Chọn trả ${item.variantName}`}
+                              onChange={(e) => {
+                                setSelectedItems({
+                                  ...selectedItems,
+                                  [item.variantId]: {
+                                    ...currentItem,
+                                    isSelected: e.target.checked,
+                                  },
+                                });
+                              }}
+                              className="w-4 h-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500 cursor-pointer accent-emerald-600"
+                            />
+                            <div className="flex-1 truncate">
+                              <p className={`font-bold truncate ${isChecked ? "text-slate-900" : "text-slate-500 line-through"}`}>
+                                {item.variantName}
+                              </p>
+                              <p className="text-[11px] text-slate-500 font-medium">
+                                Đã nhận: {item.quantity} {item.uoMName}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <span className="text-[11px] text-slate-600 font-semibold">
+                              SL trả:
+                            </span>
+                            <input
+                              type="number"
+                              min={1}
+                              max={item.quantity}
+                              disabled={!isChecked}
+                              value={currentItem.qty}
+                              onChange={(e) => {
+                                const val = parseInt(e.target.value, 10) || 1;
+                                setSelectedItems({
+                                  ...selectedItems,
+                                  [item.variantId]: {
+                                    ...currentItem,
+                                    qty: Math.min(Math.max(1, val), item.quantity),
+                                    uoMId: item.uoMId,
+                                    reason: currentItem.reason || "Không đạt chất lượng",
+                                  },
+                                });
+                              }}
+                              className="w-16 h-9 bg-white border border-slate-200 rounded-xl text-center font-bold disabled:bg-slate-100 disabled:text-slate-400"
+                            />
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
 

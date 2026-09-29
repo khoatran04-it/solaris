@@ -1,4 +1,4 @@
-﻿import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import TraHangPage from "@/app/tai-khoan/tra-hang/page";
@@ -196,5 +196,109 @@ describe("Module 13 - TraHangPage Component", () => {
         }),
       );
     });
+  });
+
+  // TC05: CHỌN LỌC MẶT HÀNG - BỎ CHỌN SẢN PHẨM KHÔNG MUỐN TRẢ
+  it("TC05 - Đơn hàng nhiều món: Bỏ chọn 1 sản phẩm, chỉ trả các sản phẩm được tích chọn", async () => {
+    const multiItemOrder = {
+      ...mockOrder,
+      items: [
+        {
+          detailId: 1,
+          variantId: 10,
+          variantName: "Xoài Cát Hòa Lộc",
+          uoMId: 1,
+          uoMName: "Hộp 1kg",
+          quantity: 2,
+          unitPrice: 150000,
+          totalPrice: 300000,
+        },
+        {
+          detailId: 2,
+          variantId: 20,
+          variantName: "Cam Sành Tiền Giang",
+          uoMId: 1,
+          uoMName: "Túi 2kg",
+          quantity: 3,
+          unitPrice: 50000,
+          totalPrice: 150000,
+        },
+      ],
+    };
+    (shopOrderApi.getByCode as any).mockResolvedValue(multiItemOrder);
+
+    render(<TraHangPage />);
+
+    // Mở form & tìm đơn
+    fireEvent.click(await screen.findByRole("button", { name: /Tạo yêu cầu mới/i }));
+    fireEvent.change(screen.getByPlaceholderText(/Nhập mã đơn hàng/i), {
+      target: { value: "ORD-20260830-001" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /Kiểm tra đơn/i }));
+
+    await screen.findByText("Xoài Cát Hòa Lộc");
+    await screen.findByText("Cam Sành Tiền Giang");
+
+    // Bỏ chọn Cam Sành (variantId: 20)
+    const camCheckbox = screen.getByLabelText(/Chọn trả Cam Sành Tiền Giang/i);
+    expect(camCheckbox).toBeChecked();
+    fireEvent.click(camCheckbox);
+    expect(camCheckbox).not.toBeChecked();
+
+    // Nhập lý do
+    fireEvent.change(screen.getByPlaceholderText(/Mô tả cụ thể tình trạng hàng hóa/i), {
+      target: { value: "Chỉ đổi trả xoài bị dập" },
+    });
+
+    // Submit
+    fireEvent.click(screen.getByRole("button", { name: /Gửi yêu cầu trả hàng/i }));
+
+    await waitFor(() => {
+      expect(shopReturnApi.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          orderCode: "ORD-20260830-001",
+          reason: "Chỉ đổi trả xoài bị dập",
+          items: [
+            expect.objectContaining({
+              variantId: 10,
+              returnedQuantity: 2,
+            }),
+          ],
+        }),
+      );
+    });
+    // Đảm bảo Cam Sành (variantId 20) KHÔNG bị gửi đi
+    const callArgs = (shopReturnApi.create as any).mock.calls[0][0];
+    expect(callArgs.items.some((i: any) => i.variantId === 20)).toBe(false);
+  });
+
+  // TC06: BÁO LỖI NẾU KHÔNG CHỌN BẤT KỲ MẶT HÀNG NÀO
+  it("TC06 - Không chọn sản phẩm nào: Hiển thị cảnh báo và chặn submit", async () => {
+    render(<TraHangPage />);
+
+    // Mở form & tìm đơn
+    fireEvent.click(await screen.findByRole("button", { name: /Tạo yêu cầu mới/i }));
+    fireEvent.change(screen.getByPlaceholderText(/Nhập mã đơn hàng/i), {
+      target: { value: "ORD-20260830-001" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /Kiểm tra đơn/i }));
+
+    await screen.findByText("Xoài Cát Hòa Lộc");
+
+    // Bỏ chọn Xoài Cát
+    const xoaiCheckbox = screen.getByLabelText(/Chọn trả Xoài Cát Hòa Lộc/i);
+    fireEvent.click(xoaiCheckbox);
+    expect(xoaiCheckbox).not.toBeChecked();
+
+    // Nhập lý do
+    fireEvent.change(screen.getByPlaceholderText(/Mô tả cụ thể tình trạng hàng hóa/i), {
+      target: { value: "Lý do test" },
+    });
+
+    // Bấm submit
+    fireEvent.click(screen.getByRole("button", { name: /Gửi yêu cầu trả hàng/i }));
+
+    expect(window.alert).toHaveBeenCalledWith("Vui lòng chọn ít nhất một sản phẩm cần đổi/trả.");
+    expect(shopReturnApi.create).not.toHaveBeenCalled();
   });
 });

@@ -124,6 +124,7 @@ namespace backend.Services
             // 1. Kiểm tra đơn hàng gốc
             var order = await _context.Orders
                 .Include(o => o.Details)
+                .Include(o => o.InventoryIssues).ThenInclude(i => i.Details)
                 .FirstOrDefaultAsync(o => o.Id == dto.OrderId);
             if (order == null)
                 throw new ArgumentException($"Đơn hàng với ID {dto.OrderId} không tồn tại.");
@@ -210,10 +211,32 @@ namespace backend.Services
                         : (orderDetail?.UnitPrice ?? 0);
                     int uomId = item.UoMId > 0 ? item.UoMId : (orderDetail?.UoMId ?? 1);
 
+                    int resolvedBatchId = item.BatchId;
+                    if (resolvedBatchId <= 0)
+                    {
+                        var issuedBatchId = order.InventoryIssues?
+                            .Where(i => !i.IsDeleted && i.Status == InventoryIssueStatus.Completed)
+                            .SelectMany(i => i.Details)
+                            .Where(d => d.VariantId == item.VariantId && d.BatchId > 0)
+                            .Select(d => d.BatchId)
+                            .FirstOrDefault() ?? 0;
+
+                        if (issuedBatchId > 0)
+                        {
+                            resolvedBatchId = issuedBatchId;
+                        }
+                        else
+                        {
+                            var fallbackBatch = await _context.ProductBatches
+                                .FirstOrDefaultAsync(b => b.VariantId == item.VariantId && !b.IsDeleted);
+                            resolvedBatchId = fallbackBatch?.Id ?? 1;
+                        }
+                    }
+
                     ret.Details.Add(new CustomerReturnDetail
                     {
                         VariantId = item.VariantId,
-                        BatchId = item.BatchId,
+                        BatchId = resolvedBatchId,
                         UoMId = uomId,
                         ReturnedQuantity = item.ReturnedQuantity,
                         UnitPrice = unitPrice,

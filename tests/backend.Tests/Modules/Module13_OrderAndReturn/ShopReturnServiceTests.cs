@@ -449,5 +449,138 @@ namespace backend.Tests.Modules.Module13_OrderAndReturn
                 .WithMessage("*ít nhất một sản phẩm*");
         }
         #endregion
+
+        #region TC08: REVERSE BATCH ALLOCATION TỰ ĐỘNG BÓC TÁCH VỀ ĐÚNG CÁC LÔ GỐC ĐÃ XUẤT KHO
+        /// <summary>
+        /// TC08: Đơn hàng đã xuất 2 lô: Lô A (30kg) và Lô B (20kg).
+        /// Khách hàng yêu cầu đổi trả 45kg mà không cần chỉ định BatchId.
+        /// Thuật toán Reverse Waterfall phải tự động bóc tách thành 2 dòng:
+        /// - 30kg hồi về Lô A (hạn dùng gần nhất)
+        /// - 15kg hồi về Lô B
+        /// </summary>
+        [Fact]
+        public async Task CreateReturnRequestAsync_WhenOrderIssuedFromMultipleBatches_ShouldSplitReturnIntoMultipleBatchesAccurately()
+        {
+            // Arrange
+            using var context = TestFactories.CreateInMemoryDbContext();
+            var now = DateTime.UtcNow;
+
+            var variant = new ProductVariant { Id = 20, Code = "SKU-TAO", Name = "Táo Envy Mỹ", IsActive = true };
+            var batchA = new ProductBatch { Id = 101, BatchCode = "BATCH-TAO-A", VariantId = 20, ExpiryDate = now.AddDays(10) };
+            var batchB = new ProductBatch { Id = 102, BatchCode = "BATCH-TAO-B", VariantId = 20, ExpiryDate = now.AddDays(25) };
+            var uom = new UoM { Id = 5, Code = "KG", Name = "Kilogram", IsActive = true };
+
+            context.ProductVariants.Add(variant);
+            context.ProductBatches.AddRange(batchA, batchB);
+            context.UoMs.Add(uom);
+
+            var order = new Order
+            {
+                Id = 100,
+                OrderCode = "ORD-MULTI-BATCH-RETURN",
+                CustomerId = 10,
+                WarehouseId = 1,
+                Status = OrderStatus.Completed,
+                OrderDate = now.AddHours(-1),
+                CreatedAt = now.AddHours(-1),
+                UpdatedAt = now.AddHours(-1),
+                Details = new List<OrderDetail>
+                {
+                    new OrderDetail { Id = 10, VariantId = 20, UoMId = 5, Quantity = 50, UnitPrice = 100000m, TotalPrice = 5000000m }
+                }
+            };
+
+            var completedIssue = new InventoryIssue
+            {
+                Id = 50,
+                IssueCode = "PXK-MULTI-BATCH",
+                WarehouseId = 1,
+                OrderId = 100,
+                Status = InventoryIssueStatus.Completed,
+                IssueDate = now.AddHours(-1),
+                CreatedAt = now.AddHours(-1),
+                UpdatedAt = now.AddHours(-1),
+                Details = new List<InventoryIssueDetail>
+                {
+                    new InventoryIssueDetail
+                    {
+                        Id = 1,
+                        OrderDetailId = 10,
+                        VariantId = 20,
+                        BatchId = 101, // Lô A (30kg)
+                        Batch = batchA,
+                        UoMId = 5,
+                        Quantity = 30,
+                        UnitPrice = 100000m,
+                        TotalPrice = 3000000m
+                    },
+                    new InventoryIssueDetail
+                    {
+                        Id = 2,
+                        OrderDetailId = 10,
+                        VariantId = 20,
+                        BatchId = 102, // Lô B (20kg)
+                        Batch = batchB,
+                        UoMId = 5,
+                        Quantity = 20,
+                        UnitPrice = 100000m,
+                        TotalPrice = 2000000m
+                    }
+                }
+            };
+
+            context.Orders.Add(order);
+            context.InventoryIssues.Add(completedIssue);
+            await context.SaveChangesAsync();
+
+            var service = new ShopReturnService(context, _mapper);
+
+            var request = new ShopReturnCreateRequestDto
+            {
+                OrderCode = "ORD-MULTI-BATCH-RETURN",
+                Reason = "Khách muốn trả 45kg do không dùng hết",
+                Items = new List<ShopReturnItemRequestDto>
+                {
+                    new()
+                    {
+                        VariantId = 20,
+                        UoMId = 5,
+                        ReturnedQuantity = 45,
+                        BatchId = 0, // Khách không biết batchId, hệ thống tự động bóc tách!
+                        Reason = "Không đạt độ tươi"
+                    }
+                }
+            };
+
+            // Act
+            var result = await service.CreateReturnRequestAsync(10, request);
+
+            // Assert
+            result.Should().NotBeNull();
+            var createdEntity = await context.CustomerReturns
+                .Include(r => r.Details)
+                .FirstOrDefaultAsync(r => r.ReturnCode == result.ReturnCode);
+
+            createdEntity.Should().NotBeNull();
+            createdEntity!.Details.Should().HaveCount(2);
+
+            // Dòng 1: Phải thuộc Lô A (HSD gần hơn) với đúng 30kg
+            var detailA = createdEntity.Details.FirstOrDefault(d => d.BatchId == 101);
+            detailA.Should().NotBeNull();
+            detailA!.ReturnedQuantity.Should().Be(30);
+            detailA.UnitPrice.Should().Be(100000m);
+            detailA.RefundAmount.Should().Be(3000000m);
+
+            // Dòng 2: Phải thuộc Lô B với đúng 15kg còn lại
+            var detailB = createdEntity.Details.FirstOrDefault(d => d.BatchId == 102);
+            detailB.Should().NotBeNull();
+            detailB!.ReturnedQuantity.Should().Be(15);
+            detailB.UnitPrice.Should().Be(100000m);
+            detailB.RefundAmount.Should().Be(1500000m);
+
+            // Tổng số tiền hoàn
+            createdEntity.RefundAmount.Should().Be(4500000m);
+        }
+        #endregion
     }
 }

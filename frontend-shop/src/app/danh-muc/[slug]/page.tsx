@@ -1,6 +1,7 @@
 import React from "react";
 import { Metadata } from "next";
 import Link from "next/link";
+import { cookies } from "next/headers";
 import { Layers, Sparkles } from "lucide-react";
 import ProductCard from "@/components/product/ProductCard";
 import ProductFilter from "@/components/product/ProductFilter";
@@ -57,6 +58,10 @@ export default async function CategoryPage({
 }: CategoryPageProps) {
   const { slug } = await params;
   const sParams = await searchParams;
+  const cookieStore = await cookies();
+  const cookieWhId = cookieStore.get("solaris_warehouse_id")?.value;
+  const warehouseId = cookieWhId ? parseInt(cookieWhId, 10) : undefined;
+
   const page = parseInt(sParams.page || "1", 10);
   const origin = sParams.origin || "";
   const cert = sParams.cert || "";
@@ -158,6 +163,7 @@ export default async function CategoryPage({
     origin: origin || undefined,
     certification: cert || undefined,
     sortBy: sort,
+    warehouseId: warehouseId,
   };
 
   let productsResult: PagedResult<ShopProductCard> = {

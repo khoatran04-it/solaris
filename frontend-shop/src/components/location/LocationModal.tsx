@@ -1,6 +1,7 @@
-﻿"use client";
+"use client";
 
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useLocationStore } from "@/stores/locationStore";
 import { useAuthStore } from "@/stores/authStore";
 import { ShopAddress } from "@/types/customer";
@@ -9,6 +10,7 @@ import GhnAddressSelect, {
 } from "@/components/address/GhnAddressSelect";
 
 export default function LocationModal() {
+  const router = useRouter();
   const {
     isModalOpen,
     deliveryAddress,
@@ -66,8 +68,9 @@ export default function LocationModal() {
       return;
     }
 
-    // Thành công: Reset form & đóng modal
+    // Thành công: Reset form, đóng modal & làm mới dữ liệu trang
     setShowManualForm(false);
+    router.refresh();
   };
 
   const hasSavedAddresses = isAuthenticated && savedAddresses.length > 0;
@@ -120,7 +123,10 @@ export default function LocationModal() {
 
             <button
               type="button"
-              onClick={() => detectGps(false)}
+              onClick={async () => {
+                await detectGps(false);
+                router.refresh();
+              }}
               disabled={isDetectingGps}
               className="w-full mt-1.5 py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 disabled:bg-emerald-400 text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs text-center block"
             >
@@ -204,7 +210,10 @@ export default function LocationModal() {
                         {!addr.isDefault && (
                           <button
                             type="button"
-                            onClick={() => setDefaultAddress(addr.id)}
+                            onClick={async () => {
+                              await setDefaultAddress(addr.id);
+                              router.refresh();
+                            }}
                             className="font-semibold text-slate-500 hover:text-emerald-700 underline cursor-pointer"
                           >
                             Đặt làm mặc định
@@ -213,7 +222,10 @@ export default function LocationModal() {
 
                         <button
                           type="button"
-                          onClick={() => selectSavedAddress(addr)}
+                          onClick={() => {
+                            selectSavedAddress(addr);
+                            router.refresh();
+                          }}
                           className={`px-3 py-1 rounded-lg font-bold transition-all cursor-pointer ${
                             isSelected
                               ? "bg-emerald-700 text-white"

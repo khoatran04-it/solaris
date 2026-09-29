@@ -1,6 +1,7 @@
 import React from "react";
 import { Metadata } from "next";
 import Link from "next/link";
+import { cookies } from "next/headers";
 import { Sparkles, Search } from "lucide-react";
 import ProductCard from "@/components/product/ProductCard";
 import ProductFilter from "@/components/product/ProductFilter";
@@ -38,6 +39,9 @@ interface SanPhamPageProps {
 
 export default async function SanPhamPage({ searchParams }: SanPhamPageProps) {
   const params = await searchParams;
+  const cookieStore = await cookies();
+  const cookieWhId = cookieStore.get("solaris_warehouse_id")?.value;
+
   const page = parseInt(params.page || "1", 10);
   const search = params.search || "";
   const categorySlug = params.category || "";
@@ -48,7 +52,9 @@ export default async function SanPhamPage({ searchParams }: SanPhamPageProps) {
   const sort = params.sort || "newest";
   const warehouseId = params.warehouseId
     ? parseInt(params.warehouseId, 10)
-    : undefined;
+    : cookieWhId
+      ? parseInt(cookieWhId, 10)
+      : undefined;
 
   const filterParams: ShopProductFilterParams = {
     pageIndex: page,

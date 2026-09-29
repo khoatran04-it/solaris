@@ -80,6 +80,11 @@ namespace backend.Services
                 string randStr = Guid.NewGuid().ToString("N").Substring(0, 4).ToUpperInvariant();
                 string returnCode = $"RET-{dateStr}-{randStr}";
 
+                var activeReturns = await _context.CustomerReturns
+                    .Include(r => r.Details)
+                    .Where(r => r.OrderId == order.Id && !r.IsDeleted && r.Status != CustomerReturnStatus.Rejected)
+                    .ToListAsync();
+
                 var returnDetails = new List<CustomerReturnDetail>();
                 decimal totalRefund = 0;
 
@@ -90,27 +95,24 @@ namespace backend.Services
                     var orderDetail = order.Details.FirstOrDefault(d => d.VariantId == item.VariantId);
                     decimal unitPrice = orderDetail?.UnitPrice ?? 0;
 
-                    // Phân giải Lô hàng (BatchId) đa tầng an toàn tuyệt đối
-                    int resolvedBatchId = await ResolveBatchIdAsync(order, item.VariantId, safeWarehouseId, item.BatchId);
+                    // Tự động bóc tách hồi lô về đúng các lô gốc đã xuất thực tế
+                    var allocatedDetails = await AllocateReturnDetailsAcrossIssuedBatchesAsync(
+                        order,
+                        item.VariantId,
+                        item.ReturnedQuantity,
+                        item.UoMId,
+                        orderDetail?.UoMId ?? 0,
+                        unitPrice,
+                        item.BatchId,
+                        item.Reason,
+                        safeWarehouseId,
+                        activeReturns);
 
-                    // Phân giải Đơn vị tính (UoMId) an toàn
-                    int resolvedUoMId = await ResolveUoMIdAsync(item.VariantId, item.UoMId, orderDetail?.UoMId ?? 0);
-
-                    decimal refundAmount = item.ReturnedQuantity * unitPrice;
-                    totalRefund += refundAmount;
-
-                    returnDetails.Add(new CustomerReturnDetail
+                    foreach (var det in allocatedDetails)
                     {
-                        VariantId = item.VariantId,
-                        BatchId = resolvedBatchId,
-                        UoMId = resolvedUoMId,
-                        ReturnedQuantity = item.ReturnedQuantity,
-                        AcceptedQuantity = 0,
-                        DamagedQuantity = 0,
-                        UnitPrice = unitPrice,
-                        RefundAmount = refundAmount,
-                        RejectReason = item.Reason
-                    });
+                        returnDetails.Add(det);
+                        totalRefund += det.RefundAmount;
+                    }
                 }
 
                 var customerReturn = new CustomerReturn
@@ -204,6 +206,135 @@ namespace backend.Services
                 .FirstAsync(r => r.Id == returnId);
 
             return _mapper.Map<ShopReturnReadDto>(ret);
+        }
+
+        /// <summary>
+        /// Thuật toán Reverse Batch Allocation: Tự động bóc tách số lượng hàng trả về đúng các lô hàng đã xuất kho thực tế (InventoryIssueDetails).
+        /// Đảm bảo kỷ luật truy vết nguồn gốc (Traceability) và chống hoàn trả thừa vào một lô.
+        /// </summary>
+        private async Task<List<CustomerReturnDetail>> AllocateReturnDetailsAcrossIssuedBatchesAsync(
+            Order order,
+            int variantId,
+            decimal returnedQuantity,
+            int requestedUoMId,
+            int orderDetailUoMId,
+            decimal unitPrice,
+            int explicitBatchId,
+            string? reason,
+            int safeWarehouseId,
+            List<CustomerReturn> activeReturns)
+        {
+            int resolvedUoMId = await ResolveUoMIdAsync(variantId, requestedUoMId, orderDetailUoMId);
+
+            // 1. Nếu client hoặc khách truyền đích danh BatchId hợp lệ
+            if (explicitBatchId > 0)
+            {
+                var batchExists = await _context.ProductBatches.AnyAsync(b => b.Id == explicitBatchId && !b.IsDeleted);
+                if (batchExists)
+                {
+                    return new List<CustomerReturnDetail>
+                    {
+                        new CustomerReturnDetail
+                        {
+                            VariantId = variantId,
+                            BatchId = explicitBatchId,
+                            UoMId = resolvedUoMId,
+                            ReturnedQuantity = returnedQuantity,
+                            AcceptedQuantity = 0,
+                            DamagedQuantity = 0,
+                            UnitPrice = unitPrice,
+                            RefundAmount = returnedQuantity * unitPrice,
+                            RejectReason = reason
+                        }
+                    };
+                }
+            }
+
+            // 2. Tìm tất cả các lô đã xuất thực tế của mặt hàng này trong đơn hàng (từ Completed InventoryIssues)
+            var completedIssues = order.InventoryIssues?
+                .Where(i => !i.IsDeleted && i.Status == InventoryIssueStatus.Completed)
+                .ToList() ?? new List<InventoryIssue>();
+
+            var issuedDetails = completedIssues
+                .SelectMany(i => i.Details)
+                .Where(d => d.VariantId == variantId && d.BatchId > 0 && d.Quantity > 0)
+                .ToList();
+
+            if (issuedDetails.Any())
+            {
+                // Nhóm theo Lô, sắp xếp theo hạn dùng gần nhất (FEFO)
+                var batchGroups = issuedDetails
+                    .GroupBy(d => d.BatchId)
+                    .Select(g => new
+                    {
+                        BatchId = g.Key,
+                        Batch = g.FirstOrDefault()?.Batch,
+                        TotalIssued = g.Sum(d => d.Quantity),
+                        UoMId = g.FirstOrDefault()?.UoMId ?? resolvedUoMId
+                    })
+                    .OrderBy(b => b.Batch != null ? b.Batch.ExpiryDate : DateTime.MaxValue)
+                    .ToList();
+
+                var allocatedDetails = new List<CustomerReturnDetail>();
+                decimal remainingToAllocate = returnedQuantity;
+
+                foreach (var bg in batchGroups)
+                {
+                    if (remainingToAllocate <= 0) break;
+
+                    decimal alreadyReturned = activeReturns
+                        .SelectMany(r => r.Details)
+                        .Where(d => d.VariantId == variantId && d.BatchId == bg.BatchId)
+                        .Sum(d => d.ReturnedQuantity);
+
+                    decimal returnable = Math.Max(0, bg.TotalIssued - alreadyReturned);
+                    if (returnable <= 0) continue;
+
+                    decimal pickQty = Math.Min(remainingToAllocate, returnable);
+                    allocatedDetails.Add(new CustomerReturnDetail
+                    {
+                        VariantId = variantId,
+                        BatchId = bg.BatchId,
+                        UoMId = bg.UoMId > 0 ? bg.UoMId : resolvedUoMId,
+                        ReturnedQuantity = pickQty,
+                        AcceptedQuantity = 0,
+                        DamagedQuantity = 0,
+                        UnitPrice = unitPrice,
+                        RefundAmount = pickQty * unitPrice,
+                        RejectReason = reason
+                    });
+
+                    remainingToAllocate -= pickQty;
+                }
+
+                if (allocatedDetails.Any())
+                {
+                    if (remainingToAllocate > 0)
+                    {
+                        decimal totalReturnable = allocatedDetails.Sum(d => d.ReturnedQuantity);
+                        throw new InvalidOperationException($"Số lượng trả ({returnedQuantity}) vượt quá số lượng hàng đã xuất có thể hoàn trả ({totalReturnable}).");
+                    }
+                    return allocatedDetails;
+                }
+            }
+
+            // 3. Fallback: Nếu đơn hàng chưa từng có phiếu xuất kho Completed (môi trường test hoặc đơn chưa hoàn tất xuất kho)
+            int fallbackBatchId = await ResolveBatchIdAsync(order, variantId, safeWarehouseId, 0);
+            return new List<CustomerReturnDetail>
+            {
+                new CustomerReturnDetail
+                {
+                    VariantId = variantId,
+                    BatchId = fallbackBatchId,
+                    UoMId = resolvedUoMId,
+                    ReturnedQuantity = returnedQuantity,
+                    AcceptedQuantity = 0,
+                    DamagedQuantity = 0,
+                    UnitPrice = unitPrice,
+                    RefundAmount = returnedQuantity * unitPrice,
+                    RejectReason = reason
+                }
+            };
         }
 
         /// <summary>

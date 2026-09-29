@@ -260,4 +260,88 @@ describe('Module 10 - InventoryTransferForm Component', () => {
     expect(await screen.findByText(/Tối đa 25/i)).toBeInTheDocument();
     expect(inventoryTransferApi.create).not.toHaveBeenCalled();
   });
+
+  // TC05: CHUYỂN KHO CÙNG 1 SẢN PHẨM TỪ 2 LÔ KHÁC NHAU
+  it('TC05 - Chuyển kho cùng 1 sản phẩm nhưng thuộc 2 lô khác nhau: Cho phép thêm 2 dòng cùng SKU khác BatchId và submit thành công', async () => {
+    const multiBatches = [
+      { batchId: 1, batchCode: 'BATCH-2026-A', expiryDate: '2026-10-01', quantityAvailable: 30 },
+      { batchId: 2, batchCode: 'BATCH-2026-B', expiryDate: '2026-11-01', quantityAvailable: 20 },
+    ];
+    (inventoryIssueApi.getSuggestedBatches as any).mockResolvedValue(multiBatches);
+    (inventoryTransferApi.create as any).mockResolvedValue({ id: 35, message: 'Thành công' });
+
+    render(
+      <MemoryRouter>
+        <InventoryTransferForm />
+      </MemoryRouter>
+    );
+
+    // 1. Chọn kho nguồn & kho đích
+    fireEvent.click(screen.getByText('Kho nguồn (Xuất phát)').nextElementSibling as HTMLElement);
+    fireEvent.click(await screen.findByText('Tổng Kho Hà Nội'));
+
+    fireEvent.click(screen.getByText('Kho đích (Tiếp nhận)').nextElementSibling as HTMLElement);
+    fireEvent.click(await screen.findByText('Kho Nam Sài Gòn'));
+
+    // 2. Dòng 1: Chọn sản phẩm Dâu Tây -> Mặc định nhận Lô A
+    fireEvent.click(screen.getByText('Chọn sản phẩm...'));
+    fireEvent.click(await screen.findByText('SKU-DAUTAY-500G - Dâu Tây Đà Lạt Hộp 500g'));
+
+    await waitFor(() => {
+      expect(screen.getByText(/BATCH-2026-A/i)).toBeInTheDocument();
+    });
+
+    const qtyInputs = screen.getAllByRole('spinbutton');
+    fireEvent.change(qtyInputs[0], { target: { value: '30' } });
+
+    // 3. Thêm dòng 2 cho cùng sản phẩm Dâu Tây nhưng chọn Lô B
+    fireEvent.click(screen.getByRole('button', { name: /THÊM MẶT HÀNG/i }));
+
+    const spSelects = screen.getAllByText('Chọn sản phẩm...');
+    fireEvent.click(spSelects[spSelects.length - 1]);
+    const dautayOpts = await screen.findAllByText('SKU-DAUTAY-500G - Dâu Tây Đà Lạt Hộp 500g');
+    fireEvent.click(dautayOpts[dautayOpts.length - 1]);
+
+    // Đổi lô ở dòng 2 sang BATCH-2026-B
+    await waitFor(() => {
+      const batchATriggers = screen.getAllByText(/BATCH-2026-A/i);
+      expect(batchATriggers.length).toBeGreaterThanOrEqual(1);
+    });
+
+    // Mở dropdown lô của dòng 2 và chọn Lô B
+    const allBatchElements = screen.getAllByText(/BATCH-2026-A/i);
+    const row2BatchTrigger = allBatchElements[allBatchElements.length - 1];
+    fireEvent.click(row2BatchTrigger);
+
+    const batchBOption = await screen.findByText(/BATCH-2026-B/i);
+    fireEvent.click(batchBOption);
+
+    const allQtyInputs = screen.getAllByRole('spinbutton');
+    fireEvent.change(allQtyInputs[allQtyInputs.length - 1], { target: { value: '20' } });
+
+    // 4. Submit form
+    const submitBtn = screen.getByRole('button', { name: /TẠO MỚI/i });
+    fireEvent.click(submitBtn);
+
+    await waitFor(() => {
+      expect(inventoryTransferApi.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          fromWarehouseId: 1,
+          toWarehouseId: 2,
+          details: expect.arrayContaining([
+            expect.objectContaining({
+              variantId: 1,
+              batchId: 1,
+              quantity: 30,
+            }),
+            expect.objectContaining({
+              variantId: 1,
+              batchId: 2,
+              quantity: 20,
+            }),
+          ]),
+        })
+      );
+    });
+  });
 });

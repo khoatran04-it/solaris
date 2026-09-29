@@ -24,6 +24,17 @@ function calculateDistanceKm(
   return R * c;
 }
 
+// Ghi nhận Warehouse Id vào Cookie để Server Component Next.js đọc được (Hyperlocal Catalog Sync)
+export function setWarehouseCookie(whId?: number | null) {
+  if (typeof document !== "undefined") {
+    if (whId) {
+      document.cookie = `solaris_warehouse_id=${whId}; path=/; max-age=31536000; SameSite=Lax`;
+    } else {
+      document.cookie = `solaris_warehouse_id=; path=/; max-age=0; SameSite=Lax`;
+    }
+  }
+}
+
 interface LocationState {
   // Thông tin địa chỉ nhận hàng hiển thị cho khách
   deliveryAddress: string;
@@ -173,6 +184,7 @@ export const useLocationStore = create<LocationState>((set, get) => ({
             "solaris_selected_warehouse",
             JSON.stringify(matchedWh),
           );
+          setWarehouseCookie(matchedWh?.id);
         }
         return;
       }
@@ -208,6 +220,7 @@ export const useLocationStore = create<LocationState>((set, get) => ({
           "solaris_selected_warehouse",
           JSON.stringify(remappedWh),
         );
+        setWarehouseCookie(remappedWh?.id);
         return;
       }
 
@@ -226,6 +239,7 @@ export const useLocationStore = create<LocationState>((set, get) => ({
               userLongitude: userLng,
               isInitialized: true,
             });
+            setWarehouseCookie(stillExists.id);
             return;
           }
         } catch {}
@@ -324,6 +338,7 @@ export const useLocationStore = create<LocationState>((set, get) => ({
           "solaris_selected_warehouse",
           JSON.stringify(nearest),
         );
+        setWarehouseCookie(nearest?.id);
       }
     } catch {
       const fallbackWh = get().selectedWarehouse || defaultWh;
@@ -351,6 +366,7 @@ export const useLocationStore = create<LocationState>((set, get) => ({
           "solaris_selected_warehouse",
           JSON.stringify(fallbackWh),
         );
+        setWarehouseCookie(fallbackWh?.id);
       }
     }
   },
@@ -391,6 +407,7 @@ export const useLocationStore = create<LocationState>((set, get) => ({
         "solaris_selected_warehouse",
         JSON.stringify(matchedWh),
       );
+      setWarehouseCookie(matchedWh?.id);
     }
   },
 
@@ -467,6 +484,7 @@ export const useLocationStore = create<LocationState>((set, get) => ({
         "solaris_selected_warehouse",
         JSON.stringify(matchedWh),
       );
+      setWarehouseCookie(matchedWh?.id);
     }
 
     return { success: true };

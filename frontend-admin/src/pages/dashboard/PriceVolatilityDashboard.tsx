@@ -42,6 +42,7 @@ export default function PriceVolatilityDashboard() {
   const [selectedVariantId, setSelectedVariantId] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [showSkuDropdown, setShowSkuDropdown] = useState(false);
+  const [showSpreadBars, setShowSpreadBars] = useState(true);
 
   const [data, setData] = useState<DashboardPriceVolatilityDto | null>(null);
   const [loading, setLoading] = useState(true);
@@ -320,6 +321,19 @@ export default function PriceVolatilityDashboard() {
         <DashCard
           title="Tương Quan Giá Nhập vs Giá Bán Theo Thời Gian"
           subtitle={`So sánh đường Giá bán (Xanh lá) và Giá nhập (Xanh dương) kèm Cột chênh lệch lãi/lỗ (Đơn vị tính: VNĐ / ${data?.baseUoMName || 'ĐVT'})`}
+          action={
+            <button
+              type="button"
+              onClick={() => setShowSpreadBars((prev) => !prev)}
+              className={`px-3 py-1 text-xs font-semibold rounded-xl border transition-all ${
+                showSpreadBars
+                  ? 'bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100'
+                  : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+              }`}
+            >
+              {showSpreadBars ? 'Ẩn cột chênh lệch' : 'Hiện cột chênh lệch'}
+            </button>
+          }
         >
           <div className="h-88 w-full pt-2">
             {timelineData.length === 0 ? (
@@ -361,6 +375,10 @@ export default function PriceVolatilityDashboard() {
                     fontSize={11}
                     tickLine={false}
                     axisLine={false}
+                    domain={[
+                      (dataMin: number) => (dataMin < 0 ? dataMin * 2 : 0),
+                      (dataMax: number) => Math.max(dataMax * 3.5, 1000),
+                    ]}
                     tickFormatter={(v) =>
                       v >= 1_000_000
                         ? `${(v / 1_000_000).toFixed(1)}M`
@@ -394,26 +412,31 @@ export default function PriceVolatilityDashboard() {
                     align="right"
                     wrapperStyle={{ fontSize: '11px', paddingBottom: '12px' }}
                     formatter={(val) => {
-                      if (val === 'avgSellingPrice') return 'Giá bán bình quân';
-                      if (val === 'avgImportPrice') return 'Giá nhập bình quân';
-                      if (val === 'spread') return 'Chênh lệch lãi/lỗ (Spread)';
+                      if (val === 'avgSellingPrice') return 'Giá bán bình quân (Đường xanh lá)';
+                      if (val === 'avgImportPrice') return 'Giá nhập bình quân (Đường xanh dương)';
+                      if (val === 'spread') return 'Chênh lệch lãi/lỗ (Cột tím nhạt)';
                       return val;
                     }}
                   />
-                  <Bar
-                    yAxisId="spread"
-                    dataKey="spread"
-                    name="spread"
-                    barSize={16}
-                    radius={[4, 4, 0, 0]}
-                  >
-                    {timelineData.map((entry, index) => (
-                      <Cell
-                        key={`cell-${index}`}
-                        fill={entry.spread >= 0 ? '#10b981' : '#f43f5e'}
-                      />
-                    ))}
-                  </Bar>
+                  {showSpreadBars && (
+                    <Bar
+                      yAxisId="spread"
+                      dataKey="spread"
+                      name="spread"
+                      barSize={16}
+                      fill="#6366f1"
+                      fillOpacity={0.35}
+                      radius={[4, 4, 0, 0]}
+                    >
+                      {timelineData.map((entry, index) => (
+                        <Cell
+                          key={`cell-${index}`}
+                          fill={entry.spread >= 0 ? '#6366f1' : '#f43f5e'}
+                          fillOpacity={0.35}
+                        />
+                      ))}
+                    </Bar>
+                  )}
                   <Line
                     yAxisId="price"
                     type="monotone"
@@ -421,7 +444,8 @@ export default function PriceVolatilityDashboard() {
                     name="avgSellingPrice"
                     stroke="#10b981"
                     strokeWidth={2.5}
-                    dot={{ r: 3, fill: '#10b981' }}
+                    dot={{ r: 3.5, fill: '#10b981', strokeWidth: 1.5, stroke: '#fff' }}
+                    activeDot={{ r: 5 }}
                   />
                   <Line
                     yAxisId="price"
@@ -430,7 +454,8 @@ export default function PriceVolatilityDashboard() {
                     name="avgImportPrice"
                     stroke="#3b82f6"
                     strokeWidth={2.5}
-                    dot={{ r: 3, fill: '#3b82f6' }}
+                    dot={{ r: 3.5, fill: '#3b82f6', strokeWidth: 1.5, stroke: '#fff' }}
+                    activeDot={{ r: 5 }}
                   />
                 </ComposedChart>
               </ResponsiveContainer>

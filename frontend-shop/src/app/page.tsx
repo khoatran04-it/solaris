@@ -1,5 +1,6 @@
 import React from "react";
 import Link from "next/link";
+import { cookies } from "next/headers";
 import { ArrowRight, Flame, Leaf, Sparkles } from "lucide-react";
 import PromoBannerSlider from "@/components/promotion/PromoBannerSlider";
 import ProductCard from "@/components/product/ProductCard";
@@ -8,13 +9,13 @@ import shopProductApi from "@/api/shopProductApi";
 // Force dynamic rendering to avoid build-time static hang
 export const dynamic = "force-dynamic";
 
-async function getHomeData() {
+async function getHomeData(warehouseId?: number) {
   try {
     const [promotions, featured, newArrivals, deals] = await Promise.all([
       shopProductApi.getPromotions().catch(() => []),
-      shopProductApi.getFeatured(20).catch(() => []),
-      shopProductApi.getNewArrivals(20).catch(() => []),
-      shopProductApi.getDeals(20).catch(() => []),
+      shopProductApi.getFeatured(20, warehouseId).catch(() => []),
+      shopProductApi.getNewArrivals(20, warehouseId).catch(() => []),
+      shopProductApi.getDeals(20, warehouseId).catch(() => []),
     ]);
 
     return { promotions, featured, newArrivals, deals };
@@ -24,7 +25,10 @@ async function getHomeData() {
 }
 
 export default async function HomePage() {
-  const { promotions, featured, newArrivals, deals } = await getHomeData();
+  const cookieStore = await cookies();
+  const cookieWhId = cookieStore.get("solaris_warehouse_id")?.value;
+  const warehouseId = cookieWhId ? parseInt(cookieWhId, 10) : undefined;
+  const { promotions, featured, newArrivals, deals } = await getHomeData(warehouseId);
 
   return (
     <div className="space-y-16 pb-20">
