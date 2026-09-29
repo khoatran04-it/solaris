@@ -105,7 +105,7 @@ function TraHangContent() {
     if (!targetOrder) return;
 
     const items = Object.entries(selectedItems)
-      .filter(([_, data]) => data.isSelected !== false && data.qty > 0)
+      .filter(([, data]) => data.isSelected !== false && data.qty > 0)
       .map(([variantId, data]) => ({
         variantId: parseInt(variantId, 10),
         uoMId: data.uoMId,

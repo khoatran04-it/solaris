@@ -51,7 +51,7 @@ describe("DiaChiPage - Optional GPS Coordinates", () => {
     useAuthStore.setState({
       isAuthenticated: true,
       token: "fake-jwt-token",
-      customerInfo: {
+      user: {
         id: 1,
         code: "CUST-001",
         name: "Trần Đăng Khoa",
